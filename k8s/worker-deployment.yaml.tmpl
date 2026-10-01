@@ -1,0 +1,62 @@
+# Template Deployment for ONE worker service.
+#
+# This is parameterised with ${SIGNAL} (urgency|money|impersonation) and
+# ${LANGUAGE} (en|zh) placeholders -- copy this file per worker and either
+# substitute them by hand or run it through `envsubst`, e.g.:
+#
+#   SIGNAL=urgency LANGUAGE=en envsubst < worker-deployment.yaml.tmpl \
+#     | kubectl apply -f -
+#
+# Repeat for all six workers (urgency/money/impersonation x en/zh), and do
+# the same for worker-service.yaml.tmpl and worker-hpa.yaml.tmpl.
+#
+# TODO: once there are real images, replace `image:` with the built/pushed
+# tag (this assumes an image per worker, e.g. scam-detect/${SIGNAL}-${LANGUAGE}).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${SIGNAL}-${LANGUAGE}
+  labels:
+    app: ${SIGNAL}-${LANGUAGE}
+    signal: ${SIGNAL}
+    language: ${LANGUAGE}
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ${SIGNAL}-${LANGUAGE}
+  template:
+    metadata:
+      labels:
+        app: ${SIGNAL}-${LANGUAGE}
+        signal: ${SIGNAL}
+        language: ${LANGUAGE}
+    spec:
+      containers:
+        - name: ${SIGNAL}-${LANGUAGE}
+          image: scam-detect/${SIGNAL}-${LANGUAGE}:latest # TODO: real registry + tag
+          ports:
+            - containerPort: 50051
+              name: grpc
+          env:
+            - name: PORT
+              value: "50051"
+          # TODO: these are placeholder requests/limits for a coursework
+          # demo; size them for real once the model is trained and profiled.
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          readinessProbe:
+            tcpSocket:
+              port: 50051
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 50051
+            initialDelaySeconds: 5
+            periodSeconds: 10

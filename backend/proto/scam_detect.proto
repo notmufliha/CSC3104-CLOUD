@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package scam_detect;
+
+// Shared message/service definitions used by:
+//  - gateway (Rust)    -> gRPC client of both services below
+//  - aggregator (Rust) -> implements AggregatorService
+//  - workers (Python)  -> each implements WorkerService
+//
+// Each worker specializes in one (signal, language) pair, e.g.
+// urgency_en, money_zh, impersonation_en, etc. The gateway decides which
+// worker stubs to call based on the detected/validated `language`.
+service WorkerService {
+  rpc ClassifyTranscript(TranscriptRequest) returns (WorkerScore);
+}
+
+// Takes the fanned-out worker scores and produces a final verdict.
+service AggregatorService {
+  rpc Aggregate(AggregateRequest) returns (AggregateResponse);
+}
+
+message TranscriptRequest {
+  string transcript = 1;
+  // BCP-47-ish language code, e.g. "en", "zh". TODO: formalize validation
+  // (currently gateway does a naive check, see gateway/src/language.rs).
+  string language = 2;
+}
+
+message WorkerScore {
+  // Which signal this score represents, e.g. "urgency", "money",
+  // "impersonation". Set by the worker itself.
+  string signal = 1;
+  // Classifier confidence/probability in [0.0, 1.0] that the transcript
+  // exhibits this signal.
+  float score = 2;
+  string language = 3;
+}
+
+message AggregateRequest {
+  repeated WorkerScore scores = 1;
+}
+
+enum Verdict {
+  VERDICT_UNSPECIFIED = 0;
+  SAFE = 1;
+  UNSURE = 2;
+  SCAM = 3;
+}
+
+message AggregateResponse {
+  Verdict verdict = 1;
+  // Weighted sum of the input scores (see aggregator weighting policy).
+  float combined_score = 2;
+}

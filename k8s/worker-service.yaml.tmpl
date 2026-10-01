@@ -1,0 +1,18 @@
+# Template Service for ONE worker, matching worker-deployment.yaml.tmpl.
+# Copy/substitute ${SIGNAL} and ${LANGUAGE} the same way (see that file's
+# header comment). The gateway reaches this worker at:
+#   ${SIGNAL}-${LANGUAGE}.<namespace>.svc.cluster.local:50051
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${SIGNAL}-${LANGUAGE}
+  labels:
+    app: ${SIGNAL}-${LANGUAGE}
+spec:
+  selector:
+    app: ${SIGNAL}-${LANGUAGE}
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+  type: ClusterIP

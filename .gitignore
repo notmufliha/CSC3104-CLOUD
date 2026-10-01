@@ -1,0 +1,24 @@
+# Android Studio / Gradle
+android-app/.gradle/
+android-app/**/build/
+android-app/local.properties
+android-app/.idea/
+android-app/*.iml
+android-app/captures/
+android-app/.cxx/
+
+# Rust
+backend/**/target/
+
+# Python
+backend/.venv/
+backend/workers/**/.venv/
+backend/workers/**/__pycache__/
+backend/workers/**/*.pkl
+# Generated from backend/proto/scam_detect.proto by each worker's Dockerfile
+# (or manually via grpc_tools.protoc) -- not meant to be hand-edited/committed.
+backend/workers/**/scam_detect_pb2.py
+backend/workers/**/scam_detect_pb2_grpc.py
+
+# General
+.DS_Store

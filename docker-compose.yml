@@ -1,0 +1,104 @@
+version: "3.9"
+
+# Local dev stack for the scam-call detection backend. The Android app
+# talks to the gateway only (see README.md for pointing the app at this
+# stack); everything else is internal to the `scamnet` network.
+#
+# All Rust/Python services share backend/proto/scam_detect.proto, so every
+# build context below is `./backend` (not the per-service directory) with
+# an explicit `dockerfile:` pointing at the service's Dockerfile.
+
+networks:
+  scamnet:
+    driver: bridge
+
+services:
+  gateway:
+    build:
+      context: ./backend
+      dockerfile: gateway/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      GATEWAY_BIND_ADDR: "0.0.0.0:8080"
+      AGGREGATOR_ADDR: "http://aggregator:50052"
+      URGENCY_EN_ADDR: "http://urgency_en:50051"
+      MONEY_EN_ADDR: "http://money_en:50051"
+      IMPERSONATION_EN_ADDR: "http://impersonation_en:50051"
+      URGENCY_ZH_ADDR: "http://urgency_zh:50051"
+      MONEY_ZH_ADDR: "http://money_zh:50051"
+      IMPERSONATION_ZH_ADDR: "http://impersonation_zh:50051"
+    depends_on:
+      - aggregator
+      - urgency_en
+      - money_en
+      - impersonation_en
+      - urgency_zh
+      - money_zh
+      - impersonation_zh
+    networks:
+      - scamnet
+
+  aggregator:
+    build:
+      context: ./backend
+      dockerfile: aggregator/Dockerfile
+    environment:
+      AGGREGATOR_GRPC_ADDR: "0.0.0.0:50052"
+      AGGREGATOR_HTTP_ADDR: "0.0.0.0:8082"
+    networks:
+      - scamnet
+
+  urgency_en:
+    build:
+      context: ./backend
+      dockerfile: workers/urgency_en/Dockerfile
+    environment:
+      PORT: "50051"
+    networks:
+      - scamnet
+
+  urgency_zh:
+    build:
+      context: ./backend
+      dockerfile: workers/urgency_zh/Dockerfile
+    environment:
+      PORT: "50051"
+    networks:
+      - scamnet
+
+  money_en:
+    build:
+      context: ./backend
+      dockerfile: workers/money_en/Dockerfile
+    environment:
+      PORT: "50051"
+    networks:
+      - scamnet
+
+  money_zh:
+    build:
+      context: ./backend
+      dockerfile: workers/money_zh/Dockerfile
+    environment:
+      PORT: "50051"
+    networks:
+      - scamnet
+
+  impersonation_en:
+    build:
+      context: ./backend
+      dockerfile: workers/impersonation_en/Dockerfile
+    environment:
+      PORT: "50051"
+    networks:
+      - scamnet
+
+  impersonation_zh:
+    build:
+      context: ./backend
+      dockerfile: workers/impersonation_zh/Dockerfile
+    environment:
+      PORT: "50051"
+    networks:
+      - scamnet
