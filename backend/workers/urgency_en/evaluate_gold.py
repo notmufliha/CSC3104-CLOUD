@@ -5,7 +5,8 @@ Reads
   backend/workers/urgency_en/model/urgency_en.joblib      (from train.py; uses its SAVED threshold)
   one or more gold CSVs with RAW text: columns text,label[,category]
       e.g. backend/workers/urgency_en/eval/gold_handwritten.csv, eval/robocall_gold.csv
-  data/urgency_en/final_cleaned_dataset.csv               (only to check gold/training overlap)
+  every training input the model used (main dataset + augment files; listed in the model bundle)
+                                                          (only to check gold/training overlap)
 
 Writes
   backend/workers/urgency_en/reports/gold_report_<gold filename>.txt   (one per gold CSV)
@@ -30,39 +31,55 @@ from text_norm import normalize
 SEED = 42
 HERE = Path(__file__).resolve().parent
 DEFAULT_MODEL = HERE / "model" / "urgency_en.joblib"
-DEFAULT_DATA = HERE.parents[2] / "data" / "urgency_en" / "final_cleaned_dataset.csv"
+DEFAULT_TRAIN_FILES = [HERE.parents[2] / "data" / "urgency_en" / "final_cleaned_dataset.csv",
+                       HERE / "augment_urgency_en.csv"]
 REPORTS = HERE / "reports"
 WARNING = "!!! Gold set = final test. Do not tune anything based on this output. !!!"
 N_BOOT = 1000
-SIM_LIMIT = 0.9
+SIM_LIMIT = 0.7
+# Show at most this many training matches per gold row (repeated phrases can match dozens of rows).
+MAX_PAIRS_PER_ROW = 3
 
 
 def positive_proba(pipeline, texts):
     return pipeline.predict_proba(texts)[:, list(pipeline.classes_).index(1)]
 
 
-def overlap_check(gold_clean, train_clean, train_source, tfidf, log):
-    """Warn if a gold sentence is (nearly) a training sentence - then it would test memory, not skill."""
-    train_set = set(train_clean)
-    exact = [i for i, t in enumerate(gold_clean) if t in train_set]
+def overlap_check(gold_clean, train_df, tfidf, log, decontam_limit=None):
+    """Warn if a gold sentence is (nearly) a training sentence - then it would test memory, not skill.
+
+    decontam_limit: if train.py already dropped training rows at this cosine for THIS gold file, pairs at or
+    above it are only listed for information (those training rows were never fitted on).
+    """
+    train_clean = train_df["text"].tolist()
     # The fitted TF-IDF rows are L2-normalised, so a dot product IS the cosine similarity.
-    g, t = tfidf.transform(gold_clean), tfidf.transform(train_clean)
-    sims = (g @ t.T).tocsr()
-    near = []
+    sims = (tfidf.transform(gold_clean) @ tfidf.transform(train_clean).T).tocsr()
+    flagged = []
     for i in range(sims.shape[0]):
         row = sims.getrow(i)
-        if row.nnz and row.data.max() >= SIM_LIMIT and i not in exact:
-            j = row.indices[row.data.argmax()]
-            near.append((i, row.data.max(), j))
-    if not exact and not near:
-        log(f"overlap check: OK (no exact matches, no cosine >= {SIM_LIMIT} with {len(train_clean)} training rows)")
+        exact_j = [j for j in row.indices if train_clean[j] == gold_clean[i]]
+        keep = row.data >= SIM_LIMIT
+        if exact_j or keep.any():
+            order = np.argsort(-row.data[keep])[:MAX_PAIRS_PER_ROW]
+            pairs = [(row.data[keep][k], row.indices[keep][k]) for k in order]
+            flagged.append((i, pairs, bool(exact_j)))
+    if not flagged:
+        log(f"overlap check: OK (no exact matches, no cosine >= {SIM_LIMIT} with {len(train_clean)} training rows "
+            f"from {train_df['file'].nunique()} file(s))")
         return
-    log(f"WARNING overlap: {len(exact)} exact matches, {len(near)} near-duplicates (cosine >= {SIM_LIMIT}). "
-        "These rows inflate the score; consider rewriting or removing them from the gold set.")
-    for i in exact:
-        log(f"  exact  | gold #{i}: {gold_clean[i]}")
-    for i, s, j in near:
-        log(f"  {s:.3f}  | gold #{i}: {gold_clean[i]}\n         | train ({train_source[j]}): {train_clean[j]}")
+    n_exact = sum(e for _, _, e in flagged)
+    log(f"WARNING overlap: {len(flagged)} gold rows have a training match with cosine >= {SIM_LIMIT} "
+        f"({n_exact} exact) among {len(train_clean)} rows from {train_df['file'].nunique()} file(s). "
+        "These rows can inflate the score; consider rewriting or removing them from the gold set.")
+    if decontam_limit is not None:
+        log(f"  (train.py removed training rows with cosine >= {decontam_limit} to this gold file, so pairs "
+            "marked [removed] were not trained on)")
+    for i, pairs, _ in flagged:
+        log(f"  gold #{i}: {gold_clean[i]}")
+        for sim, j in pairs:
+            r = train_df.iloc[j]
+            mark = " [removed]" if decontam_limit is not None and sim >= decontam_limit else ""
+            log(f"    {sim:.3f}{mark} | {r['file']} ({r['source']}, label {r['label']}): {r['text']}")
 
 
 def bootstrap_ci(y, prob, pred, log):
@@ -103,8 +120,9 @@ def evaluate(path, bundle, train_df, log):
     log(f"model: created_at={bundle.get('created_at')} trained_rows={bundle.get('trained_rows')} "
         f"best_params={bundle.get('best_params')}  saved threshold={threshold:.4f}")
 
-    overlap_check(gold["clean"].tolist(), train_df["text"].tolist(), train_df["source"].tolist(),
-                  pipeline.named_steps["tfidf"], log)
+    decontam = bundle.get("decontamination") or {}
+    limit = decontam.get("limit") if Path(path).name in decontam.get("eval_files", []) else None
+    overlap_check(gold["clean"].tolist(), train_df, pipeline.named_steps["tfidf"], log, limit)
 
     y = gold["label"].to_numpy()
     prob = positive_proba(pipeline, gold["clean"])
@@ -140,14 +158,24 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--gold", type=Path, nargs="+", required=True, help="one or more gold CSVs")
     ap.add_argument("--model", type=Path, default=DEFAULT_MODEL)
-    ap.add_argument("--data", type=Path, default=DEFAULT_DATA, help="training CSV, for the overlap check")
+    ap.add_argument("--train-files", type=Path, nargs="+", default=None,
+                    help="training CSVs for the overlap check (default: the files recorded in the model bundle)")
     args = ap.parse_args()
 
     print(WARNING)
     bundle = joblib.load(args.model)
-    # Rebuild the training input exactly as train.py does, so "overlap" means overlap with what the
-    # model actually learned from.
-    train_df = pd.read_csv(args.data, usecols=["text_raw", "label", "source"], low_memory=False)
+    # Compare against EVERY training input (main dataset + augment files), so "overlap" means overlap with
+    # what the model actually learned from. Older bundles did not record their files: fall back to defaults.
+    # Bundle paths are relative to the repo root.
+    files = args.train_files or [HERE.parents[2] / f for f in bundle.get("training_files", [])] or DEFAULT_TRAIN_FILES
+    parts = []
+    for f in files:
+        if not f.exists():
+            print(f"WARNING: training file {f} not found - overlap check will not cover it")
+            continue
+        part = pd.read_csv(f, usecols=lambda c: c in {"text_raw", "label", "source"}, low_memory=False)
+        parts.append(part.assign(file=f.name))
+    train_df = pd.concat(parts, ignore_index=True)
     train_df["text"] = train_df["text_raw"].fillna("").map(normalize)
     train_df = train_df[train_df["text"] != ""].drop_duplicates(subset=["text", "label"]).reset_index(drop=True)
     REPORTS.mkdir(parents=True, exist_ok=True)

@@ -3,8 +3,9 @@ train.py - train + validate the English URGENCY classifier (TF-IDF + LogisticReg
 
 Reads
   data/urgency_en/final_cleaned_dataset.csv          (text_raw, label, source, conversation_id, hard_negative)
-  data/urgency_en/augment_urgency_en.csv             (optional extra rows: text_raw, label, source,
-                                                       conversation_id, label_method; see --augment)
+  backend/workers/urgency_en/augment_urgency_en.csv  (optional extra rows, see --augment: text_raw, label,
+                                                       source, conversation_id[, hard_negative, label_method])
+  backend/workers/urgency_en/eval/*.csv              (gold sets; ONLY used to remove near-copies from training)
   backend/workers/urgency_en/training/lexicon_urgency_en.txt   (optional, for the keyword baseline)
 
 Writes
@@ -21,7 +22,7 @@ Train with scikit-learn 1.4.2 (pinned in requirements-train.txt): the server pin
 joblib model generally only loads in the version that wrote it.
 
 Usage
-  python backend/workers/urgency_en/train.py [--data PATH] [--augment PATH] [--out PATH] [--no-source-weight]
+  python backend/workers/urgency_en/train.py [--data PATH] [--augment PATH ...] [--out PATH] [--no-source-weight]
                                              [--no-save]
 """
 import argparse
@@ -48,7 +49,10 @@ SEED = 42
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 DEFAULT_DATA = REPO / "data" / "urgency_en" / "final_cleaned_dataset.csv"
-DEFAULT_AUGMENT = REPO / "data" / "urgency_en" / "augment_urgency_en.csv"
+# targeted_urgency_augmentation_v2.csv is deliberately NOT here: some of its rows were paraphrased from
+# eval/robocall_gold.csv, so training on it leaks the test set. Never add files written from gold rows.
+DEFAULT_AUGMENT = [HERE / "augment_urgency_en.csv"]
+EVAL_DIR = HERE / "eval"
 DEFAULT_OUT = HERE / "model" / "urgency_en.joblib"
 LEXICON = HERE / "training" / "lexicon_urgency_en.txt"
 REPORTS = HERE / "reports"
@@ -57,6 +61,15 @@ REPORTS = HERE / "reports"
 # would split them into "don" + "t", and negations matter for urgency ("don't hang up").
 TOKEN_PATTERN = r"(?u)\b[\w']+\b"
 PLACEHOLDERS = ["numtoken", "timetoken", "moneytoken", "phonetoken", "urltoken", "emailtoken"]
+# Placeholders are removed from the model's features: on their own they predicted the label with ROC-AUC
+# ~0.70 (diagnostic 6c), i.e. "has a phone number" was a dataset shortcut, not urgency. Stop words are
+# removed BEFORE n-grams are built, so "within numtoken hours" yields "within", "hours", "within hours".
+STOP_WORDS = PLACEHOLDERS
+# Training rows this similar (TF-IDF cosine) to any eval/ row are dropped, so gold sets stay unseen.
+DECONTAM_LIMIT = 0.8
+# No row may count more than this many unweighted rows after source weighting (tiny sources such as
+# BETTER30's 11 negatives were getting ~100x each, so a few labelling mistakes could steer the model).
+MAX_SOURCE_WEIGHT = 10.0
 # Unigrams + bigrams won every earlier grid search ("act now", "within numtoken"); fixing it keeps the
 # out-of-source sweep to len(C_GRID) x n_sources fits.
 NGRAM = (1, 2)
@@ -80,14 +93,18 @@ def save_table(df, name):
     df.to_csv(REPORTS / name, index=False)
 
 
+def make_tfidf(ngram_range=NGRAM):
+    # No general stopword list: words like "now", "before", "don't", "must" are stopwords in most lists,
+    # but they carry exactly the urgency signal we want. Only the placeholders are removed (see STOP_WORDS).
+    return TfidfVectorizer(ngram_range=ngram_range, sublinear_tf=True, min_df=2, max_features=50000,
+                           lowercase=True, token_pattern=TOKEN_PATTERN, stop_words=STOP_WORDS)
+
+
 def make_pipeline(C=1.0, ngram_range=NGRAM):
-    # No stopword removal: words like "now", "before", "don't", "must" are stopwords in most lists,
-    # but they carry exactly the urgency signal we want.
     # sublinear_tf: a word repeated 10x is not 10x more important (dampens long, repetitive turns).
     # min_df=2: a word seen in only one row is usually a typo/name and just lets the model memorise.
     return Pipeline([
-        ("tfidf", TfidfVectorizer(ngram_range=ngram_range, sublinear_tf=True, min_df=2, max_features=50000,
-                                  lowercase=True, token_pattern=TOKEN_PATTERN)),
+        ("tfidf", make_tfidf(ngram_range)),
         # class_weight="balanced": positives and negatives count equally even though counts differ.
         # liblinear: solid, deterministic solver for small/medium sparse binary problems.
         ("clf", LogisticRegression(C=C, class_weight="balanced", solver="liblinear", max_iter=3000,
@@ -101,13 +118,25 @@ def source_weights(df):
     WHY: Fraud_R1 is 3000 of ~4200 positives. Unweighted, "urgent" would mostly mean "sounds like
     Fraud_R1". Equalising sources forces the model to find patterns shared by ALL positive sources.
     The class total stays equal to its row count, so class_weight="balanced" still works as before.
-    Caveat: tiny sources (BETTER30, ~34 rows) get very large per-row weights.
+    Per-row weights are capped at MAX_SOURCE_WEIGHT, so tiny sources stay somewhat under-represented
+    instead of letting a handful of rows dominate.
     """
     w = np.ones(len(df))
     for _, cls in df.groupby("label"):
         per_source_total = len(cls) / cls["source"].nunique()
         for _, rows in cls.groupby("source"):
             w[df.index.get_indexer(rows.index)] = per_source_total / len(rows)
+        i = df.index.get_indexer(cls.index)
+        # Cap, then rescale the uncapped rows so the class total is unchanged; repeat until stable.
+        for _ in range(50):
+            capped = w[i] >= MAX_SOURCE_WEIGHT
+            w[i[capped]] = MAX_SOURCE_WEIGHT
+            target = len(i) - capped.sum() * MAX_SOURCE_WEIGHT
+            if capped.all() or target <= 0:
+                break
+            w[i[~capped]] *= target / w[i[~capped]].sum()
+            if w[i].max() <= MAX_SOURCE_WEIGHT + 1e-9:
+                break
     return w
 
 
@@ -140,27 +169,65 @@ def best_f1_threshold(y, prob, sample_weight=None):
     return float(thr[i]), float(f1s[i]), (prec, rec, thr)
 
 
-def load_data(path, augment_path=None):
-    required = ["text_raw", "label", "source", "conversation_id", "hard_negative"]
-    try:
-        df = pd.read_csv(path, usecols=required + ["label_method"], low_memory=False)
-    except ValueError:
-        df = pd.read_csv(path, usecols=required, low_memory=False)
-    if "label_method" not in df.columns:
-        df["label_method"] = "unknown"
-    if augment_path is not None:
+REQUIRED_COLS = ["text_raw", "label", "source", "conversation_id"]
+# Optional columns and the value used when a file does not have them.
+OPTIONAL_COLS = {"hard_negative": False, "label_method": "unknown"}
+
+
+def read_rows(path):
+    """Read the required columns plus whichever optional ones the file has; fill the missing ones."""
+    wanted = set(REQUIRED_COLS) | set(OPTIONAL_COLS)
+    df = pd.read_csv(path, usecols=lambda c: c in wanted, low_memory=False)
+    missing = [c for c in REQUIRED_COLS if c not in df.columns]
+    assert not missing, f"{path} is missing required columns {missing}"
+    for col, default in OPTIONAL_COLS.items():
+        if col not in df.columns:
+            df[col] = default
+    return df
+
+
+def decontaminate(df, eval_dir):
+    """Drop training rows whose TF-IDF cosine to ANY row of any eval/*.csv is >= DECONTAM_LIMIT.
+
+    WHY: a gold set only measures generalisation if the model never trained on (near-)copies of it.
+    """
+    eval_files = sorted(eval_dir.glob("*.csv")) if eval_dir.exists() else []
+    if not eval_files:
+        log(f"    decontamination: no eval files under {eval_dir}")
+        return df, []
+    tfidf = make_tfidf().fit(df["text"])
+    # Rows are L2-normalised, so a dot product IS the cosine similarity.
+    train_m = tfidf.transform(df["text"])
+    drop = np.zeros(len(df), dtype=bool)
+    used = []
+    for f in eval_files:
+        gold = pd.read_csv(f)
+        if "text" not in gold.columns:
+            log(f"    decontamination: {f.name} has no 'text' column - skipped")
+            continue
+        g = tfidf.transform(gold["text"].fillna("").map(normalize))
+        hit = (train_m @ g.T).max(axis=1).toarray().ravel() >= DECONTAM_LIMIT
+        log(f"    decontamination vs {f.name} ({len(gold)} rows): {int(hit.sum())} training rows with "
+            f"cosine >= {DECONTAM_LIMIT} (not already dropped: {int((hit & ~drop).sum())})")
+        drop |= hit
+        used.append(f.name)
+    log(f"    decontamination: dropped {int(drop.sum())} training rows -> {int((~drop).sum())} rows")
+    return df[~drop], used
+
+
+def load_data(path, augment_paths=(), eval_dir=EVAL_DIR):
+    df = read_rows(path)
+    used = [path]
+    for augment_path in augment_paths:
         if augment_path.exists():
-            try:
-                aug = pd.read_csv(augment_path, usecols=required + ["label_method"], low_memory=False)
-            except ValueError:
-                aug = pd.read_csv(augment_path, usecols=required, low_memory=False)
-            if "label_method" not in aug.columns:
-                aug["label_method"] = "unknown"
+            aug = read_rows(augment_path)
             # Appended BEFORE normalising/deduplicating so the extra rows go through exactly the same cleaning.
             df = pd.concat([df, aug], ignore_index=True)
+            used.append(augment_path)
             log(f"    augment: appended {len(aug)} rows from {augment_path}")
         else:
             log(f"    WARNING: augment file not found at {augment_path} - training without augmentation")
+    log("    training files used:\n" + "\n".join(f"      - {p}" for p in used))
     # Fail loudly on bad data instead of silently training on it.
     assert set(df["label"].unique()) <= {0, 1}, f"labels must be 0/1, got {sorted(df['label'].unique())}"
     assert df["conversation_id"].notna().all(), "missing conversation_id"
@@ -185,6 +252,7 @@ def load_data(path, augment_path=None):
         f"BOTH labels -> {int((~conflict).sum())} rows")
     df = df[~conflict].copy()
     df["label_method"] = df["label_method"].fillna("unknown")
+    df, decontam_files = decontaminate(df, eval_dir)
 
     # normalize() replaces every number with a placeholder. A leftover digit would let the model memorise
     # specific codes/amounts that happen to occur in one class (a shortcut, not urgency).
@@ -197,7 +265,7 @@ def load_data(path, augment_path=None):
     # otherwise the model is tested on near-copies of sentences it trained on (leakage).
     # Prefixing the source avoids accidental ID collisions between datasets.
     df["group"] = df["source"].astype(str) + "_" + df["conversation_id"].astype(str)
-    return df.reset_index(drop=True)
+    return df.reset_index(drop=True), used, decontam_files
 
 
 def split_counts(df):
@@ -273,8 +341,9 @@ def out_of_source_selection(df):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--data", type=Path, default=DEFAULT_DATA)
-    ap.add_argument("--augment", type=Path, default=DEFAULT_AUGMENT,
-                    help="extra training rows appended before cleaning (skipped with a warning if missing)")
+    ap.add_argument("--augment", type=Path, nargs="*", default=DEFAULT_AUGMENT,
+                    help="extra training CSVs appended before cleaning (each skipped with a warning if missing); "
+                         "pass --augment with no paths to train without augmentation")
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     # On by default: leave-one-source-out showed the unweighted model leans on Fraud_R1's style.
     # (The out-of-source selection always uses source weights; this flag affects validation + final fit.)
@@ -285,14 +354,15 @@ def main():
     args = ap.parse_args()
 
     log(f"urgency_en training run {datetime.now(timezone.utc).isoformat(timespec='seconds')}")
-    log(f"data={args.data} augment={args.augment} source_weight={args.source_weight} sklearn={sklearn.__version__} seed={SEED}")
+    log(f"data={args.data} augment={[str(p) for p in args.augment]} source_weight={args.source_weight} "
+        f"(max {MAX_SOURCE_WEIGHT:g}x per row) sklearn={sklearn.__version__} seed={SEED}")
     if not args.source_weight:
         log("WARNING: --no-source-weight: the saved threshold comes from a source-weighted selection, "
             "so it may not suit the unweighted final model")
 
     # ---- 1. load + clean ----------------------------------------------------------------------------
     log("\n[1] load + normalize text_raw")
-    df = load_data(args.data, args.augment)
+    df, training_files, decontam_files = load_data(args.data, args.augment)
     log(f"    {len(df)} rows, {df['group'].nunique()} groups, "
         f"positives={int(df['label'].sum())} negatives={int((df['label'] == 0).sum())}")
     by_method = df.groupby(["label_method", "label"]).size().unstack(fill_value=0)
@@ -402,8 +472,7 @@ def main():
     # 6b. If the same features can easily tell WHICH dataset a row came from, the urgency model may be
     # learning "Fraud_R1 style vs DailyDialog style" instead of urgency. Compare with the majority baseline.
     src_model = Pipeline([
-        ("tfidf", TfidfVectorizer(ngram_range=NGRAM, sublinear_tf=True, min_df=2, max_features=50000,
-                                  lowercase=True, token_pattern=TOKEN_PATTERN)),
+        ("tfidf", make_tfidf()),
         # lbfgs instead of liblinear: this is a 10-class problem and lbfgs handles multiclass natively.
         ("clf", LogisticRegression(C=C, solver="lbfgs", max_iter=3000)),
     ]).fit(train["text"], train["source"])
@@ -419,7 +488,11 @@ def main():
         ("clf", LogisticRegression(class_weight="balanced", solver="liblinear", random_state=SEED)),
     ]).fit(train["text"], train["label"])
     tok_auc = roc_auc_score(y_val, positive_proba(tok_model, val["text"]))
-    log(f"  6c. placeholder-only model ROC-AUC on validation = {tok_auc:.4f} (0.5 = no signal)")
+    log(f"  6c. placeholder-only model ROC-AUC on validation = {tok_auc:.4f} (0.5 = no signal). This measures "
+        f"the DATA, so it does not change; what matters is that the main model can no longer use them:")
+    leaked = [n for n in names if any(t in n.split() for t in PLACEHOLDERS)]
+    log(f"      main-model features containing a placeholder: {len(leaked)}" + (f" {leaked[:10]}" if leaked else ""))
+    assert not leaked, "placeholders still reach the model - check STOP_WORDS"
     # (Leftover digits are enforced as an assertion in load_data, right after cleaning.)
     save_table(pd.DataFrame([{"check": "source_guess_accuracy", "value": src_acc},
                              {"check": "source_guess_majority_baseline", "value": majority},
@@ -438,6 +511,10 @@ def main():
         "best_params": best_params,
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "threshold_method": "out_of_source_pooled_f1",
+        # evaluate_gold.py checks gold sets against exactly these files.
+        # Stored relative to the repo root so the bundle works on any machine.
+        "training_files": [Path(p).resolve().relative_to(REPO).as_posix() for p in training_files],
+        "decontamination": {"limit": DECONTAM_LIMIT, "eval_files": decontam_files},
         # joblib files only load reliably with the same scikit-learn version that wrote them.
         "sklearn_version": sklearn.__version__,
     }
