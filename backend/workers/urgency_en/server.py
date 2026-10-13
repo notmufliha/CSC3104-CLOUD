@@ -1,61 +1,49 @@
 """
 gRPC worker: signal="urgency", language="en".
 
-Implements WorkerService.ClassifyTranscript using a scikit-learn
-TfidfVectorizer + LogisticRegression pipeline pickled by train.py into
-model/model.pkl. See train.py for how to (re)train it.
+Implements WorkerService.ClassifyTranscript with the trained urgency model (see predict.py / train.py).
 
-TODO: this is a skeleton. Before relying on scores from this worker:
-  - run train.py against a real labeled dataset for the "urgency" signal
-  - validate the model file actually exists at container start, not just
-    fall back silently (see _load_model below)
+The score is predict.score(transcript): the highest urgency probability over every sentence and pair of
+neighbouring sentences. If the transcript's lines start with speaker tags ("Caller: ...", "Receiver: ..."),
+only the caller's lines are scored. The raw probability is returned; the model's own cut-offs travel with the
+bundle (threshold for one sentence, call_threshold for a whole call) and are logged at start-up.
+
+The model must exist at start-up: a missing model is a deployment error, not something to paper over with a
+neutral score.
 """
 import logging
 import os
 from concurrent import futures
 
 import grpc
-import joblib
 
+import predict
 import scam_detect_pb2
 import scam_detect_pb2_grpc
 
 SIGNAL = "urgency"
 LANGUAGE = "en"
-MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(os.path.dirname(__file__), "model", "model.pkl"))
+MODEL_PATH = os.environ.get("MODEL_PATH", str(predict.DEFAULT_MODEL))
 PORT = os.environ.get("PORT", "50051")
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 logger = logging.getLogger(f"worker.{SIGNAL}.{LANGUAGE}")
-
-
-class _DummyModel:
-    """Fallback used when model.pkl hasn't been trained yet, so the service
-    is still callable end-to-end (always returns a neutral 0.5 score).
-    TODO: remove once every worker has a real trained model checked in /
-    mounted at deploy time.
-    """
-
-    def predict_proba(self, texts):
-        return [[0.5, 0.5] for _ in texts]
-
-
-def _load_model():
-    if os.path.exists(MODEL_PATH):
-        logger.info("loading model from %s", MODEL_PATH)
-        return joblib.load(MODEL_PATH)
-    logger.warning("no model found at %s, using dummy 0.5 scorer -- run train.py", MODEL_PATH)
-    return _DummyModel()
 
 
 class WorkerServiceServicer(scam_detect_pb2_grpc.WorkerServiceServicer):
     def __init__(self):
-        self.model = _load_model()
+        if not os.path.exists(MODEL_PATH):
+            raise FileNotFoundError(f"urgency model not found at {MODEL_PATH} - run train.py or mount the model")
+        bundle = predict.load_model(MODEL_PATH)
+        logger.info("loaded %s (version=%s, created_at=%s, threshold=%.4f, call_threshold=%.4f)", MODEL_PATH,
+                    bundle.get("version", "unversioned"), bundle.get("created_at"), bundle["threshold"],
+                    bundle.get("call_threshold", bundle["threshold"]))
 
     def ClassifyTranscript(self, request, context):
-        proba = self.model.predict_proba([request.transcript])[0]
-        # Binary classifier: class index 1 = positive ("urgency" present).
-        score = float(proba[1]) if len(proba) > 1 else float(proba[0])
+        score, window = predict.score(request.transcript)
+        # Call content stays out of normal logs; LOGLEVEL=DEBUG shows which sentence drove the score.
+        logger.info("score=%.4f", score)
+        logger.debug("strongest window=%r", window[:120])
         return scam_detect_pb2.WorkerScore(signal=SIGNAL, score=score, language=LANGUAGE)
 
 

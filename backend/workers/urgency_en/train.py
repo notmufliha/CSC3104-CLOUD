@@ -51,11 +51,20 @@ REPO = HERE.parents[2]
 DEFAULT_DATA = REPO / "data" / "urgency_en" / "final_cleaned_dataset.csv"
 # targeted_urgency_augmentation_v2.csv is deliberately NOT here: some of its rows were paraphrased from
 # eval/robocall_gold.csv, so training on it leaks the test set. Never add files written from gold rows.
-DEFAULT_AUGMENT = [HERE / "augment_urgency_en.csv"]
+# data/urgency_en/augment_urgency_en.csv: real sentences mined from unused Taskmaster/SpokenWOZ/CallCenterEN/robocall
+# calls and labelled by LABELING.md (label_method ai_label_ide / ai_written), plus speech-to-text style copies.
+DEFAULT_AUGMENT = [HERE / "augment_urgency_en.csv", REPO / "data" / "urgency_en" / "augment_urgency_en.csv"]
 EVAL_DIR = HERE / "eval"
 DEFAULT_OUT = HERE / "model" / "urgency_en.joblib"
+# Every silver_rule_urgency row of the main dataset relabelled by LABELING.md (label_method ai_label_ide, one-line
+# reason each). Keyed by row position in DEFAULT_DATA; rows left blank (fragments/ambiguous) are dropped.
+RELABEL = REPO / "data" / "urgency_en" / "silver_relabel.csv"
 LEXICON = HERE / "training" / "lexicon_urgency_en.txt"
 REPORTS = HERE / "reports"
+# Real, unused normal calls (speaker-tagged) used ONLY to set the whole-call threshold; checks/long_calls.csv
+# (urgent + normal) stays untouched for testing. Allowed false-alarm rate on normal calls:
+NORMAL_CALLS = HERE / "checks" / "normal_calls_tune.csv"
+CALL_FALSE_ALARM = 0.05
 
 # Keeps apostrophes inside words so "don't" / "can't" stay one token. The default sklearn pattern
 # would split them into "don" + "t", and negations matter for urgency ("don't hang up").
@@ -77,6 +86,11 @@ C_GRID = [0.3, 1, 3, 10]
 # Among Cs whose pooled F1 is within this of the best, take the smallest. Smaller C = stronger
 # regularisation = simpler model, which usually transfers better to data that looks different.
 F1_TOLERANCE = 0.01
+# Rows labelled by the keyword rule count half. A 200-row audit by LABELING.md
+# (data/urgency_en/silver_audit.csv) found the rule wrong on 34.9% of judgeable rows; >25% -> weight 0.5.
+# With RELABEL applied (the default) no silver rows remain, so this only matters for --no-relabel.
+SILVER_METHOD = "silver_rule_urgency"
+SILVER_WEIGHT = 0.5
 
 _lines = []
 
@@ -140,9 +154,15 @@ def source_weights(df):
     return w
 
 
+def fit_weights(df, use_source_weight=True):
+    """Weights used to FIT a model: source balancing (optional) times the silver-label down-weight."""
+    w = source_weights(df) if use_source_weight else np.ones(len(df))
+    return w * np.where(df["label_method"].eq(SILVER_METHOD).to_numpy(), SILVER_WEIGHT, 1.0)
+
+
 def fit_params(df, use_source_weight):
     # Pipeline routes "clf__sample_weight" to the LogisticRegression step.
-    return {"clf__sample_weight": source_weights(df)} if use_source_weight else {}
+    return {"clf__sample_weight": fit_weights(df, use_source_weight)}
 
 
 def positive_proba(pipeline, texts):
@@ -192,6 +212,8 @@ def decontaminate(df, eval_dir):
     WHY: a gold set only measures generalisation if the model never trained on (near-)copies of it.
     """
     eval_files = sorted(eval_dir.glob("*.csv")) if eval_dir.exists() else []
+    # check_goals.py's hand-written probe sentences are a test set too.
+    eval_files += [f for f in [HERE / "checks" / "probes.csv"] if f.exists()]
     if not eval_files:
         log(f"    decontamination: no eval files under {eval_dir}")
         return df, []
@@ -215,9 +237,35 @@ def decontaminate(df, eval_dir):
     return df[~drop], used
 
 
-def load_data(path, augment_paths=(), eval_dir=EVAL_DIR):
+def apply_relabel(df, path=RELABEL):
+    """Replace keyword-rule labels with the LABELING.md relabel; drop rows it left unlabelled."""
+    r = pd.read_csv(path).set_index("row_index")
+    idx = r.index.intersection(df.index)
+    assert len(idx) == len(r), f"{len(r) - len(idx)} relabel rows not found in the main dataset"
+    # Guard: the relabel is keyed by row position, so the text must still match.
+    same = df.loc[idx, "text_raw"].astype(str).eq(r.loc[idx, "text_raw"].astype(str))
+    assert same.all(), f"{int((~same).sum())} relabel rows no longer match the dataset text - rows were reordered?"
+    keep = r["label"].notna()
+    before = df.loc[idx, "label"]
+    df.loc[r.index[keep], "label"] = r.loc[keep, "label"].astype(int)
+    df.loc[r.index[keep], "label_method"] = "ai_label_ide"
+    # Relabelled-to-0 rows are scam-style text with urgency words: exactly what a hard negative is.
+    df.loc[r.index[keep & r["label"].eq(0)], "hard_negative"] = True
+    flipped = int((before[keep] != r.loc[keep, "label"]).sum())
+    log(f"    relabel: {len(r)} silver rows -> {int(keep.sum())} relabelled ({flipped} flipped 1->0), "
+        f"{int((~keep).sum())} unlabelled dropped [{path.name}]")
+    return df.drop(index=r.index[~keep])
+
+
+def load_data(path, augment_paths=(), eval_dir=EVAL_DIR, relabel=True):
     df = read_rows(path)
-    used = [path]
+    if "text_raw" not in df.columns or path != DEFAULT_DATA:
+        relabel = False
+    if relabel and RELABEL.exists():
+        df = apply_relabel(df)
+    elif relabel:
+        log(f"    WARNING: relabel file not found at {RELABEL} - keyword-rule labels used as-is")
+    used = [path] + ([RELABEL] if relabel and RELABEL.exists() else [])
     for augment_path in augment_paths:
         if augment_path.exists():
             aug = read_rows(augment_path)
@@ -295,7 +343,7 @@ def keyword_baseline(texts):
 def _score_held_out_block(df, C, block_index):
     """Train on everything except one (source, label) block, return probabilities for that block."""
     rest = df.drop(index=block_index)
-    m = make_pipeline(C).fit(rest["text"], rest["label"], clf__sample_weight=source_weights(rest))
+    m = make_pipeline(C).fit(rest["text"], rest["label"], clf__sample_weight=fit_weights(rest))
     return C, block_index, positive_proba(m, df.loc[block_index, "text"])
 
 
@@ -351,18 +399,20 @@ def main():
                     help="equalise total weight per source within each class (validation + final fit); "
                          "--no-source-weight turns it off")
     ap.add_argument("--no-save", action="store_true", help="do not write the model file")
+    ap.add_argument("--relabel", action=argparse.BooleanOptionalAction, default=True,
+                    help=f"apply {RELABEL.name} to the keyword-rule rows (--no-relabel keeps them, at SILVER_WEIGHT)")
     args = ap.parse_args()
 
     log(f"urgency_en training run {datetime.now(timezone.utc).isoformat(timespec='seconds')}")
     log(f"data={args.data} augment={[str(p) for p in args.augment]} source_weight={args.source_weight} "
-        f"(max {MAX_SOURCE_WEIGHT:g}x per row) sklearn={sklearn.__version__} seed={SEED}")
+        f"(max {MAX_SOURCE_WEIGHT:g}x per row) {SILVER_METHOD} weight={SILVER_WEIGHT:g} sklearn={sklearn.__version__} seed={SEED}")
     if not args.source_weight:
         log("WARNING: --no-source-weight: the saved threshold comes from a source-weighted selection, "
             "so it may not suit the unweighted final model")
 
     # ---- 1. load + clean ----------------------------------------------------------------------------
     log("\n[1] load + normalize text_raw")
-    df, training_files, decontam_files = load_data(args.data, args.augment)
+    df, training_files, decontam_files = load_data(args.data, args.augment, relabel=args.relabel)
     log(f"    {len(df)} rows, {df['group'].nunique()} groups, "
         f"positives={int(df['label'].sum())} negatives={int((df['label'] == 0).sum())}")
     by_method = df.groupby(["label_method", "label"]).size().unstack(fill_value=0)
@@ -518,6 +568,24 @@ def main():
         # joblib files only load reliably with the same scikit-learn version that wrote them.
         "sklearn_version": sklearn.__version__,
     }
+
+    # ---- 7b. whole-call threshold ----------------------------------------------------------------------
+    # predict.score() takes the max over every caller sentence/pair, which pushes normal calls up too.
+    # So calls get their own threshold: the score that only CALL_FALSE_ALARM of real normal calls exceed.
+    if NORMAL_CALLS.exists():
+        import predict
+        predict._bundle = bundle
+        calls = pd.read_csv(NORMAL_CALLS)
+        call_p = np.array([predict.score(t)[0] for t in calls["text_tagged"]])
+        q = float(np.quantile(call_p, 1 - CALL_FALSE_ALARM))
+        bundle["call_threshold"] = max(threshold, q)
+        log(f"\n[7b] whole-call threshold from {len(calls)} normal calls ({NORMAL_CALLS.name}): "
+            f"{100 * (1 - CALL_FALSE_ALARM):.0f}th percentile = {q:.4f} -> call_threshold = "
+            f"{bundle['call_threshold']:.4f} (normal calls >= sentence threshold {threshold:.4f}: "
+            f"{int((call_p >= threshold).sum())}/{len(calls)})")
+    else:
+        log(f"\n[7b] {NORMAL_CALLS} not found - call_threshold = sentence threshold")
+
     if args.no_save:
         log(f"\n[7] --no-save: final model fitted on {len(df)} rows but not written")
     else:

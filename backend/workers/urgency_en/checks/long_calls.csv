@@ -1,0 +1,538 @@
+call_id,label,source_dialog,injected,injected_origin,text,text_tagged
+normal_01,0,dlg-bd3c9605-7504-4399-abd2-2812d2252a0e,,,"hi, how can i help you. sure, what would you like to order. im sorry i hear a lot of background noise can you repeat your order. did you want some coffee. Yes. ok, what kind of coffee. did you want me to recommend some seasonal specials at starbucks. Yes. ok, they have a black and white mocha, a caramel brulee latte, and eggnog latte. do any of those sound good. Yes, go at it. which one would you like to order. I want black. im sorry can you repeat that. did you want one of the seasonal offerings. Yes. which one. sure, some seasonal specialties are black and white mocha, caramel brulee latte, and eggnog latte. I want black and white. No, thanks. ok, did you want any milk. Yes. Yeah. ok, did you want to add whipped cream. did you say no. Did you say no? Yes. ok what size did you want. I want medium, please. is grande ok. It's not okay. (deleted). ok, let me place the order. your grande black and white mocha will be ready for pickup in 5 minutes at westlake shopping center, daly city. your receipt will be texted to you shortly.","Caller: hi, how can i help you?
+Caller: sure, what would you like to order?
+Caller: im sorry i hear a lot of background noise can you repeat your order?
+Caller: did you want some coffee?
+Receiver: Yes.
+Caller: ok, what kind of coffee?
+Caller: did you want me to recommend some seasonal specials at starbucks?
+Receiver: Yes.
+Caller: ok, they have a black and white mocha, a caramel brulee latte, and eggnog latte.
+Caller: do any of those sound good?
+Receiver: Yes, go at it.
+Caller: which one would you like to order?
+Receiver: I want black.
+Caller: im sorry can you repeat that?
+Caller: did you want one of the seasonal offerings?
+Receiver: Yes.
+Caller: which one?
+Caller: sure, some seasonal specialties are black and white mocha, caramel brulee latte, and eggnog latte.
+Receiver: I want black and white.
+Receiver: No, thanks.
+Caller: ok, did you want any milk?
+Receiver: Yes. Yeah.
+Caller: ok, did you want to add whipped cream?
+Caller: did you say no?
+Receiver: Did you say no? Yes.
+Caller: ok what size did you want?
+Receiver: I want medium, please.
+Caller: is grande ok?
+Receiver: It's not okay.
+Caller: (deleted)
+Caller: ok, let me place the order.
+Caller: your grande black and white mocha will be ready for pickup in 5 minutes at westlake shopping center, daly city.
+Caller: your receipt will be texted to you shortly."
+normal_02,0,dlg-b177abd1-5a9e-437c-abe7-f1a47e6a86bf,,,"Hi, how can I assist you. Hello, I want to make an appointment for my car to be serviced at intelligent auto and ports, please. Sure. May I please have your name. My name is Tim t i m. And your last name. Tim Botcher. Can you please spell your last name. B o t c h e r. Thank you. And your phone number please. My phone number is 602-468-2345. Tim Botcher, 602 468 2345, is this correct. That is correct. Thanks and what's the reason for your appointment. I want to have my car tuned up, due to having it unserviced for such a long time. Okay, I'll summarize it as car in need of a tune up. That is good. When would you like to take your car to the shop. I would like to do that tomorrow, please. It looks like there are no availability tomorrow. How about next Tuesday, February 5th. Tuesday sounds good. Ok, are you able to take your car to the shop before 8:30 a.m. Yes, I can. Great. May I please have your vehicle model. My vehicle is a 2013 Gray Honda Pilot. They are located at 2894 lincoln road, can you please confirm that address. The address is 2894 Lincoln road. Got it. Thank you very much. Great. Also, there is a $89 inspection fee, which will be added to your total. May I continue booking your appointment. Yes, please. Ok. So just to confirm: your 2013 Honda Pilot needs a tune up, correct. Correct. Great. You're all set for Tuesday, February 5th at 8:30 a.m. That sounds lovely. Thank you for your help. You're very welcome! byebye. Goodbye.","Caller: Hi, how can I assist you?
+Receiver: Hello, I want to make an appointment for my car to be serviced at intelligent auto and ports, please.
+Caller: Sure. May I please have your name?
+Receiver: My name is Tim t i m.
+Caller: And your last name?
+Receiver: Tim Botcher.
+Caller: Can you please spell your last name?
+Receiver: B o t c h e r.
+Caller: Thank you. And your phone number please?
+Receiver: My phone number is 602-468-2345.
+Caller: Tim Botcher, 602 468 2345, is this correct?
+Receiver: That is correct.
+Caller: Thanks and what's the reason for your appointment?
+Receiver: I want to have my car tuned up, due to having it unserviced for such a long time.
+Caller: Okay, I'll summarize it as car in need of a tune up.
+Receiver: That is good.
+Caller: When would you like to take your car to the shop?
+Receiver: I would like to do that tomorrow, please.
+Caller: It looks like there are no availability tomorrow. How about next Tuesday, February 5th?
+Receiver: Tuesday sounds good.
+Caller: Ok, are you able to take your car to the shop before 8:30 a.m?
+Receiver: Yes, I can.
+Caller: Great. May I please have your vehicle model?
+Receiver: My vehicle is a 2013 Gray Honda Pilot.
+Caller: They are located at 2894 lincoln road, can you please confirm that address?
+Caller: The address is 2894 Lincoln road.
+Receiver: Got it. Thank you very much.
+Caller: Great. Also, there is a $89 inspection fee, which will be added to your total. May I continue booking your appointment?
+Receiver: Yes, please.
+Caller: Ok. So just to confirm: your 2013 Honda Pilot needs a tune up, correct?
+Receiver: Correct.
+Caller: Great. You're all set for Tuesday, February 5th at 8:30 a.m.
+Receiver: That sounds lovely. Thank you for your help.
+Caller: You're very welcome! byebye.
+Receiver: Goodbye."
+normal_03,0,dlg-32f1e3ac-a258-4099-a2c9-ff089d6618d4,,,"Hi there! How can I help. Hi, I need to make an appointment at Intelligent Auto Imports, please. Sure. What is the appointment for. My car it keeps stalling when I'm stopped at traffic lights. OH that's no good. What make and model is the car. It's a 2015 Lexus RX 350. Okay thank you. When would you like to drop off your car. Sure. As soon as they can take me, that'd be great. Okay! one moment. Okay. Unfortunately, all appointments for today are already booked. No problem. Is there something for tomorrow. Yes, they have availability early in the AM. Sure. Anything is fine, like 9:00. Okay! can you drop off the car before 8:30AM. Oh sure, no problem. Great! let me get the appointment set up for you. Okay. one moment. Alright, I have an appointment for tomorrow morning because your 2015 Lexus RX 350 is Stalling when stopped at traffic light. Correct. Yes. (deleted). Okay. May I have your full name. Sure. It's Linda Taylor. thank you Linda,. And what is the best phone number to contact you. Sure thing. area code 555-555-5555. Thanks very much. Sure. Okay Linda, your appointment is set. We will reach out to you at 555-555-5555 if need be. Absolutely, that sounds great. Thank you. Please don't forget to drop off your car before 8:30AM on the day of the appointment. you're very welcome. have a great day. You, too. Bye. Bye.","Caller: Hi there! How can I help?
+Receiver: Hi, I need to make an appointment at Intelligent Auto Imports, please.
+Caller: Sure!
+Caller: What is the appointment for?
+Receiver: My car it keeps stalling when I'm stopped at traffic lights.
+Caller: OH that's no good!
+Caller: What make and model is the car?
+Receiver: It's a 2015 Lexus RX 350.
+Caller: Okay thank you!
+Caller: When would you like to drop off your car?
+Receiver: Sure. As soon as they can take me, that'd be great.
+Caller: Okay! one moment.
+Receiver: Okay.
+Caller: Unfortunately, all appointments for today are already booked.
+Receiver: No problem. Is there something for tomorrow?
+Caller: Yes, they have availability early in the AM.
+Receiver: Sure.
+Receiver: Anything is fine, like 9:00.
+Caller: Okay! can you drop off the car before 8:30AM?
+Receiver: Oh sure, no problem.
+Caller: Great! let me get the appointment set up for you!
+Receiver: Okay.
+Caller: one moment!
+Caller: Alright, I have an appointment for tomorrow morning because your 2015 Lexus RX 350 is Stalling when stopped at traffic light. Correct?
+Receiver: Yes.
+Caller: (deleted)
+Caller: Okay!
+Caller: May I have your full name?
+Receiver: Sure. It's Linda Taylor.
+Caller: thank you Linda,
+Caller: And what is the best phone number to contact you?
+Receiver: Sure thing.
+Receiver: area code 555-555-5555.
+Caller: Thanks very much!
+Receiver: Sure.
+Caller: Okay Linda, your appointment is set. We will reach out to you at 555-555-5555 if need be.
+Receiver: Absolutely, that sounds great. Thank you.
+Caller: Please don't forget to drop off your car before 8:30AM on the day of the appointment.
+Caller: you're very welcome.
+Caller: have a great day!
+Receiver: You, too.
+Caller: Bye!
+Receiver: Bye."
+normal_04,0,dlg-f8bfa52e-f831-4ca9-aa00-2982e9e7fa32,,,"(deleted). Hello, how can i help you. Yes, I needed a ride from Wilkes-Barre to Pittston, Pennsylvania. would you like to use an uber or a lyft. Yes. which rideshare would you like to use. Uber. ok, can you please tell me your destination again. Domino's in Pittston, Pennsylvania. and you said you were coming from wooksbury. (deleted). Yes. one moment while i calculate your fare. how many passengers will there be. Six. ok, an uberxl will cost $24.57, can i book that for you. Yes. did you want immediate pickup, or did you want to schedule for a later time. immediate pickup. one moment while i find drivers in your area. ok, it looks like your driver will be arriving in 8 minutes. Okay. would you like any other trip details. The right type. sure, you have booked an uberxl. the estimated duration of the trip. one moment while i look that up. Okay. Thank you. it should take around 25 minutes. your welcome, have a safe trip. Thank you.","Receiver: (deleted)
+Caller: Hello, how can i help you?
+Receiver: Yes, I needed a ride from Wilkes-Barre to Pittston, Pennsylvania.
+Caller: would you like to use an uber or a lyft?
+Receiver: Yes.
+Caller: which rideshare would you like to use?
+Receiver: Uber.
+Caller: ok, can you please tell me your destination again?
+Receiver: Domino's in Pittston, Pennsylvania.
+Caller: and you said you were coming from wooksbury?
+Receiver: (deleted)
+Receiver: Yes.
+Caller: one moment while i calculate your fare.
+Caller: how many passengers will there be?
+Receiver: Six.
+Caller: ok, an uberxl will cost $24.57, can i book that for you?
+Receiver: Yes.
+Caller: did you want immediate pickup, or did you want to schedule for a later time?
+Receiver: immediate pickup.
+Caller: one moment while i find drivers in your area.
+Caller: ok, it looks like your driver will be arriving in 8 minutes.
+Receiver: Okay.
+Caller: would you like any other trip details?
+Receiver: The right type.
+Caller: sure, you have booked an uberxl.
+Receiver: the estimated duration of the trip.
+Caller: one moment while i look that up.
+Receiver: Okay. Thank you.
+Caller: it should take around 25 minutes.
+Caller: your welcome, have a safe trip.
+Receiver: Thank you."
+normal_05,0,dlg-d29d0aa0-dbce-43bf-9f09-50529bc849b6,,,"hi, how can i help you. Hey. I'd like to get some Korean food near Midtown in Sacramento, California. are there any additional characteristics you would like your restaurant to have. Decent seating with a high rating and also affordable pricing. got it, let me find some options for you. i found aura korean bbq and blue house korean bbq, would you like to hear more about both. Yes. aura is described as a Cozy corner bistro serving Japanese & Korean dishes, including BBQ, plus beer, wine & sake bombs. blue house is described as a Korean BBQ is prepared on tabletop grills in sleek, kid-friendly digs with all-you-can-eat options. Okay. Okay, I would rather the second one. great, did you need to know anything else about blue house. Yes, what is the star rating for the restaurant. it is rated at 4.4 out of 5 stars. Okay. I'll take that one. great, did you need their phone number. Yes. it is (916) 646-2004. Perfect, thanks. your welcome, enjoy your meal.","Caller: hi, how can i help you?
+Receiver: Hey. I'd like to get some Korean food near Midtown in Sacramento, California.
+Caller: are there any additional characteristics you would like your restaurant to have?
+Receiver: Decent seating with a high rating and also affordable pricing.
+Caller: got it, let me find some options for you.
+Caller: i found aura korean bbq and blue house korean bbq, would you like to hear more about both?
+Receiver: Yes.
+Caller: aura is described as a Cozy corner bistro serving Japanese & Korean dishes, including BBQ, plus beer, wine & sake bombs.
+Caller: blue house is described as a Korean BBQ is prepared on tabletop grills in sleek, kid-friendly digs with all-you-can-eat options.
+Receiver: Okay.
+Receiver: Okay, I would rather the second one.
+Caller: great, did you need to know anything else about blue house?
+Receiver: Yes, what is the star rating for the restaurant?
+Caller: it is rated at 4.4 out of 5 stars.
+Receiver: Okay. I'll take that one.
+Caller: great, did you need their phone number?
+Receiver: Yes.
+Caller: it is (916) 646-2004.
+Receiver: Perfect, thanks.
+Caller: your welcome, enjoy your meal."
+normal_06,0,dlg-bb0eb434-09ce-4e04-95e6-407b0259df0f,,,"Hi, I need to schedule a tune up. hi, how can i help you. sure, where would you like to schedule at. at the shop Intelligent Auto Imports. got it, please provide your name and number. Jane Smith 525-131-2255. ok, we are booking for jane smith, phone number 525-131-2255, is that correct. (s) Yes. great, what is the year, make, and model of your car. It's 2015 Lexus RX 350. No. It keeps stalling out long traffic lights. ok, and you said you needed a tune-up. got it, when would you like to make your appointment. As soon as I possibly can. ok, let me check the shops availability. it looks like they are fully booked today but they have an opening for tomorrow at 8:30am, will that work for you. Yes. ok, let me book that appointment, one moment. please note that there will be a $89 inspection fee but that can be applied to the cost of repairs. Okay. ok, i have booked an appointment for tomorrow at 8:30am for your 2015 lexus rx 350 that stalls when idle for too long. can i help with anything else. No. ok, drive safe.","Receiver: Hi, I need to schedule a tune up.
+Caller: hi, how can i help you?
+Caller: sure, where would you like to schedule at?
+Receiver: at the shop Intelligent Auto Imports.
+Caller: got it, please provide your name and number.
+Receiver: Jane Smith 525-131-2255.
+Caller: ok, we are booking for jane smith, phone number 525-131-2255, is that correct?
+Receiver: (s) Yes.
+Caller: great, what is the year, make, and model of your car?
+Receiver: It's 2015 Lexus RX 350.
+Receiver: No. It keeps stalling out long traffic lights.
+Caller: ok, and you said you needed a tune-up?
+Caller: got it, when would you like to make your appointment?
+Receiver: As soon as I possibly can.
+Caller: ok, let me check the shops availability.
+Caller: it looks like they are fully booked today but they have an opening for tomorrow at 8:30am, will that work for you?
+Receiver: Yes.
+Caller: ok, let me book that appointment, one moment.
+Caller: please note that there will be a $89 inspection fee but that can be applied to the cost of repairs.
+Receiver: Okay.
+Caller: ok, i have booked an appointment for tomorrow at 8:30am for your 2015 lexus rx 350 that stalls when idle for too long. can i help with anything else?
+Receiver: No.
+Caller: ok, drive safe."
+normal_07,0,dlg-209db9d2-89f6-450e-99bc-d1b32d3ffb33,,,"hello, how can i help. Hi. Could you help me with finding a place to have lunch in Sacramento, California. hi. i sure can. Which part of sacramento should i search in. I'm in midtown near L & 19th Street. got it, i know the area. What kind of food did you want. I was interested in Mexican for lunch. what restaurant preferences should i look up. I would like it to not be in a too expensive of a restaurant some place that's within walking distance of where I am. Maybe within a mile or 2, at the most. sounds good. I'll look up some options for you that fit your preferences. one min please. Thank you. i found some options. The first is called azul mexican food and tequila bar. The second is called zocalo midtown. Roomy, elegant restaurant & bar with modern Mexican dishes, classic margaritas & weekend brunch. for the first one, here's the description. Contemporary Mexican fare & tequila-based cocktails are served in a stylish art-filled setting. Okay. Could you do both of them have a full bar. yes, both restaurants i mentioned have a full bar. Great. Could you tell me if both restaurants offer guacamole on their menus. yup, i've just checked their menus and can confirm that they both offer guacamole. Okay, and is the price range the same for both of them. azul is marked at one dollar sign, whereas zocalo has 2 dollar signs, making it slightly more expensive. Okay. I think that's okay. I still like the sound of Zocalo. Could you get me the phone number for that restaurant. i sure can. The number is 916-441-0303. Okay, got it. Thank you so much for your help. I really appreciate it. you're very welcome, enjoy your lunch. Ok.","Caller: hello, how can i help?
+Receiver: Hi. Could you help me with finding a place to have lunch in Sacramento, California?
+Caller: hi. i sure can. Which part of sacramento should i search in?
+Receiver: I'm in midtown near L & 19th Street.
+Caller: got it, i know the area. What kind of food did you want?
+Receiver: I was interested in Mexican for lunch.
+Caller: what restaurant preferences should i look up?
+Receiver: I would like it to not be in a too expensive of a restaurant some place that's within walking distance of where I am.
+Receiver: Maybe within a mile or 2, at the most.
+Caller: sounds good. I'll look up some options for you that fit your preferences.
+Caller: one min please.
+Receiver: Thank you.
+Caller: i found some options. The first is called azul mexican food and tequila bar. The second is called zocalo midtown. Roomy, elegant restaurant & bar with modern Mexican dishes, classic margaritas & weekend brunch.
+Caller: for the first one, here's the description. Contemporary Mexican fare & tequila-based cocktails are served in a stylish art-filled setting.
+Receiver: Okay. Could you do both of them have a full bar?
+Caller: yes, both restaurants i mentioned have a full bar.
+Receiver: Great. Could you tell me if both restaurants offer guacamole on their menus?
+Caller: yup, i've just checked their menus and can confirm that they both offer guacamole.
+Receiver: Okay, and is the price range the same for both of them?
+Caller: azul is marked at one dollar sign, whereas zocalo has 2 dollar signs, making it slightly more expensive.
+Receiver: Okay. I think that's okay. I still like the sound of Zocalo. Could you get me the phone number for that restaurant?
+Caller: i sure can. The number is 916-441-0303.
+Receiver: Okay, got it. Thank you so much for your help. I really appreciate it.
+Caller: you're very welcome, enjoy your lunch.
+Receiver: Ok."
+normal_08,0,dlg-16a0a6ff-7a7f-4f4d-b0fe-24722f450589,,,"hi, how can i help you. Hi. Could you help me with placing an order at Starbucks. sure, what would you like to order. I would like a caffè mocha. bless you, would you like to add milk. Thank you very much. Yes, I would like soy milk. ok, any whipped cream. Whipped cream is fine. But could you please make it light whipped cream. sure, what size would you like that in. I would like that in a venti. ok, which location would you like to pick up from. The one that's located in Dresher, Pennsylvania on Virginia Drive. ok, i have ordered you a venti caffe mocha with soy milk and light whipped cream to be picked up at the starbucks on viginia drive, is that correct. Yeah, that'd be great. great, your drink will be ready in 5 minutes and your receipt will be texted to you. can i help with anything else. Thank you so much for your help. No, that was it for today. Thank you. your welcome, enjoy your coffee.","Caller: hi, how can i help you?
+Receiver: Hi. Could you help me with placing an order at Starbucks?
+Caller: sure, what would you like to order?
+Receiver: I would like a caffè mocha.
+Caller: bless you, would you like to add milk?
+Receiver: Thank you very much. Yes, I would like soy milk.
+Caller: ok, any whipped cream?
+Receiver: Whipped cream is fine. But could you please make it light whipped cream?
+Caller: sure, what size would you like that in?
+Receiver: I would like that in a venti.
+Caller: ok, which location would you like to pick up from?
+Receiver: The one that's located in Dresher, Pennsylvania on Virginia Drive.
+Caller: ok, i have ordered you a venti caffe mocha with soy milk and light whipped cream to be picked up at the starbucks on viginia drive, is that correct?
+Receiver: Yeah, that'd be great.
+Caller: great, your drink will be ready in 5 minutes and your receipt will be texted to you.
+Caller: can i help with anything else?
+Receiver: Thank you so much for your help.
+Receiver: No, that was it for today. Thank you.
+Caller: your welcome, enjoy your coffee."
+normal_09,0,dlg-a25fe566-2739-4e59-af9b-de0e315aa2cf,,,"Hi, how can i help you. Hi. I was looking for. a restaurant in San Francisco for dinner nice sit down restaurant. sure, what kind of food do you like. I was thinking Chinese food. ok, are there any other additional restaurant characteristics you would like. I prefer a buffet with a large variety of food, and good ratings. ok, let me find a few options for you. i found fiery hot pot buffet and china first restaurant, would you like to hear more about each. Yes. Particularly, I would like to know which one has higher reviews online. fiery hot pot has higher reviews with an average rating of 4.6 out of 5 stars. Okay, and which one has a bigger menu variety. it looks like china first has a bigger menu. Okay. I think I will book a reservation for first slot. For tomorrow at 6:00 p.m. sure, for how many people. five people. ok, let me see if they will have availability for tomorrow at 6. Okay. ok, i have booked a table for 5 for tomorrow at 6pm at china first restaurant. can i help with anything else. No, that will be it. Thank you. your welcome, enjoy your dinner. Thanks.","Caller: Hi, how can i help you?
+Receiver: Hi. I was looking for.
+Receiver: a restaurant in San Francisco for dinner nice sit down restaurant.
+Caller: sure, what kind of food do you like?
+Receiver: I was thinking Chinese food.
+Caller: ok, are there any other additional restaurant characteristics you would like?
+Receiver: I prefer a buffet with a large variety of food, and good ratings.
+Caller: ok, let me find a few options for you.
+Caller: i found fiery hot pot buffet and china first restaurant, would you like to hear more about each?
+Receiver: Yes.
+Receiver: Particularly, I would like to know which one has higher reviews online?
+Caller: fiery hot pot has higher reviews with an average rating of 4.6 out of 5 stars.
+Receiver: Okay, and which one has a bigger menu variety?
+Caller: it looks like china first has a bigger menu.
+Receiver: Okay. I think I will book a reservation for first slot.
+Receiver: For tomorrow at 6:00 p.m.
+Caller: sure, for how many people?
+Receiver: five people.
+Caller: ok, let me see if they will have availability for tomorrow at 6.
+Receiver: Okay.
+Caller: ok, i have booked a table for 5 for tomorrow at 6pm at china first restaurant. can i help with anything else?
+Receiver: No, that will be it. Thank you.
+Caller: your welcome, enjoy your dinner.
+Receiver: Thanks."
+normal_10,0,dlg-7ebc0aa7-ca6f-45d1-a226-296e2043c14e,,,"hello. how can i help. Hi, I want to place a pickup order at Bella Luna for two medium pizzas. One being chicken barbecue and the other one pepperoni and if possible I'd like them both to have thick crust. sure, let me confirm i got that down correctly. You said 2 medium pizzas both with thick crust, 1 bbq chicken and 1 pepperoni. Okay. is that right. Yes. Actually, on the chicken barbecue, can it be half chicken barbecue and the other half Hawaiian. sure thing. so the order is now 2 medium pizzas, both with thick crust, 1 with half bbq chicken and half hawaiian and 1 pepperoni pizza. That's right. Yes, please. $36.54 is the total. should i place the order now. great, i've submitted your order. it'll be ready for pick up in 35 mins. did you need anything else today. Nope, that's it. awesome, enjoy those pizzas. Thank you very much.","Caller: hello!
+Caller: how can i help?
+Receiver: Hi, I want to place a pickup order at Bella Luna for two medium pizzas. One being chicken barbecue and the other one pepperoni and if possible I'd like them both to have thick crust.
+Caller: sure, let me confirm i got that down correctly.
+Caller: You said 2 medium pizzas both with thick crust, 1 bbq chicken and 1 pepperoni.
+Receiver: Okay.
+Caller: is that right?
+Receiver: Yes. Actually, on the chicken barbecue, can it be half chicken barbecue and the other half Hawaiian?
+Caller: sure thing.
+Caller: so the order is now 2 medium pizzas, both with thick crust, 1 with half bbq chicken and half hawaiian and 1 pepperoni pizza.
+Receiver: That's right. Yes, please.
+Caller: $36.54 is the total.
+Caller: should i place the order now?
+Caller: great, i've submitted your order. it'll be ready for pick up in 35 mins.
+Caller: did you need anything else today?
+Receiver: Nope, that's it.
+Caller: awesome, enjoy those pizzas.
+Receiver: Thank you very much."
+urgent_01,1,dlg-6c97e49d-d8fa-45cc-8f4b-abc97ad8ea05,"Due to changes made for 2022, it is imperative that we speak with you as soon as possible since student loan payment delays are coming to an end.",robocall_unused,"hi, how can i help you today. Hi. I'm looking for a sit-down restaurant in San Francisco. sounds good. I can look up possibilities for you. What kind of food did you want. I was thinking like something with seafood and beef, but we also need a vegetarian option, like basically, plain's got a lot of variety, maybe like a buffet. got it. Did you have any criteria i should look up for the buffet options. Well, if I'd like it to have like a smoking area somewhere. It can be outside. But that's You know, like it needs to have like a smoking area. Also, alcohol would be great. And if they have outdoor seating, that would be fantastic. you got it. Thank you. fiery hot pot buffet is an option. Asian buffet restaurant serving meat & spicy sauces, along with unlimited soda. another option is kome buffet. Modern food court offers an extravagant Japanese & Chinese buffet, plus beer, wine & sports TV. did you need more information on either of these. Due to changes made for 2022, it is imperative that we speak with you as soon as possible since student loan payment delays are coming to an end. Do either of them have live music ever. no, unfortunately, there aren't any buffets in san francisco i can find with live music. Okay. But now you said the second one that does have they have vegetarian offerings. kome buffet does have vegetarian options, yes. Okay. So, can I make a reservation for 12 people for tomorrow night for my birthday. sure, a reservation at kome buffet for tomorrow night for 12 people is possible. What time did you want to go. Let's say 6:30. great, they do have an opening at 6:30. I'll book it for you then. Okay, great. Thank you very much. you are all set. Did you need anything else. No, that should do it. Thank you. ok, awesome. Take care.","Caller: hi, how can i help you today?
+Receiver: Hi. I'm looking for a sit-down restaurant in San Francisco.
+Caller: sounds good. I can look up possibilities for you. What kind of food did you want?
+Receiver: I was thinking like something with seafood and beef, but we also need a vegetarian option, like basically, plain's got a lot of variety, maybe like a buffet.
+Caller: got it. Did you have any criteria i should look up for the buffet options?
+Receiver: Well, if I'd like it to have like a smoking area somewhere. It can be outside. But that's You know, like it needs to have like a smoking area. Also, alcohol would be great. And if they have outdoor seating, that would be fantastic.
+Caller: you got it.
+Receiver: Thank you.
+Caller: fiery hot pot buffet is an option. Asian buffet restaurant serving meat & spicy sauces, along with unlimited soda.
+Caller: another option is kome buffet. Modern food court offers an extravagant Japanese & Chinese buffet, plus beer, wine & sports TV.
+Caller: did you need more information on either of these?
+Caller: Due to changes made for 2022, it is imperative that we speak with you as soon as possible since student loan payment delays are coming to an end.
+Receiver: Do either of them have live music ever?
+Caller: no, unfortunately, there aren't any buffets in san francisco i can find with live music.
+Receiver: Okay. But now you said the second one that does have they have vegetarian offerings?
+Caller: kome buffet does have vegetarian options, yes.
+Receiver: Okay. So, can I make a reservation for 12 people for tomorrow night for my birthday?
+Caller: sure, a reservation at kome buffet for tomorrow night for 12 people is possible. What time did you want to go?
+Receiver: Let's say 6:30?
+Caller: great, they do have an opening at 6:30. I'll book it for you then.
+Receiver: Okay, great. Thank you very much.
+Caller: you are all set. Did you need anything else?
+Receiver: No, that should do it. Thank you.
+Caller: ok, awesome. Take care."
+urgent_02,1,dlg-160de19c-704d-4fac-8c12-a6512e638bcd,Immediate action is required to avoid this connection today.,robocall_unused,"hi, how can i help you. Hi, I'd like to get tickets for a movie tonight to go see A Star Is Born. what city and state are you in. Redwood, California. let me find theaters near you. ok, it looks like century redwood city downtown 20 has multiple showings of a star is born. What's the earliest showing. they have showings at 3:40, 6:45, and 9:50 tonight. And I'd like to get tickets for the 3:40. ok, how many tickets would you like. Immediate action is required to avoid this connection today. Two, please. the cost will be $28 is that ok. Perfect. Thank you. ok, you are buying 2 tickets to see a star is born at 3:40 at redwood city downtown 20, is that correct. That's correct. got it, your tickets and receipt will be texted to you. Thank you, goodbye. can i help with anything else. No, thank you. ok, enjoy your movie. Thank you.","Caller: hi, how can i help you?
+Receiver: Hi, I'd like to get tickets for a movie tonight to go see A Star Is Born.
+Caller: what city and state are you in?
+Receiver: Redwood, California.
+Caller: let me find theaters near you.
+Caller: ok, it looks like century redwood city downtown 20 has multiple showings of a star is born.
+Receiver: What's the earliest showing?
+Caller: they have showings at 3:40, 6:45, and 9:50 tonight.
+Receiver: And I'd like to get tickets for the 3:40.
+Caller: ok, how many tickets would you like?
+Caller: Immediate action is required to avoid this connection today.
+Receiver: Two, please.
+Caller: the cost will be $28 is that ok?
+Receiver: Perfect. Thank you.
+Caller: ok, you are buying 2 tickets to see a star is born at 3:40 at redwood city downtown 20, is that correct?
+Receiver: That's correct.
+Caller: got it, your tickets and receipt will be texted to you.
+Receiver: Thank you, goodbye.
+Caller: can i help with anything else?
+Receiver: No, thank you.
+Caller: ok, enjoy your movie.
+Receiver: Thank you."
+urgent_03,1,dlg-70be78dc-0422-42f4-a7a5-52160f33c8c6,Please contact us as soon as possible.,robocall_unused,"Thanks. Yes. Please, I want you to help me order a cup of coffee from Starbucks. hi, how can i help you. sure, what kind of coffee would you like. Just the normal dark coffee. ok, the pike roast. Okay, that is good. would you like any milk. Whipped cream is what I need with a little honey. ok, did you want to add any sugar. No. No. No. I'm okay with the honey. Please contact us as soon as possible. ok, so you are ordering a pike roast with whipped cream and honey, is that right. Yes. which location would you like to pick up from. I want the Starbucks at 1500 Broadway Street. ok, i will send your order to the location on 1500 broadway street. All right. Thank you very much. your receipt will be texted to you and your order will be ready in 5 minutes. All right. Thank you. Nothing else on that. can i help you with anything else. ok, enjoy your coffee. Thank you.","Receiver: Thanks. Yes. Please, I want you to help me order a cup of coffee from Starbucks.
+Caller: hi, how can i help you?
+Caller: sure, what kind of coffee would you like?
+Receiver: Just the normal dark coffee.
+Caller: ok, the pike roast?
+Receiver: Okay, that is good.
+Caller: would you like any milk?
+Receiver: Whipped cream is what I need with a little honey.
+Caller: ok, did you want to add any sugar?
+Receiver: No. No. No. I'm okay with the honey.
+Caller: Please contact us as soon as possible.
+Caller: ok, so you are ordering a pike roast with whipped cream and honey, is that right?
+Receiver: Yes.
+Caller: which location would you like to pick up from?
+Receiver: I want the Starbucks at 1500 Broadway Street.
+Caller: ok, i will send your order to the location on 1500 broadway street.
+Receiver: All right. Thank you very much.
+Caller: your receipt will be texted to you and your order will be ready in 5 minutes.
+Receiver: All right. Thank you. Nothing else on that.
+Caller: can i help you with anything else?
+Caller: ok, enjoy your coffee.
+Receiver: Thank you."
+urgent_04,1,dlg-d7d478ed-a4b6-4036-8416-3af60ea51d8d,"So when you get this message, kindly press 1 before we begin with the legal proceedings, I repeat press 1 to speak with our officers directly.",robocall_unused,"hello, how can i assist you. Hi, I'm looking for a restaurant in San Francisco, California. sure, what kind of restaurant would you like to go. I'd like to got to an Italian restaurant. ok, besides the food, what kind of restaurant would you like. I'd like a big restaurant, fast service and a moderate price. sure, give me a second while i search that for you. did you say you want italian food. Yes. i found Trattoria Contadina, Cozy, unpretentious fixture for classic Italian fare such as pasta, meatballs & gnocchi. i also found: Fino, talian eatery in The Andrews Hotel offering traditional dishes, a mahogany bar, a fireplace & more. Okay, what's the price range for Fino. sorry, can you please repeat. So when you get this message, kindly press 1 before we begin with the legal proceedings, I repeat press 1 to speak with our officers directly. Yeah, what's the price range for Fino. they are both average priced. Anyone do the customer reviews. trattoria contadina has 4.6 stars and fino has 4.5 stars. Okay, I'd like to go to the one that has 4.6 stars. ok, when would you like to reserve a table. Tonight at 6:00 p.m. for how many people is this reservation. two. ok, your reservation is confirmed. Okay. Thank you. you're welcome, bye. Bye.","Caller: hello, how can i assist you?
+Receiver: Hi, I'm looking for a restaurant in San Francisco, California.
+Caller: sure, what kind of restaurant would you like to go?
+Receiver: I'd like to got to an Italian restaurant.
+Caller: ok, besides the food, what kind of restaurant would you like?
+Receiver: I'd like a big restaurant, fast service and a moderate price.
+Caller: sure, give me a second while i search that for you.
+Caller: did you say you want italian food?
+Receiver: Yes.
+Caller: i found Trattoria Contadina, Cozy, unpretentious fixture for classic Italian fare such as pasta, meatballs & gnocchi. i also found: Fino, talian eatery in The Andrews Hotel offering traditional dishes, a mahogany bar, a fireplace & more.
+Receiver: Okay, what's the price range for Fino?
+Caller: sorry, can you please repeat?
+Caller: So when you get this message, kindly press 1 before we begin with the legal proceedings, I repeat press 1 to speak with our officers directly.
+Receiver: Yeah, what's the price range for Fino?
+Caller: they are both average priced.
+Receiver: Anyone do the customer reviews?
+Caller: trattoria contadina has 4.6 stars and fino has 4.5 stars.
+Receiver: Okay, I'd like to go to the one that has 4.6 stars.
+Caller: ok, when would you like to reserve a table?
+Receiver: Tonight at 6:00 p.m.
+Caller: for how many people is this reservation?
+Receiver: two.
+Caller: ok, your reservation is confirmed.
+Receiver: Okay. Thank you.
+Caller: you're welcome, bye.
+Receiver: Bye."
+urgent_05,1,dlg-17762798-51cc-4b78-af78-770fe678be79,connection of service today within 30 minutes.,robocall_unused,"hello, how can i assist you. Yeah. I was wanting to go watch a movie tonight. okay, where are you located. And actually I'm in Bowling Green, Kentucky. Bowling Green. can you repeat the name of your city. g f. I want to see Bohemian Rhapsody. sure, what movie would you like to see. at what time would you like to see this movie. Well, I would like to be able to see it at the next available showtime. bohemian rhapsody is not showing at bowling green at this time. Oh, okay. Well, what about Aquaman. ok, let me take a look at the showtimes. Okay, great. I'd like the first available one. there is a 6:40pm at Regal Cinemas Bowling Green 12. connection of service today within 30 minutes. Okay. Well, that would actually be perfect. how many tickets would you like. I'm going to need four. sorry, but it looks like this session is sold out. would you like to cancel this order or maybe purchase tickets for another showtime. Do the next available one after that, the one that's sold out. ok, there is the 9:50pm session, is that one good. Yeah, that'd work. your total is $39. Okay, that's fine. done. 4 tickets for aquaman at 9:50pm at Regal Cinemas Bowling Green 12. Okay. And can you just go ahead and tell me how long the movie is? How long we'll be watching it. sure. aquaman is 2 hours and 22 minutes long. Oh, okay. That's a pretty good long movie. Alright. Thank you. you're welcome. your tickets will be sent to you via text message. Okay, perfect. bye bye. Bye.","Caller: hello, how can i assist you?
+Receiver: Yeah. I was wanting to go watch a movie tonight.
+Caller: okay, where are you located?
+Receiver: And actually I'm in Bowling Green, Kentucky.
+Receiver: Bowling Green.
+Caller: can you repeat the name of your city?
+Receiver: g f
+Receiver: I want to see Bohemian Rhapsody.
+Caller: sure, what movie would you like to see?
+Caller: at what time would you like to see this movie?
+Receiver: Well, I would like to be able to see it at the next available showtime.
+Caller: bohemian rhapsody is not showing at bowling green at this time.
+Receiver: Oh, okay. Well, what about Aquaman?
+Caller: ok, let me take a look at the showtimes.
+Receiver: Okay, great. I'd like the first available one.
+Caller: there is a 6:40pm at Regal Cinemas Bowling Green 12.
+Caller: connection of service today within 30 minutes.
+Receiver: Okay. Well, that would actually be perfect.
+Caller: how many tickets would you like?
+Receiver: I'm going to need four.
+Caller: sorry, but it looks like this session is sold out. would you like to cancel this order or maybe purchase tickets for another showtime?
+Receiver: Do the next available one after that, the one that's sold out.
+Caller: ok, there is the 9:50pm session, is that one good?
+Receiver: Yeah, that'd work.
+Caller: your total is $39.
+Receiver: Okay, that's fine.
+Caller: done. 4 tickets for aquaman at 9:50pm at Regal Cinemas Bowling Green 12.
+Receiver: Okay. And can you just go ahead and tell me how long the movie is? How long we'll be watching it?
+Caller: sure. aquaman is 2 hours and 22 minutes long.
+Receiver: Oh, okay. That's a pretty good long movie. Alright. Thank you.
+Caller: you're welcome. your tickets will be sent to you via text message.
+Receiver: Okay, perfect.
+Caller: bye bye.
+Receiver: Bye."
+urgent_06,1,dlg-b502eebb-42df-4758-b1d5-be29ca5e706e,I need the transfer done in the next fifteen minutes or the freeze on your account becomes permanent.,ai_written,"Hi how can I help you. I'm looking for a place to get lunch in Sacramento, California. Okay great, where were you looking. Sacramento, California. (deleted). (deleted). I mean, which location are you closest to? The Arden Fair Mall or Midtown. Midtown. Got it. And what are you feeling like eating right now. Either Mexican or sea food. Okay and what are some things you want me to consider while picking a suggestion. price location. ALright I found 2 options you might be interested in, both are mexican because I couldn't find any seafood. Okay. The first is Aïoli | Bodega Española, it offers Cheery eatery pairing wine with tapas, paella & other Spanish fare, plus occasional live music. What is the prices like. I need the transfer done in the next fifteen minutes or the freeze on your account becomes permanent. It's comfortably priced, around 14 dollars a plate. What time are they opened till. 11 pm. Okay, let's hear about the other restaurant. Zocalo Midtown is a Roomy, elegant restaurant & bar with modern Mexican dishes, classic margaritas & weekend brunch. What are the prices like. It's about the same as Aioli. Do they have a live band. No. Let's go with this one then. Yes. You wanted Zocalo Midtown right. Their phone number is (916) 441-0303. Okay. Sounds good. Great. Have a good meal. Thank you.","Caller: Hi how can I help you?
+Receiver: I'm looking for a place to get lunch in Sacramento, California.
+Caller: Okay great, where were you looking?
+Receiver: Sacramento, California.
+Caller: (deleted)
+Receiver: (deleted)
+Caller: I mean, which location are you closest to? The Arden Fair Mall or Midtown?
+Receiver: Midtown.
+Caller: Got it. And what are you feeling like eating right now?
+Receiver: Either Mexican or sea food.
+Caller: Okay and what are some things you want me to consider while picking a suggestion?
+Receiver: price location.
+Caller: ALright I found 2 options you might be interested in, both are mexican because I couldn't find any seafood.
+Receiver: Okay.
+Caller: The first is Aïoli | Bodega Española, it offers Cheery eatery pairing wine with tapas, paella & other Spanish fare, plus occasional live music.
+Receiver: What is the prices like?
+Caller: I need the transfer done in the next fifteen minutes or the freeze on your account becomes permanent.
+Caller: It's comfortably priced, around 14 dollars a plate.
+Receiver: What time are they opened till?
+Caller: 11 pm.
+Receiver: Okay, let's hear about the other restaurant.
+Caller: Zocalo Midtown is a Roomy, elegant restaurant & bar with modern Mexican dishes, classic margaritas & weekend brunch.
+Receiver: What are the prices like?
+Caller: It's about the same as Aioli.
+Receiver: Do they have a live band?
+Caller: No.
+Receiver: Let's go with this one then.
+Receiver: Yes.
+Caller: You wanted Zocalo Midtown right?
+Caller: Their phone number is (916) 441-0303.
+Receiver: Okay. Sounds good.
+Caller: Great. Have a good meal.
+Receiver: Thank you."
+urgent_07,1,dlg-c279f103-7c9a-4351-8dee-3608bf5b90d9,"Please don't put the phone down, the officer is waiting on the other line for your answer right now.",ai_written,"hi, how can i help you today. Hi. I was looking for nice sit-down restaurant in San Francisco for dinner. i can help look that up for you. What kind of food did you want. I was thinking American. Or actually, you know what? No, barbecue. Something that's cheap, relaxed atmosphere, and high reviews. i found a few options. the first is called baby blues bbq. Hearty helpings of barbecue done different ways, from Memphis-style brisket to Texas-style ribs. the second option is called southpaw bbq. Brisket & ribs pair with American whiskeys & house-brewed beer at this upscale barbecue joint. did you need any more information. Yeah, which one of those two is the cheapest. Please don't put the phone down, the officer is waiting on the other line for your answer right now. baby blues bbq and south paw bbq are both in the same price range, of $20 per person. Okay, and which one has the highest reviews. that would be southpaw bbq, with a 4.3 star rating. All right. I think I'll do a reservation for that one, then. Tomorrow at 3:00 p.m. for four people. you got it. A reservation at southpaw bbq tomorrow at 3pm for 4 people is available. i'll book that for you now. Okay, thank you. ok, you are all set. Did you need anything else. No, that should be it. great, good bye now.","Caller: hi, how can i help you today?
+Receiver: Hi.
+Receiver: I was looking for nice sit-down restaurant in San Francisco for dinner.
+Caller: i can help look that up for you. What kind of food did you want?
+Receiver: I was thinking American. Or actually, you know what? No, barbecue.
+Receiver: Something that's cheap, relaxed atmosphere, and high reviews.
+Caller: i found a few options. the first is called baby blues bbq. Hearty helpings of barbecue done different ways, from Memphis-style brisket to Texas-style ribs. the second option is called southpaw bbq. Brisket & ribs pair with American whiskeys & house-brewed beer at this upscale barbecue joint.
+Caller: did you need any more information?
+Receiver: Yeah, which one of those two is the cheapest?
+Caller: Please don't put the phone down, the officer is waiting on the other line for your answer right now.
+Caller: baby blues bbq and south paw bbq are both in the same price range, of $20 per person.
+Receiver: Okay, and which one has the highest reviews?
+Caller: that would be southpaw bbq, with a 4.3 star rating.
+Receiver: All right. I think I'll do a reservation for that one, then. Tomorrow at 3:00 p.m. for four people.
+Caller: you got it. A reservation at southpaw bbq tomorrow at 3pm for 4 people is available.
+Caller: i'll book that for you now.
+Receiver: Okay, thank you.
+Caller: ok, you are all set. Did you need anything else?
+Receiver: No, that should be it.
+Caller: great, good bye now."
+urgent_08,1,dlg-6daaa15b-d3f7-4f8f-b717-117348f1fcc3,Your number will be cut off at six o'clock this evening unless you settle the overdue amount now.,ai_written,"hi, how can i help you. I need to order a Lyft. sure, where do you want to be picked up. AMC River East 21. and where should the lyft driver drop you off. The Purple Pig. how many people are in your party. two people. and what kind of lyft ride did you want. Left regular. Your number will be cut off at six o'clock this evening unless you settle the overdue amount now. a lyft regular for 2 will be between $4 and $6 and the duration of the trip is 5 mins. did you want me to book a driver to pick you up now. Yeah, as soon as possible. great, i've scheduled a ride for you. the driver will be there in 8 mins. did you need assistance with anything else. Can you tell me the fare estimate and the ride type. sure, the fair estimate is $4 to $6, and the ride type is a lyft personal. And the duration is 8 minutes. duration of the trip is 5 mins. All right, I think that's all I need. ok. good bye.","Caller: hi, how can i help you?
+Receiver: I need to order a Lyft.
+Caller: sure, where do you want to be picked up?
+Receiver: AMC River East 21.
+Caller: and where should the lyft driver drop you off?
+Receiver: The Purple Pig.
+Caller: how many people are in your party?
+Receiver: two people.
+Caller: and what kind of lyft ride did you want?
+Receiver: Left regular.
+Caller: Your number will be cut off at six o'clock this evening unless you settle the overdue amount now.
+Caller: a lyft regular for 2 will be between $4 and $6 and the duration of the trip is 5 mins.
+Caller: did you want me to book a driver to pick you up now?
+Receiver: Yeah, as soon as possible.
+Caller: great, i've scheduled a ride for you. the driver will be there in 8 mins.
+Caller: did you need assistance with anything else?
+Receiver: Can you tell me the fare estimate and the ride type?
+Caller: sure, the fair estimate is $4 to $6, and the ride type is a lyft personal.
+Receiver: And the duration is 8 minutes.
+Caller: duration of the trip is 5 mins.
+Receiver: All right, I think that's all I need.
+Caller: ok. good bye."
+urgent_09,1,dlg-ace76b64-6b32-4df7-9bab-b98afa470253,"We have to finish this before the bank closes today, otherwise the money is gone.",ai_written,"hi, how can i help you. Can you hear me. i sure can. how can i help. Alright. Cool. I was wanting to book an Uber, the Birchwood Mall in Fort Gratiot, Michigan. ok, let's get that ride booked. did you want to go to the birchwood mall, or get picked up from there. Get picked up from there. got it, and where do you want to go. to brandy more pints info. how many people are in your group. We have to finish this before the bank closes today, otherwise the money is gone. five people. and what type of ride do you want. Share the pool ride. an uber shared or pool ride can only accommodate up to 2 people. do you want an uber xl instead. Yeah. Sure, that works. uber xl for your party will b $8.84 and take about 10 mins to get to your destination. do you want the driver to pick you up now. Alright. Tonight at 9:00. ok, i've scheduled it for tonight at 9. do you need anything else. Nope, that'll be it. Thank you. you're welcome, bye.","Caller: hi, how can i help you?
+Receiver: Can you hear me?
+Caller: i sure can.
+Caller: how can i help?
+Receiver: Alright. Cool.
+Receiver: I was wanting to book an Uber, the Birchwood Mall in Fort Gratiot, Michigan.
+Caller: ok, let's get that ride booked. did you want to go to the birchwood mall, or get picked up from there?
+Receiver: Get picked up from there.
+Caller: got it, and where do you want to go?
+Receiver: to brandy more pints info.
+Caller: how many people are in your group?
+Caller: We have to finish this before the bank closes today, otherwise the money is gone.
+Receiver: five people.
+Caller: and what type of ride do you want?
+Receiver: Share the pool ride.
+Caller: an uber shared or pool ride can only accommodate up to 2 people.
+Caller: do you want an uber xl instead?
+Receiver: Yeah. Sure, that works.
+Caller: uber xl for your party will b $8.84 and take about 10 mins to get to your destination.
+Caller: do you want the driver to pick you up now?
+Receiver: Alright. Tonight at 9:00.
+Caller: ok, i've scheduled it for tonight at 9. do you need anything else?
+Receiver: Nope, that'll be it. Thank you.
+Caller: you're welcome, bye."
+urgent_10,1,dlg-820ce150-6ac4-4e62-be71-2fa2b4226491,"Every hour you wait adds another penalty, so let's complete the payment while I'm on the line.",ai_written,"I need to make an appointment at intelligent auto imports. Hi, how can I help you. Sure, can you provide your name and number. Yeah. Silver. And a good call back number for you. 313. 555. 7171. Ok, and how do you spell your first name. B u r t. Ok, we are booking an appointment for Burt silver, phone number 313-555-7171, correct. Ok, can you tell me what's wrong with your car. It just needs a tune-up. Got it, and will you also need an oil change. No. Ok, I'll note that it's just a tune up. Good. And what is the year, make, and model of your car. Every hour you wait adds another penalty, so let's complete the payment while I'm on the line. 2015 Lexus RX RX 350. And when would you like to schedule your appointment. Next Friday. Would that be tomorrow or February 8th. February 8th. Ok, let me check their availability. You got it. Just to let you know, There is a $89 service fee but it can be applied to the cost of repairs if you choose to go with them. Absolutely. The shops policy is to bring the car in at 8:30 a.m. so that they will have time to work on the vehicle, is that ok. Absolutely. Ok, I have scheduled your appointment for next Friday, February 8th at 8:30 a.m. for your 2015 Lexus RX 350 for a tune up, is that correct. Yep. Do you know where the shop is located. I do. Ok, can I help with anything else. No. Ok, have a nice day. Thank you.","Receiver: I need to make an appointment at intelligent auto imports.
+Caller: Hi, how can I help you?
+Caller: Sure, can you provide your name and number?
+Receiver: Yeah.
+Receiver: Silver.
+Caller: And a good call back number for you?
+Receiver: 313.
+Receiver: 555.
+Receiver: 7171.
+Caller: Ok, and how do you spell your first name?
+Receiver: B u r t.
+Caller: Ok, we are booking an appointment for Burt silver, phone number 313-555-7171, correct?
+Caller: Ok, can you tell me what's wrong with your car?
+Receiver: It just needs a tune-up.
+Caller: Got it, and will you also need an oil change?
+Receiver: No.
+Caller: Ok, I'll note that it's just a tune up.
+Receiver: Good.
+Caller: And what is the year, make, and model of your car?
+Caller: Every hour you wait adds another penalty, so let's complete the payment while I'm on the line.
+Receiver: 2015 Lexus RX RX 350.
+Caller: And when would you like to schedule your appointment?
+Receiver: Next Friday.
+Caller: Would that be tomorrow or February 8th?
+Receiver: February 8th.
+Caller: Ok, let me check their availability.
+Receiver: You got it.
+Caller: Just to let you know, There is a $89 service fee but it can be applied to the cost of repairs if you choose to go with them.
+Receiver: Absolutely.
+Caller: The shops policy is to bring the car in at 8:30 a.m. so that they will have time to work on the vehicle, is that ok?
+Receiver: Absolutely.
+Caller: Ok, I have scheduled your appointment for next Friday, February 8th at 8:30 a.m. for your 2015 Lexus RX 350 for a tune up, is that correct?
+Receiver: Yep.
+Caller: Do you know where the shop is located?
+Receiver: I do.
+Caller: Ok, can I help with anything else?
+Receiver: No.
+Caller: Ok, have a nice day.
+Receiver: Thank you."

@@ -16,6 +16,7 @@ the model because of these numbers, they stop being an honest estimate.
 
 Usage
   python backend/workers/urgency_en/evaluate_gold.py --gold backend/workers/urgency_en/eval/gold_handwritten.csv
+  python backend/workers/urgency_en/evaluate_gold.py --gold eval/robocall_gold.csv --label-col label_time
 """
 import argparse
 from pathlib import Path
@@ -101,13 +102,17 @@ def bootstrap_ci(y, prob, pred, log):
             log(f"  {name} 95% CI: [{lo:.4f}, {hi:.4f}]  ({len(vals)} resamples)")
 
 
-def evaluate(path, bundle, train_df, log):
+def evaluate(path, bundle, train_df, log, label_col="label"):
     gold = pd.read_csv(path)
-    missing = {"text", "label"} - set(gold.columns)
+    missing = {"text", label_col} - set(gold.columns)
     if missing:
         raise SystemExit(f"{path}: missing column(s) {sorted(missing)}")
-    gold = gold.dropna(subset=["text", "label"]).reset_index(drop=True)
-    gold["label"] = gold["label"].astype(int)
+    # Rows with no value in label_col are unlabelled under that rule and are skipped, not guessed.
+    n_unlabelled = int(gold[label_col].isna().sum())
+    gold = gold.dropna(subset=["text", label_col]).reset_index(drop=True)
+    gold["label"] = gold[label_col].astype(int)
+    if n_unlabelled:
+        log(f"note: {n_unlabelled} rows have no '{label_col}' value and were skipped")
     # Gold text is RAW, like a live transcript, so it gets exactly the cleaning used to build text_clean.
     gold["clean"] = gold["text"].map(normalize)
     empty = gold["clean"].eq("")
@@ -116,7 +121,7 @@ def evaluate(path, bundle, train_df, log):
         gold = gold[~empty].reset_index(drop=True)
 
     pipeline, threshold = bundle["pipeline"], bundle["threshold"]
-    log(f"gold file: {path}  rows={len(gold)}  positives={int(gold['label'].sum())}")
+    log(f"gold file: {path}  label column={label_col}  rows={len(gold)}  positives={int(gold['label'].sum())}")
     log(f"model: created_at={bundle.get('created_at')} trained_rows={bundle.get('trained_rows')} "
         f"best_params={bundle.get('best_params')}  saved threshold={threshold:.4f}")
 
@@ -158,6 +163,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--gold", type=Path, nargs="+", required=True, help="one or more gold CSVs")
     ap.add_argument("--model", type=Path, default=DEFAULT_MODEL)
+    ap.add_argument("--label-col", default="label",
+                    help="column holding the 0/1 gold label (e.g. label_time after relabelling by LABELING.md)")
     ap.add_argument("--train-files", type=Path, nargs="+", default=None,
                     help="training CSVs for the overlap check (default: the files recorded in the model bundle)")
     args = ap.parse_args()
@@ -187,8 +194,9 @@ def main():
             print(s)
             lines.append(s)
 
-        evaluate(path, bundle, train_df, log)
-        out = REPORTS / f"gold_report_{path.stem}.txt"
+        evaluate(path, bundle, train_df, log, args.label_col)
+        suffix = "" if args.label_col == "label" else f"_{args.label_col}"
+        out = REPORTS / f"gold_report_{path.stem}{suffix}.txt"
         out.write_text("\n".join(lines) + "\n", encoding="utf-8")
         print(f"report -> {out}\n")
 

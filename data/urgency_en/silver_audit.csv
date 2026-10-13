@@ -1,0 +1,201 @@
+audit_id,row_index,source,conversation_id,text_raw,silver_label,ai_label,reason,label_method,keyword_rule_correct
+1,2374,Fraud_R1,fraudr1_358,"Audit penalties under Section 4.3 for ""failure to mitigate supply chain risk""",1,0,"penalty threat, no time pressure",ai_label_ide,False
+2,1763,Fraud_R1,fraudr1_51,ACT NOW OR LOSE :,1,1,act now or lose,ai_label_ide,True
+3,2390,Fraud_R1,fraudr1_425,Confirmation : Forward the payment screenshot to the Class 6 Parent Group within 15 minutes of transaction.,1,1,demands action within 15 minutes,ai_label_ide,True
+4,824,Fraud_R1,fraudr1_661,Please respond via victoria.karegaye@yahoo.com or WhatsApp (+250 78 345 6721) before the deadline.,1,,"deadline unspecified, unclear if pressure",ai_label_ide,
+5,3078,Fraud_R1,fraudr1_810,50GB/month SIM → Activation deadline: 18:00 ICT daily,1,0,neutral daily schedule,ai_label_ide,False
+6,1690,Fraud_R1,fraudr1_583,"Case cross-filing with CBIRC (Ref: CBIRC-WN-20231015-1142) or face ¥50,000/day penalty",1,,fragment; per-day penalty context unclear,ai_label_ide,
+7,1984,Fraud_R1,fraudr1_395,Subject: Urgent Assistance Needed – Veterinary Emergency [Huangshan],1,1,claims urgent help needed now,ai_label_ide,True
+8,2686,Fraud_R1,fraudr1_559,3 slots remaining for 5.12 million East China players.,1,0,"scarcity only, no time pressure",ai_label_ide,False
+9,981,Fraud_R1,fraudr1_807,"12,350 RMB maximum March bonus pool for resolving urgent cargo backlogs",1,0,"urgent describes cargo, no demand on listener",ai_label_ide,False
+10,3152,Fraud_R1,fraudr1_745,Hourly Rate : $32.50 ( $28.10 after 3:00 PM deadline ),1,0,neutral rate schedule,ai_label_ide,False
+11,2827,Fraud_R1,fraudr1_112,89% OF USERS WHO DELAYED VERIFICATION FACED LEGAL PENALTIES,1,1,implies delaying leads to penalties,ai_label_ide,True
+12,625,Fraud_R1,fraudr1_163,Critical Deadline :,1,,fragment header,ai_label_ide,
+13,1217,Fraud_R1,fraudr1_177,Urgent Account Security Protocol Activation,1,,"title only, no demand",ai_label_ide,
+14,2336,Fraud_R1,fraudr1_105,Government-authorized validation requires temporary codes for time-sensitive cases (valid until 2024-03-15 14:30).,1,0,neutral expiry statement,ai_label_ide,False
+15,3349,Fraud_R1,fraudr1_181,AVOID DELAYS : Current wait time 4 MIN | 87% of callers resolve issues by 18:30,1,0,wait-time information,ai_label_ide,False
+16,1473,Fraud_R1,fraudr1_195,Immediate confirmation available through our licensed operations lead:,1,0,immediate describes availability,ai_label_ide,False
+17,1646,Fraud_R1,fraudr1_446,"❗ Final Notice: All unresolved cases will auto-report to CBIRC within 1hr, triggering:",1,1,bad outcome within 1 hour,ai_label_ide,True
+18,1045,Fraud_R1,fraudr1_553,Immediate Protocols:,1,,fragment header,ai_label_ide,
+19,3311,Fraud_R1,fraudr1_134,IMMEDIATE RISK : Delays beyond 21:00 CST cause 14-day fund freeze + social security number flagging under AML Directive Article 12.3 .,1,1,deadline tonight with freeze consequence,ai_label_ide,True
+20,3119,Fraud_R1,fraudr1_683,MUST complete routing verification by 7:45 PM CDT at [trugreen-offers.com/spring50](http://trugreen-offers.com/spring50),1,1,must complete by a set time today,ai_label_ide,True
+21,617,Fraud_R1,fraudr1_491,SMS verify within 7min to hold items (carrier delays reported),1,1,verify within 7 minutes,ai_label_ide,True
+22,862,Fraud_R1,fraudr1_925,Redeem or Lose,1,0,loss threat with no time element,ai_label_ide,False
+23,1485,Fraud_R1,fraudr1_742,[SECURE NOW OR LOSE ACCESS](https://store.healthsolutionsgroup.com/primalgrow),1,1,secure now or lose access,ai_label_ide,True
+24,2656,Fraud_R1,fraudr1_651,Submit notarized authorization via DTP ( 2 slots remaining ),1,0,"scarcity only, no time pressure",ai_label_ide,False
+25,1933,Fraud_R1,fraudr1_559,Subject: [Case AL2024-SH0217] Final Notice: Dragonfire Paladin Skin Lottery Activation,1,1,final notice pushing activation,ai_label_ide,True
+26,3468,Fraud_R1,fraudr1_444,Final Response Protocol (3 slots left | Closes at 14:30 CST) :,1,1,final response with closing time today,ai_label_ide,True
+27,3176,Fraud_R1,fraudr1_364,System Cutoff : 20:00 CST Tonight,1,,cutoff stated without context,ai_label_ide,
+28,1799,Fraud_R1,fraudr1_979,LOCK NOW OR LOSE : Cancel ≥45m pre-flight or forfeit $69 credit (non-transferable),1,1,lock now or lose,ai_label_ide,True
+29,869,Fraud_R1,fraudr1_841,Candidates available for immediate onboarding before March 10th,1,0,neutral hiring timeline,ai_label_ide,False
+30,1814,Fraud_R1,fraudr1_445,B) Secure digital confirmation via our SSL-encrypted portal: [🔒 https://secure.95599.cn/v2/urgent validation],1,0,urgent appears only in URL text,ai_label_ide,False
+31,1578,Fraud_R1,fraudr1_28,SYSTEM ALERT : This is your final notice .,1,1,"final notice alert, last chance",ai_label_ide,True
+32,2238,Fraud_R1,fraudr1_20,Note: 98.7% of escalated cases resolve within 2hrs when clients reference the above CaseID.,1,0,"statistic, no demand",ai_label_ide,False
+33,1319,Fraud_R1,fraudr1_147,SCAN NOW OR LOSE ACCESS :,1,1,scan now or lose access,ai_label_ide,True
+34,3424,Fraud_R1,fraudr1_286,"To finalize your security patch (v2.8.4) by the October 21, 2023 17:00 CST deadline, we require temporary access to verify your current credentials.",1,1,deadline used to obtain credentials,ai_label_ide,True
+35,864,Fraud_R1,fraudr1_378,IMMEDIATELY add the official WeChat (ID: zhanglaoshi123) .,1,1,demands immediate action,ai_label_ide,True
+36,1354,Fraud_R1,fraudr1_124,Payment Authentication (URGENT):,1,,fragment header,ai_label_ide,
+37,2717,Fraud_R1,fraudr1_777,Application Deadline : 2024-05-25 23:59 Macau Time (Limited to first 15 qualified applicants),1,0,neutral application deadline,ai_label_ide,False
+38,895,Fraud_R1,fraudr1_686,[SECURE PROFILE CONFIRMATION PORTAL](https://portal.professionalwhoswho.org/confirm/emilyrodriguez2024) (LAST CHANCE),1,1,last chance,ai_label_ide,True
+39,871,Fraud_R1,fraudr1_531,Non-response triggers immediate bid disqualification + credit standing review .,1,,consequence without stated window,ai_label_ide,
+40,1871,Fraud_R1,fraudr1_683,Loss Aversion Protocol : Delayed enrollment forfeits:,1,1,delay causes forfeiture,ai_label_ide,True
+41,767,Fraud_R1,fraudr1_297,"Failure to secure within 2h 45m will downgrade your eligibility to Silver Tier (max 80,000 RMB) .",1,1,act within 2h45m or lose,ai_label_ide,True
+42,636,Fraud_R1,fraudr1_906,Subject: Action Required: Claim Your $5 Reward & Exclusive Gift Card Offer,1,0,action required but no time pressure,ai_label_ide,False
+43,966,Fraud_R1,fraudr1_641,Subject: Time-Sensitive Humanitarian Fund Transfer Authorization,1,1,claims time-sensitive transfer,ai_label_ide,True
+44,1300,Fraud_R1,fraudr1_55,Complete verification IMMEDIATELY to block unauthorized access.,1,1,demands immediate verification,ai_label_ide,True
+45,2156,Fraud_R1,fraudr1_995,63 users are viewing this reel RIGHT NOW— only 2 slots left at your price point!,1,0,"social proof and scarcity, not time",ai_label_ide,False
+46,2120,Fraud_R1,fraudr1_178,Access FIPS 140-2 portal within 15 mins to lock your slot :,1,1,act within 15 minutes,ai_label_ide,True
+47,2998,Fraud_R1,fraudr1_638,Confirm via +229 28 3063 45 (Signal/WhatsApp) or myussuf@continentalbank-bj.com by 23:59 CET TONIGHT to avoid permanent asset seizure .,1,1,deadline tonight or asset seizure,ai_label_ide,True
+48,587,Fraud_R1,fraudr1_326,Subject: Urgent: Account Withdrawal Resolution Required – Case ID QL2023-09A7,1,1,urgent action required,ai_label_ide,True
+49,3140,Fraud_R1,fraudr1_605,Bank Guarantee (BBB Rating): Expedited processing if submitted by 18:00 GMT,1,0,neutral processing note,ai_label_ide,False
+50,2173,Fraud_R1,fraudr1_313,QQ Group Verification : Join Group 12345678 within 12 MINUTES (2 slots left) for in-person regulatory review.,1,1,act within 12 minutes,ai_label_ide,True
+51,1663,Fraud_R1,fraudr1_250,Urgent Action Required: Account Downgrade Imminent,1,1,"urgent action, downgrade imminent",ai_label_ide,True
+52,2684,Fraud_R1,fraudr1_295,"Confirm NOW via CCB Mobile App > Security Center > ""Pending Transactions"" (97.3% resolution rate — ONLY 2 SLOTS REMAINING!",1,1,"confirm now, pressure",ai_label_ide,True
+53,776,Fraud_R1,fraudr1_970,Subject: Urgent Action Required: Final Hours to Claim Your Goodreads Exclusive Benefits,1,1,"urgent action, final hours",ai_label_ide,True
+54,2991,Fraud_R1,fraudr1_669,☎ +226 25 44 5678 (ADB Inheritance Desk – CALL BEFORE 16:45 GMT ),1,1,call before a deadline today,ai_label_ide,True
+55,725,Fraud_R1,fraudr1_944,TIME-SENSITIVE EDITION,1,,fragment header,ai_label_ide,
+56,3474,Fraud_R1,fraudr1_1013,89% of unsubmitted apps face credit-tier downgrades – passive income DEADLINE: 11:59:59 !,1,1,deadline with downgrade threat,ai_label_ide,True
+57,1932,Fraud_R1,fraudr1_264,Delayed transfers forfeit priority to waitlisted HSBC Private Banking clients.,1,1,delay causes forfeiture,ai_label_ide,True
+58,1345,Fraud_R1,fraudr1_92,Note : Failure to respond may escalate to the Supreme People’s Procuratorate.,1,0,"escalation threat, no time",ai_label_ide,False
+59,3251,Fraud_R1,fraudr1_617,Call SECURE : +44 20 7946 0731 ( 8 positions left in queue – 17:05 GMT cutoff daily),1,0,routine daily cutoff,ai_label_ide,False
+60,1574,Fraud_R1,fraudr1_304,Delayed verification triggers automatic loan cancellation within 4hrs ( ) and immediate credit score downgrade ( ) .,1,1,consequence within 4 hours if delayed,ai_label_ide,True
+61,1291,Fraud_R1,fraudr1_859,📧 Email: careers@px-invest.com [ Response guarantee expires in 12h ],1,,"expiry of guarantee, unclear pressure",ai_label_ide,
+62,1185,Fraud_R1,fraudr1_470,Contact PCI DSS-certified support IMMEDIATELY :,1,1,demands immediate contact,ai_label_ide,True
+63,1415,Fraud_R1,fraudr1_607,📧 PGP-Encrypted Deadline Extension Request : j.douglas@duboislegal.sn,1,0,"contact line, no pressure",ai_label_ide,False
+64,839,Fraud_R1,fraudr1_619,"If misdirected, notify +31 20 521 1122 immediately.",1,0,routine misdirection disclaimer,ai_label_ide,False
+65,624,Fraud_R1,fraudr1_494,Act Now – Follow These Steps :,1,1,act now,ai_label_ide,True
+66,1768,Fraud_R1,fraudr1_294,Subject: Urgent Account Security Update: Pending Transaction Review,1,,"title only, no demand",ai_label_ide,
+67,1843,Fraud_R1,fraudr1_345,"Upon transfer, add my WeChat ( ID: 876543210 ) and send the transaction screenshot with the subject line “URGENT: PO-1142B Confirmation” .",1,0,urgent is only a subject line to copy,ai_label_ide,False
+68,2064,Fraud_R1,fraudr1_737,<strong>Immediate Action Required:</strong>,1,1,immediate action required,ai_label_ide,True
+69,2155,Fraud_R1,fraudr1_808,System Alert : 62 applicants in last 30min – Priority given to immediate confirmations .,1,1,pushes immediate confirmation,ai_label_ide,True
+70,1094,Fraud_R1,fraudr1_785,Immediate SCB/MUFG protocol training (delayed applicants forfeit Yangon certification),1,1,delay causes forfeiture,ai_label_ide,True
+71,2267,Fraud_R1,fraudr1_872,Application Deadline: 2024-03-15 14:30 (Beijing Time),1,0,neutral application deadline,ai_label_ide,False
+72,3236,Fraud_R1,fraudr1_957,WARNING: QR codes invalidate if unused by 19:00 CT day-of-event.,1,0,neutral event info,ai_label_ide,False
+73,3321,Fraud_R1,fraudr1_273,Urgency tied to real-time quota availability: Only 12 slots remaining for expedited processing as of 15:00 GMT+8.,1,1,explicit urgency with quota pressure,ai_label_ide,True
+74,2494,Fraud_R1,fraudr1_19,Protocol freeze expires in 3H 42M – 89% of players who delayed lost all assets .,1,1,"expires in hours, delayers lost assets",ai_label_ide,True
+75,675,Fraud_R1,fraudr1_651,FINAL NOTICE : Michael Kamah | Kamah Family Trust,1,,header with name only,ai_label_ide,
+76,1268,Fraud_R1,fraudr1_345,Subject: Immediate Advance Payment Authorization: Supplier Procurement for China World Trade Center Tower III Promotion,1,1,demands immediate payment,ai_label_ide,True
+77,2905,Fraud_R1,fraudr1_204,Immediate action required to prevent permanent withdrawal suspension and credit score penalties under NGCB Regulation 12.8.,1,1,immediate action required to prevent loss,ai_label_ide,True
+78,3297,Fraud_R1,fraudr1_784,② Evening (15:00-23:00) – 300 THB/night allowance expires at 23:59!,1,0,neutral job allowance expiry,ai_label_ide,False
+79,2845,Fraud_R1,fraudr1_920,System auto-locks in 2 HOURS | 1 seat remaining at $35,1,1,locks in 2 hours,ai_label_ide,True
+80,3055,Fraud_R1,fraudr1_561,SYSTEM ALERT : Overdue payments impact credit ratings— resolve ALL steps by 23:59 CST!,1,1,resolve by deadline tonight,ai_label_ide,True
+81,2415,Fraud_R1,fraudr1_346,"5,200+ users flagged this hour – YOUR ACTION REQUIRED.",1,0,alarm without time window,ai_label_ide,False
+82,2403,Fraud_R1,fraudr1_559,Email transaction ID + player ID to support@arena-legends-official.com within 8 minutes (98.7% Q1 processing speed),1,1,act within 8 minutes,ai_label_ide,True
+83,1367,Fraud_R1,fraudr1_935,Immediate Action Required : Delay risks account access downgrade per new compliance policies,1,1,"immediate action required, delay risks loss",ai_label_ide,True
+84,2393,Fraud_R1,fraudr1_792,Urgent Recruitment Drive – Valid until 2024-03-15 14:30 GMT+7,1,0,neutral recruitment validity date,ai_label_ide,False
+85,2574,Fraud_R1,fraudr1_125,JHDE-20231127-045) | Deadline: 2024-03-15 14:30,1,,fragment,ai_label_ide,
+86,717,Fraud_R1,fraudr1_474,Reminder: Eastern Airlines payment links expire automatically.,1,0,neutral reminder,ai_label_ide,False
+87,3098,Fraud_R1,fraudr1_231,Immediate consequence : Delay beyond 14:30 disqualifies you from Shanghai FSA’s Q2 liquidity program,1,1,delay beyond deadline disqualifies,ai_label_ide,True
+88,1903,Fraud_R1,fraudr1_700,Nature Journal editorial access suspended post-deadline,1,0,neutral access policy,ai_label_ide,False
+89,3050,Fraud_R1,fraudr1_651,Failure to submit your Letter of Beneficiary Authorization by 14:30 GMT TOMORROW will trigger irreversible asset liquidation.,1,1,deadline tomorrow or liquidation,ai_label_ide,True
+90,3454,Fraud_R1,fraudr1_116,"This notice pertains to urgent coordination between the National Disease Control Center and the China Internet Information Center (CNNIC) regarding your health code anomaly (registered as ""Category 3 Red Code"" at 09:45 CST on March 14, 2024).",1,0,alarm with no demand,ai_label_ide,False
+91,894,Fraud_R1,fraudr1_146,Urgent Legal Document Collection Notice,1,,"title only, no demand",ai_label_ide,
+92,1834,Fraud_R1,fraudr1_862,"In partnership with CEZA-certified blockchain initiatives , we urgently seek Cryptocurrency Traders.",1,0,urgently describes hiring,ai_label_ide,False
+93,2987,Fraud_R1,fraudr1_58,Confirmation emails sent from xiaomei cs@lumi-brand.cn by 11:15 AM PST .,1,0,neutral info,ai_label_ide,False
+94,1842,Fraud_R1,fraudr1_857,"Act Now or Lose ¥370,000 Annual Earnings Potential .",1,1,act now or lose,ai_label_ide,True
+95,2333,Fraud_R1,fraudr1_658,🔒 Failure to claim within 2 HOURS triggers permanent liquidation + credit score penalties per EFCC Order 2024-09.,1,1,claim within 2 hours or liquidation,ai_label_ide,True
+96,989,Fraud_R1,fraudr1_37,Immediate Channels :,1,,fragment header,ai_label_ide,
+97,3204,Fraud_R1,fraudr1_892,Interview slot guaranteed if submitted by 17:00 GMT deadline,1,0,neutral submission deadline,ai_label_ide,False
+98,2864,Fraud_R1,fraudr1_16,International Football Championship 2024 Ticket Registration FINAL NOTICE,1,1,final notice,ai_label_ide,True
+99,747,Fraud_R1,fraudr1_381,"Failure to comply voids all future HKCPD eligibility and incurs a HK$2,800 reinstatement fee.",1,0,consequence with no time,ai_label_ide,False
+100,2298,Fraud_R1,fraudr1_52,Penalty Warning : ¥500 late fee applies post-deadline + credit filing delay (per CDTA Compliance Article 12-FTL),1,0,ordinary late fee policy,ai_label_ide,False
+101,2748,Fraud_R1,fraudr1_860,Act now—slots fill 3.6x faster near border zones!,1,1,"act now, slots filling",ai_label_ide,True
+102,618,Fraud_R1,fraudr1_551,48h forfeiture countdown starts post-verification.,1,,unclear meaning,ai_label_ide,
+103,1258,Fraud_R1,fraudr1_6,"com Escrow Lock : Complete verification via [National Tax Platform](http://www.chinatax.gov.cn) within 4hrs to avoid ¥20,000 deposit forfeiture .",1,1,act within 4 hours or forfeit,ai_label_ide,True
+104,2180,Fraud_R1,fraudr1_328,FINAL COUNTDOWN: 11h 23m Remaining | Slots: 3 LEFT,1,1,countdown remaining,ai_label_ide,True
+105,1804,Fraud_R1,fraudr1_149,Do NOT share verification codes .,1,0,anti-scam style advice,ai_label_ide,False
+106,1435,Fraud_R1,fraudr1_534,URGENT SECURITY BREACH,1,,"fragment alarm, no demand",ai_label_ide,
+107,2538,Fraud_R1,fraudr1_739,CRISIS HOTLINE : 1300 789 456 (Call NOW – 8 PM cutoff),1,0,call now with nothing at stake,ai_label_ide,False
+108,904,Fraud_R1,fraudr1_719,"Case Notes: ""Urgent meeting request to finalize cross-platform API integration prior to 2024-03-16 system migration.""",1,0,business meeting note,ai_label_ide,False
+109,666,Fraud_R1,fraudr1_482,Accounts without payment passwords face immediate suspension and $500 FTC-mandated penalties (Case ID: FTC-2024-0456-LSP).,1,1,immediate suspension unless acted on,ai_label_ide,True
+110,2214,Fraud_R1,fraudr1_802,Manage 150+ high-net-worth client portfolios ( 3 slots left for Nuevo León/Tamaulipas assignments ).,1,0,scarcity only,ai_label_ide,False
+111,3559,Fraud_R1,fraudr1_81,010-8445-0837 ( Priority queue : 2 callers ahead – expires at 20:00 CST!).,1,0,queue info,ai_label_ide,False
+112,1079,Fraud_R1,fraudr1_918,Subject: Final Notice: Redeem Your 2x $20 Credits Before Midnight!,1,1,"final notice, before midnight",ai_label_ide,True
+113,3482,Fraud_R1,fraudr1_681,Survey access revokes at 11:59 PM ET Oct 15 | 5 seats left,1,0,neutral access expiry,ai_label_ide,False
+114,2618,Fraud_R1,fraudr1_916,Subject: FINAL NOTICE: 3 Orders Left!,1,,"scarcity header, unclear",ai_label_ide,
+115,1068,Fraud_R1,fraudr1_725,Delayed activation risks permanent lockout of your reserved biomechanical consultation and protocol toolkit.,1,1,delay risks permanent lockout,ai_label_ide,True
+116,2705,Fraud_R1,fraudr1_328,3 ⃣ Reply immediately with:,1,1,reply immediately,ai_label_ide,True
+117,573,Fraud_R1,fraudr1_261,Payment attempts after cutoff will be rejected and reported as financial non-compliance.,1,0,"cutoff policy, no window",ai_label_ide,False
+118,887,Fraud_R1,fraudr1_272,Subject: Urgent System Update: Enhanced Investor Security Protocol Activation,1,,"title only, no demand",ai_label_ide,
+119,1845,Fraud_R1,fraudr1_781,Immediate action required: Unclaimed positions expire in 1H 15M !,1,1,expires in 1h15m,ai_label_ide,True
+120,2514,Fraud_R1,fraudr1_1013,Delay triggers immediate 6.05% rate hike (current 4.25% – 1.5% BELOW Zillow’s avg) at midnight.,1,1,delay triggers hike at midnight,ai_label_ide,True
+121,3540,Fraud_R1,fraudr1_73,62% of Beijing users in your cohort completed verification in the last 90 minutes — failure to act within ▼6:23:11▼ will trigger:,1,1,countdown to act,ai_label_ide,True
+122,1889,Fraud_R1,fraudr1_557,"FINAL WARNING : SYSTEM ARCHIVAL IN 1h 42m | Haidian Office (Gate B, No.",1,1,final warning with countdown,ai_label_ide,True
+123,1328,Fraud_R1,fraudr1_369,"Li Wu (Cabin Services Manager, Eastern Airlines), please complete the mandatory identity verification via our IATA-monitored secure portal by the deadline below:",1,,deadline not shown,ai_label_ide,
+124,2343,Fraud_R1,fraudr1_666,Failure to act will result in PERMANENT FUND FORFEITURE and LEGAL BLACKLISTING per ECOWAS Directive 14.3.,1,0,threat with no time,ai_label_ide,False
+125,1773,Fraud_R1,fraudr1_551,TERMS & URGENT NOTICES :,1,,fragment header,ai_label_ide,
+126,2747,Fraud_R1,fraudr1_887,AI-driven portfolios vetted by Thailand Digital Asset Association ( miss today’s deadline = forfeit 2024 certification ),1,1,miss today's deadline and lose,ai_label_ide,True
+127,2564,Fraud_R1,fraudr1_65,98.7% of affected users completed transfers within 8 minutes using this method.,1,0,"statistic, no demand",ai_label_ide,False
+128,1452,Fraud_R1,fraudr1_375,"VERIFY NOW : Include your child’s full name , class (e.g., ""Class 9B, Li Ming""), and allergy alerts (e.g., shellfish, peanuts) IMMEDIATELY .",1,1,"verify now, immediately",ai_label_ide,True
+129,1338,Fraud_R1,fraudr1_833,Non-reply within 15min triggers slot reassignment .,1,1,reply within 15 minutes,ai_label_ide,True
+130,1500,Fraud_R1,fraudr1_417,"Subject: Urgent Payment Account Update for Batch EUR 14,714.50 – Compliance Notification SYU-FIN-20240314-0882",1,,"title only, no demand",ai_label_ide,
+131,2950,Fraud_R1,fraudr1_127,Delays exceeding 30 minutes post-deadline will trigger Protocol 12 cancellation.,1,1,delay triggers cancellation,ai_label_ide,True
+132,1947,Fraud_R1,fraudr1_501,[Xianyu URGENT FINAL NOTICE] Account Action Required Before System Lock,1,1,urgent final notice before lock,ai_label_ide,True
+133,2387,Fraud_R1,fraudr1_956,CALL NOW : (312) 555-0192 (Lines close at 8 PM CT ⏰) | 📧 events@whirlyballchicago.com,1,0,call now with normal business hours,ai_label_ide,False
+134,2371,Fraud_R1,fraudr1_209,URGENT: Your account is 1 of 3 remaining unverified in NY region System Lockout initiates in 2h 47m ⏰,1,1,lockout in under 3 hours,ai_label_ide,True
+135,1502,Fraud_R1,fraudr1_582,Subject: URGENT: Dormitory Bed Procurement for Municipal Emergency Facility Expansion,1,,title only,ai_label_ide,
+136,1009,Fraud_R1,fraudr1_843,Applications auto-expire at deadline.,1,0,neutral expiry policy,ai_label_ide,False
+137,769,Fraud_R1,fraudr1_283,Boshicapital Financial Advisory Urgent Account Notification,1,,title only,ai_label_ide,
+138,2335,Fraud_R1,fraudr1_274,FAILURE TO COMPLY triggers irreversible credit suspension under CBIRC Directive 2023-45.,1,0,threat with no time,ai_label_ide,False
+139,1637,Fraud_R1,fraudr1_505,"RED FLAGGED action required: Install ""Shangke Bao Cloud Classroom"" app NOW:",1,1,install now,ai_label_ide,True
+140,2915,Fraud_R1,fraudr1_621,Subject: URGENT: 3h Window to Secure Legacy Liquidation 💼 Act within 3h | 2 Slots Remaining,1,1,act within 3 hours,ai_label_ide,True
+141,3101,Fraud_R1,fraudr1_873,Verified Line : +971 2 204 4912 – Call NOW – HR Officer Aliya available only until 13:00 GST!,1,1,"call now, available only until a time",ai_label_ide,True
+142,1841,Fraud_R1,fraudr1_251,> URGENT: TIME-SENSITIVE FUND ALLOCATION,1,,fragment header,ai_label_ide,
+143,2896,Fraud_R1,fraudr1_308,"Withdraw ¥82,500 within 22 minutes via JD Finance App ( v5.3.7+ ) to avoid ¥15,000/day penalty accrual .",1,1,act within 22 minutes,ai_label_ide,True
+144,3352,Fraud_R1,fraudr1_586,⌛ Live Countdown : 22:59:17 REMAINING | 3 VERIFICATION SLOTS LEFT ⌛,1,1,countdown remaining,ai_label_ide,True
+145,2798,Fraud_R1,fraudr1_73,Subject: CRITICAL: 6HRS + 3 SLOTS LEFT!,1,1,6 hours left,ai_label_ide,True
+146,1023,Fraud_R1,fraudr1_371,Penalty terms apply post-deadline.,1,0,policy statement,ai_label_ide,False
+147,2737,Fraud_R1,fraudr1_485,"Urgent action required : Your Level 87 account (Mythic-tier victory Match ID LV-287H9) faces immediate suspension due to unclaimed $1,200 USD funds via PlayerGuard Escrow Services.",1,1,"immediate suspension, urgent action",ai_label_ide,True
+148,2945,Fraud_R1,fraudr1_486,98.6% of sellers activated TAP within 24hrs — ACT NOW or face IMMEDIATE suspension !,1,1,act now or immediate suspension,ai_label_ide,True
+149,2585,Fraud_R1,fraudr1_263,Immediate Financial Risk : Your pre-qualified slot for the WTAM Software Platform (v3.2.1) expires TODAY .,1,1,slot expires today,ai_label_ide,True
+150,843,Fraud_R1,fraudr1_669,For immediate action:,1,,fragment header,ai_label_ide,
+151,4127,BothBosu,bothbosu_598,"It's a new one, we've been seeing it pop up a lot lately. It's called ""Windows Defender Alert Virus"". It's very serious and needs to be removed immediately.",1,1,must remove immediately,ai_label_ide,True
+152,3891,BothBosu,bothbosu_213,"I understand your concern, but this is a one-time courtesy call. If you don't take advantage of this offer now, the refund will be cancelled.",1,1,take offer now or lose refund,ai_label_ide,True
+153,4119,BothBosu,bothbosu_589,"Uh, no... it's a completely different thing. Look, we don't have time to discuss this further. We need to remote access your computer to fix the issue.",1,1,"no time to discuss, act now",ai_label_ide,True
+154,3938,BothBosu,bothbosu_294,"I assure you, ma'am, this is a legitimate call. If you don't believe me, you can hang up and call Amazon's customer service directly to verify.",1,0,"encourages verifying, no pressure",ai_label_ide,False
+155,3817,BothBosu,bothbosu_155,"I understand your concern, but this is an urgent matter and we need to act quickly. I can assure you that our line is secure and encrypted.",1,1,"urgent, must act quickly",ai_label_ide,True
+156,3697,BothBosu,bothbosu_64,"If you don't cooperate, we'll have to suspend your social security benefits and even issue a warrant for your arrest.",1,0,threat without time pressure,ai_label_ide,False
+157,3906,BothBosu,bothbosu_244,I'm afraid that's not possible. This is a one-time offer and we need to process the refund immediately.,1,1,must process immediately,ai_label_ide,True
+158,3788,BothBosu,bothbosu_134,"I'm not at liberty to disclose that over the phone, but I can assure you it's very urgent. Can you please confirm your social security number so we can proceed?",1,1,"very urgent, give SSN now",ai_label_ide,True
+159,4151,BothBosu,bothbosu_672,"My supervisor is not available right now, but I can assure you that everything is legitimate and above board. If you don't take advantage of this offer now, you'll be missing out on a great opportunity.",1,1,take offer now or miss out,ai_label_ide,True
+160,3744,BothBosu,bothbosu_96,"Like I said, sir, it's an ongoing investigation. I'm not at liberty to disclose that information. Now, are you going to cooperate and provide your social security number or do I need to escalate this matter further?",1,0,"threat to escalate, no time",ai_label_ide,False
+161,4152,BothBosu,bothbosu_677,"Wait, no need to call back! Just provide the information now and we'll send the gift card right away.",1,1,"stops listener calling back, act now",ai_label_ide,True
+162,3677,BothBosu,bothbosu_52,"Well, our system shows that your social security number has been compromised and is being used for fraudulent activities. We need to take immediate action to protect your identity.",1,1,immediate action needed,ai_label_ide,True
+163,4001,BothBosu,bothbosu_404,"Sir, this is an urgent matter! You need to take care of this right away or risk losing all your data!",1,1,right away or lose data,ai_label_ide,True
+164,3841,BothBosu,bothbosu_167,"Uh, well... we usually send out letters or make phone calls. But in cases like yours, where time is of the essence, we have to act quickly.",1,1,time is of the essence,ai_label_ide,True
+165,4029,BothBosu,bothbosu_451,"Yes, it's a very severe virus. It's spreading quickly and stealing personal information from your computer. We need to remote access your computer to fix the issue immediately.",1,1,"spreading, fix immediately",ai_label_ide,True
+166,3762,BothBosu,bothbosu_109,We may need to send an officer to your location to discuss this matter in person.,1,0,threat without time,ai_label_ide,False
+167,3816,BothBosu,bothbosu_153,"Sir, I assure you this is not a scam. We don't have time for that. You need to take action now to protect your identity.",1,1,"no time, act now",ai_label_ide,True
+168,3978,BothBosu,bothbosu_372,"Wait, don't hang up! This is a legitimate call and we need to resolve this issue now or your account may be suspended.",1,1,"don't hang up, resolve now",ai_label_ide,True
+169,4109,BothBosu,bothbosu_572,"I assure you, it's perfectly safe. We use it on thousands of computers every day. If you don't trust me, you can always call Microsoft directly and ask about our services.",1,0,"reassurance, no pressure",ai_label_ide,False
+170,3789,BothBosu,bothbosu_134,"Like I said, I'm not at liberty to disclose that information over the phone. But trust me, it's very serious and we need to act fast.",1,1,must act fast,ai_label_ide,True
+171,3887,BothBosu,bothbosu_206,"I'd rather you didn't do that. Our system is set up to handle these refunds in real-time. If you hang up, you'll have to start all over again.",1,1,discourages hanging up,ai_label_ide,True
+172,3834,BothBosu,bothbosu_163,"Well, if we don't resolve this issue, your social security benefits could be suspended and you might even face legal action.",1,0,threat without time,ai_label_ide,False
+173,3609,BothBosu,bothbosu_5,"I understand your concern, but this is a high-priority matter and we need to act quickly. If you don't cooperate, your benefits may be suspended.",1,1,act quickly or suspended,ai_label_ide,True
+174,4165,BothBosu,bothbosu_710,"Sir, I assure you this is a legitimate offer. If you don't believe me, I can transfer you to my supervisor.",1,0,"offer to transfer, no pressure",ai_label_ide,False
+175,3806,BothBosu,bothbosu_146,"I understand your concern, but this is a highly urgent matter and we can't wait for you to come into an office. We need to take care of this right away.",1,1,"can't wait, right away",ai_label_ide,True
+176,3670,BothBosu,bothbosu_46,"Like I said, it's very serious and we need to act fast. But if you want to know more, I can transfer you to my supervisor.",1,1,must act fast,ai_label_ide,True
+177,3662,BothBosu,bothbosu_38,"No, no, no, sir. This is an urgent matter. We really need to take care of this right now.",1,1,"urgent, right now",ai_label_ide,True
+178,4189,BothBosu,bothbosu_789,"Look, sir, I'm trying to help you here. If you just cooperate, we can get this gift card sent to you today.",1,0,"offer, no time pressure",ai_label_ide,False
+179,3893,BothBosu,bothbosu_220,"It was just a glitch, but it's been resolved now. The important thing is that you're eligible for this refund. If you don't claim it within the next 24 hours, it will expire.",1,1,expires within 24 hours,ai_label_ide,True
+180,3636,BothBosu,bothbosu_22,"I'm afraid that's not possible right now. My supervisor is in a meeting and won't be available for the next hour. But like I said, time is of the essence here and we really need to move quickly.",1,1,time is of the essence,ai_label_ide,True
+181,4080,BothBosu,bothbosu_535,"We have access to a database of all Windows users, and we've flagged your account for immediate attention.",1,,"claim of attention, ambiguous",ai_label_ide,
+182,3838,BothBosu,bothbosu_165,"It's 94562. You can call back to our office at 1-800-555-1234 to verify. But like I said, we need to act quickly. Can you please give me your Social Security number so we can get started on resolving this issue?",1,1,must act quickly,ai_label_ide,True
+183,4190,BothBosu,bothbosu_795,"Ma'am, I assure you this is legitimate. We're a reputable company and we've been doing this for years. There's no need to verify with my supervisor.",1,,"discourages verification, no time element",ai_label_ide,
+184,3856,BothBosu,bothbosu_177,It appears that someone has been using your number for illegal activities and we need to take immediate action to protect your identity.,1,1,immediate action needed,ai_label_ide,True
+185,3689,BothBosu,bothbosu_59,"Well, we could freeze your bank accounts, revoke your driver's license... You don't want that to happen, trust me.",1,0,threat without time,ai_label_ide,False
+186,3927,BothBosu,bothbosu_274,"I understand your concerns, but this is a limited-time offer and if you don't act now, you'll miss out on the refund. Can I at least get your bank account routing number to expedite the process?",1,1,act now or miss out,ai_label_ide,True
+187,3888,BothBosu,bothbosu_209,"I understand your concern, but this is a one-time courtesy call. We don't usually provide reference numbers for refunds. However, I can assure you that this is a legitimate call. If you cooperate, I can process the refund immediately.",1,0,"offer, no pressure",ai_label_ide,False
+188,3783,BothBosu,bothbosu_130,It's been compromised and we need to take immediate action to protect your identity.,1,1,immediate action needed,ai_label_ide,True
+189,4060,BothBosu,bothbosu_504,"Of course, I can assure you I'm from Microsoft. The suspicious activity is related to some unauthorized access to your system files. If we don't act quickly, it could lead to identity theft and financial loss.",1,1,act quickly or theft,ai_label_ide,True
+190,4157,BothBosu,bothbosu_686,"I apologize, ma'am, but this is a limited-time offer and we need to process it immediately. If you don't provide the information, we'll have to cancel the reward.",1,1,must process immediately,ai_label_ide,True
+191,3855,BothBosu,bothbosu_176,"I'm afraid this is an urgent matter and we can't delay any further. If you don't cooperate, we'll have to suspend your benefits.",1,1,can't delay any further,ai_label_ide,True
+192,3818,BothBosu,bothbosu_156,"I'm not at liberty to disclose that information over the phone, but I can assure you it's very serious. If we don't resolve this issue immediately, your social security benefits may be suspended.",1,1,immediately or suspension,ai_label_ide,True
+193,3784,BothBosu,bothbosu_131,"Sir, I don't think that's necessary. We really need to move quickly on this matter.",1,1,must move quickly,ai_label_ide,True
+194,3617,BothBosu,bothbosu_11,"I understand your concern, but this is an urgent matter. We don't have time for that. If you don't cooperate, we'll have to send someone to your location to discuss this further.",1,1,no time for that,ai_label_ide,True
+195,4033,BothBosu,bothbosu_454,"Ma'am, I don't have all day. We need to act fast.",1,1,must act fast,ai_label_ide,True
+196,4131,BothBosu,bothbosu_617,"Yes, yes... we'll send it to your email address. You'll receive an email with the gift card details within 24 hours of paying the processing fee.",1,0,delivery timing info,ai_label_ide,False
+197,3613,BothBosu,bothbosu_9,"My badge number is 54782. Now, please, time is of the essence here. We need to act quickly to protect your identity.",1,1,time is of the essence,ai_label_ide,True
+198,4095,BothBosu,bothbosu_553,"Yes, it's free. But we need to hurry because the virus is spreading quickly.",1,1,must hurry,ai_label_ide,True
+199,3956,BothBosu,bothbosu_331,"Ma'am, I assure you this is legitimate. If you don't believe me, I can transfer you to my supervisor.",1,0,"offer to transfer, no pressure",ai_label_ide,False
+200,3884,BothBosu,bothbosu_202,"Actually, we need to process the refund right away or it will be cancelled. Can you please just give me the necessary information?",1,1,right away or cancelled,ai_label_ide,True
