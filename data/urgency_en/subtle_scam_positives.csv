@@ -1,0 +1,61 @@
+text_raw,label,source,conversation_id,hard_negative
+Keep this matter between us until the investigation is complete. Contacting anyone else could interfere with the case.,1,TargetedAug_v1,TA_POS_001,False
+You are not allowed to discuss this call with your family while we verify the account.,1,TargetedAug_v1,TA_POS_002,False
+Do not contact the branch yet. I need you to follow my instructions first so the case is not disrupted.,1,TargetedAug_v1,TA_POS_003,False
+Please move somewhere private before we continue. Nobody around you should hear these instructions.,1,TargetedAug_v1,TA_POS_004,False
+You must not inform your employer about this conversation until I tell you the verification is complete.,1,TargetedAug_v1,TA_POS_005,False
+"For security reasons, do not ask anyone else for advice while we are processing this case.",1,TargetedAug_v1,TA_POS_006,False
+"If another person becomes involved, the protection on your account may be withdrawn.",1,TargetedAug_v1,TA_POS_007,False
+Keep the conversation confidential and stay with me until I confirm that the problem is resolved.,1,TargetedAug_v1,TA_POS_008,False
+Do not forward these instructions to anyone. This procedure only works if it remains confidential.,1,TargetedAug_v1,TA_POS_009,False
+You should not call the official hotline yet because that could delay the investigation.,1,TargetedAug_v1,TA_POS_010,False
+Remain connected while you open the banking app so I can confirm each step with you.,1,TargetedAug_v1,TA_POS_011,False
+Do not end the call while the verification is running or the request may be rejected.,1,TargetedAug_v1,TA_POS_012,False
+Leave the call connected and follow the prompts I give you as you complete the transfer.,1,TargetedAug_v1,TA_POS_013,False
+I need you to stay connected until the security check finishes on my side.,1,TargetedAug_v1,TA_POS_014,False
+Keep your phone with you and do not disconnect while I speak to the investigation team.,1,TargetedAug_v1,TA_POS_015,False
+Stay with me on the call while you travel to the nearest cash machine.,1,TargetedAug_v1,TA_POS_016,False
+Do not close the app while we are checking the transaction. I will tell you when it is safe.,1,TargetedAug_v1,TA_POS_017,False
+Keep this conversation open until I confirm that your funds have been secured.,1,TargetedAug_v1,TA_POS_018,False
+Remain on the line while you read out the verification code that appears on your screen.,1,TargetedAug_v1,TA_POS_019,False
+Do not switch to another call. I need to guide you through the process without interruption.,1,TargetedAug_v1,TA_POS_020,False
+"The investigation has already been escalated, and failure to cooperate may be recorded against your name.",1,TargetedAug_v1,TA_POS_021,False
+"Your identification is linked to an active case, so refusing this verification could create further problems.",1,TargetedAug_v1,TA_POS_022,False
+"The case officer is waiting for your response, and a lack of cooperation may be treated as intentional.",1,TargetedAug_v1,TA_POS_023,False
+"Your account is under review. If you stop the process now, the restrictions may become permanent.",1,TargetedAug_v1,TA_POS_024,False
+We have received instructions to proceed unless you complete the verification during this call.,1,TargetedAug_v1,TA_POS_025,False
+"The compliance team has placed a hold on the case, but they can only keep it there while you cooperate.",1,TargetedAug_v1,TA_POS_026,False
+The report is ready to be submitted under your name unless we clear the issue first.,1,TargetedAug_v1,TA_POS_027,False
+"Your details appear in an investigation file, and ignoring this call could cause the matter to escalate.",1,TargetedAug_v1,TA_POS_028,False
+The department has authorised further action if you do not complete the required steps with me.,1,TargetedAug_v1,TA_POS_029,False
+"A formal report is being prepared, but I can stop it if you cooperate with the verification now.",1,TargetedAug_v1,TA_POS_030,False
+"I have a short window before the system releases the case, so I need you to complete the next step with me.",1,TargetedAug_v1,TA_POS_031,False
+"Once this call ends, I will no longer be able to pause the process for you.",1,TargetedAug_v1,TA_POS_032,False
+The temporary hold on your account is active only while I am handling the case.,1,TargetedAug_v1,TA_POS_033,False
+"I can keep the request pending for a few more minutes, but after that it moves automatically.",1,TargetedAug_v1,TA_POS_034,False
+"The verification session will close when we disconnect, and I cannot start it again from my side.",1,TargetedAug_v1,TA_POS_035,False
+I have already delayed the submission once. We need to finish the procedure before it resumes.,1,TargetedAug_v1,TA_POS_036,False
+"The protection request is open right now, but it will expire if we leave the process unfinished.",1,TargetedAug_v1,TA_POS_037,False
+My supervisor has given us one opportunity to resolve this before the file moves forward.,1,TargetedAug_v1,TA_POS_038,False
+The current session is the only chance I have to reverse the restriction before it becomes final.,1,TargetedAug_v1,TA_POS_039,False
+"I can still stop the next stage, but only while your case remains open on my screen.",1,TargetedAug_v1,TA_POS_040,False
+"Our system is tracking activity on the account, so do exactly what I tell you and do not make any extra transactions.",1,TargetedAug_v1,TA_POS_041,False
+We can see the device connected to your account. Follow my instructions so we can separate the suspicious activity.,1,TargetedAug_v1,TA_POS_042,False
+"Your banking activity is being observed during this investigation, and unusual actions could affect the case.",1,TargetedAug_v1,TA_POS_043,False
+"The investigation team is watching for movement of funds, so you must follow the sequence I provide.",1,TargetedAug_v1,TA_POS_044,False
+We are monitoring the session remotely and will know if the process is interrupted.,1,TargetedAug_v1,TA_POS_045,False
+"The system is recording your response to this investigation, so cooperate carefully with each instruction.",1,TargetedAug_v1,TA_POS_046,False
+Your account activity is visible to our security team right now. Do not make changes unless I direct you.,1,TargetedAug_v1,TA_POS_047,False
+"We are checking every action on the profile as it happens, so stay with the procedure I give you.",1,TargetedAug_v1,TA_POS_048,False
+Your device has been placed under security review. Avoid contacting anyone else while we complete the checks.,1,TargetedAug_v1,TA_POS_049,False
+"The account is being watched for suspicious behaviour, and I need you to follow only my instructions.",1,TargetedAug_v1,TA_POS_050,False
+"I am trying to prevent this from becoming a bigger problem for you, so please cooperate before my supervisor takes over.",1,TargetedAug_v1,TA_POS_051,False
+I have already made an exception to help you. I need you to complete your part before I get questioned for it.,1,TargetedAug_v1,TA_POS_052,False
+"If you delay further, I may not be able to protect you from the next step in the process.",1,TargetedAug_v1,TA_POS_053,False
+I am giving you a chance to resolve this quietly before the matter is handed to another department.,1,TargetedAug_v1,TA_POS_054,False
+You need to trust me and complete the verification exactly as I explain it.,1,TargetedAug_v1,TA_POS_055,False
+"I am keeping the case from escalating for you, but I cannot do that if you stop cooperating.",1,TargetedAug_v1,TA_POS_056,False
+"You have been given an opportunity that is not normally offered, so do not waste it by delaying.",1,TargetedAug_v1,TA_POS_057,False
+"I can help clear your name, but only if you follow the procedure without involving anyone else.",1,TargetedAug_v1,TA_POS_058,False
+"I am taking responsibility for keeping this case open, so I need your full cooperation now.",1,TargetedAug_v1,TA_POS_059,False
+This is your opportunity to settle the issue privately before it becomes a formal matter.,1,TargetedAug_v1,TA_POS_060,False

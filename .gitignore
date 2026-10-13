@@ -24,3 +24,5 @@ backend/workers/**/scam_detect_pb2_grpc.py
 
 # General
 .DS_Store
+
+.venv312

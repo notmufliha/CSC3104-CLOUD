@@ -1,0 +1,61 @@
+text_raw,label,source,conversation_id,hard_negative
+Reminder: your dental appointment is tomorrow at 9 am. Please arrive ten minutes early for registration.,0,TargetedAug_v1,TA_NEG_001,True
+Your clinic appointment is scheduled for Friday morning. Reply if you need to reschedule.,0,TargetedAug_v1,TA_NEG_002,True
+The specialist has an earlier slot available this afternoon. Call us if you would like to take it.,0,TargetedAug_v1,TA_NEG_003,True
+Please collect your prescription before the pharmacy closes tonight.,0,TargetedAug_v1,TA_NEG_004,True
+Your vaccination appointment is due next week. You may change the date through the clinic portal.,0,TargetedAug_v1,TA_NEG_005,True
+Your medical report is ready for collection. The records counter closes at 5 pm.,0,TargetedAug_v1,TA_NEG_006,True
+The doctor has requested a follow-up within two weeks. Please book a suitable time when convenient.,0,TargetedAug_v1,TA_NEG_007,True
+Your physiotherapy session starts in thirty minutes. Let us know if you are running late.,0,TargetedAug_v1,TA_NEG_008,True
+The clinic will close early today for maintenance. Please collect any medication before 4 pm.,0,TargetedAug_v1,TA_NEG_009,True
+Your appointment deposit is due by Thursday to keep the booking. Contact us if you need assistance.,0,TargetedAug_v1,TA_NEG_010,True
+Your credit card payment is due this Friday. You can pay through the official banking app.,0,TargetedAug_v1,TA_NEG_011,True
+Your monthly loan instalment is due on the fifteenth. No action is needed if you have automatic payment enabled.,0,TargetedAug_v1,TA_NEG_012,True
+Your bank statement for this month is now available in the mobile app.,0,TargetedAug_v1,TA_NEG_013,True
+Your fixed deposit matures next Monday. You can review your options after logging in normally.,0,TargetedAug_v1,TA_NEG_014,True
+A scheduled transfer will be processed tomorrow. You can cancel it in the app before midnight if needed.,0,TargetedAug_v1,TA_NEG_015,True
+Your debit card expires next month. A replacement card will be mailed to your registered address.,0,TargetedAug_v1,TA_NEG_016,True
+Your account balance is below the minimum required for fee waiver this month.,0,TargetedAug_v1,TA_NEG_017,True
+We noticed a card transaction overseas. Review it in your banking app when you have time.,0,TargetedAug_v1,TA_NEG_018,True
+Your e-statement is ready. Please sign in through the official website to view it.,0,TargetedAug_v1,TA_NEG_019,True
+Your recurring payment will be charged tomorrow according to your existing instructions.,0,TargetedAug_v1,TA_NEG_020,True
+Your mobile plan renews tonight at the usual monthly fee. No action is required.,0,TargetedAug_v1,TA_NEG_021,True
+Your broadband contract ends this month. You may renew or switch plans before the expiry date.,0,TargetedAug_v1,TA_NEG_022,True
+Planned maintenance will affect internet service between 2 am and 4 am tonight.,0,TargetedAug_v1,TA_NEG_023,True
+Your electricity bill is due next Wednesday. Payment can be made through the usual official channels.,0,TargetedAug_v1,TA_NEG_024,True
+Water service in your block will be interrupted tomorrow morning for scheduled maintenance.,0,TargetedAug_v1,TA_NEG_025,True
+Your prepaid mobile balance expires at the end of the month if it is not used.,0,TargetedAug_v1,TA_NEG_026,True
+Your data allowance is almost used up for this billing cycle. Extra charges may apply according to your plan.,0,TargetedAug_v1,TA_NEG_027,True
+Your technician appointment is tomorrow between 1 pm and 3 pm. Please ensure someone is home.,0,TargetedAug_v1,TA_NEG_028,True
+The promotional rate on your current phone plan ends this Sunday. Your normal rate will apply after that.,0,TargetedAug_v1,TA_NEG_029,True
+Your utilities account has an outstanding amount. Please review the bill in the provider's official app.,0,TargetedAug_v1,TA_NEG_030,True
+Course registration closes tomorrow evening. Submit your choices through the student portal before then.,0,TargetedAug_v1,TA_NEG_031,True
+Your assignment is due at 11:59 pm tonight. Extensions must be requested through your lecturer.,0,TargetedAug_v1,TA_NEG_032,True
+Please submit your timesheet by noon Friday so payroll can process it on time.,0,TargetedAug_v1,TA_NEG_033,True
+The meeting has been moved forward to 2 pm today. Please update your calendar.,0,TargetedAug_v1,TA_NEG_034,True
+Applications for the workshop close at the end of this week.,0,TargetedAug_v1,TA_NEG_035,True
+Your library loan is due tomorrow. Renew it online if you still need the book.,0,TargetedAug_v1,TA_NEG_036,True
+The lab booking will be released after fifteen minutes if nobody checks in.,0,TargetedAug_v1,TA_NEG_037,True
+Please complete the mandatory training module by the end of the month.,0,TargetedAug_v1,TA_NEG_038,True
+The office will close at 3 pm on Friday. Collect any documents you need before then.,0,TargetedAug_v1,TA_NEG_039,True
+Your leave request needs a response from your manager before the roster is finalised.,0,TargetedAug_v1,TA_NEG_040,True
+Your parcel is arriving today between 3 pm and 6 pm. You can track it in the courier app.,0,TargetedAug_v1,TA_NEG_041,True
+Check-in for your flight closes one hour before departure. Please arrive at the airport early.,0,TargetedAug_v1,TA_NEG_042,True
+Your hotel reservation can be cancelled without charge until 6 pm tomorrow.,0,TargetedAug_v1,TA_NEG_043,True
+The restaurant will hold your table for fifteen minutes after the reservation time.,0,TargetedAug_v1,TA_NEG_044,True
+Your train departs from platform four in twenty minutes.,0,TargetedAug_v1,TA_NEG_045,True
+Boarding begins at 7:10 pm. Please have your boarding pass ready.,0,TargetedAug_v1,TA_NEG_046,True
+Your delivery driver is nearby and may call when reaching the lobby.,0,TargetedAug_v1,TA_NEG_047,True
+The pickup point closes at 9 pm tonight. Uncollected parcels will remain available tomorrow.,0,TargetedAug_v1,TA_NEG_048,True
+Your event tickets must be downloaded before entering the venue.,0,TargetedAug_v1,TA_NEG_049,True
+"The promotional fare expires tonight, but regular tickets will still be available afterward.",0,TargetedAug_v1,TA_NEG_050,True
+"For your safety, never share your one-time password with anyone, including bank staff.",0,TargetedAug_v1,TA_NEG_051,True
+"If a caller asks you to transfer money urgently, end the call and contact the organisation through its official number.",0,TargetedAug_v1,TA_NEG_052,True
+We detected an unsuccessful login attempt. You can review recent activity after signing in through the official app.,0,TargetedAug_v1,TA_NEG_053,True
+Your password will expire in seven days. Change it through the company portal before then.,0,TargetedAug_v1,TA_NEG_054,True
+A security update is available for your device. Install it when convenient from the official settings menu.,0,TargetedAug_v1,TA_NEG_055,True
+"If you did not make this purchase, freeze your card in the app and contact the bank using the number printed on your card.",0,TargetedAug_v1,TA_NEG_056,True
+Do not approve login requests you did not initiate. Report suspicious activity through the official support page.,0,TargetedAug_v1,TA_NEG_057,True
+Your workplace account will require multi-factor authentication starting next month.,0,TargetedAug_v1,TA_NEG_058,True
+A weather advisory is in effect this afternoon. Avoid exposed areas if thunderstorms develop.,0,TargetedAug_v1,TA_NEG_059,True
+The building fire alarm will be tested at 10 am. No evacuation is required unless instructed otherwise.,0,TargetedAug_v1,TA_NEG_060,True

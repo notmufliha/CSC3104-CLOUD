@@ -1,0 +1,121 @@
+text_raw,label,source,conversation_id,hard_negative
+Reminder: your dental appointment is tomorrow at 9 am. Please arrive ten minutes early for registration.,0,TargetedAug_v1,TA_NEG_001,True
+Your clinic appointment is scheduled for Friday morning. Reply if you need to reschedule.,0,TargetedAug_v1,TA_NEG_002,True
+The specialist has an earlier slot available this afternoon. Call us if you would like to take it.,0,TargetedAug_v1,TA_NEG_003,True
+Please collect your prescription before the pharmacy closes tonight.,0,TargetedAug_v1,TA_NEG_004,True
+Your vaccination appointment is due next week. You may change the date through the clinic portal.,0,TargetedAug_v1,TA_NEG_005,True
+Your medical report is ready for collection. The records counter closes at 5 pm.,0,TargetedAug_v1,TA_NEG_006,True
+The doctor has requested a follow-up within two weeks. Please book a suitable time when convenient.,0,TargetedAug_v1,TA_NEG_007,True
+Your physiotherapy session starts in thirty minutes. Let us know if you are running late.,0,TargetedAug_v1,TA_NEG_008,True
+The clinic will close early today for maintenance. Please collect any medication before 4 pm.,0,TargetedAug_v1,TA_NEG_009,True
+Your appointment deposit is due by Thursday to keep the booking. Contact us if you need assistance.,0,TargetedAug_v1,TA_NEG_010,True
+Your credit card payment is due this Friday. You can pay through the official banking app.,0,TargetedAug_v1,TA_NEG_011,True
+Your monthly loan instalment is due on the fifteenth. No action is needed if you have automatic payment enabled.,0,TargetedAug_v1,TA_NEG_012,True
+Your bank statement for this month is now available in the mobile app.,0,TargetedAug_v1,TA_NEG_013,True
+Your fixed deposit matures next Monday. You can review your options after logging in normally.,0,TargetedAug_v1,TA_NEG_014,True
+A scheduled transfer will be processed tomorrow. You can cancel it in the app before midnight if needed.,0,TargetedAug_v1,TA_NEG_015,True
+Your debit card expires next month. A replacement card will be mailed to your registered address.,0,TargetedAug_v1,TA_NEG_016,True
+Your account balance is below the minimum required for fee waiver this month.,0,TargetedAug_v1,TA_NEG_017,True
+We noticed a card transaction overseas. Review it in your banking app when you have time.,0,TargetedAug_v1,TA_NEG_018,True
+Your e-statement is ready. Please sign in through the official website to view it.,0,TargetedAug_v1,TA_NEG_019,True
+Your recurring payment will be charged tomorrow according to your existing instructions.,0,TargetedAug_v1,TA_NEG_020,True
+Your mobile plan renews tonight at the usual monthly fee. No action is required.,0,TargetedAug_v1,TA_NEG_021,True
+Your broadband contract ends this month. You may renew or switch plans before the expiry date.,0,TargetedAug_v1,TA_NEG_022,True
+Planned maintenance will affect internet service between 2 am and 4 am tonight.,0,TargetedAug_v1,TA_NEG_023,True
+Your electricity bill is due next Wednesday. Payment can be made through the usual official channels.,0,TargetedAug_v1,TA_NEG_024,True
+Water service in your block will be interrupted tomorrow morning for scheduled maintenance.,0,TargetedAug_v1,TA_NEG_025,True
+Your prepaid mobile balance expires at the end of the month if it is not used.,0,TargetedAug_v1,TA_NEG_026,True
+Your data allowance is almost used up for this billing cycle. Extra charges may apply according to your plan.,0,TargetedAug_v1,TA_NEG_027,True
+Your technician appointment is tomorrow between 1 pm and 3 pm. Please ensure someone is home.,0,TargetedAug_v1,TA_NEG_028,True
+The promotional rate on your current phone plan ends this Sunday. Your normal rate will apply after that.,0,TargetedAug_v1,TA_NEG_029,True
+Your utilities account has an outstanding amount. Please review the bill in the provider's official app.,0,TargetedAug_v1,TA_NEG_030,True
+Course registration closes tomorrow evening. Submit your choices through the student portal before then.,0,TargetedAug_v1,TA_NEG_031,True
+Your assignment is due at 11:59 pm tonight. Extensions must be requested through your lecturer.,0,TargetedAug_v1,TA_NEG_032,True
+Please submit your timesheet by noon Friday so payroll can process it on time.,0,TargetedAug_v1,TA_NEG_033,True
+The meeting has been moved forward to 2 pm today. Please update your calendar.,0,TargetedAug_v1,TA_NEG_034,True
+Applications for the workshop close at the end of this week.,0,TargetedAug_v1,TA_NEG_035,True
+Your library loan is due tomorrow. Renew it online if you still need the book.,0,TargetedAug_v1,TA_NEG_036,True
+The lab booking will be released after fifteen minutes if nobody checks in.,0,TargetedAug_v1,TA_NEG_037,True
+Please complete the mandatory training module by the end of the month.,0,TargetedAug_v1,TA_NEG_038,True
+The office will close at 3 pm on Friday. Collect any documents you need before then.,0,TargetedAug_v1,TA_NEG_039,True
+Your leave request needs a response from your manager before the roster is finalised.,0,TargetedAug_v1,TA_NEG_040,True
+Your parcel is arriving today between 3 pm and 6 pm. You can track it in the courier app.,0,TargetedAug_v1,TA_NEG_041,True
+Check-in for your flight closes one hour before departure. Please arrive at the airport early.,0,TargetedAug_v1,TA_NEG_042,True
+Your hotel reservation can be cancelled without charge until 6 pm tomorrow.,0,TargetedAug_v1,TA_NEG_043,True
+The restaurant will hold your table for fifteen minutes after the reservation time.,0,TargetedAug_v1,TA_NEG_044,True
+Your train departs from platform four in twenty minutes.,0,TargetedAug_v1,TA_NEG_045,True
+Boarding begins at 7:10 pm. Please have your boarding pass ready.,0,TargetedAug_v1,TA_NEG_046,True
+Your delivery driver is nearby and may call when reaching the lobby.,0,TargetedAug_v1,TA_NEG_047,True
+The pickup point closes at 9 pm tonight. Uncollected parcels will remain available tomorrow.,0,TargetedAug_v1,TA_NEG_048,True
+Your event tickets must be downloaded before entering the venue.,0,TargetedAug_v1,TA_NEG_049,True
+"The promotional fare expires tonight, but regular tickets will still be available afterward.",0,TargetedAug_v1,TA_NEG_050,True
+"For your safety, never share your one-time password with anyone, including bank staff.",0,TargetedAug_v1,TA_NEG_051,True
+"If a caller asks you to transfer money urgently, end the call and contact the organisation through its official number.",0,TargetedAug_v1,TA_NEG_052,True
+We detected an unsuccessful login attempt. You can review recent activity after signing in through the official app.,0,TargetedAug_v1,TA_NEG_053,True
+Your password will expire in seven days. Change it through the company portal before then.,0,TargetedAug_v1,TA_NEG_054,True
+A security update is available for your device. Install it when convenient from the official settings menu.,0,TargetedAug_v1,TA_NEG_055,True
+"If you did not make this purchase, freeze your card in the app and contact the bank using the number printed on your card.",0,TargetedAug_v1,TA_NEG_056,True
+Do not approve login requests you did not initiate. Report suspicious activity through the official support page.,0,TargetedAug_v1,TA_NEG_057,True
+Your workplace account will require multi-factor authentication starting next month.,0,TargetedAug_v1,TA_NEG_058,True
+A weather advisory is in effect this afternoon. Avoid exposed areas if thunderstorms develop.,0,TargetedAug_v1,TA_NEG_059,True
+The building fire alarm will be tested at 10 am. No evacuation is required unless instructed otherwise.,0,TargetedAug_v1,TA_NEG_060,True
+Keep this matter between us until the investigation is complete. Contacting anyone else could interfere with the case.,1,TargetedAug_v1,TA_POS_001,False
+You are not allowed to discuss this call with your family while we verify the account.,1,TargetedAug_v1,TA_POS_002,False
+Do not contact the branch yet. I need you to follow my instructions first so the case is not disrupted.,1,TargetedAug_v1,TA_POS_003,False
+Please move somewhere private before we continue. Nobody around you should hear these instructions.,1,TargetedAug_v1,TA_POS_004,False
+You must not inform your employer about this conversation until I tell you the verification is complete.,1,TargetedAug_v1,TA_POS_005,False
+"For security reasons, do not ask anyone else for advice while we are processing this case.",1,TargetedAug_v1,TA_POS_006,False
+"If another person becomes involved, the protection on your account may be withdrawn.",1,TargetedAug_v1,TA_POS_007,False
+Keep the conversation confidential and stay with me until I confirm that the problem is resolved.,1,TargetedAug_v1,TA_POS_008,False
+Do not forward these instructions to anyone. This procedure only works if it remains confidential.,1,TargetedAug_v1,TA_POS_009,False
+You should not call the official hotline yet because that could delay the investigation.,1,TargetedAug_v1,TA_POS_010,False
+Remain connected while you open the banking app so I can confirm each step with you.,1,TargetedAug_v1,TA_POS_011,False
+Do not end the call while the verification is running or the request may be rejected.,1,TargetedAug_v1,TA_POS_012,False
+Leave the call connected and follow the prompts I give you as you complete the transfer.,1,TargetedAug_v1,TA_POS_013,False
+I need you to stay connected until the security check finishes on my side.,1,TargetedAug_v1,TA_POS_014,False
+Keep your phone with you and do not disconnect while I speak to the investigation team.,1,TargetedAug_v1,TA_POS_015,False
+Stay with me on the call while you travel to the nearest cash machine.,1,TargetedAug_v1,TA_POS_016,False
+Do not close the app while we are checking the transaction. I will tell you when it is safe.,1,TargetedAug_v1,TA_POS_017,False
+Keep this conversation open until I confirm that your funds have been secured.,1,TargetedAug_v1,TA_POS_018,False
+Remain on the line while you read out the verification code that appears on your screen.,1,TargetedAug_v1,TA_POS_019,False
+Do not switch to another call. I need to guide you through the process without interruption.,1,TargetedAug_v1,TA_POS_020,False
+"The investigation has already been escalated, and failure to cooperate may be recorded against your name.",1,TargetedAug_v1,TA_POS_021,False
+"Your identification is linked to an active case, so refusing this verification could create further problems.",1,TargetedAug_v1,TA_POS_022,False
+"The case officer is waiting for your response, and a lack of cooperation may be treated as intentional.",1,TargetedAug_v1,TA_POS_023,False
+"Your account is under review. If you stop the process now, the restrictions may become permanent.",1,TargetedAug_v1,TA_POS_024,False
+We have received instructions to proceed unless you complete the verification during this call.,1,TargetedAug_v1,TA_POS_025,False
+"The compliance team has placed a hold on the case, but they can only keep it there while you cooperate.",1,TargetedAug_v1,TA_POS_026,False
+The report is ready to be submitted under your name unless we clear the issue first.,1,TargetedAug_v1,TA_POS_027,False
+"Your details appear in an investigation file, and ignoring this call could cause the matter to escalate.",1,TargetedAug_v1,TA_POS_028,False
+The department has authorised further action if you do not complete the required steps with me.,1,TargetedAug_v1,TA_POS_029,False
+"A formal report is being prepared, but I can stop it if you cooperate with the verification now.",1,TargetedAug_v1,TA_POS_030,False
+"I have a short window before the system releases the case, so I need you to complete the next step with me.",1,TargetedAug_v1,TA_POS_031,False
+"Once this call ends, I will no longer be able to pause the process for you.",1,TargetedAug_v1,TA_POS_032,False
+The temporary hold on your account is active only while I am handling the case.,1,TargetedAug_v1,TA_POS_033,False
+"I can keep the request pending for a few more minutes, but after that it moves automatically.",1,TargetedAug_v1,TA_POS_034,False
+"The verification session will close when we disconnect, and I cannot start it again from my side.",1,TargetedAug_v1,TA_POS_035,False
+I have already delayed the submission once. We need to finish the procedure before it resumes.,1,TargetedAug_v1,TA_POS_036,False
+"The protection request is open right now, but it will expire if we leave the process unfinished.",1,TargetedAug_v1,TA_POS_037,False
+My supervisor has given us one opportunity to resolve this before the file moves forward.,1,TargetedAug_v1,TA_POS_038,False
+The current session is the only chance I have to reverse the restriction before it becomes final.,1,TargetedAug_v1,TA_POS_039,False
+"I can still stop the next stage, but only while your case remains open on my screen.",1,TargetedAug_v1,TA_POS_040,False
+"Our system is tracking activity on the account, so do exactly what I tell you and do not make any extra transactions.",1,TargetedAug_v1,TA_POS_041,False
+We can see the device connected to your account. Follow my instructions so we can separate the suspicious activity.,1,TargetedAug_v1,TA_POS_042,False
+"Your banking activity is being observed during this investigation, and unusual actions could affect the case.",1,TargetedAug_v1,TA_POS_043,False
+"The investigation team is watching for movement of funds, so you must follow the sequence I provide.",1,TargetedAug_v1,TA_POS_044,False
+We are monitoring the session remotely and will know if the process is interrupted.,1,TargetedAug_v1,TA_POS_045,False
+"The system is recording your response to this investigation, so cooperate carefully with each instruction.",1,TargetedAug_v1,TA_POS_046,False
+Your account activity is visible to our security team right now. Do not make changes unless I direct you.,1,TargetedAug_v1,TA_POS_047,False
+"We are checking every action on the profile as it happens, so stay with the procedure I give you.",1,TargetedAug_v1,TA_POS_048,False
+Your device has been placed under security review. Avoid contacting anyone else while we complete the checks.,1,TargetedAug_v1,TA_POS_049,False
+"The account is being watched for suspicious behaviour, and I need you to follow only my instructions.",1,TargetedAug_v1,TA_POS_050,False
+"I am trying to prevent this from becoming a bigger problem for you, so please cooperate before my supervisor takes over.",1,TargetedAug_v1,TA_POS_051,False
+I have already made an exception to help you. I need you to complete your part before I get questioned for it.,1,TargetedAug_v1,TA_POS_052,False
+"If you delay further, I may not be able to protect you from the next step in the process.",1,TargetedAug_v1,TA_POS_053,False
+I am giving you a chance to resolve this quietly before the matter is handed to another department.,1,TargetedAug_v1,TA_POS_054,False
+You need to trust me and complete the verification exactly as I explain it.,1,TargetedAug_v1,TA_POS_055,False
+"I am keeping the case from escalating for you, but I cannot do that if you stop cooperating.",1,TargetedAug_v1,TA_POS_056,False
+"You have been given an opportunity that is not normally offered, so do not waste it by delaying.",1,TargetedAug_v1,TA_POS_057,False
+"I can help clear your name, but only if you follow the procedure without involving anyone else.",1,TargetedAug_v1,TA_POS_058,False
+"I am taking responsibility for keeping this case open, so I need your full cooperation now.",1,TargetedAug_v1,TA_POS_059,False
+This is your opportunity to settle the issue privately before it becomes a formal matter.,1,TargetedAug_v1,TA_POS_060,False
