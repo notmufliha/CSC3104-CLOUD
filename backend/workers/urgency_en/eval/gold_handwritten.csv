@@ -1,0 +1,60 @@
+text,label,category
+"This is the Singapore Police Force. You must settle this matter immediately or a warrant will be issued.",1,explicit_positive
+"Your bank account will be frozen within 24 hours unless you verify your details right now.",1,explicit_positive
+"Do not hang up the phone. If you disconnect, officers will come to your house.",1,explicit_positive
+"This is your final warning. Transfer the money today or face legal action.",1,explicit_positive
+"Act now, there is no time to waste. Your identity has been used in a crime.",1,explicit_positive
+"You have to do this urgently, the case will be closed against you by this evening.",1,explicit_positive
+"Please do not tell anyone about this call, not even your family, or it will get worse for you.",1,explicit_positive
+"We are about to terminate your mobile line, press one right away to stop it.",1,explicit_positive
+"This is the last chance to clear your tax arrears before we send the case to court.",1,explicit_positive
+"Stay on the line and go to the bank now, I will guide you step by step.",1,explicit_positive
+"Your parcel contains illegal items and you will be arrested if you do not cooperate immediately.",1,explicit_positive
+"The system will block your Singpass at midnight, so you must give me the code now.",1,explicit_positive
+"Officers are already on their way to your address, so please keep this line open.",1,subtle_positive
+"I can only hold your case open until the end of this call, after that it goes to prosecution.",1,subtle_positive
+"Do not speak to your bank about this, they are part of the investigation.",1,subtle_positive
+"If you check with anyone first, we cannot protect your account anymore.",1,subtle_positive
+"Your accounts are being watched at this moment, so please do exactly as I say.",1,subtle_positive
+"Whoever hesitates in cases like this usually ends up in court, so let us finish this together now.",1,subtle_positive
+"I am putting my own job at risk to help you, so I need your answer before I put the phone down.",1,subtle_positive
+"The transfer window closes after this call and I cannot reopen it for you.",1,subtle_positive
+"Please do not log off the app, we are monitoring every move you make.",1,subtle_positive
+"Your family members will be contacted next if you are unable to confirm with me today.",1,subtle_positive
+"Uncle, you must settle this today ah, otherwise police will come to your house.",1,singlish_positive
+"Quick quick, go to the ATM now, later too late already.",1,singlish_positive
+"Don't anyhow tell other people ah, this one very serious, you cooperate now.",1,singlish_positive
+"Sir, if you cannot pay by tonight your account confirm kena frozen.",1,singlish_positive
+"Hello, I am calling to confirm your dental appointment for next Tuesday afternoon.",0,normal
+"Good morning, this is Anna from the pharmacy, your prescription is ready for collection.",0,normal
+"Hi mum, I will reach home around seven, do you need me to buy anything?",0,normal
+"Thanks for your patience, I have updated your delivery address successfully.",0,normal
+"Could you tell me what time the swimming class starts on Saturday?",0,normal
+"We are calling about your recent survey, it will only take two minutes if you have the time.",0,normal
+"The movie starts at eight, shall we meet at the cinema at seven thirty?",0,normal
+"I just wanted to say thank you for helping me move house last week.",0,normal
+"Your internet plan renews next month at the same price, no action needed from you.",0,normal
+"Please hold while I look up your booking, it should only take a moment.",0,normal
+"The technician will visit between ten and twelve tomorrow, is that alright?",0,normal
+"Hello, may I speak to Mr Tan about the insurance quotation he requested?",0,normal
+"Your table for four is booked for Friday at half past seven.",0,normal
+"We have received your application and will get back to you in two weeks.",0,normal
+"Can you remind me what the homework is for tomorrow?",0,normal
+"The bank will never ask for your password, so please never share it with anyone.",0,legit_warning
+"Remember, scammers may pressure you to act fast, so always stop and check with us first.",0,legit_warning
+"If you receive a suspicious call, hang up and dial the number on the back of your card.",0,legit_warning
+"Your passport expires in June, you may want to renew it sometime this quarter.",0,legit_time
+"Registration closes on the thirtieth, so do sign up when you have a moment.",0,legit_time
+"The shuttle bus leaves in fifteen minutes from the main entrance.",0,legit_time
+"Your prescription is ready, and the pharmacy is open until ten tonight.",0,legit_time
+"We need your reply by next Monday, but just let us know if you need more time.",0,legit_time
+"The doctor is running ten minutes behind, thank you for waiting.",0,legit_time
+"Your parcel is due to arrive tomorrow, please be home to sign for it.",0,legit_time
+"The offer on the phone plan ends this weekend if you are interested.",0,legit_time
+"Aiya, traffic very jialat, I reach in ten minutes only.",0,singlish_negative
+"Lunch at the hawker centre later can? I am quite hungry already.",0,singlish_negative
+"Can lah, no problem, you send me the address then I come.",0,singlish_negative
+"Wah the queue so long, we go another stall instead.",0,singlish_negative
+"Please make sure to keep your documents safe, there is no rush to submit them.",0,normal
+"This is an automated reminder that your library books are due on the twelfth.",0,legit_time
+"I understand this is a lot to take in, so please take as long as you need.",0,normal
