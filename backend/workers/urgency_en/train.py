@@ -3,6 +3,8 @@ train.py - train + validate the English URGENCY classifier (TF-IDF + LogisticReg
 
 Reads
   data/urgency_en/final_cleaned_dataset.csv          (text_raw, label, source, conversation_id, hard_negative)
+  data/urgency_en/augment_urgency_en.csv             (optional extra rows: text_raw, label, source,
+                                                       conversation_id, label_method; see --augment)
   backend/workers/urgency_en/training/lexicon_urgency_en.txt   (optional, for the keyword baseline)
 
 Writes
@@ -19,7 +21,8 @@ Train with scikit-learn 1.4.2 (pinned in requirements-train.txt): the server pin
 joblib model generally only loads in the version that wrote it.
 
 Usage
-  python backend/workers/urgency_en/train.py [--data PATH] [--out PATH] [--no-source-weight] [--no-save]
+  python backend/workers/urgency_en/train.py [--data PATH] [--augment PATH] [--out PATH] [--no-source-weight]
+                                             [--no-save]
 """
 import argparse
 import re
@@ -45,6 +48,7 @@ SEED = 42
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 DEFAULT_DATA = REPO / "data" / "urgency_en" / "final_cleaned_dataset.csv"
+DEFAULT_AUGMENT = REPO / "data" / "urgency_en" / "augment_urgency_en.csv"
 DEFAULT_OUT = HERE / "model" / "urgency_en.joblib"
 LEXICON = HERE / "training" / "lexicon_urgency_en.txt"
 REPORTS = HERE / "reports"
@@ -136,9 +140,18 @@ def best_f1_threshold(y, prob, sample_weight=None):
     return float(thr[i]), float(f1s[i]), (prec, rec, thr)
 
 
-def load_data(path):
-    df = pd.read_csv(path, usecols=["text_raw", "label", "source", "conversation_id", "hard_negative"],
-                     low_memory=False)
+def load_data(path, augment_path=None):
+    df = pd.read_csv(path, usecols=["text_raw", "label", "source", "conversation_id", "hard_negative",
+                                    "label_method"], low_memory=False)
+    if augment_path is not None:
+        if augment_path.exists():
+            aug = pd.read_csv(augment_path, usecols=["text_raw", "label", "source", "conversation_id",
+                                                     "label_method"], low_memory=False)
+            # Appended BEFORE normalising/deduplicating so the extra rows go through exactly the same cleaning.
+            df = pd.concat([df, aug.assign(hard_negative=False)], ignore_index=True)
+            log(f"    augment: appended {len(aug)} rows from {augment_path}")
+        else:
+            log(f"    WARNING: augment file not found at {augment_path} - training without augmentation")
     # Fail loudly on bad data instead of silently training on it.
     assert set(df["label"].unique()) <= {0, 1}, f"labels must be 0/1, got {sorted(df['label'].unique())}"
     assert df["conversation_id"].notna().all(), "missing conversation_id"
@@ -157,9 +170,12 @@ def load_data(path):
     n_dup = n0 - n_empty - len(df)
     log(f"    cleaning: {n0} rows -> dropped {n_empty} empty after normalize, {n_dup} duplicate (text, label) "
         f"-> {len(df)} rows")
-    conflicts = df.groupby("text")["label"].nunique().gt(1).sum()
-    if conflicts:
-        log(f"    note: {conflicts} texts appear with BOTH labels (kept; they cap the achievable accuracy)")
+    # A text with both labels gives the model contradictory targets, so drop every copy of it.
+    conflict = df.groupby("text")["label"].transform("nunique").gt(1)
+    log(f"    dropped {int(conflict.sum())} rows ({df.loc[conflict, 'text'].nunique()} texts) that appear with "
+        f"BOTH labels -> {int((~conflict).sum())} rows")
+    df = df[~conflict].copy()
+    df["label_method"] = df["label_method"].fillna("unknown")
 
     # normalize() replaces every number with a placeholder. A leftover digit would let the model memorise
     # specific codes/amounts that happen to occur in one class (a shortcut, not urgency).
@@ -248,6 +264,8 @@ def out_of_source_selection(df):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--data", type=Path, default=DEFAULT_DATA)
+    ap.add_argument("--augment", type=Path, default=DEFAULT_AUGMENT,
+                    help="extra training rows appended before cleaning (skipped with a warning if missing)")
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     # On by default: leave-one-source-out showed the unweighted model leans on Fraud_R1's style.
     # (The out-of-source selection always uses source weights; this flag affects validation + final fit.)
@@ -258,16 +276,21 @@ def main():
     args = ap.parse_args()
 
     log(f"urgency_en training run {datetime.now(timezone.utc).isoformat(timespec='seconds')}")
-    log(f"data={args.data} source_weight={args.source_weight} sklearn={sklearn.__version__} seed={SEED}")
+    log(f"data={args.data} augment={args.augment} source_weight={args.source_weight} sklearn={sklearn.__version__} seed={SEED}")
     if not args.source_weight:
         log("WARNING: --no-source-weight: the saved threshold comes from a source-weighted selection, "
             "so it may not suit the unweighted final model")
 
     # ---- 1. load + clean ----------------------------------------------------------------------------
     log("\n[1] load + normalize text_raw")
-    df = load_data(args.data)
+    df = load_data(args.data, args.augment)
     log(f"    {len(df)} rows, {df['group'].nunique()} groups, "
         f"positives={int(df['label'].sum())} negatives={int((df['label'] == 0).sum())}")
+    by_method = df.groupby(["label_method", "label"]).size().unstack(fill_value=0)
+    log("    rows by label_method (columns = label):\n" + by_method.to_string())
+    by_source = df.groupby(["source", "label_method", "label"]).size().rename("rows").reset_index()
+    log("    rows by source and label_method:\n" + by_source.to_string(index=False))
+    save_table(by_source, "rows_by_source_method.csv")
 
     # ---- 2. group-aware train/validation split --------------------------------------------------------
     # GroupShuffleSplit puts whole conversations on one side. The validation set is only REPORTED now
