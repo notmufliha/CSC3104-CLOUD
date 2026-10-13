@@ -141,14 +141,23 @@ def best_f1_threshold(y, prob, sample_weight=None):
 
 
 def load_data(path, augment_path=None):
-    df = pd.read_csv(path, usecols=["text_raw", "label", "source", "conversation_id", "hard_negative",
-                                    "label_method"], low_memory=False)
+    required = ["text_raw", "label", "source", "conversation_id", "hard_negative"]
+    try:
+        df = pd.read_csv(path, usecols=required + ["label_method"], low_memory=False)
+    except ValueError:
+        df = pd.read_csv(path, usecols=required, low_memory=False)
+    if "label_method" not in df.columns:
+        df["label_method"] = "unknown"
     if augment_path is not None:
         if augment_path.exists():
-            aug = pd.read_csv(augment_path, usecols=["text_raw", "label", "source", "conversation_id",
-                                                     "label_method"], low_memory=False)
+            try:
+                aug = pd.read_csv(augment_path, usecols=required + ["label_method"], low_memory=False)
+            except ValueError:
+                aug = pd.read_csv(augment_path, usecols=required, low_memory=False)
+            if "label_method" not in aug.columns:
+                aug["label_method"] = "unknown"
             # Appended BEFORE normalising/deduplicating so the extra rows go through exactly the same cleaning.
-            df = pd.concat([df, aug.assign(hard_negative=False)], ignore_index=True)
+            df = pd.concat([df, aug], ignore_index=True)
             log(f"    augment: appended {len(aug)} rows from {augment_path}")
         else:
             log(f"    WARNING: augment file not found at {augment_path} - training without augmentation")

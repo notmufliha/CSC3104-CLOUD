@@ -1,0 +1,51 @@
+text_raw,label,source,conversation_id,hard_negative
+"This is a disconnection notice from your electric company. Please contact the number on your bill if you have questions about your account.",0,TargetedAug_v2,TA2_NEG_001,True
+"Your phone service is scheduled for maintenance this evening. If you need more information, call the customer service line on your statement.",0,TargetedAug_v2,TA2_NEG_002,True
+"If you would like to keep coverage or extend it, press 8 to speak with a customer service agent and review your options.",0,TargetedAug_v2,TA2_NEG_003,True
+"We are calling to confirm your appointment for tomorrow morning. Please call our scheduling desk if you need to reschedule.",0,TargetedAug_v2,TA2_NEG_004,True
+"This is a reminder that your prescription is ready for pickup before the pharmacy closes today.",0,TargetedAug_v2,TA2_NEG_005,True
+"Press 2 if you want to be removed from our marketing list and stop receiving future offers.",0,TargetedAug_v2,TA2_NEG_006,True
+"The delivery for your package is scheduled for this afternoon. Please call the local branch if the time does not work for you.",0,TargetedAug_v2,TA2_NEG_007,True
+"To speak with a live agent about your order status, press 1 and stay on the line.",0,TargetedAug_v2,TA2_NEG_008,True
+"This is a courtesy reminder that your insurance renewal is due next week. Please review the notice online or call us.",0,TargetedAug_v2,TA2_NEG_009,True
+"Your account review is complete. Please call the number on your account statement if you need a copy of the final report.",0,TargetedAug_v2,TA2_NEG_010,True
+"We are contacting you about a local survey. Press 1 to confirm your participation or press 2 to opt out.",0,TargetedAug_v2,TA2_NEG_011,True
+"This call is to inform you that your appointment is confirmed for Friday at 3 pm. Please arrive ten minutes early.",0,TargetedAug_v2,TA2_NEG_012,True
+"If you have not received your package, call the shipping desk before the close of business today.",0,TargetedAug_v2,TA2_NEG_013,True
+"We are calling about your current service plan. Please review the updates online or speak with an agent if you have questions.",0,TargetedAug_v2,TA2_NEG_014,True
+"This is a billing reminder. Your payment is due by the end of the week and we will accept it online or by phone.",0,TargetedAug_v2,TA2_NEG_015,True
+"You have a voicemail waiting for you from your clinic. Please return the call before 5 pm to confirm the visit.",0,TargetedAug_v2,TA2_NEG_016,True
+"Customer service is calling to let you know your document is ready for pickup. Please come before closing time.",0,TargetedAug_v2,TA2_NEG_017,True
+"To verify your enrollment, press 1 and a representative will confirm the appointment details.",0,TargetedAug_v2,TA2_NEG_018,True
+"This is an automated message about your utility account. Please call the number listed on your bill if you need help.",0,TargetedAug_v2,TA2_NEG_019,True
+"Our system indicates your credit card was updated successfully. Call us if you need a copy of the confirmation email.",0,TargetedAug_v2,TA2_NEG_020,True
+"Press 1 to hear the latest update on your claim status or press 2 to hear the menu again.",0,TargetedAug_v2,TA2_NEG_021,True
+"We are following up on your service request. Please reply or call us before noon if you want an update.",0,TargetedAug_v2,TA2_NEG_022,True
+"Your bank account has been updated. Please call customer support if you need help setting up your new PIN.",0,TargetedAug_v2,TA2_NEG_023,True
+"This is a notice that your internet service will be restored after maintenance. Please review the schedule online.",0,TargetedAug_v2,TA2_NEG_024,True
+"To verify your address, press 1 and speak with an agent. We will not ask for sensitive information by email.",0,TargetedAug_v2,TA2_NEG_025,True
+"This is a reminder to return your library books before the end of the month to avoid a late fee.",0,TargetedAug_v2,TA2_NEG_026,True
+"We are calling to confirm your delivery window. Please let us know if you need to change the time before tomorrow.",0,TargetedAug_v2,TA2_NEG_027,True
+"Press 8 if you want to speak to a representative about renewal options for your subscription.",0,TargetedAug_v2,TA2_NEG_028,True
+"This is a courtesy call from the hospital to remind you about your lab test tomorrow morning.",0,TargetedAug_v2,TA2_NEG_029,True
+"Please call your provider before 4 pm if you need to reschedule your follow up appointment.",0,TargetedAug_v2,TA2_NEG_030,True
+"This is an official notice from your water utility. We are available to answer questions during business hours.",0,TargetedAug_v2,TA2_NEG_031,True
+"If you have any questions about your recent purchase, press 1 to speak with a customer care agent.",0,TargetedAug_v2,TA2_NEG_032,True
+"Your order has shipped and will arrive on Friday. Please contact customer support if you need to change the delivery address.",0,TargetedAug_v2,TA2_NEG_033,True
+"This call is to remind you that your annual service check is due this week. Please schedule the appointment online.",0,TargetedAug_v2,TA2_NEG_034,True
+"Before 5 pm today, please call the clinic if you need to update your treatment plan.",0,TargetedAug_v2,TA2_NEG_035,True
+"To learn more about the offer, press 1 and a representative will walk you through the details.",0,TargetedAug_v2,TA2_NEG_036,True
+"This is a reminder from your dental office. Please arrive ten minutes early for your cleaning appointment.",0,TargetedAug_v2,TA2_NEG_037,True
+"You are receiving this automated call because your prescription refill was processed successfully.",0,TargetedAug_v2,TA2_NEG_038,True
+"If you would like to speak to a service agent about your account, press 1 and we will connect you.",0,TargetedAug_v2,TA2_NEG_039,True
+"Your medical records are ready for pickup. Please bring identification and arrive before the office closes.",0,TargetedAug_v2,TA2_NEG_040,True
+"We are calling to let you know your final balance is due today. Please visit our website or call the billing office.",0,TargetedAug_v2,TA2_NEG_041,True
+"Please press 2 if you are not interested in additional information about your account status.",0,TargetedAug_v2,TA2_NEG_042,True
+"This is an automated message from the DMV. Please call the office if you need to reschedule your driving test.",0,TargetedAug_v2,TA2_NEG_043,True
+"To update your contact information, press 1 and follow the prompts to finish the verification.",0,TargetedAug_v2,TA2_NEG_044,True
+"Your insurance benefits summary is ready. Please review it online or call us by end of day if you have questions.",0,TargetedAug_v2,TA2_NEG_045,True
+"The pharmacy is calling to remind you that your medication refill is due tomorrow. Please call before 6 pm if you need assistance.",0,TargetedAug_v2,TA2_NEG_046,True
+"This is a reminder to complete your annual membership renewal before the deadline expires.",0,TargetedAug_v2,TA2_NEG_047,True
+"To discuss your service request with a representative, press 1 and we will connect you promptly.",0,TargetedAug_v2,TA2_NEG_048,True
+"We are calling about a required maintenance visit for your home security system. Please call the office before Friday.",0,TargetedAug_v2,TA2_NEG_049,True
+"This call is about your recent appointment and the follow-up instructions you were sent by email. Please contact us if needed.",0,TargetedAug_v2,TA2_NEG_050,True
