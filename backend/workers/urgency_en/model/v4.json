@@ -1,0 +1,20 @@
+{
+  "version": "v4",
+  "file": "urgency_en_v4.joblib",
+  "sha256": "c0c53e7c1b49764bcd0d2639c806ea4b1df20536545c93c75fca476fa78aee20",
+  "created_at": "2026-10-13T14:02:08+00:00",
+  "sklearn_version": "1.4.2",
+  "numpy_version_at_save": "1.26.4",
+  "threshold": 0.368475357850524,
+  "call_threshold": 0.7707347136697109,
+  "C": 0.3,
+  "trained_rows": 13031,
+  "training_files": [
+    "data/urgency_en/final_cleaned_dataset.csv",
+    "data/urgency_en/silver_relabel.csv",
+    "backend/workers/urgency_en/augment_urgency_en.csv",
+    "data/urgency_en/augment_urgency_en.csv"
+  ],
+  "goals": "2/8 pass (4: gold recall 23/26, 6: robocall label_time_ai ROC-AUC 0.923 provisional)",
+  "note": "TF-IDF+LR on relabelled data (silver_relabel.csv), caller-only scoring; 2/8 goals (check_goals.py 2026-10-13). Do not overwrite; retrain into a new version."
+}

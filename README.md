@@ -80,6 +80,21 @@ python train.py        # writes model/model.pkl
 Rebuild that worker's image (or restart it with a volume-mounted
 `model/model.pkl`) to pick up the new model.
 
+#### urgency_en
+
+`urgency_en` has its own training setup. **Train with scikit-learn 1.4.2**,
+the same version the worker's `requirements.txt` pins: a joblib model
+generally only loads in the scikit-learn version that wrote it. 1.4.2 has no
+wheels for Python 3.13+, so use Python 3.11 or 3.12:
+
+```bash
+pip install -r backend/workers/urgency_en/requirements-train.txt
+python backend/workers/urgency_en/train.py          # -> model/urgency_en.joblib + reports/
+python backend/workers/urgency_en/evaluate_gold.py --gold backend/workers/urgency_en/eval/gold_handwritten.csv
+```
+
+`*.joblib` and `reports/` are git-ignored, so train before building the image.
+
 ## Pointing the Android app at the backend
 
 The app's base URL is set in
