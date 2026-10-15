@@ -63,7 +63,8 @@ curl -X POST http://localhost:8080/submit-transcript \
 **Note:** until you run each worker's `train.py` against a real dataset
 (see below), `model.pkl` won't exist and each worker falls back to a dummy
 classifier that always returns a neutral 0.5 score — the pipeline is
-end-to-end functional, just not meaningfully trained yet.
+end-to-end functional, just not meaningfully trained yet. **Exception:**
+`impersonation_en` already ships a trained, committed model — see below.
 
 ### Training a worker's model
 
@@ -94,6 +95,30 @@ python backend/workers/urgency_en/evaluate_gold.py --gold backend/workers/urgenc
 ```
 
 `*.joblib` and `reports/` are git-ignored, so train before building the image.
+
+#### impersonation_en
+
+`impersonation_en` also has its own training setup, and — unlike every other
+worker — its trained model is **committed to git**:
+`backend/workers/impersonation_en/model/model.pkl` is force-added past the
+`.gitignore` rule that excludes `*.pkl`/`*.joblib` elsewhere, so the worker
+runs with `docker compose up --build` and no training step. See
+[backend/workers/impersonation_en/README.md](backend/workers/impersonation_en/README.md)
+for what it scores, how it works, and why its model file needs
+`text_utils.py` importable to unpickle at all.
+
+If you change `data/impersonation_en/*.csv` and need to retrain:
+
+```bash
+pip install -r backend/workers/impersonation_en/requirements.txt
+python backend/workers/impersonation_en/train.py          # -> model/model.pkl + model_card.json + reports/
+python backend/workers/impersonation_en/evaluate_gold.py  # re-check the saved model against the gold set
+```
+
+**Train with scikit-learn 1.6.1**, the version pinned in its
+`requirements.txt` — a joblib model generally only loads in the scikit-learn
+version that wrote it. After retraining, `model/model.pkl` is a tracked file
+here (not git-ignored), so commit it like any other changed file.
 
 ## Pointing the Android app at the backend
 

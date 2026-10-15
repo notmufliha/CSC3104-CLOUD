@@ -11,8 +11,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN python -m grpc_tools.protoc -I proto --python_out=. --grpc_python_out=. scam_detect.proto
 
 COPY workers/impersonation_en/ .
-# TODO: bake a trained model/model.pkl into the image (or mount one at
-# runtime) once train.py has been run against real data.
+# model/model.pkl is checked into this worker's directory (not git-ignored
+# like the other workers' *.pkl/*.joblib, see repo .gitignore), so it's
+# baked into the image here with no training step required. Re-run
+# train.py and rebuild if data/impersonation_en/*.csv changes.
 
 EXPOSE 50051
 CMD ["python", "server.py"]
