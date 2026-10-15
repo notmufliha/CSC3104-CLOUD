@@ -15,6 +15,8 @@ backend/.venv/
 backend/workers/**/.venv/
 backend/workers/**/__pycache__/
 backend/workers/**/*.pkl
+backend/workers/**/*.joblib
+backend/workers/**/reports/
 # Generated from backend/proto/scam_detect.proto by each worker's Dockerfile
 # (or manually via grpc_tools.protoc) -- not meant to be hand-edited/committed.
 backend/workers/**/scam_detect_pb2.py
@@ -29,3 +31,4 @@ tools/datagen/config/
 data/**/raw/
 .env
 __pycache__/
+.venv312

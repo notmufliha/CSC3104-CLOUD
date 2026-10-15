@@ -1,0 +1,4 @@
+# Docker only reads this file because it sits next to the Dockerfile and is named
+# <Dockerfile>.dockerignore (BuildKit). A plain .dockerignore here would be ignored, since the build
+# context is backend/. Paths are relative to that context.
+workers/urgency_en/reports/

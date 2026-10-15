@@ -1,0 +1,37 @@
+text,label,category
+You have until 5pm today to pay or your account will be closed.,1,deadline
+Your electricity will be cut off in two hours unless you pay now.,1,deadline
+You need to transfer the money in the next thirty minutes.,1,deadline
+If we don't receive payment by tonight a warrant will be issued for your arrest.,1,deadline
+This offer is only valid for the next ten minutes.,1,deadline
+"The police are on their way, you must settle this before they arrive.",1,deadline
+Your parcel will be destroyed tomorrow morning if you don't pay the customs fee.,1,deadline
+Your Singpass will be suspended at midnight unless you verify.,1,deadline
+you must pay within twenty four hours or you will be arrested,1,asr
+sir you have only one hour left to make the payment,1,asr
+uh we need you to do this right now okay do not wait,1,asr
+the case will be escalated in forty five minutes if you dont cooperate,1,asr
+dont hang up stay on the line we need to finish this before the bank closes,1,asr
+you got to move fast madam before the money is gone,1,asr
+"Every minute you wait, more money is leaving your account.",1,subtle
+I can only hold this for you while we are on this call.,1,subtle
+Once I put the phone down I cannot help you anymore.,1,subtle
+"There is no time to call your family, we need to do it now.",1,subtle
+The longer you delay the worse your case becomes.,1,subtle
+"There is no rush at all, take your time.",0,negation
+"You don't need to do anything immediately, think it over.",0,negation
+"This is not urgent, you can call us back next week.",0,negation
+"Please don't feel pressured, there is no deadline.",0,negation
+"No need to act now, the offer stays open.",0,negation
+Your appointment is at 3pm tomorrow at the clinic.,0,legit_time
+The meeting has been moved to 10 minutes later.,0,legit_time
+"I'll be there in five minutes, I'm stuck in traffic.",0,legit_time
+Your bill is due on the 15th as usual.,0,legit_time
+The shop closes at 9pm today so come before that if you want.,0,legit_time
+"Hi mum I'll call you back in an hour, I'm in a meeting.",0,legit_time
+"Your prescription is ready, you can collect it any time this week.",0,legit_time
+The train leaves at 7:45 so let's meet at 7:30.,0,legit_time
+Immediately after dinner we can go for a walk.,0,legit_time
+"The doctor said I need surgery urgently, can you drive me to the hospital?",0,legit_time
+We will never ask you to transfer money urgently over the phone.,0,anti_scam
+"If someone tells you to act immediately, hang up and call us.",0,anti_scam

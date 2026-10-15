@@ -1,0 +1,61 @@
+# Urgency cue phrases (one per line, lowercase, matched as whole words).
+# Used ONLY to make silver training labels in prepare_data.py.
+# Never add a phrase because it appears in eval/gold_handwritten.csv or the
+# robocall sheet - that would leak the test set into training.
+#
+# --- time pressure ---
+immediately
+right now
+right away
+at once
+urgent
+urgently
+urgency
+asap
+within 24 hours
+within the hour
+within 30 minutes
+today only
+last chance
+final notice
+final warning
+before it's too late
+before it is too late
+deadline
+act now
+hurry
+no time
+running out of time
+time is running out
+time is of the essence
+every minute counts
+every second counts
+every moment counts
+don't have much time
+do not have much time
+wasting time
+wasting valuable time
+act fast
+act quickly
+act swiftly
+# --- threat of consequence ---
+or else
+will be arrested
+warrant
+arrest warrant
+will be suspended
+will be frozen
+will be blocked
+will be terminated
+will be cancelled
+legal action
+legal consequences
+serious consequences
+penalty
+# --- keep-the-victim-on-the-line / secrecy ---
+do not hang up
+don't hang up
+stay on the line
+keep this line open
+do not tell anyone
+don't tell anyone
