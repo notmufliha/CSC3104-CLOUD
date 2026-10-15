@@ -11,8 +11,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN python -m grpc_tools.protoc -I proto --python_out=. --grpc_python_out=. scam_detect.proto
 
 COPY workers/impersonation_zh/ .
-# TODO: bake a trained model/model.pkl into the image (or mount one at
-# runtime) once train.py has been run against real data.
+# Train inside the image so the model is pickled with the SAME scikit-learn version
+# that server.py uses (~1 min). Needs data/impersonation_zh.csv in this folder.
+RUN python train.py && rm -rf data
+# warm the jieba cache so the first request is fast
+RUN python -c "import jieba; jieba.initialize()"
 
 EXPOSE 50051
 CMD ["python", "server.py"]

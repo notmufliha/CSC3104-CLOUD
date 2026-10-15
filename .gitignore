@@ -25,4 +25,10 @@ backend/workers/**/scam_detect_pb2_grpc.py
 # General
 .DS_Store
 
+#Tools
+tools/datagen/call_transcript_dataset_output/
+tools/datagen/config/
+data/**/raw/
+.env
+__pycache__/
 .venv312
