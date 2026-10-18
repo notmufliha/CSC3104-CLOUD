@@ -1,14 +1,17 @@
 """
 gRPC worker: signal="impersonation", language="en".
 
-Implements WorkerService.ClassifyTranscript using a scikit-learn
-TfidfVectorizer + LogisticRegression pipeline pickled by train.py into
-model/model.pkl. See train.py for how to (re)train it.
+Scores "is the caller falsely claiming to be an authority or trusted
+organisation" (police, bank, government, telco, courier, tech support)
+using a calibrated TF-IDF + LogisticRegression pipeline, trained and
+pickled by train.py into model/model.pkl. See model_card.json for the
+exact training settings/metrics, and ../../../README.md's "impersonation_en"
+section for the version-pinning note.
 
-TODO: this is a skeleton. Before relying on scores from this worker:
-  - run train.py against a real labeled dataset for the "impersonation" signal
-  - validate the model file actually exists at container start, not just
-    fall back silently (see _load_model below)
+The pickled model is a text_utils.CalibratedModel wrapping a pipeline
+whose first step is a FunctionTransformer over text_utils.prep, so
+`import text_utils` below must succeed BEFORE joblib.load, or unpickling
+fails with "Can't get attribute ...".
 """
 import logging
 import os
@@ -17,6 +20,7 @@ from concurrent import futures
 import grpc
 import joblib
 
+import text_utils  # noqa: F401 -- required so joblib.load can resolve the pickled pipeline's custom step/class
 import scam_detect_pb2
 import scam_detect_pb2_grpc
 
@@ -30,11 +34,10 @@ logger = logging.getLogger(f"worker.{SIGNAL}.{LANGUAGE}")
 
 
 class _DummyModel:
-    """Fallback used when model.pkl hasn't been trained yet, so the service
-    is still callable end-to-end (always returns a neutral 0.5 score).
-    TODO: remove once every worker has a real trained model checked in /
-    mounted at deploy time.
-    """
+    """Fallback if model/model.pkl is ever missing (e.g. a volume mount
+    gone wrong), so the service stays callable end-to-end with a neutral
+    0.5 score instead of crashing. The real model is checked into this
+    worker's model/ directory, so this should not normally be hit."""
 
     def predict_proba(self, texts):
         return [[0.5, 0.5] for _ in texts]
