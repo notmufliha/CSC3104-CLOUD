@@ -1,7 +1,7 @@
 """
 predict.py - load the trained urgency model and score raw text. Meant to be imported by server.py.
 
-Reads   backend/workers/urgency_en/model/urgency_en.joblib (written by train.py / experiments.py)
+Reads   backend/workers/urgency_en/model/urgency_en.joblib (written by train.py)
 Writes  nothing
 
   score_sentence(text) -> probability for ONE sentence (what the model was trained on)
