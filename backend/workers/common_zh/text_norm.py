@@ -1,14 +1,23 @@
-"""zh_normalize.py: shared text normalisation for the Chinese (zh) scam-call workers.
+"""text_norm.py (was zh_normalize.py): shared text normalisation for the Chinese (zh) scam-call workers.
+
+ONE copy for all three ZH workers: each *_zh Dockerfile copies this file into its image as text_norm.py,
+so urgency_zh, money_zh and impersonation_zh always clean text the same way.
 
 Used by:
   * zh_train.ipynb          (to test your own sentences)
-  * train.py / server.py     (in each *_zh worker pod)
+  * train.py / predict.py    (in each *_zh worker image)
 
 MUST stay identical to Cell 2 + Cell 4 of zh_clean.ipynb (clean / org_tokenize).
-zh_train.ipynb checks this automatically against the gold set.
+zh_train.ipynb checks this automatically against the gold set (common_zh/gold_test_zh.csv: 100% match).
+Known gap: zh_clean.ipynb also removed each training row's known person names; live text can't know
+those, so 1-3% of training rows differ from what the server produces (names left in).
+
+Note: unlike the English workers this DOES lowercase (Latin words like DBS / OTP), and only
+impersonation_zh splits words with jieba; urgency_zh and money_zh read characters. That is how the
+models were trained, so serving must do the same.
 
 Usage:
-    from zh_normalize import prepare
+    from text_norm import prepare
     x = prepare("我是星展银行的客服，请马上转5000元", worker="impersonation", kind="jieba")
     p = model.predict_proba([x])[:, 1]
 

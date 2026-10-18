@@ -16,6 +16,8 @@ backend/workers/**/.venv/
 backend/workers/**/__pycache__/
 backend/workers/**/*.pkl
 backend/workers/**/*.joblib
+# Frozen, deployed models are committed on purpose (the Dockerfile bakes them in):
+!backend/workers/urgency_en/model/urgency_en_v4.joblib
 backend/workers/**/reports/
 # Generated from backend/proto/scam_detect.proto by each worker's Dockerfile
 # (or manually via grpc_tools.protoc) -- not meant to be hand-edited/committed.

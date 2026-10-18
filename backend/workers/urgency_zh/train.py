@@ -13,6 +13,7 @@ Run:    python train.py           (~1 min; also run automatically by the Dockerf
 """
 import os
 import re
+import sys
 import warnings
 
 import joblib
@@ -25,13 +26,17 @@ from sklearn.metrics import fbeta_score, f1_score, precision_score, recall_score
 from sklearn.model_selection import GroupKFold, GroupShuffleSplit
 from sklearn.pipeline import Pipeline
 
-import zh_normalize as zn
+# text_norm.py: the shared ZH cleaning (backend/workers/common_zh/, copied next to this file in the image)
+sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "common_zh"))
+import text_norm as zn  # noqa: E402
 
 warnings.filterwarnings("ignore")
 SIGNAL = "urgency"
 HERE = os.path.dirname(os.path.abspath(__file__))
 CSV_PATH = os.environ.get("CSV_PATH", os.path.join(HERE, "data", f"{SIGNAL}_zh.csv"))
 GOLD_PATH = os.environ.get("GOLD_PATH", os.path.join(HERE, "data", "gold_test_zh.csv"))
+if not os.path.exists(GOLD_PATH):  # local runs: the gold set lives once in common_zh/
+    GOLD_PATH = os.path.join(HERE, "..", "common_zh", "gold_test_zh.csv")
 MODEL_PATH = os.path.join(HERE, "model", "model.joblib")
 SEED = 42
 

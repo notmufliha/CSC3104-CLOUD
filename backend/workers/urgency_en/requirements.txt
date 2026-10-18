@@ -1,5 +1,7 @@
 grpcio==1.63.0
 grpcio-tools==1.63.0
+# grpc.health.v1 health service (Kubernetes readiness/liveness)
+grpcio-health-checking==1.63.0
 # Must match the version that saved the model (see model/v4.json): joblib models only load reliably in it.
 scikit-learn==1.4.2
 # scikit-learn 1.4.2 predates NumPy 2; the model was saved with 1.26.4.
