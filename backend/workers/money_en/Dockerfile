@@ -10,9 +10,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Generate scam_detect_pb2.py / scam_detect_pb2_grpc.py from the shared proto.
 RUN python -m grpc_tools.protoc -I proto --python_out=. --grpc_python_out=. scam_detect.proto
 
-COPY workers/money_en/ .
-# TODO: bake a trained model/model.pkl into the image (or mount one at
-# runtime) once train.py has been run against real data.
+# Only what serving needs. money_model.py and money_norm.py must keep these exact names:
+# the pickled model references money_model.MoneyModel, which imports money_norm.
+COPY workers/money_en/server.py workers/money_en/predict.py workers/money_en/text_norm.py \
+     workers/money_en/money_model.py workers/money_en/money_norm.py ./
+COPY workers/money_en/model/E_model.joblib model/E_model.joblib
 
 EXPOSE 50051
 CMD ["python", "server.py"]
