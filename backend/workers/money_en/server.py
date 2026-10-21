@@ -13,6 +13,7 @@ TODO: this is a skeleton. Before relying on scores from this worker:
 import logging
 import os
 from concurrent import futures
+from money_model import MoneyModel  # needed so joblib can unpickle
 
 import grpc
 import joblib
@@ -22,7 +23,7 @@ import scam_detect_pb2_grpc
 
 SIGNAL = "money"
 LANGUAGE = "en"
-MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(os.path.dirname(__file__), "model", "model.pkl"))
+MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(os.path.dirname(__file__), "model", "E_model.joblib"))
 PORT = os.environ.get("PORT", "50051")
 
 logging.basicConfig(level=logging.INFO)
@@ -52,11 +53,15 @@ class WorkerServiceServicer(scam_detect_pb2_grpc.WorkerServiceServicer):
     def __init__(self):
         self.model = _load_model()
 
+    # def ClassifyTranscript(self, request, context):
+    #     proba = self.model.predict_proba([request.transcript])[0]
+    #     # Binary classifier: class index 1 = positive ("money" present).
+    #     score = float(proba[1]) if len(proba) > 1 else float(proba[0])
+    #     return scam_detect_pb2.WorkerScore(signal=SIGNAL, score=score, language=LANGUAGE)
+
     def ClassifyTranscript(self, request, context):
-        proba = self.model.predict_proba([request.transcript])[0]
-        # Binary classifier: class index 1 = positive ("money" present).
-        score = float(proba[1]) if len(proba) > 1 else float(proba[0])
-        return scam_detect_pb2.WorkerScore(signal=SIGNAL, score=score, language=LANGUAGE)
+        score, _sentence = self.model.score_chunk(request.transcript)  # highest sentence score
+        return scam_detect_pb2.WorkerScore(signal=SIGNAL, score=float(score), language=LANGUAGE)
 
 
 def serve():
