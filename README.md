@@ -70,8 +70,7 @@ Every worker has the same shape (`server.py`, `predict.py`, `text_norm.py`, `mod
 `requirements.txt`, `Dockerfile`) and follows the same rules:
 
 - **No model, no start.** A worker without its model exits at start-up instead of
-  serving a fake score. (Exception for now: `money_en` still has the old dummy 0.5
-  fallback, see [Worker models](#worker-models).)
+  serving a fake score.
 - **gRPC health service** (`grpc.health.v1`): `SERVING` only once the model has loaded.
   The Kubernetes template probes it.
 - **Errors are errors.** If scoring fails, the worker returns gRPC `INTERNAL` and the
@@ -166,7 +165,7 @@ probability; "threshold" is the model's own cut-off.
 | Worker | Version | Test score (scam / normal) | Known weak spots |
 |---|---|---|---|
 | urgency_en | v4, TF-IDF + LR (sklearn 1.4.2), frozen 2026-10-13, threshold 0.368 | 0.470 / 0.365 | Passes 2/8 urgency goals. Many false alarms: "no rush", banks' anti-scam advice, normal time talk ("bill due on the 15th"). Misses pressure with no keywords. The normal test sentence sits just under the threshold. |
-| money_en | none usable | 0.500 / 0.500 (dummy) | **Model doesn't load**: `E_model.joblib` needs a `money_model` module that isn't in the repo and was saved with sklearn 1.6.1 (worker pins 1.4.2); the server also looks for `model.pkl`. Still on the dummy 0.5 fallback. Needs the owner's training code. |
+| money_en | money_en_v1, word + char TF-IDF + LR, Platt-calibrated (sklearn 1.6.1), created 2026-10-15, threshold 0.5 | 1.000 / 0.000 | Scores **any** mention of money or OTPs, so a genuine "your bill is due" also scores high (by design; the aggregator separates scams). Validation F1 0.988 is on its own data split, so expect lower on real calls. Training notebook isn't in the repo yet (`train.py` is the old template), so the model can't be reproduced. |
 | impersonation_en | impersonation_en_v2, TF-IDF + char n-grams + LR, calibrated (sklearn 1.6.1), threshold 0.47 | 0.941 / 0.011 | Trained and tested only on synthetic, advisory-based rows (~510 dev rows); performance on real calls is unknown. |
 | urgency_zh | trained at image build (char TF-IDF + LR, calibrated, C=100), threshold 0.20 | 0.481 / 0.019 | Low threshold gives many false alarms: gold precision 0.46 at 0.20 (0.63 at 0.5). Retrained on every build, so not version-pinned. |
 | money_zh | trained at image build (char, C=100), threshold 0.20 | 0.993 / 0.011 | Gold precision 0.61 at 0.20 (0.94 at 0.5). Retrained on every build. |
