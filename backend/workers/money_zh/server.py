@@ -1,71 +1,77 @@
 """
 gRPC worker: signal="money", language="zh".
 
-Implements WorkerService.ClassifyTranscript using a scikit-learn
-TfidfVectorizer + LogisticRegression pipeline pickled by train.py into
-model/model.pkl. See train.py for how to (re)train it.
+Implements WorkerService.ClassifyTranscript with the model built by train.py (TF-IDF + Logistic Regression,
+sigmoid-calibrated, trained inside the image at build time), plus the standard gRPC health service
+(grpc.health.v1) so Kubernetes can tell when the worker is ready. Same shape as the urgency_en worker;
+the scoring itself is the ZH team's logic (see predict.py and common_zh/text_norm.py).
 
-TODO: this is a skeleton. Before relying on scores from this worker:
-  - run train.py against a real labeled dataset for the "money" signal
-  - validate the model file actually exists at container start, not just
-    fall back silently (see _load_model below)
+Rules every worker follows:
+  - no model, no start: a missing model is a deployment error, not something to paper over with 0.5
+  - health = SERVING only once the model has loaded
+  - a scoring failure returns a gRPC INTERNAL error (the gateway then leaves this score out),
+    never a made-up score
+  - transcript text is never logged, only scores
+
+Quick test without gRPC:   python predict.py "我是公安局的警官，请马上转账"
 """
 import logging
 import os
+import signal
 from concurrent import futures
 
 import grpc
-import joblib
-import jieba
+from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 
+import predict
 import scam_detect_pb2
 import scam_detect_pb2_grpc
 
 SIGNAL = "money"
 LANGUAGE = "zh"
-MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(os.path.dirname(__file__), "model", "model.pkl"))
+SERVICE_NAME = "scam_detect.WorkerService"
+MODEL_PATH = os.environ.get("MODEL_PATH", str(predict.DEFAULT_MODEL))
 PORT = os.environ.get("PORT", "50051")
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
+logging.getLogger("jieba").setLevel(logging.WARNING)
 logger = logging.getLogger(f"worker.{SIGNAL}.{LANGUAGE}")
-
-
-class _DummyModel:
-    """Fallback used when model.pkl hasn't been trained yet, so the service
-    is still callable end-to-end (always returns a neutral 0.5 score).
-    TODO: remove once every worker has a real trained model checked in /
-    mounted at deploy time.
-    """
-
-    def predict_proba(self, texts):
-        return [[0.5, 0.5] for _ in texts]
-
-
-def _load_model():
-    if os.path.exists(MODEL_PATH):
-        logger.info("loading model from %s", MODEL_PATH)
-        return joblib.load(MODEL_PATH)
-    logger.warning("no model found at %s, using dummy 0.5 scorer -- run train.py", MODEL_PATH)
-    return _DummyModel()
 
 
 class WorkerServiceServicer(scam_detect_pb2_grpc.WorkerServiceServicer):
     def __init__(self):
-        self.model = _load_model()
+        if not os.path.exists(MODEL_PATH):
+            raise FileNotFoundError(f"no model at {MODEL_PATH}: run train.py (the Dockerfile does this at build time)")
+        b = predict.load_model(MODEL_PATH)
+        logger.info("loaded %s (kind=%s, C=%s, threshold=%.2f)", MODEL_PATH, b["kind"], b.get("C"), b["threshold"])
 
     def ClassifyTranscript(self, request, context):
-        proba = self.model.predict_proba([request.transcript])[0]
-        # Binary classifier: class index 1 = positive ("money" present).
-        score = float(proba[1]) if len(proba) > 1 else float(proba[0])
+        try:
+            score, _ = predict.score(request.transcript)
+        except Exception as e:  # report the failure; never invent a score
+            logger.error("scoring failed: %s", type(e).__name__)
+            context.abort(grpc.StatusCode.INTERNAL, "money scoring failed")
+        logger.info("score=%.3f", score)
         return scam_detect_pb2.WorkerScore(signal=SIGNAL, score=score, language=LANGUAGE)
 
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    scam_detect_pb2_grpc.add_WorkerServiceServicer_to_server(WorkerServiceServicer(), server)
+    scam_detect_pb2_grpc.add_WorkerServiceServicer_to_server(WorkerServiceServicer(), server)  # loads the model
+    health_servicer = health.HealthServicer()
+    health_pb2_grpc.add_HealthServicer_to_server(health_servicer, server)
+    for name in ("", SERVICE_NAME):
+        health_servicer.set(name, health_pb2.HealthCheckResponse.SERVING)
     server.add_insecure_port(f"[::]:{PORT}")
     server.start()
     logger.info("%s/%s worker listening on :%s", SIGNAL, LANGUAGE, PORT)
+
+    def stop(*_):  # Kubernetes sends SIGTERM: report NOT_SERVING, finish in-flight calls, exit
+        for name in ("", SERVICE_NAME):
+            health_servicer.set(name, health_pb2.HealthCheckResponse.NOT_SERVING)
+        server.stop(grace=5)
+
+    signal.signal(signal.SIGTERM, stop)
     server.wait_for_termination()
 
 

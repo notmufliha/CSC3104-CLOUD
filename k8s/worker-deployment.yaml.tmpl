@@ -50,13 +50,16 @@ spec:
             limits:
               cpu: "500m"
               memory: "256Mi"
+          # Every worker serves the standard gRPC health service (grpc.health.v1) and reports SERVING only
+          # once its model has loaded, so these probes check "model ready", not just "port open".
+          # Native gRPC probes need Kubernetes >= 1.24. ZH workers load jieba + a ~5 MB model at start-up.
           readinessProbe:
-            tcpSocket:
+            grpc:
               port: 50051
             initialDelaySeconds: 3
             periodSeconds: 5
           livenessProbe:
-            tcpSocket:
+            grpc:
               port: 50051
-            initialDelaySeconds: 5
+            initialDelaySeconds: 10
             periodSeconds: 10

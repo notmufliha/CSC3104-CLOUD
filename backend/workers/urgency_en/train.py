@@ -3,8 +3,8 @@ train.py - train + validate the English URGENCY classifier (TF-IDF + LogisticReg
 
 Reads
   data/urgency_en/final_cleaned_dataset.csv          (text_raw, label, source, conversation_id, hard_negative)
-  backend/workers/urgency_en/augment_urgency_en.csv  (optional extra rows, see --augment: text_raw, label,
-                                                       source, conversation_id[, hard_negative, label_method])
+  data/urgency_en/augment_review_flips.csv  (optional extra rows, see --augment: text_raw, label,
+  data/urgency_en/augment_urgency_en.csv     source, conversation_id[, hard_negative, label_method])
   backend/workers/urgency_en/eval/*.csv              (gold sets; ONLY used to remove near-copies from training)
   backend/workers/urgency_en/training/lexicon_urgency_en.txt   (optional, for the keyword baseline)
 
@@ -49,11 +49,14 @@ SEED = 42
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 DEFAULT_DATA = REPO / "data" / "urgency_en" / "final_cleaned_dataset.csv"
-# targeted_urgency_augmentation_v2.csv is deliberately NOT here: some of its rows were paraphrased from
+# data/urgency_en/archive/targeted_urgency_augmentation_v2.csv is deliberately NOT here: some of its rows were paraphrased from
 # eval/robocall_gold.csv, so training on it leaks the test set. Never add files written from gold rows.
+# data/urgency_en/augment_review_flips.csv: human-review label flips + ai_label_claude rows (was
+# backend/workers/urgency_en/augment_urgency_en.csv; moved, content unchanged).
 # data/urgency_en/augment_urgency_en.csv: real sentences mined from unused Taskmaster/SpokenWOZ/CallCenterEN/robocall
 # calls and labelled by LABELING.md (label_method ai_label_ide / ai_written), plus speech-to-text style copies.
-DEFAULT_AUGMENT = [HERE / "augment_urgency_en.csv", REPO / "data" / "urgency_en" / "augment_urgency_en.csv"]
+DEFAULT_AUGMENT = [REPO / "data" / "urgency_en" / "augment_review_flips.csv",
+                   REPO / "data" / "urgency_en" / "augment_urgency_en.csv"]
 EVAL_DIR = HERE / "eval"
 DEFAULT_OUT = HERE / "model" / "urgency_en.joblib"
 # Every silver_rule_urgency row of the main dataset relabelled by LABELING.md (label_method ai_label_ide, one-line
