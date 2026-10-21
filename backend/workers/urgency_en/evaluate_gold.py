@@ -33,7 +33,9 @@ SEED = 42
 HERE = Path(__file__).resolve().parent
 DEFAULT_MODEL = HERE / "model" / "urgency_en.joblib"
 DEFAULT_TRAIN_FILES = [HERE.parents[2] / "data" / "urgency_en" / "final_cleaned_dataset.csv",
-                       HERE / "augment_urgency_en.csv"]
+                       HERE.parents[2] / "data" / "urgency_en" / "augment_review_flips.csv"]
+# Training files that were moved after a model was saved: the bundle records the old path.
+MOVED = {"backend/workers/urgency_en/augment_urgency_en.csv": "data/urgency_en/augment_review_flips.csv"}
 REPORTS = HERE / "reports"
 WARNING = "!!! Gold set = final test. Do not tune anything based on this output. !!!"
 N_BOOT = 1000
@@ -174,7 +176,7 @@ def main():
     # Compare against EVERY training input (main dataset + augment files), so "overlap" means overlap with
     # what the model actually learned from. Older bundles did not record their files: fall back to defaults.
     # Bundle paths are relative to the repo root.
-    files = args.train_files or [HERE.parents[2] / f for f in bundle.get("training_files", [])] or DEFAULT_TRAIN_FILES
+    files = args.train_files or [HERE.parents[2] / MOVED.get(f, f) for f in bundle.get("training_files", [])]         or DEFAULT_TRAIN_FILES
     parts = []
     for f in files:
         if not f.exists():

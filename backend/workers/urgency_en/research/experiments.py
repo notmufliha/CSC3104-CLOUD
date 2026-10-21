@@ -19,13 +19,14 @@ Writes   model/experiments/<variant>.joblib, model/urgency_en.joblib (winner by 
          reports/experiments.csv, reports/experiments_report.txt
 
 Usage
-  python backend/workers/urgency_en/experiments.py [--probes PATH] [--no-save]
+  python backend/workers/urgency_en/research/experiments.py [--probes PATH] [--no-save]
 """
 # torch must be imported before scikit-learn/numpy load their OpenMP runtime, otherwise on Windows
 # torch's c10.dll fails to initialise (WinError 1114).
 import torch  # noqa: F401  isort:skip
 import argparse
 import shutil
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -38,9 +39,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import f1_score, roc_auc_score
 from sklearn.pipeline import Pipeline
 
-import predict
-import train as T
-from embed import DEFAULT_MODEL as MINILM, MiniLMEncoder
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # the worker folder: predict, train, text_norm
+import predict  # noqa: E402
+import train as T  # noqa: E402
+from embed import DEFAULT_MODEL as MINILM, MiniLMEncoder  # noqa: E402
 from text_norm import normalize
 
 HERE = T.HERE

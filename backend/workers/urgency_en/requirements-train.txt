@@ -3,7 +3,7 @@ numpy
 scikit-learn==1.4.2
 joblib
 pyarrow
-# experiments.py only (MiniLM variants). CPU wheel keeps it small:
+# research/experiments.py only (MiniLM variants). CPU wheel keeps it small:
 #   pip install torch --index-url https://download.pytorch.org/whl/cpu
 torch
 sentence-transformers
