@@ -18,13 +18,13 @@ Android app --HTTP/JSON--> gateway --gRPC--> urgency_{en,zh}
                               `-----gRPC--> aggregator
 ```
 
-- **gateway** (Rust, Actix-web + tonic): exposes `POST /submit-transcript`,
-  validates/picks the language, fans the transcript out concurrently to the
-  three signal workers for that language over gRPC (each call bounded by a
-  2000ms timeout), then forwards whatever scores came back to the
-  aggregator and returns its verdict as JSON. If a worker is slow or down,
-  the gateway proceeds with the partial set of scores rather than blocking
-  the whole request.
+- **gateway** (Rust, Actix-web + tonic): the phone's only entry point,
+  `POST /v1/utterance` (see [Gateway API](#gateway-api)). For each caller
+  line it picks the language, calls the three workers for that language at
+  the same time over gRPC (at most 1.7 s), sends the scores that arrived to
+  the aggregator and returns the call's current verdict, all within 2 s.
+  Receiver lines are not scored. If a worker is slow or down, the answer
+  comes back without it and lists it under `missing`.
 - **aggregator** (Rust, tonic gRPC server + a small Actix-web health
   endpoint): implements `Aggregate`, a weighted sum of the worker scores
   (equal 1/3 weights to start) mapped to `SCAM` (≥0.6) / `UNSURE`
@@ -55,10 +55,74 @@ shared `scamnet` network, with the gateway published at
 Try it:
 
 ```bash
-curl -X POST http://localhost:8080/submit-transcript \
+curl -X POST http://localhost:8080/v1/utterance \
   -H "Content-Type: application/json" \
-  -d '{"transcript": "Your account will be suspended, transfer money now", "language": "en"}'
+  -d '{"call_id": "demo-1", "seq": 1, "speaker": "caller", "lang": "en", "text": "This is the police. Transfer the money to the safe account now and read me the OTP."}'
 ```
+
+Run every gateway check (three scores + verdict, receiver lines, language
+routing, stopping a worker, timing logs) against the running stack:
+
+```bash
+python tools/gateway_test.py
+```
+
+### Gateway API
+
+`POST /v1/utterance`, one line of a call at a time:
+
+```json
+{"call_id": "abc-123", "seq": 1, "speaker": "caller", "text": "Transfer the money now", "lang": "en"}
+```
+
+| Field | Required | Meaning |
+|---|---|---|
+| `call_id` | yes | Same value for every line of one call (1-128 characters). |
+| `seq` | no (recommended) | Line number within the call: 1, 2, 3... (caller and receiver lines share one count). Echoed back. A caller line resent with a `seq` that was already scored is not scored again (`"duplicate": true`). Lines may arrive out of order. |
+| `speaker` | yes | `caller` = the person who rang (scored). Anything else (e.g. `receiver`) is not scored. |
+| `text` | yes | What was said in this line (max 10,000 characters). |
+| `lang` | no | `en` or `zh` (`zh-SG`, `en-US`... also work). If left out, text with more than 30% Chinese characters goes to the ZH workers, otherwise EN. |
+
+Answer for a caller line:
+
+```json
+{"call_id": "abc-123", "seq": 1, "scored": true, "duplicate": false, "verdict": "SCAM", "combined_score": 0.79,
+ "language": "en", "language_source": "phone",
+ "scores": {"urgency": 0.47, "money": 1.0, "impersonation": 0.90}, "missing": [],
+ "call_scores": {"urgency": 0.47, "money": 1.0, "impersonation": 0.90}, "caller_lines": 1, "latency_ms": 15}
+```
+
+- `scores`: this line's score per worker; `null` = that worker didn't answer in time, and it is listed in `missing`.
+- `verdict` is for the **whole call so far**: for each signal the gateway keeps the highest score
+  from the call's caller lines (`call_scores`) and sends those to the aggregator.
+- A receiver line returns `"scored": false` with the call's last verdict (`null` before the first caller
+  line), and no worker is called.
+- A resent caller line (same `call_id` + `seq`) returns `"duplicate": true, "scored": false` with the
+  call's current verdict, and no worker is called. If scoring a line fails (503/502), its `seq` is
+  forgotten so the phone can retry it. The verdict uses each signal's highest score, so the order lines
+  arrive in doesn't change it.
+- Errors are JSON `{"error": "..."}`: 400 for a bad request, 503 if no worker answered and the call has no
+  earlier scores, 502 if the aggregator failed.
+- `GET /healthz` returns `{"status": "ok", "calls_in_memory": N}`. The older one-shot
+  `POST /submit-transcript` (`{"transcript", "language"}`, no call memory) still works.
+
+Gateway settings (environment variables; defaults match `docker-compose.yml`):
+
+| Variable | Default | |
+|---|---|---|
+| `URGENCY_EN_ADDR`, `MONEY_EN_ADDR`, `IMPERSONATION_EN_ADDR`, `URGENCY_ZH_ADDR`, `MONEY_ZH_ADDR`, `IMPERSONATION_ZH_ADDR` | `http://<signal>_<lang>:50051` | Worker addresses. `http://` is added if missing, so `urgency-en:50051` works in Kubernetes. |
+| `AGGREGATOR_ADDR` | `http://aggregator:50052` | |
+| `WORKER_TIMEOUT_MS` / `AGGREGATOR_TIMEOUT_MS` | `1700` / `300` | Together they keep every answer within 2 s. |
+| `CALL_TTL_SECS` / `MAX_CALLS` | `1800` / `10000` | How long and how many calls are remembered. |
+| `LOG_FORMAT` | plain | `json` for one JSON object per log line. |
+
+Logs: one `timing` line per worker call (`stage="worker" ... signal="money" ms=6 outcome="ok"`), one per
+aggregator call and one per request. Transcript text is never logged. Call memory lives in the gateway
+process, so with several gateway replicas all lines of a call must reach the same replica (sticky routing
+on `call_id`).
+
+The gateway and aggregator build with **Rust 1.90** (pinned in their Dockerfiles) and a committed
+`Cargo.lock`, so dependency updates can't break the build.
 
 To start only the six workers (no gateway/aggregator):
 

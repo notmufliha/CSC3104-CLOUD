@@ -1,4 +1,4 @@
-FROM rust:1.77-slim AS builder
+FROM rust:1.90-slim AS builder
 # NOTE: build context must be backend/ (see docker-compose.yml), since the
 # proto file is shared with the gateway and lives at backend/proto.
 WORKDIR /build
@@ -6,10 +6,10 @@ WORKDIR /build
 RUN apt-get update && apt-get install -y --no-install-recommends protobuf-compiler && rm -rf /var/lib/apt/lists/*
 
 COPY proto ./proto
-COPY aggregator/Cargo.toml aggregator/build.rs ./aggregator/
+COPY aggregator/Cargo.toml aggregator/Cargo.lock aggregator/build.rs ./aggregator/
 COPY aggregator/src ./aggregator/src
 WORKDIR /build/aggregator
-RUN cargo build --release
+RUN cargo build --release --locked
 
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
