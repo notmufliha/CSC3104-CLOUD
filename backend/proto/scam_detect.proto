@@ -37,7 +37,23 @@ message WorkerScore {
 }
 
 message AggregateRequest {
+  // THIS line's scores: only the workers that answered (a missing worker is simply absent).
   repeated WorkerScore scores = 1;
+  // Call the line belongs to. The aggregator keeps the call's memory in Redis under call:<call_id>.
+  // Empty = one-shot request with no memory (used by the gateway's /submit-transcript).
+  string call_id = 2;
+  // Line number within the call (0 = not given). Only logged.
+  uint64 seq = 3;
+  // Milliseconds since the call started, as the phone measured it. 0 = use the aggregator's clock.
+  // Lets a scripted replay say "this line was spoken 22 s into the call".
+  int64 call_time_ms = 4;
+}
+
+// Why the verdict was given: one entry per signal that fired, strongest first.
+message Reason {
+  string signal = 1;
+  float score = 2;
+  string text = 3;  // e.g. "Asked for your OTP or money"
 }
 
 enum Verdict {
@@ -49,6 +65,17 @@ enum Verdict {
 
 message AggregateResponse {
   Verdict verdict = 1;
-  // Weighted sum of the input scores (see aggregator weighting policy).
+  // Weighted average of each signal's recent highest score (weights of missing signals are shared out).
   float combined_score = 2;
+  repeated Reason reasons = 3;
+  // One suggested action for the user; empty when SAFE.
+  string action = 4;
+  // Each signal's highest score over the call's recent caller lines (what combined_score is built from).
+  map<string, float> recent_scores = 5;
+  // True inside the call's first seconds, when the aggregator stays quiet unless a score is very high.
+  bool warming_up = 6;
+  // False when fewer than the minimum number of workers answered this line.
+  bool quorum_met = 7;
+  // Caller lines seen for this call so far.
+  uint32 caller_lines = 8;
 }
