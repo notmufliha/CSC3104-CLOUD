@@ -39,6 +39,18 @@ services:
     networks:
       - scamnet
 
+  # Call memory for the aggregator (call:<call_id>, calllog:<call_id>), so any aggregator copy can handle
+  # any line and restarting the aggregator mid-call loses nothing.
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+    networks:
+      - scamnet
+
   aggregator:
     build:
       context: ./backend
@@ -46,6 +58,26 @@ services:
     environment:
       AGGREGATOR_GRPC_ADDR: "0.0.0.0:50052"
       AGGREGATOR_HTTP_ADDR: "0.0.0.0:8082"
+      REDIS_URL: "redis://redis:6379"
+      # Decision rules (see README "Aggregator timing policy"). These are the defaults; change and
+      # `docker compose up -d aggregator` to tune without rebuilding.
+      AGG_W_URGENCY: "0.3333"
+      AGG_W_MONEY: "0.3333"
+      AGG_W_IMPERSONATION: "0.3333"
+      AGG_SCAM_THRESHOLD: "0.6"
+      AGG_UNSURE_THRESHOLD: "0.45"
+      AGG_WINDOW_LINES: "6"
+      AGG_WARMUP_SECS: "15"
+      AGG_WARMUP_OVERRIDE: "0.9"
+      AGG_SCAM_STREAK: "2"
+      AGG_MONEY_RULE: "0.7"
+      AGG_MONEY_RULE_OTHER: "0.5"
+      AGG_REASON_THRESHOLD: "0.5"
+      AGG_MIN_QUORUM: "2"
+      AGG_CALL_TTL_SECS: "3600"
+    depends_on:
+      redis:
+        condition: service_healthy
     networks:
       - scamnet
 
