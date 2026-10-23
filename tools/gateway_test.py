@@ -2,8 +2,8 @@
 gateway_test.py - end-to-end checks for Workstream 2 (gateway), against a running `docker compose up` stack.
 
     docker compose up -d --build
-    python tools/gateway_test.py                 # all checks, including stopping one worker
-    python tools/gateway_test.py --no-stop       # skip the stop-a-worker check
+    python tools/gateway_test.py                 # all checks, including stopping workers
+    python tools/gateway_test.py --no-stop       # skip the stop-a-worker / stop-all-workers checks
 
 Standard library only. Talks to the gateway at http://localhost:8080 (override with GATEWAY_URL).
 Exits 0 if every check passes.
@@ -43,7 +43,8 @@ def compose(*args):
 
 
 def short(r):
-    keys = ("verdict", "combined_score", "language", "language_source", "scores", "missing", "scored", "latency_ms")
+    keys = ("verdict", "combined_score", "language", "language_source", "scores", "missing", "scored",
+            "warming_up", "latency_ms")
     return json.dumps({k: r.get(k) for k in keys if k in r}, ensure_ascii=False)
 
 
@@ -57,6 +58,11 @@ print("   ", short(r))
 check("HTTP 200", s == 200, str(s))
 check("three scores, none missing", len([v for v in r.get("scores", {}).values() if v is not None]) == 3, r.get("missing"))
 check("has a verdict", r.get("verdict") in ("SAFE", "UNSURE", "SCAM"), r.get("verdict"))
+check("aggregator fields present (reasons, action, warming_up, quorum_met, recent_scores)",
+      all(k in r for k in ("reasons", "action", "warming_up", "quorum_met", "recent_scores")), str(list(r)))
+check("police + OTP line: SCAM with reasons and an action",
+      r.get("verdict") == "SCAM" and bool(r.get("reasons")) and bool(r.get("action")),
+      json.dumps(r.get("reasons"))[:120])
 first_verdict = r.get("verdict")
 
 print("\n2.2  receiver line -> last verdict, no workers called")
@@ -118,6 +124,23 @@ else:
         check("answered within 2 s", dt < 2.0, f"{dt * 1000:.0f} ms")
     finally:
         compose("start", "money_en")
+
+print("\n3.2  stop all three EN workers -> the aggregator still answers: UNSURE, not enough data")
+if "--no-stop" in sys.argv:
+    print("  (skipped)")
+else:
+    en_workers = ("urgency_en", "money_en", "impersonation_en")
+    compose("stop", *en_workers)
+    try:
+        s, r, dt = post({"call_id": call + "-none", "speaker": "caller", "lang": "en", "text": "Hello?"})
+        print("   ", short(r), f"wall={dt * 1000:.0f} ms")
+        check("HTTP 200, UNSURE, quorum not met", s == 200 and r.get("verdict") == "UNSURE"
+              and r.get("quorum_met") is False, str(s))
+        check("all three marked missing", sorted(r.get("missing", [])) == sorted(["urgency", "money", "impersonation"]))
+        check("reason says not enough data", any("Not enough data" in x.get("text", "") for x in r.get("reasons", [])))
+    finally:
+        compose("start", *en_workers)
+        time.sleep(5)  # let the workers load their models again
 
 print("\n2.7  timing log, never the text")
 logs = compose("logs", "gateway", "--no-color").stdout
