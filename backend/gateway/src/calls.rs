@@ -1,16 +1,13 @@
-//! Per-call memory: the verdict for a call is built from ALL of its caller lines so far, not just the latest.
+//! What the gateway remembers per call. The decision memory (each signal's recent highest score, the "2 in a
+//! row" streak, red-stays-red) lives in Redis and belongs to the aggregator; the gateway only keeps:
 //!
-//! For each signal we keep the highest score seen in the call; those best scores go to the aggregator.
-//! So one clearly pressuring sentence keeps the call flagged even if the next line is small talk, and a
-//! signal whose worker missed one line still counts with its earlier score. Because it is a maximum, the
-//! order lines arrive in does not change the verdict.
+//!   - which line numbers (`seq`) it has already scored, so a resent line is scored once;
+//!   - the aggregator's last answer, so a receiver line or a resent line gets the call's current verdict
+//!     without calling the workers.
 //!
-//! Sequence numbers: when the phone sends `seq`, each (call, seq) is scored once. A resent line (same seq)
-//! gets the current verdict back without calling the workers again.
-//!
-//! Lives in the gateway's memory: with several gateway replicas, all lines of one call must reach the same
-//! replica (sticky routing on call_id), or this moves to a shared store. Calls are forgotten after
-//! CALL_TTL_SECS without a new line.
+//! Lives in the gateway's memory: with several gateway replicas, all lines of one call should reach the same
+//! replica (sticky routing on call_id) for these two to work; the verdicts themselves are right either way.
+//! Calls are forgotten after CALL_TTL_SECS without a new line.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Mutex;
@@ -20,22 +17,27 @@ use std::time::{Duration, Instant};
 const MAX_SEQS_PER_CALL: usize = 10_000;
 
 #[derive(Clone, Debug, serde::Serialize)]
-pub struct Verdict {
-    pub verdict: String,
-    pub combined_score: f32,
+pub struct Reason {
+    pub signal: String,
+    pub score: f32,
+    pub text: String,
 }
 
-/// What the call looks like right now (for receiver lines and resent lines).
-pub struct Snapshot {
-    pub verdict: Option<Verdict>,
-    pub best: BTreeMap<&'static str, f32>,
+/// The aggregator's answer for the call after its latest caller line.
+#[derive(Clone, Debug, Default)]
+pub struct Answer {
+    pub verdict: String,
+    pub combined_score: f32,
+    pub reasons: Vec<Reason>,
+    pub action: String,
+    pub recent_scores: BTreeMap<String, f32>,
+    pub warming_up: bool,
+    pub quorum_met: bool,
     pub caller_lines: u32,
 }
 
 struct CallState {
-    best: BTreeMap<&'static str, f32>,
-    verdict: Option<Verdict>,
-    caller_lines: u32,
+    last: Option<Answer>,
     seen_seqs: HashSet<u64>,
     last_seen: Instant,
 }
@@ -51,16 +53,13 @@ impl CallStore {
         CallStore { calls: Mutex::new(HashMap::new()), ttl, max_calls }
     }
 
-    /// The call as it is now; an unknown call is empty (no verdict yet).
-    pub fn snapshot(&self, call_id: &str) -> Snapshot {
+    /// The aggregator's last answer for this call; None before its first scored caller line.
+    pub fn last_answer(&self, call_id: &str) -> Option<Answer> {
         let mut calls = self.calls.lock().unwrap();
-        match calls.get_mut(call_id) {
-            Some(c) => {
-                c.last_seen = Instant::now();
-                Snapshot { verdict: c.verdict.clone(), best: c.best.clone(), caller_lines: c.caller_lines }
-            }
-            None => Snapshot { verdict: None, best: BTreeMap::new(), caller_lines: 0 },
-        }
+        calls.get_mut(call_id).and_then(|c| {
+            c.last_seen = Instant::now();
+            c.last.clone()
+        })
     }
 
     /// Record that line `seq` of this call has arrived. Returns false if it was already recorded (a resend).
@@ -85,25 +84,11 @@ impl CallStore {
         }
     }
 
-    /// Merge this line's scores into the call; returns the call's best score per signal and its line count.
-    pub fn merge_scores(&self, call_id: &str, scores: &[(&'static str, f32)]) -> (BTreeMap<&'static str, f32>, u32) {
+    pub fn set_answer(&self, call_id: &str, answer: Answer) {
         let mut calls = self.calls.lock().unwrap();
         let c = self.get_or_create(&mut calls, call_id);
-        for &(signal, score) in scores {
-            let e = c.best.entry(signal).or_insert(score);
-            if score > *e {
-                *e = score;
-            }
-        }
-        c.caller_lines += 1;
+        c.last = Some(answer);
         c.last_seen = Instant::now();
-        (c.best.clone(), c.caller_lines)
-    }
-
-    pub fn set_verdict(&self, call_id: &str, verdict: Verdict) {
-        if let Some(c) = self.calls.lock().unwrap().get_mut(call_id) {
-            c.verdict = Some(verdict);
-        }
     }
 
     pub fn len(&self) -> usize {
@@ -113,13 +98,10 @@ impl CallStore {
     fn get_or_create<'a>(&self, calls: &'a mut HashMap<String, CallState>, call_id: &str) -> &'a mut CallState {
         if !calls.contains_key(call_id) {
             self.evict(calls);
-            calls.insert(call_id.to_string(), CallState {
-                best: BTreeMap::new(),
-                verdict: None,
-                caller_lines: 0,
-                seen_seqs: HashSet::new(),
-                last_seen: Instant::now(),
-            });
+            calls.insert(
+                call_id.to_string(),
+                CallState { last: None, seen_seqs: HashSet::new(), last_seen: Instant::now() },
+            );
         }
         calls.get_mut(call_id).expect("just inserted")
     }
@@ -145,18 +127,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn keeps_best_score_per_signal() {
+    fn keeps_the_last_answer() {
         let store = CallStore::new(Duration::from_secs(60), 100);
-        store.merge_scores("c1", &[("urgency", 0.9), ("money", 0.1)]);
-        let (best, n) = store.merge_scores("c1", &[("urgency", 0.2), ("impersonation", 0.7)]);
-        assert_eq!(best["urgency"], 0.9);
-        assert_eq!(best["money"], 0.1);
-        assert_eq!(best["impersonation"], 0.7);
-        assert_eq!(n, 2);
-        assert!(store.snapshot("c1").verdict.is_none());
-        store.set_verdict("c1", Verdict { verdict: "SCAM".into(), combined_score: 0.8 });
-        assert_eq!(store.snapshot("c1").verdict.unwrap().verdict, "SCAM");
-        assert!(store.snapshot("unknown").verdict.is_none());
+        assert!(store.last_answer("c1").is_none());
+        store.set_answer("c1", Answer { verdict: "UNSURE".into(), caller_lines: 1, ..Default::default() });
+        store.set_answer("c1", Answer { verdict: "SCAM".into(), caller_lines: 2, ..Default::default() });
+        let a = store.last_answer("c1").unwrap();
+        assert_eq!((a.verdict.as_str(), a.caller_lines), ("SCAM", 2));
+        assert!(store.last_answer("unknown").is_none());
     }
 
     #[test]
@@ -175,7 +153,7 @@ mod tests {
     fn caps_number_of_calls() {
         let store = CallStore::new(Duration::from_secs(60), 2);
         for id in ["a", "b", "c"] {
-            store.merge_scores(id, &[("urgency", 0.5)]);
+            store.set_answer(id, Answer::default());
         }
         assert!(store.len() <= 2);
     }

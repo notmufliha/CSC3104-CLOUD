@@ -15,7 +15,7 @@ production hardening.
 Android app --HTTP/JSON--> gateway --gRPC--> urgency_{en,zh}
                               |     --gRPC--> money_{en,zh}
                               |     --gRPC--> impersonation_{en,zh}
-                              `-----gRPC--> aggregator
+                              `-----gRPC--> aggregator <--> Redis (call memory)
 ```
 
 - **gateway** (Rust, Actix-web + tonic): the phone's only entry point,
@@ -26,9 +26,10 @@ Android app --HTTP/JSON--> gateway --gRPC--> urgency_{en,zh}
   Receiver lines are not scored. If a worker is slow or down, the answer
   comes back without it and lists it under `missing`.
 - **aggregator** (Rust, tonic gRPC server + a small Actix-web health
-  endpoint): implements `Aggregate`, a weighted sum of the worker scores
-  (equal 1/3 weights to start) mapped to `SCAM` (≥0.6) / `UNSURE`
-  (0.45–0.6) / `SAFE` (<0.45).
+  endpoint): the judge. It keeps each call's memory in **Redis** (so any
+  aggregator copy can handle any line, and a restart loses nothing) and
+  decides `SAFE` / `UNSURE` / `SCAM` for the whole call so far, with
+  reasons and a suggested action. See [Aggregator](#aggregator).
 - **workers** (Python, grpcio): six independent services —
   `{urgency,money,impersonation}_{en,zh}` — each a TF-IDF +
   LogisticRegression scikit-learn pipeline behind the same
@@ -48,7 +49,7 @@ Requires Docker and Docker Compose.
 docker compose up --build
 ```
 
-This builds and starts the gateway, aggregator, and all six workers on a
+This builds and starts the gateway, aggregator, Redis and all six workers on a
 shared `scamnet` network, with the gateway published at
 `http://localhost:8080`.
 
@@ -61,10 +62,14 @@ curl -X POST http://localhost:8080/v1/utterance \
 ```
 
 Run every gateway check (three scores + verdict, receiver lines, language
-routing, stopping a worker, timing logs) against the running stack:
+routing, stopping one worker / all workers, timing logs) and the aggregator's
+"done when" checks (a scripted scam call turns red at the right line, a normal
+call stays green, restarting the aggregator mid-call keeps the call's memory)
+against the running stack:
 
 ```bash
 python tools/gateway_test.py
+python tools/aggregator_replay.py
 ```
 
 ### Gateway API
@@ -72,7 +77,7 @@ python tools/gateway_test.py
 `POST /v1/utterance`, one line of a call at a time:
 
 ```json
-{"call_id": "abc-123", "seq": 1, "speaker": "caller", "text": "Transfer the money now", "lang": "en"}
+{"call_id": "abc-123", "seq": 1, "speaker": "caller", "text": "Transfer the money now", "lang": "en", "t_ms": 22000}
 ```
 
 | Field | Required | Meaning |
@@ -82,29 +87,38 @@ python tools/gateway_test.py
 | `speaker` | yes | `caller` = the person who rang (scored). Anything else (e.g. `receiver`) is not scored. |
 | `text` | yes | What was said in this line (max 10,000 characters). |
 | `lang` | no | `en` or `zh` (`zh-SG`, `en-US`... also work). If left out, text with more than 30% Chinese characters goes to the ZH workers, otherwise EN. |
+| `t_ms` | no | Milliseconds since the call started, as the phone measured it. Used for the 15 s warm-up; without it the aggregator uses its own clock since the call's first line. A scripted replay sends it so lines sent a second apart still count as spoken 20 s apart. |
 
 Answer for a caller line:
 
 ```json
-{"call_id": "abc-123", "seq": 1, "scored": true, "duplicate": false, "verdict": "SCAM", "combined_score": 0.79,
- "language": "en", "language_source": "phone",
- "scores": {"urgency": 0.47, "money": 1.0, "impersonation": 0.90}, "missing": [],
- "call_scores": {"urgency": 0.47, "money": 1.0, "impersonation": 0.90}, "caller_lines": 1, "latency_ms": 15}
+{"call_id": "abc-123", "seq": 1, "scored": true, "duplicate": false, "verdict": "SCAM", "combined_score": 0.80,
+ "reasons": [{"signal": "money", "score": 1.0, "text": "Asked for your OTP or money"},
+             {"signal": "impersonation", "score": 0.94, "text": "Claims to be police, a bank or the government"}],
+ "action": "Hang up now. Call the organisation back on its official number, or ScamShield on 1799.",
+ "warming_up": true, "quorum_met": true, "language": "en", "language_source": "phone",
+ "scores": {"urgency": 0.47, "money": 1.0, "impersonation": 0.94}, "missing": [],
+ "recent_scores": {"urgency": 0.47, "money": 1.0, "impersonation": 0.94}, "caller_lines": 1, "latency_ms": 29}
 ```
 
 - `scores`: this line's score per worker; `null` = that worker didn't answer in time, and it is listed in `missing`.
-- `verdict` is for the **whole call so far**: for each signal the gateway keeps the highest score
-  from the call's caller lines (`call_scores`) and sends those to the aggregator.
-- A receiver line returns `"scored": false` with the call's last verdict (`null` before the first caller
-  line), and no worker is called.
+- `verdict` is for the **whole call so far**, decided by the aggregator from each signal's highest score
+  over the call's recent caller lines (`recent_scores`); see [Aggregator](#aggregator) for the rules.
+  `reasons` (strongest first) and `action` are empty when the verdict is `SAFE`.
+- `warming_up`: the line is in the call's first 15 s, when the aggregator stays quiet unless a score is
+  0.9 or higher. `quorum_met: false`: fewer than 2 workers answered this line, so the verdict is
+  `UNSURE` with the reason "Not enough data".
+- A receiver line returns `"scored": false` with the call's last answer (`null` verdict before the first
+  caller line), and no worker is called.
 - A resent caller line (same `call_id` + `seq`) returns `"duplicate": true, "scored": false` with the
-  call's current verdict, and no worker is called. If scoring a line fails (503/502), its `seq` is
-  forgotten so the phone can retry it. The verdict uses each signal's highest score, so the order lines
-  arrive in doesn't change it.
-- Errors are JSON `{"error": "..."}`: 400 for a bad request, 503 if no worker answered and the call has no
-  earlier scores, 502 if the aggregator failed.
+  call's current answer, and no worker is called. If scoring a line fails (502), its `seq` is forgotten
+  so the phone can retry it.
+- If no worker answers at all, the line still gets an answer: `UNSURE` "not enough data" (or `SCAM` if
+  the call is already red).
+- Errors are JSON `{"error": "..."}`: 400 for a bad request, 502 if the aggregator failed (e.g. Redis down).
 - `GET /healthz` returns `{"status": "ok", "calls_in_memory": N}`. The older one-shot
-  `POST /submit-transcript` (`{"transcript", "language"}`, no call memory) still works.
+  `POST /submit-transcript` (`{"transcript", "language"}`, no call memory) still works and now also
+  returns `reasons` and `action`.
 
 Gateway settings (environment variables; defaults match `docker-compose.yml`):
 
@@ -113,13 +127,64 @@ Gateway settings (environment variables; defaults match `docker-compose.yml`):
 | `URGENCY_EN_ADDR`, `MONEY_EN_ADDR`, `IMPERSONATION_EN_ADDR`, `URGENCY_ZH_ADDR`, `MONEY_ZH_ADDR`, `IMPERSONATION_ZH_ADDR` | `http://<signal>_<lang>:50051` | Worker addresses. `http://` is added if missing, so `urgency-en:50051` works in Kubernetes. |
 | `AGGREGATOR_ADDR` | `http://aggregator:50052` | |
 | `WORKER_TIMEOUT_MS` / `AGGREGATOR_TIMEOUT_MS` | `1700` / `300` | Together they keep every answer within 2 s. |
-| `CALL_TTL_SECS` / `MAX_CALLS` | `1800` / `10000` | How long and how many calls are remembered. |
+| `CALL_TTL_SECS` / `MAX_CALLS` | `1800` / `10000` | How long and how many calls the gateway remembers (seen `seq`s + last answer). |
 | `LOG_FORMAT` | plain | `json` for one JSON object per log line. |
 
 Logs: one `timing` line per worker call (`stage="worker" ... signal="money" ms=6 outcome="ok"`), one per
-aggregator call and one per request. Transcript text is never logged. Call memory lives in the gateway
-process, so with several gateway replicas all lines of a call must reach the same replica (sticky routing
-on `call_id`).
+aggregator call and one per request. Transcript text is never logged. The decision memory lives in Redis
+(any gateway or aggregator copy gets the same verdict); the gateway itself only remembers which `seq`s it
+has scored and the call's last answer (for receiver lines and resends), so with several gateway replicas,
+sticky routing on `call_id` keeps those two working.
+
+### Aggregator
+
+For each caller line the gateway sends that line's scores (only the workers that answered, possibly none),
+the `call_id`, `seq` and `t_ms`. The aggregator loads the call from Redis, applies the rules below, saves
+it back and returns the verdict, reasons and action. The rules live in
+[backend/aggregator/src/policy.rs](backend/aggregator/src/policy.rs) (with a unit test per rule).
+
+**Timing policy**: how decisions are made, checked in this order:
+
+| # | Rule | Default | Setting |
+|---|---|---|---|
+| 1 | **Window**: each signal's recent score is its highest over the call's last N caller lines (a scammer says "police", "act now" and "give me the OTP" in different sentences). Receiver lines don't count. | 6 lines | `AGG_WINDOW_LINES` |
+| 2 | **Red stays red**: once a call is `SCAM`, every later line is `SCAM`. | | |
+| 3 | **Quorum**: fewer than N workers answered *this* line → `UNSURE` "Not enough data" (also during the warm-up). | 2 | `AGG_MIN_QUORUM` |
+| 4 | **Weighted vote**: combined = Σ wᵢ·sᵢ / Σ wᵢ over the signals that have a recent score, so a missing worker's weight is shared among the others. | ⅓ each | `AGG_W_URGENCY`, `AGG_W_MONEY`, `AGG_W_IMPERSONATION` |
+| 5 | **Warm-up**: in the call's first N seconds stay quiet (`SAFE`) unless some recent score is ≥ the override. This beats the money rule too; the scores stay in the window, so they still count on the first line after the warm-up. | 15 s, override 0.9 | `AGG_WARMUP_SECS`, `AGG_WARMUP_OVERRIDE` |
+| 6 | **Money rule**: money ≥ 0.7 while another signal is ≥ 0.5 → `SCAM` immediately. | 0.7 / 0.5 | `AGG_MONEY_RULE`, `AGG_MONEY_RULE_OTHER` |
+| 7 | **2 in a row**: combined ≥ 0.6 → the first time `UNSURE`, the Nth update in a row `SCAM`. Because of the window, one strong line keeps combined high, so the call turns red on the next caller line. | 0.6, 2 | `AGG_SCAM_THRESHOLD`, `AGG_SCAM_STREAK` |
+| 8 | **Unsure**: combined ≥ 0.45 → `UNSURE` (resets the streak). | 0.45 | `AGG_UNSURE_THRESHOLD` |
+| 9 | Otherwise `SAFE` (resets the streak). | | |
+| | **Reasons**: every signal with a recent score ≥ 0.5 when not `SAFE`, strongest first: "Asked for your OTP or money", "Claims to be police, a bank or the government", "Pressuring you to act now". Plus one action: `SCAM` "Hang up now. Call the organisation back on its official number, or ScamShield on 1799.", `UNSURE` "Don't share any codes or transfer money. Hang up and check with the official number." | 0.5 | `AGG_REASON_THRESHOLD` |
+| | **Memory expiry**: a call is deleted from Redis this long after its last line. | 1 hour | `AGG_CALL_TTL_SECS` |
+
+A request without `call_id` (the gateway's `/submit-transcript`) is judged alone: no memory, no warm-up,
+no streak (combined ≥ 0.6 → `SCAM` straight away); quorum and the money rule still apply.
+
+All settings are environment variables (listed with their defaults in `docker-compose.yml`, later a
+Kubernetes ConfigMap): change them and `docker compose up -d aggregator` to tune without rebuilding. An
+invalid value (not a number, threshold outside 0-1, unsure above scam, ...) stops the aggregator at
+start-up with a message instead of being silently ignored. Also `REDIS_URL` (default `redis://redis:6379`),
+`AGGREGATOR_GRPC_ADDR`, `AGGREGATOR_HTTP_ADDR` and `LOG_FORMAT`.
+
+Redis keys:
+
+- `call:<call_id>`: hash with `started_at_ms`, `window` (last N lines' scores), `streak`, `red`,
+  `caller_lines`, `verdict`, `combined`, `version`. Two aggregator copies updating the same call at once
+  can't overwrite each other: the save is a Lua script that only writes if `version` is unchanged, and the
+  loser re-reads and retries.
+- `calllog:<call_id>`: the verdict log, one JSON entry per caller line
+  `{call_id, seq, time_ms, verdict, combined, rule, scores, recent}`, never text. The same entry is logged
+  as one `verdict` line.
+
+Both expire with the call. If Redis is down, the aggregator answers gRPC `UNAVAILABLE` (the gateway
+returns 502) rather than judging a line without its call's memory; `GET /health` on port 8082 reports it.
+
+```bash
+docker compose exec redis redis-cli HGETALL call:demo-1
+docker compose exec redis redis-cli LRANGE calllog:demo-1 0 -1
+```
 
 The gateway and aggregator build with **Rust 1.90** (pinned in their Dockerfiles) and a committed
 `Cargo.lock`, so dependency updates can't break the build.
@@ -230,7 +295,7 @@ probability; "threshold" is the model's own cut-off.
 |---|---|---|---|
 | urgency_en | v4, TF-IDF + LR (sklearn 1.4.2), frozen 2026-10-13, threshold 0.368 | 0.470 / 0.365 | Passes 2/8 urgency goals. Many false alarms: "no rush", banks' anti-scam advice, normal time talk ("bill due on the 15th"). Misses pressure with no keywords. The normal test sentence sits just under the threshold. |
 | money_en | money_en_v1, word + char TF-IDF + LR, Platt-calibrated (sklearn 1.6.1), created 2026-10-15, threshold 0.5 | 1.000 / 0.000 | Scores **any** mention of money or OTPs, so a genuine "your bill is due" also scores high (by design; the aggregator separates scams). Validation F1 0.988 is on its own data split, so expect lower on real calls. Training notebook isn't in the repo yet (`train.py` is the old template), so the model can't be reproduced. |
-| impersonation_en | impersonation_en_v2, TF-IDF + char n-grams + LR, calibrated (sklearn 1.6.1), threshold 0.47 | 0.941 / 0.011 | Trained and tested only on synthetic, advisory-based rows (~510 dev rows); performance on real calls is unknown. |
+| impersonation_en | impersonation_en_v2, TF-IDF + char n-grams + LR, calibrated (sklearn 1.6.1), threshold 0.47 | 0.941 / 0.011 | Trained and tested only on synthetic, advisory-based rows (~510 dev rows); performance on real calls is unknown. Scores a plain greeting high: 0.90 for "Hello, good afternoon, am I speaking with Mr Tan?" (2026-10-23). |
 | urgency_zh | trained at image build (char TF-IDF + LR, calibrated, C=100), threshold 0.20 | 0.481 / 0.019 | Low threshold gives many false alarms: gold precision 0.46 at 0.20 (0.63 at 0.5). Retrained on every build, so not version-pinned. |
 | money_zh | trained at image build (char, C=100), threshold 0.20 | 0.993 / 0.011 | Gold precision 0.61 at 0.20 (0.94 at 0.5). Retrained on every build. |
 | impersonation_zh | trained at image build (jieba words, C=100), threshold 0.38 | **0.132 / 0.496** | **Fails this test**: missed the police scam and flagged the clinic call (same result with the original, unmodified code, so it's the model). Gold precision 0.70 at 0.38. Retrained on every build. |
@@ -265,15 +330,17 @@ example). The gateway and aggregator aren't templated here yet — TODO.
 backend/
   proto/scam_detect.proto       shared gRPC contract
   gateway/                      Rust + Actix-web HTTP front door, gRPC fan-out
-  aggregator/                   Rust gRPC Aggregate endpoint
+  aggregator/                   Rust gRPC Aggregate endpoint: decision rules (policy.rs), settings (config.rs),
+                                call memory in Redis (store.rs)
   workers/
     urgency_en/ urgency_zh/
     money_en/ money_zh/
     impersonation_en/ impersonation_zh/
     common_zh/                  ONE shared ZH text_norm.py + gold set, copied into each ZH image
 data/                            training data per worker (data/urgency_en/archive/ = cleaning history)
-tools/                           datagen, eval helpers, zh_check (try the 3 ZH workers interactively)
+tools/                           datagen, eval helpers, zh_check (try the 3 ZH workers interactively),
+                                 gateway_test.py + aggregator_replay.py (end-to-end checks)
 android-app/                    Kotlin + Jetpack Compose client
 k8s/                             Deployment/Service/HPA templates
-docker-compose.yml               local dev stack
+docker-compose.yml               local dev stack (incl. Redis)
 ```
