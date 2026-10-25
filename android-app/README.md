@@ -10,6 +10,41 @@ Real phone calls can't be recorded on Android, so the main mode is a **simulated
 
 ---
 
+## Quick start (first time)
+
+### 1. Start the backend
+From the repo root (Docker Desktop must be open, with Settings → Resources set to at least 4 CPUs and 8 GB RAM):
+
+```bash
+docker compose up -d --build     # first build takes several minutes
+docker compose ps                # 8 services, all "Up"
+curl http://localhost:8080/healthz   # → {"status":"ok",...}
+```
+
+Stop it later with `docker compose down`. Start it again (no rebuild) with `docker compose up -d`.
+
+### 2. Open the project
+Android Studio → **File → Open** → select the **`android-app`** folder (not the repo root). Wait for the Gradle sync to finish.
+
+### 3. Pick a device
+
+**Emulator (first time only):** Tools → **Device Manager** → **+** → pick a phone (e.g. Pixel 8) → choose the newest system image (download if needed) → Finish.
+
+**Real phone:**
+1. Phone: Settings → About phone → tap **Build number** 7 times to turn on Developer options.
+2. Settings → System → **Developer options** → turn on **USB debugging**.
+3. Plug the phone in with USB and tap **Allow** on the "Allow USB debugging?" prompt.
+4. The phone must be on the same Wi-Fi as the laptop (or a hotspot). See "Pointing the app at the backend".
+
+### 4. Run
+Select **`app`** and your device in the toolbar → press **Run ▶**. The app installs and opens as **ScamDetect**.
+
+### 5. First launch
+1. Tap **Allow** on the "nearby devices" (local network) prompt.
+
+2. **Settings** → check the gateway URL (emulator: `http://10.0.2.2:8080/`, real phone: `http://<laptop IP>:8080/`) → **Save** → **Test connection** → "Connected: ok".
+3. Home → **Simulate scam call** → **Answer**. The bar goes yellow, then red, and the red pop-up appears.
+
 ## Features
 
 | Task | Screen | What it does |

@@ -27,6 +27,8 @@ backend/workers/**/scam_detect_pb2_grpc.py
 
 # General
 .DS_Store
+# IDE settings for whoever opens the repo root (JetBrains): per-user, not shared
+/.idea/
 
 #Tools
 tools/datagen/call_transcript_dataset_output/
