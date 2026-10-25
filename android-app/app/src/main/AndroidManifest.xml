@@ -4,6 +4,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Android 17 (API 37) blocks private addresses (10.0.2.2, the laptop's Wi-Fi IP) without this runtime permission. -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
 
     <!-- usesCleartextTraffic: the demo gateway is plain http on the laptop. Turn off for a real release. -->
     <application
