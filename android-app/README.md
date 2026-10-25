@@ -201,20 +201,17 @@ Scripts live in `app/src/main/assets/scripts/`. Each file is a JSON list:
 
 ### Current scripts
 
-| File | Expected verdicts per caller line | On the bar |
+| File | Verdict after each caller line | On the bar |
 |---|---|---|
-| `scam_en_00_police_soft.json` | Not yet measured (run `tools/backend_script_test.py`) | To be checked |
+| `scam_en_00_police_soft.json` | UNSURE 0.47 → SCAM 0.94 → SCAM 0.94 | Yellow, then red (plays on "Simulate scam call") |
 | `scam_en_01_police.json` | SCAM 0.84 → SCAM 0.96 → SCAM 0.96 | Straight to red |
 | `scam_en_02_parcel.json` | SAFE 0.10 → SCAM 0.87 | Green, then red |
-| `scam_zh_01_police.json` | UNSURE 0.54 → SCAM 0.70 | Yellow, then red |
+| `scam_zh_01_police.json` | UNSURE 0.54 → SCAM 0.71 | Yellow, then red |
 | `normal_en_01_clinic.json` | SAFE 0.13 → SAFE 0.13 | Green |
 
+Measured against the real backend (`docker compose`) on 25 Oct 2026 with `tools/backend_script_test.py`. Re-run it if the models change.
+
 To measure them yourself with the backend running: `python3 -I tools/backend_script_test.py app/src/main/assets/scripts` (from `android-app/`). It sends each script's caller lines with the same `call_id`, `seq` and `lang` the app uses and prints a verdict table.
-
-The verdicts above were measured against the worker models in the demo kit. If the models change, re-run the scripts and update this table.
-
-**For the yellow-then-red demo**, use the Chinese scam call (Choose a call script → `scam_zh_01_police`). The soft English police script plays on "Simulate scam call" and still needs checking.
-
 ---
 
 ## Code layout
@@ -274,7 +271,8 @@ app/src/main/
 - [ ] First launch: allow local network access; Settings → Test connection shows "Connected: ok"
 - [ ] Preview pane shows `InCallPreview` in the red SCAM state (no backend needed)
 - [ ] Backend off → Simulate scam call → bubbles appear on time, grey "Could not check", never green
-- [ ] Backend on → Chinese scam call → bar goes yellow, then red; chips light; red pop-up + one vibration
+- [ ] Backend on → Simulate scam call → bar goes yellow, then red; chips light; red pop-up + one vibration
+- [ ] Choose a call script → Chinese scam call → yellow, then red; Mandarin bubbles
 - [ ] Parcel scam → green, then red mid-call
 - [ ] Normal call → stays green, no pop-up
 - [ ] Summary lists the flagged lines; Report to ScamShield opens the website
