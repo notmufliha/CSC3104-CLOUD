@@ -7,10 +7,9 @@ Used by:
   * zh_train.ipynb          (to test your own sentences)
   * train.py / predict.py    (in each *_zh worker image)
 
-MUST stay identical to Cell 2 + Cell 4 of zh_clean.ipynb (clean / org_tokenize).
-zh_train.ipynb checks this automatically against the gold set (common_zh/gold_test_zh.csv: 100% match).
-Known gap: zh_clean.ipynb also removed each training row's known person names; live text can't know
-those, so 1-3% of training rows differ from what the server produces (names left in).
+clean / org_tokenize match Cell 2 + Cell 4 of zh_clean.ipynb (gold set: 100% match). Since v6 the models
+are trained from the RAW sentence through prepare() below (train_zh.py), so training and serving use this
+one file; zh_clean.ipynb's extra per-row name removal (which serving could not reproduce) is no longer used.
 
 Note: unlike the English workers this DOES lowercase (Latin words like DBS / OTP), and only
 impersonation_zh splits words with jieba; urgency_zh and money_zh read characters. That is how the
@@ -144,9 +143,35 @@ _SENT_END = re.compile(r'(?<=[。！？!?；;\n])')
 _SOFT_BREAK = re.compile(r'(?<=[，,、])|\s+')
 
 
-def split_sentences(text):
+CLAUSE_MAX, CLAUSE_WIN, CLAUSE_STRIDE = 12, 10, 5   # impersonation only, see split_clauses
+_CLAUSE_BREAK = re.compile(r'[，,、；;：:\s]+')
+
+
+def split_clauses(text):
+    """impersonation only: every clause on its own, plus 10-char windows (stride 5) over clauses longer than 12
+    characters (speech-to-text often has no commas at all).
+    Why: a claim ("我是警察", "这里是星展银行") lives in ONE clause. Scored inside a long sentence, its words are
+    diluted by the rest (TF-IDF length normalisation), so "我是警察，你必须马上把钱转到安全账户，并告诉我验证码。"
+    scored 0.12 although "我是警察" alone scores 1.0. Urgency/money keep the whole-sentence context instead,
+    because their negations span commas ("今天之内回复我就可以，不急")."""
+    out = []
+    for s in _SENT_END.split(str(text)):
+        for c in _CLAUSE_BREAK.split(s):
+            c = c.strip(' 。！？!?；;')
+            if len(re.sub(r'[\W_]', '', c)) < 2:
+                continue
+            out.append(c)
+            if len(c) > CLAUSE_MAX:
+                out += [c[i:i + CLAUSE_WIN] for i in range(0, len(c) - CLAUSE_WIN + 1, CLAUSE_STRIDE)]
+                if (len(c) - CLAUSE_WIN) % CLAUSE_STRIDE:
+                    out.append(c[-CLAUSE_WIN:])               # the last window always reaches the end
+    return out
+
+
+def split_sentences(text, clauses=False):
     """candidate chunks to score: each sentence (if <= LONG chars) + its comma pieces packed to <= SHORT chars.
-    ASR text with no punctuation at all falls back to 24-char windows (stride 12)."""
+    ASR text with no punctuation at all falls back to 24-char windows (stride 12).
+    clauses=True (impersonation) also adds every single clause, see split_clauses."""
     out = []
     for s in _SENT_END.split(str(text)):
         s = s.strip()
@@ -171,6 +196,8 @@ def split_sentences(text):
                 out.append(q)
             else:                                  # no punctuation: sliding windows
                 out += [q[i:i + WIN] for i in range(0, max(len(q) - WIN, 0) + STRIDE, STRIDE) if q[i:i + WIN]]
+    if clauses:
+        out += split_clauses(text)
     seen, final = set(), []
     for s in out:
         if s not in seen and len(re.sub(r'[\W_]', '', s)) >= 2:
@@ -178,14 +205,28 @@ def split_sentences(text):
     return final
 
 
+AUTHORITY_CHARS = frozenset(TOKEN_MAP[t] for t in ORG_TOKEN.values())   # ❶ police ... ❻ telco
+
+
+def authority_gate(X, p, worker):
+    """impersonation only: a piece that names no authority (police / gov / bank / platform CS / courier / telco,
+    the ORG lexicon) scores 0. Every impersonation positive in training names one (2,505 of 2,505; 0 of the
+    2,823 rows without one is positive), so P(impersonation | no authority word) = 0 by our own label
+    definition. Without the gate the linear model scored the introduction frame alone: "你好，我是花店的" 1.00."""
+    if worker != "impersonation":
+        return p
+    has = [bool(AUTHORITY_CHARS.intersection(x)) for x in X]
+    return [pi if h else 0.0 for pi, h in zip(p, has)]
+
+
 def score_text(bundle, text, worker):
     """max calibrated score over the sentences of `text`. Returns (score, best_sentence)."""
-    sents = split_sentences(text)
+    sents = split_sentences(text, clauses=(worker == "impersonation"))
     if not sents:
         return 0.0, ''
     X = [prepare(s, worker, bundle["kind"]) for s in sents]
-    p = bundle["model"].predict_proba(X)[:, 1]
-    i = int(p.argmax())
+    p = authority_gate(X, bundle["model"].predict_proba(X)[:, 1], worker)
+    i = max(range(len(p)), key=lambda k: p[k])
     return float(p[i]), sents[i]
 
 
