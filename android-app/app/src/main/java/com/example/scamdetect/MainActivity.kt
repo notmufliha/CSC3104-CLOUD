@@ -1,10 +1,14 @@
 package com.example.scamdetect
 
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -27,10 +31,21 @@ import com.example.scamdetect.ui.theme.ScamDetectTheme
 
 enum class Screen { HOME, PICK, CALL, PASTE, HISTORY, SETTINGS }
 
+/** Runtime permission from Android 17 (API 37) to reach private addresses such as the demo gateway. */
+const val LOCAL_NETWORK_PERMISSION = "android.permission.ACCESS_LOCAL_NETWORK"
+
 class MainActivity : ComponentActivity() {
+    // If refused, requests fail and the app shows "Could not check" (never safe).
+    private val askLocalNetwork = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        if (Build.VERSION.SDK_INT >= 37 &&
+            ContextCompat.checkSelfPermission(this, LOCAL_NETWORK_PERMISSION) != PackageManager.PERMISSION_GRANTED
+        ) {
+            askLocalNetwork.launch(LOCAL_NETWORK_PERMISSION)
+        }
         setContent { ScamDetectTheme { ScamGuardApp() } }
     }
 }

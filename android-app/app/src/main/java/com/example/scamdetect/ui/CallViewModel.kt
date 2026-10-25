@@ -2,12 +2,15 @@ package com.example.scamdetect.ui
 
 import android.app.Application
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.scamdetect.LOCAL_NETWORK_PERMISSION
 import com.example.scamdetect.data.AppPrefs
 import com.example.scamdetect.data.CallScript
 import com.example.scamdetect.data.GatewayApi
@@ -268,7 +271,13 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     } catch (e: IllegalArgumentException) {
         "Not a valid address"
     } catch (e: Exception) {
-        "Could not connect: ${e.javaClass.simpleName}"
+        if (Build.VERSION.SDK_INT >= 37 &&
+            ContextCompat.checkSelfPermission(getApplication(), LOCAL_NETWORK_PERMISSION) != PackageManager.PERMISSION_GRANTED
+        ) {
+            "Could not connect: allow Local network access for this app in Android Settings"
+        } else {
+            "Could not connect: ${e.javaClass.simpleName}"
+        }
     }
 
     fun clearHistory() {
