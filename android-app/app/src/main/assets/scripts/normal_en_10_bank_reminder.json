@@ -1,0 +1,57 @@
+[
+  {
+    "speaker": "caller",
+    "text": "Good morning, this is a reminder call from your bank's card services.",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "Oh, hello. Is something wrong?",
+    "delay_ms": 4650
+  },
+  {
+    "speaker": "caller",
+    "text": "Not at all. Your credit card payment of two hundred and forty dollars is due on the twenty-fifth.",
+    "delay_ms": 2750
+  },
+  {
+    "speaker": "receiver",
+    "text": "Right, I forgot about that. Thanks for reminding me.",
+    "delay_ms": 6650
+  },
+  {
+    "speaker": "caller",
+    "text": "You can pay through the mobile app, internet banking, or GIRO if you have set it up.",
+    "delay_ms": 4050
+  },
+  {
+    "speaker": "receiver",
+    "text": "I'll just use the app.",
+    "delay_ms": 6300
+  },
+  {
+    "speaker": "caller",
+    "text": "Sure. And please remember, the bank will never ask you for your OTP or password over the phone.",
+    "delay_ms": 2750
+  },
+  {
+    "speaker": "receiver",
+    "text": "Yes, I know. Thanks for the reminder.",
+    "delay_ms": 6650
+  },
+  {
+    "speaker": "caller",
+    "text": "No problem. If you have any questions, call the number printed on the back of your card.",
+    "delay_ms": 3400
+  },
+  {
+    "speaker": "receiver",
+    "text": "Okay, will do.",
+    "delay_ms": 6300
+  },
+  {
+    "speaker": "caller",
+    "text": "Thank you, have a good day.",
+    "delay_ms": 2100
+  }
+]

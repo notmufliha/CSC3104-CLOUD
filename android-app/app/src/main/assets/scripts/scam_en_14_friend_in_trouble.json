@@ -1,0 +1,62 @@
+[
+  {
+    "speaker": "caller",
+    "text": "Hello Auntie, it's me! Guess who this is?",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "Eh, who is this? Is it Jason?",
+    "delay_ms": 3350
+  },
+  {
+    "speaker": "caller",
+    "text": "Yes yes, it's Jason! Sorry, I changed my number, my old phone fell into the water.",
+    "delay_ms": 3400
+  },
+  {
+    "speaker": "receiver",
+    "text": "Aiyo, why you call so late? Everything okay?",
+    "delay_ms": 6000
+  },
+  {
+    "speaker": "caller",
+    "text": "Auntie, I'm in a bit of trouble. I was in a car accident and the police are holding me at the station.",
+    "delay_ms": 3750
+  },
+  {
+    "speaker": "receiver",
+    "text": "Accident?! Are you hurt?",
+    "delay_ms": 7950
+  },
+  {
+    "speaker": "caller",
+    "text": "I'm fine, but I need to pay the other driver's repair cost and bail today or they will charge me.",
+    "delay_ms": 2400
+  },
+  {
+    "speaker": "receiver",
+    "text": "How much?",
+    "delay_ms": 7300
+  },
+  {
+    "speaker": "caller",
+    "text": "Five thousand five hundred dollars. Please don't tell Mum, she will be so worried.",
+    "delay_ms": 1750
+  },
+  {
+    "speaker": "caller",
+    "text": "Can you PayNow it now? I'll give you the number. It's really urgent, they are waiting.",
+    "delay_ms": 5700
+  },
+  {
+    "speaker": "receiver",
+    "text": "Okay okay, let me open my app.",
+    "delay_ms": 6000
+  },
+  {
+    "speaker": "caller",
+    "text": "Thank you Auntie, I'll pay you back next week, I promise. Please hurry.",
+    "delay_ms": 3400
+  }
+]

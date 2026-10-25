@@ -1,0 +1,67 @@
+[
+  {
+    "speaker": "caller",
+    "text": "Hello, this is the courier service. We have a parcel under your name that is held at customs.",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "A parcel? I'm not expecting anything.",
+    "delay_ms": 6650
+  },
+  {
+    "speaker": "caller",
+    "text": "It was sent from overseas and the declared contents do not match, so customs has flagged it.",
+    "delay_ms": 3100
+  },
+  {
+    "speaker": "receiver",
+    "text": "Oh. So what happens now?",
+    "delay_ms": 6300
+  },
+  {
+    "speaker": "caller",
+    "text": "I will connect you to the customs enforcement officer. Please hold.",
+    "delay_ms": 2750
+  },
+  {
+    "speaker": "caller",
+    "text": "Good afternoon, I am Officer Lim from Singapore Customs. You are being investigated for importing prohibited items.",
+    "delay_ms": 4750
+  },
+  {
+    "speaker": "receiver",
+    "text": "Prohibited items? I never ordered anything like that.",
+    "delay_ms": 6300
+  },
+  {
+    "speaker": "caller",
+    "text": "If you do not resolve this today, we will refer your case to the police and the parcel will be destroyed.",
+    "delay_ms": 3750
+  },
+  {
+    "speaker": "receiver",
+    "text": "How can I settle it?",
+    "delay_ms": 7650
+  },
+  {
+    "speaker": "caller",
+    "text": "You need to pay a release fee of four hundred and eighty dollars through PayNow.",
+    "delay_ms": 2750
+  },
+  {
+    "speaker": "receiver",
+    "text": "PayNow? To whom?",
+    "delay_ms": 5650
+  },
+  {
+    "speaker": "caller",
+    "text": "I will send you the number now. Pay within one hour, otherwise the fine will double.",
+    "delay_ms": 2100
+  },
+  {
+    "speaker": "caller",
+    "text": "After you pay, take a screenshot of the receipt and send it to me on WhatsApp.",
+    "delay_ms": 6400
+  }
+]

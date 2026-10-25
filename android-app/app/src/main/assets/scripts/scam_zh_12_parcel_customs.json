@@ -1,0 +1,67 @@
+[
+  {
+    "speaker": "caller",
+    "text": "您好，这里是快递公司。有一个以您名字寄出的包裹被海关扣留了。",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "包裹？我没有买什么东西啊。",
+    "delay_ms": 6900
+  },
+  {
+    "speaker": "caller",
+    "text": "包裹是从海外寄来的，申报的内容和实际不符，所以被海关标记了。",
+    "delay_ms": 3650
+  },
+  {
+    "speaker": "receiver",
+    "text": "哦，那现在怎么办？",
+    "delay_ms": 6900
+  },
+  {
+    "speaker": "caller",
+    "text": "我现在帮您转接海关执法人员，请稍等。",
+    "delay_ms": 2700
+  },
+  {
+    "speaker": "caller",
+    "text": "您好，我是新加坡海关的林官员，您涉嫌进口违禁物品，现在正在被调查。",
+    "delay_ms": 4800
+  },
+  {
+    "speaker": "receiver",
+    "text": "违禁物品？我根本没订过那种东西。",
+    "delay_ms": 7350
+  },
+  {
+    "speaker": "caller",
+    "text": "如果今天之内不处理，案件会移交给警方，包裹也会被销毁。",
+    "delay_ms": 4300
+  },
+  {
+    "speaker": "receiver",
+    "text": "那我该怎么处理？",
+    "delay_ms": 6200
+  },
+  {
+    "speaker": "caller",
+    "text": "您需要通过PayNow缴付四百八十元的放行费。",
+    "delay_ms": 2700
+  },
+  {
+    "speaker": "receiver",
+    "text": "PayNow？转给谁？",
+    "delay_ms": 4400
+  },
+  {
+    "speaker": "caller",
+    "text": "我马上把号码发给您，请在一小时内付款，否则罚款会加倍。",
+    "delay_ms": 1800
+  },
+  {
+    "speaker": "caller",
+    "text": "付款后请把收据截图，用WhatsApp发给我。",
+    "delay_ms": 6600
+  }
+]

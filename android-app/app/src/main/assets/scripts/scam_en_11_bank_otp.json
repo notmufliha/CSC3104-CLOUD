@@ -1,0 +1,67 @@
+[
+  {
+    "speaker": "caller",
+    "text": "Hello, this is the security department of your bank. Is this the account holder?",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "Yes, speaking. What happened?",
+    "delay_ms": 5300
+  },
+  {
+    "speaker": "caller",
+    "text": "We noticed a suspicious payment of three thousand two hundred dollars from your account to an overseas merchant.",
+    "delay_ms": 2400
+  },
+  {
+    "speaker": "receiver",
+    "text": "I didn't make any payment! Please stop it.",
+    "delay_ms": 6650
+  },
+  {
+    "speaker": "caller",
+    "text": "Don't worry, I can cancel it, but I need to verify your identity quickly.",
+    "delay_ms": 3750
+  },
+  {
+    "speaker": "receiver",
+    "text": "Okay, what do you need?",
+    "delay_ms": 5300
+  },
+  {
+    "speaker": "caller",
+    "text": "The transaction will go through in five minutes, so we must act immediately.",
+    "delay_ms": 2750
+  },
+  {
+    "speaker": "receiver",
+    "text": "Please hurry, I don't want to lose my money.",
+    "delay_ms": 5000
+  },
+  {
+    "speaker": "caller",
+    "text": "I am sending a six-digit code to your phone now. Please read it out to me.",
+    "delay_ms": 4050
+  },
+  {
+    "speaker": "receiver",
+    "text": "It just came. It says it's for adding a new payee, is that okay?",
+    "delay_ms": 6000
+  },
+  {
+    "speaker": "caller",
+    "text": "Yes, that is normal, it is part of the cancellation process. Just tell me the numbers.",
+    "delay_ms": 5700
+  },
+  {
+    "speaker": "receiver",
+    "text": "Okay, one moment.",
+    "delay_ms": 6000
+  },
+  {
+    "speaker": "caller",
+    "text": "Also give me your card number and the three digits at the back so I can block it.",
+    "delay_ms": 2100
+  }
+]
