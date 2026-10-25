@@ -1,0 +1,82 @@
+[
+  {
+    "speaker": "caller",
+    "text": "您好，这里是银行的反欺诈部门，想跟您确认一下您的银行账户情况。",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "哦，你好？请问有什么事吗？",
+    "delay_ms": 7150
+  },
+  {
+    "speaker": "caller",
+    "text": "我们发现有人用您的身份证号码开了一张信用卡，而且这张卡被用于洗钱。",
+    "delay_ms": 3400
+  },
+  {
+    "speaker": "receiver",
+    "text": "什么？我从来没有开过什么卡，你们搞错了吧？",
+    "delay_ms": 7850
+  },
+  {
+    "speaker": "caller",
+    "text": "我理解。因为案情严重，我现在把电话转接给新加坡警察部队的警官。",
+    "delay_ms": 5250
+  },
+  {
+    "speaker": "receiver",
+    "text": "警察？好的好的。",
+    "delay_ms": 7150
+  },
+  {
+    "speaker": "caller",
+    "text": "我是新加坡警察部队的陈警官，警号二零四七。",
+    "delay_ms": 2500
+  },
+  {
+    "speaker": "caller",
+    "text": "您已经涉及一宗刑事案件，如果今天不配合调查，可能会被逮捕。",
+    "delay_ms": 5450
+  },
+  {
+    "speaker": "receiver",
+    "text": "我什么都没做过啊，我要怎么做？",
+    "delay_ms": 6700
+  },
+  {
+    "speaker": "caller",
+    "text": "这件事绝对保密，不能告诉任何人，包括您的家人和银行。",
+    "delay_ms": 4100
+  },
+  {
+    "speaker": "caller",
+    "text": "为了证明您的清白，我们需要核查您的资金，请把您的存款转到我们提供的安全账户。",
+    "delay_ms": 6400
+  },
+  {
+    "speaker": "receiver",
+    "text": "把存款全部转走？这样真的可以吗？",
+    "delay_ms": 8750
+  },
+  {
+    "speaker": "caller",
+    "text": "必须现在就办，三十分钟内，否则法院会发出拘捕令。",
+    "delay_ms": 4300
+  },
+  {
+    "speaker": "caller",
+    "text": "请打开手机银行，把钱转到这个账户，银行发来验证码时马上念给我听。",
+    "delay_ms": 5950
+  },
+  {
+    "speaker": "receiver",
+    "text": "我有点害怕，我先找一下手机。",
+    "delay_ms": 7350
+  },
+  {
+    "speaker": "caller",
+    "text": "不要挂电话，转账完成之前请一直保持通话。",
+    "delay_ms": 3850
+  }
+]
