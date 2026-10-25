@@ -15,6 +15,11 @@ use crate::scam_detect::ContextRequest;
 /// Most lines / characters per line forwarded to BERT (its tokenizer keeps the last 256 tokens anyway).
 const MAX_LINES: usize = 10;
 const MAX_CHARS_PER_LINE: usize = 1000;
+/// Fewest caller lines BERT is asked about. The notebook only labels a window "scam" from caller line 3 on
+/// (FIRST_SCAM_LINE: openings are not scam evidence), so every 1-2 line training window is legit and BERT
+/// learned "short = safe" (single sentences score ~0.00). Below this it abstains ("no_context") and the line
+/// is decided by the fast vote, instead of BERT dragging the blend down. Keep = bert_config.json first_scam_line.
+const MIN_LINES: usize = 3;
 
 #[derive(Clone)]
 pub struct BertClient {
@@ -74,7 +79,7 @@ impl<'a> SecondOpinion<'a> {
         }
         let (score, status) = match self.client {
             None => (None, "off"),
-            Some(_) if self.lines.is_empty() => (None, "no_context"),
+            Some(_) if self.lines.len() < MIN_LINES => (None, "no_context"),
             Some(c) => {
                 let start = Instant::now();
                 let mut client = BertServiceClient::new(c.channel.clone());
@@ -127,7 +132,8 @@ mod tests {
     async fn unreachable_bert_is_an_error_not_a_hang() {
         // nothing listens on port 9: the call fails fast and the line falls back to the fast vote
         let c = BertClient::new("127.0.0.1:9", Duration::from_millis(300)).unwrap();
-        let mut s = SecondOpinion::new(Some(&c), &["我是警察".to_string()], "zh");
+        let ctx = ["您好".to_string(), "我是警察".to_string(), "请马上转账".to_string()];
+        let mut s = SecondOpinion::new(Some(&c), &ctx, "zh");
         assert_eq!(s.status(), "skipped");
         assert_eq!(s.ask().await, None);
         assert!(matches!(s.status(), "error" | "timeout"));
@@ -140,6 +146,15 @@ mod tests {
         let mut s = SecondOpinion::new(Some(&c), &["  ".to_string()], "en");
         assert_eq!(s.ask().await, None);
         assert_eq!(s.status(), "no_context");
+    }
+
+    #[tokio::test]
+    async fn fewer_than_min_lines_is_not_sent() {
+        // 1-2 caller lines: BERT never saw a scam that short in training, so it is not asked (no network call)
+        let c = BertClient::new("127.0.0.1:9", Duration::from_millis(300)).unwrap();
+        let mut s = SecondOpinion::new(Some(&c), &["我是警察".to_string(), "  ".to_string(), "请转账".to_string()], "zh");
+        assert_eq!(s.ask().await, None);
+        assert_eq!((s.status(), s.ms), ("no_context", 0));
     }
 
     #[test]
