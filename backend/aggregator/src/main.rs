@@ -6,8 +6,10 @@
 //!   HTTP  GET /health                   (AGGREGATOR_HTTP_ADDR, default 0.0.0.0:8082) - 503 if Redis is down
 //!
 //! A request without call_id is a one-shot (the gateway's /submit-transcript): no memory, no Redis.
-//! Logs: one "verdict" line per decision {call_id, seq, verdict, combined, rule, scores}. Never text.
+//! BERT second opinion (bert.rs): asked only when the fast vote is unsure or alarmed, if BERT_ADDR is set.
+//! Logs: one "verdict" line per decision {call_id, seq, verdict, combined, fast, bert, rule, scores}. Never text.
 
+mod bert;
 mod config;
 mod policy;
 mod store;
@@ -23,6 +25,7 @@ pub mod scam_detect {
     tonic::include_proto!("scam_detect");
 }
 
+use bert::{BertClient, SecondOpinion};
 use config::{Settings, SIGNALS};
 use policy::{Decision, LineScores};
 use scam_detect::aggregator_service_server::{AggregatorService, AggregatorServiceServer};
@@ -34,6 +37,8 @@ const MAX_CALL_ID_LEN: usize = 128;
 struct Aggregator {
     settings: Arc<Settings>,
     store: Store,
+    /// None = BERT off (BERT_ADDR not set).
+    bert: Option<BertClient>,
 }
 
 /// This line's scores by signal. Unknown signals are ignored (logged); a repeated signal keeps its highest
@@ -63,8 +68,11 @@ fn to_proto_verdict(v: policy::Verdict) -> scam_detect::Verdict {
     }
 }
 
-fn to_response(d: Decision) -> AggregateResponse {
+fn to_response(d: Decision, bert_status: &str) -> AggregateResponse {
     AggregateResponse {
+        fast_score: d.fast,
+        bert_score: d.bert,
+        bert_status: bert_status.to_string(),
         verdict: to_proto_verdict(d.verdict) as i32,
         combined_score: d.combined,
         reasons: d
@@ -95,16 +103,23 @@ impl AggregatorService for Aggregator {
         let line = line_scores(&req.scores)?;
         let call_id = req.call_id.trim();
         let now = now_ms();
+        let language = req.scores.first().map(|s| s.language.as_str()).unwrap_or("");
+        let mut second = SecondOpinion::new(self.bert.as_ref(), &req.context, language);
 
-        // An empty line (no worker answered) is allowed: the quorum rule turns it into UNSURE, or SCAM if the
-        // call is already red.
+        // An empty line (no worker answered) is allowed: the quorum rule turns it into UNSURE (or BERT stands
+        // in), or SCAM if the call is already red.
         let decision = if call_id.is_empty() {
-            policy::decide_one_shot(line, &self.settings)
+            let bert = if policy::one_shot_wants_second_opinion(line, &self.settings) {
+                second.ask().await
+            } else {
+                None
+            };
+            policy::decide_one_shot(line, bert, &self.settings)
         } else {
             if call_id.len() > MAX_CALL_ID_LEN {
                 return Err(Status::invalid_argument(format!("call_id longer than {MAX_CALL_ID_LEN} characters")));
             }
-            match self.store.apply(call_id, req.seq, line, now, req.call_time_ms, &self.settings).await {
+            match self.store.apply(call_id, req.seq, line, now, req.call_time_ms, &self.settings, &mut second).await {
                 Ok(d) => d,
                 Err(e) => {
                     tracing::error!(call_id, seq = req.seq, error = %e, "call memory update failed");
@@ -118,9 +133,9 @@ impl AggregatorService for Aggregator {
         };
 
         // 3.8 verdict log: ids, time, verdict and scores, never text.
-        tracing::info!(target: "verdict", entry = %store::log_entry(call_id, req.seq, now, &line, &decision),
-                       "verdict");
-        Ok(Response::new(to_response(decision)))
+        tracing::info!(target: "verdict", entry = %store::log_entry(call_id, req.seq, now, &line, &decision,
+                       second.status()), bert_ms = second.ms, "verdict");
+        Ok(Response::new(to_response(decision, second.status())))
     }
 }
 
@@ -162,12 +177,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                    warmup_override = %settings.warmup_override, scam_streak = settings.scam_streak,
                    money_rule = %settings.money_rule, money_rule_other = %settings.money_rule_other,
                    reason_threshold = %settings.reason_threshold, min_quorum = settings.min_quorum,
-                   call_ttl_secs = settings.call_ttl.as_secs(), "starting aggregator");
+                   call_ttl_secs = settings.call_ttl.as_secs(),
+                   bert_addr = if settings.bert_addr.is_empty() { "(off)" } else { settings.bert_addr.as_str() },
+                   bert_timeout_ms = settings.bert_timeout.as_millis() as u64, bert_weight = %settings.bert_weight,
+                   bert_veto = %settings.bert_veto, "starting aggregator");
 
     let grpc_addr = settings.grpc_addr.parse()?;
     let http_addr = settings.http_addr.clone();
     let store = Store::connect(&settings.redis_url, &settings.redis_url_for_log()).await;
-    let aggregator = Aggregator { settings: Arc::new(settings), store: store.clone() };
+    let bert = BertClient::new(&settings.bert_addr, settings.bert_timeout);
+    let aggregator = Aggregator { settings: Arc::new(settings), store: store.clone(), bert };
 
     // gRPC server (the Aggregate endpoint the gateway calls) on a background task, a small Actix-web HTTP
     // server (health) on the main task. Either exiting (e.g. a bind failure) brings the process down.
@@ -214,11 +233,13 @@ mod tests {
     #[test]
     fn response_has_reasons_action_and_recent_scores() {
         let cfg = Settings::from_lookup(|_| None).unwrap();
-        let r = to_response(policy::decide_one_shot([Some(0.6), Some(0.95), None], &cfg));
+        let r = to_response(policy::decide_one_shot([Some(0.6), Some(0.95), None], None, &cfg), "skipped");
         assert_eq!(r.verdict, scam_detect::Verdict::Scam as i32);
         assert_eq!(r.reasons[0].signal, "money");
         assert_eq!(r.action, policy::ACTION_SCAM);
         assert_eq!(r.recent_scores.len(), 2); // impersonation had no score
         assert!(r.quorum_met);
+        assert_eq!((r.bert_score, r.bert_status.as_str()), (None, "skipped"));
+        assert_eq!(r.fast_score, r.combined_score);
     }
 }

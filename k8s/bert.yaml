@@ -1,0 +1,89 @@
+# The BERT second opinion: Deployment + Service + HPA (task 7.4 / 7.12).
+#
+#   kubectl apply -f k8s/bert.yaml        (image: build backend/workers/bert, see its README)
+#
+# The aggregator reaches it through the Service as BERT_ADDR=bert:50051. It is only called when the fast
+# workers are unsure or alarmed, so it needs far fewer replicas than the workers; the HPA adds more under load.
+# Sizing (measured with the int8 model, fill in your numbers): ~150 MB model, ~400-600 MB RAM, 30-80 ms/request
+# on 2 CPU threads.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bert
+  labels:
+    app: bert
+    signal: bert
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bert
+  template:
+    metadata:
+      labels:
+        app: bert
+        signal: bert
+    spec:
+      containers:
+        - name: bert
+          image: scam-detect/bert:latest # TODO: real registry + tag (minikube: eval $(minikube docker-env) first)
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50051
+              name: grpc
+          env:
+            - name: PORT
+              value: "50051"
+            - name: ORT_THREADS # ONNX threads per request; GRPC_THREADS x ORT_THREADS <= CPU limit
+              value: "2"
+            - name: GRPC_THREADS
+              value: "2"
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2"
+              memory: "1Gi"
+          # SERVING only after the model has loaded and answered a warm-up request
+          readinessProbe:
+            grpc:
+              port: 50051
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            grpc:
+              port: 50051
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bert
+spec:
+  selector:
+    app: bert
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: bert
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: bert
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
