@@ -16,7 +16,12 @@ Android app --HTTP/JSON--> gateway --gRPC--> urgency_{en,zh}
                               |     --gRPC--> money_{en,zh}
                               |     --gRPC--> impersonation_{en,zh}
                               `-----gRPC--> aggregator <--> Redis (call memory)
+                                                 `--gRPC--> bert (second opinion, only when unsure/alarmed)
 ```
+
+- **bert** (Python, ONNX Runtime): the **second opinion**. One multilingual DistilBERT that reads the call's
+  last 5 caller lines together. The aggregator asks it only when the fast vote is unsure or alarmed (or too
+  few workers answered): the **cascade**. See [BERT second opinion](#bert-second-opinion).
 
 - **gateway** (Rust, Actix-web + tonic): the phone's only entry point,
   `POST /v1/utterance` (see [Gateway API](#gateway-api)). For each caller
@@ -98,7 +103,8 @@ Answer for a caller line:
  "action": "Hang up now. Call the organisation back on its official number, or ScamShield on 1799.",
  "warming_up": true, "quorum_met": true, "language": "en", "language_source": "phone",
  "scores": {"urgency": 0.47, "money": 1.0, "impersonation": 0.94}, "missing": [],
- "recent_scores": {"urgency": 0.47, "money": 1.0, "impersonation": 0.94}, "caller_lines": 1, "latency_ms": 29}
+ "recent_scores": {"urgency": 0.47, "money": 1.0, "impersonation": 0.94}, "fast_score": 0.80, "bert_score": null,
+ "bert_status": "skipped", "caller_lines": 1, "latency_ms": 29}
 ```
 
 - `scores`: this line's score per worker; `null` = that worker didn't answer in time, and it is listed in `missing`.
@@ -126,7 +132,8 @@ Gateway settings (environment variables; defaults match `docker-compose.yml`):
 |---|---|---|
 | `URGENCY_EN_ADDR`, `MONEY_EN_ADDR`, `IMPERSONATION_EN_ADDR`, `URGENCY_ZH_ADDR`, `MONEY_ZH_ADDR`, `IMPERSONATION_ZH_ADDR` | `http://<signal>_<lang>:50051` | Worker addresses. `http://` is added if missing, so `urgency-en:50051` works in Kubernetes. |
 | `AGGREGATOR_ADDR` | `http://aggregator:50052` | |
-| `WORKER_TIMEOUT_MS` / `AGGREGATOR_TIMEOUT_MS` | `1700` / `300` | Together they keep every answer within 2 s. |
+| `WORKER_TIMEOUT_MS` / `AGGREGATOR_TIMEOUT_MS` | `1400` / `550` | Together they keep every answer within 2 s. The aggregator's share includes the BERT second opinion (`BERT_TIMEOUT_MS` 300) + Redis. |
+| `BERT_CONTEXT_LINES` | `5` | Caller lines per call kept in the gateway's RAM and sent with each aggregate request for BERT (never logged; forgotten with the call). `0` = never send text. |
 | `CALL_TTL_SECS` / `MAX_CALLS` | `1800` / `10000` | How long and how many calls the gateway remembers (seen `seq`s + last answer). |
 | `LOG_FORMAT` | plain | `json` for one JSON object per log line. |
 
@@ -156,11 +163,15 @@ it back and returns the verdict, reasons and action. The rules live in
 | 7 | **2 in a row**: combined ≥ 0.6 → the first time `UNSURE`, the Nth update in a row `SCAM`. Because of the window, one strong line keeps combined high, so the call turns red on the next caller line. | 0.6, 2 | `AGG_SCAM_THRESHOLD`, `AGG_SCAM_STREAK` |
 | 8 | **Unsure**: combined ≥ 0.45 → `UNSURE` (resets the streak). | 0.45 | `AGG_UNSURE_THRESHOLD` |
 | 9 | Otherwise `SAFE` (resets the streak). | | |
+| B | **BERT second opinion** (cascade): asked only when rules 3, 6, 7 or 8 would decide this line without it, i.e. never for a clearly `SAFE` line, during the quiet warm-up, or once red. When it answers in time, rules 7-8 use **final = (1 − w)·combined + w·BERT**; with too few workers (rule 3) BERT's score stands in alone (still 2 high updates in a row for `SCAM`); BERT ≥ the warm-up override also breaks the warm-up; and BERT below the veto cancels the money rule (veto **off** by default: recall first). Slow, down or off → the line is decided exactly as without BERT. It is a reason too: "The conversation as a whole sounds like a scam". | w 0.5, timeout 300 ms, veto 0 | `BERT_ADDR` (empty = off), `BERT_TIMEOUT_MS`, `AGG_BERT_WEIGHT`, `AGG_BERT_VETO` |
 | | **Reasons**: every signal with a recent score ≥ 0.5 when not `SAFE`, strongest first: "Asked for your OTP or money", "Claims to be police, a bank or the government", "Pressuring you to act now". Plus one action: `SCAM` "Hang up now. Call the organisation back on its official number, or ScamShield on 1799.", `UNSURE` "Don't share any codes or transfer money. Hang up and check with the official number." | 0.5 | `AGG_REASON_THRESHOLD` |
 | | **Memory expiry**: a call is deleted from Redis this long after its last line. | 1 hour | `AGG_CALL_TTL_SECS` |
 
 A request without `call_id` (the gateway's `/submit-transcript`) is judged alone: no memory, no warm-up,
-no streak (combined ≥ 0.6 → `SCAM` straight away); quorum and the money rule still apply.
+no streak (combined ≥ 0.6 → `SCAM` straight away); quorum, the money rule and BERT still apply.
+
+The response (and the verdict log) also carries `fast_score` (the workers' vote alone), `bert_score` and
+`bert_status` (`ok` / `timeout` / `error` / `skipped` = not needed / `off` / `no_context`).
 
 All settings are environment variables (listed with their defaults in `docker-compose.yml`, later a
 Kubernetes ConfigMap): change them and `docker compose up -d aggregator` to tune without rebuilding. An
@@ -245,16 +256,32 @@ files are in `data/urgency_en/archive/`, and the MiniLM experiments in
 
 #### urgency_zh, money_zh, impersonation_zh
 
-The three Chinese workers share **one** cleaning file,
-`backend/workers/common_zh/text_norm.py` (plus one gold set,
-`common_zh/gold_test_zh.csv`); each ZH Dockerfile copies it into the image. It
-lowercases Latin words, and only `impersonation_zh` splits words with jieba
-(`urgency_zh`/`money_zh` read characters), because that is how the models were
-trained. Each ZH image **trains its model during `docker build`** from the CSV in the
-worker's `data/` folder (~1 min), so the model always matches the image's
-scikit-learn version. Local check without gRPC:
+The three Chinese workers share **one** cleaning file, `backend/workers/common_zh/text_norm.py`, and **one**
+training script, `common_zh/train_zh.py` (each worker's `train.py` just calls it), plus one gold set
+(`common_zh/gold_test_zh.csv`) and the probe sentences (`common_zh/probes_zh.csv`); each ZH Dockerfile copies
+them into the image. It lowercases Latin words, and only `impersonation_zh` splits words with jieba
+(`urgency_zh`/`money_zh` read characters), because that is how the models were trained. Each ZH image
+**trains its model during `docker build`** from the CSV in the worker's `data/` folder (~1 min), so the model
+always matches the image's scikit-learn version.
+
+v6 (2026-10-25):
+
+- **Train = serve.** The model input is built from the raw caller sentence (`text_raw`) with
+  `text_norm.prepare`, the function the server uses. (v5 trained on a `text_clean` column that also had each
+  row's known person names removed, which the server can't do: 0.9 / 1.5 / 3.1% of rows differed.) A parity
+  check runs at build time and **fails the build** if any row differs.
+- **impersonation_zh** scores every clause on its own (a claim like "我是警察" lives in one clause and was
+  diluted inside a long sentence: 0.13) and only a piece that names an authority (police / gov / bank /
+  platform CS / courier / telco, the `ORG` lexicon) can score above 0: every impersonation positive in training
+  names one, so an introduction alone ("你好，这里是诊所", 0.50; "我是花店的", 1.00) no longer counts.
+  To recognise a new authority, add its words to `ORG` in `text_norm.py`.
+- **Frozen thresholds** in each worker's `model_config.json` (display/report only; the aggregator uses scores).
+- The build **fails** if a canonical test sentence (the two below) comes out wrong.
+
+Check all three the way the server scores (gold set + probes), after `python train.py` in each folder:
 
 ```bash
+python tools/zh_eval.py --strict
 cd backend/workers/urgency_zh && python predict.py "我是公安局的警官，请马上转账"
 ```
 
@@ -296,9 +323,10 @@ probability; "threshold" is the model's own cut-off.
 | urgency_en | v4, TF-IDF + LR (sklearn 1.4.2), frozen 2026-10-13, threshold 0.368 | 0.470 / 0.365 | Passes 2/8 urgency goals. Many false alarms: "no rush", banks' anti-scam advice, normal time talk ("bill due on the 15th"). Misses pressure with no keywords. The normal test sentence sits just under the threshold. |
 | money_en | money_en_v1, word + char TF-IDF + LR, Platt-calibrated (sklearn 1.6.1), created 2026-10-15, threshold 0.5 | 1.000 / 0.000 | Scores **any** mention of money or OTPs, so a genuine "your bill is due" also scores high (by design; the aggregator separates scams). Validation F1 0.988 is on its own data split, so expect lower on real calls. Training notebook isn't in the repo yet (`train.py` is the old template), so the model can't be reproduced. |
 | impersonation_en | impersonation_en_v2, TF-IDF + char n-grams + LR, calibrated (sklearn 1.6.1), threshold 0.47 | 0.941 / 0.011 | Trained and tested only on synthetic, advisory-based rows (~510 dev rows); performance on real calls is unknown. Scores a plain greeting high: 0.90 for "Hello, good afternoon, am I speaking with Mr Tan?" (2026-10-23). |
-| urgency_zh | trained at image build (char TF-IDF + LR, calibrated, C=100), threshold 0.20 | 0.481 / 0.019 | Low threshold gives many false alarms: gold precision 0.46 at 0.20 (0.63 at 0.5). Retrained on every build, so not version-pinned. |
-| money_zh | trained at image build (char, C=100), threshold 0.20 | 0.993 / 0.011 | Gold precision 0.61 at 0.20 (0.94 at 0.5). Retrained on every build. |
-| impersonation_zh | trained at image build (jieba words, C=100), threshold 0.38 | **0.132 / 0.496** | **Fails this test**: missed the police scam and flagged the clinic call (same result with the original, unmodified code, so it's the model). Gold precision 0.70 at 0.38. Retrained on every build. |
+| urgency_zh | v6, trained at image build (char TF-IDF + LR, calibrated, C=100), frozen threshold 0.34 | 0.472 / 0.016 | Under 0.5 on the scam test sentence: urgency words are diluted when one sentence also carries police + OTP (the call is still SCAM via money + impersonation; BERT reads the context). Gold F1 0.65 at 0.5, AUC 0.86. |
+| money_zh | v6 (char, C=100), frozen threshold 0.16 | 0.996 / 0.011 | Gold F1 0.91 at 0.5, AUC 0.998. |
+| impersonation_zh | v6 (jieba words, C=100, clause scoring + authority gate), frozen threshold 0.17 | 1.000 / 0.000 | Fixed (v5: 0.132 / 0.496). Only authorities in the `ORG` lexicon count (e.g. 公积金局, 建屋发展局 are not in it). Still flags anti-scam *advice* that names an authority ("有人冒充星展银行的客服，大家要小心"). Gold F1 0.94 at 0.5, AUC 0.98. |
+| bert | DistilBERT multilingual (cased), fine-tuned on caller-line windows, ONNX int8, temperature-calibrated | see `backend/workers/bert/README.md` | Second opinion only (cascade); trained mostly on synthetic dialogues. |
 
 ## Pointing the Android app at the backend
 
@@ -323,6 +351,30 @@ run the app or the backend.
 worker, parameterised by `${SIGNAL}` and `${LANGUAGE}` — copy/substitute
 per worker (see the comments at the top of each file for an `envsubst`
 example). The gateway and aggregator aren't templated here yet — TODO.
+[k8s/bert.yaml](k8s/bert.yaml) is the BERT second opinion (Deployment + Service + HPA); point the
+aggregator's `BERT_ADDR` at it (through Envoy if you want the HPA's extra replicas to share the load, like the
+workers: a gRPC client keeps one connection to one pod).
+
+## BERT second opinion
+
+The six fast workers score every caller line in milliseconds but read one sentence at a time and know only
+their own signal. `backend/workers/bert` reads the call's **last 5 caller lines together** and returns
+P(scam), so it can tell "这里是诊所…不急" from a real threat. It is slower, so it is a **cascade**: the
+aggregator asks it only when the fast vote would be UNSURE, high, money-rule, or "not enough data" (rule B
+above); final = average of the fast vote and BERT. If BERT is slow (> `BERT_TIMEOUT_MS`), down or not
+deployed, every line is decided exactly as without it.
+
+- Text: the gateway keeps each call's last `BERT_CONTEXT_LINES` caller lines in RAM and sends them with the
+  aggregate request; the aggregator forwards them to BERT only when it asks, and never stores or logs them
+  (Redis stays text-free).
+- Model: `notebooks/bert_cascade.ipynb` (Colab, free T4) builds the training windows, fine-tunes
+  `distilbert-base-multilingual-cased`, fits the temperature, exports ONNX int8 and writes the 3 files the pod
+  needs (`model.onnx`, `tokenizer.json`, `bert_config.json`). They are not in git: copy them into
+  `backend/workers/bert/model/`, or upload them and build with `MODEL_BASE_URL` (see the pod's README).
+- Before the real model exists, `python tools/bert_dummy_model.py` writes a FAKE model so the wiring can be
+  tested (`bert_status` "ok", meaningless scores).
+- Evaluation (7.5 + 7.12): `python tools/eval_cascade.py` replays labelled calls through the running stack
+  and reports fast-only vs cascade (and BERT alone), the share of lines that needed BERT, and latency.
 
 ## Repo layout
 
@@ -336,11 +388,14 @@ backend/
     urgency_en/ urgency_zh/
     money_en/ money_zh/
     impersonation_en/ impersonation_zh/
-    common_zh/                  ONE shared ZH text_norm.py + gold set, copied into each ZH image
+    common_zh/                  ONE shared ZH text_norm.py + train_zh.py + gold set + probes, copied into each ZH image
+    bert/                       BERT second opinion (ONNX), model files fetched at build
 data/                            training data per worker (data/urgency_en/archive/ = cleaning history)
 tools/                           datagen, eval helpers, zh_check (try the 3 ZH workers interactively),
-                                 gateway_test.py + aggregator_replay.py (end-to-end checks)
+                                 zh_eval.py (gold + probes, as served), eval_cascade.py (7.5 / 7.12),
+                                 bert_dummy_model.py, gateway_test.py + aggregator_replay.py (end-to-end checks)
+notebooks/bert_cascade.ipynb     BERT training (Colab): data windows, fine-tune, calibrate, ONNX export
 android-app/                    Kotlin + Jetpack Compose client
-k8s/                             Deployment/Service/HPA templates
+k8s/                             Deployment/Service/HPA templates, bert.yaml
 docker-compose.yml               local dev stack (incl. Redis)
 ```
