@@ -1,0 +1,7 @@
+grpcio==1.63.0
+grpcio-tools==1.63.0
+grpcio-health-checking==1.63.0
+onnxruntime==1.18.1
+tokenizers==0.19.1
+numpy==1.26.4
+opencc-python-reimplemented==0.1.7

@@ -42,6 +42,17 @@ struct AppState {
     calls: CallStore,
 }
 
+impl AppState {
+    /// One-shot transcript: BERT reads its end (no call memory), unless BERT context is switched off.
+    fn calls_context_one_shot(&self, transcript: &str) -> Vec<String> {
+        if self.settings.bert_context_lines == 0 {
+            return vec![];
+        }
+        let n = transcript.chars().count();
+        vec![transcript.chars().skip(n.saturating_sub(2000)).collect()]
+    }
+}
+
 fn lazy_channel(addr: &str) -> Channel {
     Endpoint::from_shared(addr.to_string())
         .unwrap_or_else(|e| panic!("invalid gRPC address '{addr}': {e}"))
@@ -95,6 +106,12 @@ struct UtteranceResponse {
     missing: Vec<&'static str>,
     /// Each signal's highest score over the call's recent caller lines: what the verdict is built from.
     recent_scores: BTreeMap<String, f32>,
+    /// The workers' weighted vote alone (combined_score = this, or its average with BERT when BERT answered).
+    fast_score: Option<f32>,
+    /// The BERT second opinion's score for the call's recent lines; null when it was not asked or did not answer.
+    bert_score: Option<f32>,
+    /// "ok" | "timeout" | "error" | "skipped" (not needed: the fast vote was clearly safe) | "off" | "no_context"
+    bert_status: Option<String>,
     caller_lines: u32,
     latency_ms: u64,
 }
@@ -144,6 +161,7 @@ async fn fan_out(state: &AppState, call_id: &str, lang: &'static str, text: &str
 
 /// Sends this line's scores (only the workers that answered; possibly none) to the aggregator, which merges
 /// them into the call's memory and decides. An empty `call_id` is a one-shot with no memory.
+#[allow(clippy::too_many_arguments)]
 async fn aggregate(
     state: &AppState,
     call_id: &str,
@@ -151,6 +169,7 @@ async fn aggregate(
     t_ms: Option<u64>,
     lang: &'static str,
     scores: &[(&'static str, f32)],
+    context: Vec<String>,
 ) -> Result<Answer, String> {
     let start = Instant::now();
     let mut client = AggregatorServiceClient::new(state.aggregator.clone());
@@ -162,6 +181,7 @@ async fn aggregate(
         call_id: call_id.to_string(),
         seq: seq.unwrap_or(0),
         call_time_ms: t_ms.map(|t| t.min(i64::MAX as u64) as i64).unwrap_or(0),
+        context,
     };
     let result = tokio::time::timeout(state.settings.aggregator_timeout, client.aggregate(request)).await;
     let ms = start.elapsed().as_millis() as u64;
@@ -184,13 +204,17 @@ async fn aggregate(
                 warming_up: r.warming_up,
                 quorum_met: r.quorum_met,
                 caller_lines: r.caller_lines,
+                fast_score: r.fast_score,
+                bert_score: r.bert_score,
+                bert_status: r.bert_status,
             })
         }
         Ok(Err(status)) => Err(format!("aggregator error: {:?}", status.code())),
         Err(_) => Err("aggregator timed out".to_string()),
     };
     let outcome = if out.is_ok() { "ok" } else { "error" };
-    tracing::info!(target: "timing", stage = "aggregator", call_id, lang, ms, outcome);
+    let bert = out.as_ref().map(|a| a.bert_status.as_str()).unwrap_or("");
+    tracing::info!(target: "timing", stage = "aggregator", call_id, lang, ms, outcome, bert);
     out
 }
 
@@ -227,6 +251,9 @@ async fn utterance(state: web::Data<AppState>, body: web::Json<UtteranceRequest>
             scores: BTreeMap::new(),
             missing: vec![],
             recent_scores: a.recent_scores,
+            fast_score: last.as_ref().map(|a| a.fast_score),
+            bert_score: a.bert_score,
+            bert_status: last.as_ref().map(|a| a.bert_status.clone()),
             caller_lines: a.caller_lines,
             latency_ms: start.elapsed().as_millis() as u64,
         })
@@ -278,14 +305,18 @@ async fn utterance(state: web::Data<AppState>, body: web::Json<UtteranceRequest>
     }
 
     // 3.x the aggregator merges this line into the call's memory (Redis) and decides. Always asked, even when
-    // no worker answered: then its quorum rule answers UNSURE ("not enough data"), or SCAM if already red.
-    let answer = match aggregate(&state, &call_id, seq, req.t_ms, lang, &arrived).await {
+    // no worker answered: then its quorum rule answers UNSURE ("not enough data") unless the BERT second
+    // opinion stands in, or SCAM if already red. The call's last caller lines go along for BERT (7.4).
+    let n = state.settings.bert_context_lines;
+    let context = state.calls.context_with(&call_id, &req.text, n);
+    let answer = match aggregate(&state, &call_id, seq, req.t_ms, lang, &arrived, context).await {
         Ok(a) => a,
         Err(e) => {
             forget_seq();
             return HttpResponse::BadGateway().json(ErrorResponse { error: e });
         }
     };
+    state.calls.push_context(&call_id, &req.text, n);
     state.calls.set_answer(&call_id, answer.clone());
 
     let latency_ms = start.elapsed().as_millis() as u64;
@@ -310,6 +341,9 @@ async fn utterance(state: web::Data<AppState>, body: web::Json<UtteranceRequest>
         scores: results.into_iter().collect(),
         missing,
         recent_scores: answer.recent_scores,
+        fast_score: Some(answer.fast_score),
+        bert_score: answer.bert_score,
+        bert_status: Some(answer.bert_status),
         caller_lines: answer.caller_lines,
         latency_ms,
     })
@@ -331,10 +365,14 @@ async fn submit_transcript(state: web::Data<AppState>, body: web::Json<SubmitTra
     let results = fan_out(&state, "-", lang, &body.transcript).await;
     let arrived: Vec<(&'static str, f32)> = results.iter().filter_map(|(s, p)| p.map(|p| (*s, p))).collect();
     // empty call_id = one-shot: the aggregator judges these scores alone, with no call memory
-    match aggregate(&state, "", None, None, lang, &arrived).await {
+    let context = state.calls_context_one_shot(&body.transcript);
+    match aggregate(&state, "", None, None, lang, &arrived, context).await {
         Ok(a) => HttpResponse::Ok().json(serde_json::json!({
             "verdict": a.verdict,
             "combined_score": a.combined_score,
+            "fast_score": a.fast_score,
+            "bert_score": a.bert_score,
+            "bert_status": a.bert_status,
             "reasons": a.reasons,
             "action": a.action,
             "signals_received": arrived.iter().map(|(s, _)| *s).collect::<Vec<_>>(),
@@ -372,7 +410,8 @@ async fn main() -> std::io::Result<()> {
         tracing::info!(lang, signal, addr = %addr, "worker address");
     }
     tracing::info!(addr = %settings.aggregator_addr, worker_timeout_ms = settings.worker_timeout.as_millis() as u64,
-                   aggregator_timeout_ms = settings.aggregator_timeout.as_millis() as u64, "aggregator address");
+                   aggregator_timeout_ms = settings.aggregator_timeout.as_millis() as u64,
+                   bert_context_lines = settings.bert_context_lines, "aggregator address");
     let bind_addr = settings.bind_addr.clone();
     let state = web::Data::new(AppState {
         aggregator: lazy_channel(&settings.aggregator_addr),
