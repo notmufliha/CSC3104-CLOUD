@@ -2,20 +2,31 @@ package com.example.scamdetect.ui
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -29,6 +40,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -90,19 +102,118 @@ fun HomeScreen(
 
 // ---------------------------------------------------------------- 4.2 Script picker
 
+private enum class ScriptSort(val label: String) { TYPE("Type"), TITLE("Title A–Z"), LANGUAGE("Language"), LENGTH("Shortest") }
+
+private fun kindLabel(kind: String) = when (kind) {
+    "scam" -> "SCAM CALL"
+    "normal" -> "NORMAL CALL"
+    else -> kind.uppercase()
+}
+
+private fun kindColor(kind: String) = when (kind) {
+    "scam" -> ScamRed
+    "normal" -> SafeGreen
+    else -> NeutralGrey
+}
+
+private fun langLabel(lang: String?) = when (lang) {
+    "en" -> "English"
+    "zh" -> "Chinese"
+    else -> "Auto-detect"
+}
+
+@Composable
+private fun ChipRow(label: String, content: @Composable () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, modifier = Modifier.width(64.dp))
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            content()
+        }
+    }
+}
+
 @Composable
 fun ScriptPickerScreen(scripts: List<CallScript>, onPick: (CallScript) -> Unit, onBack: () -> Unit) {
+    var kind by remember { mutableStateOf<String?>(null) }   // null = all
+    var lang by remember { mutableStateOf<String?>(null) }
+    var sort by remember { mutableStateOf(ScriptSort.TYPE) }
+    var filtersOpen by remember { mutableStateOf(false) }
+
+    val shown = scripts
+        .filter { kind == null || it.kind == kind }
+        .filter { lang == null || it.lang == lang }
+        .let { list ->
+            when (sort) {
+                ScriptSort.TYPE -> list.sortedWith(compareByDescending<CallScript> { it.kind == "scam" }.thenBy { it.title })
+                ScriptSort.TITLE -> list.sortedBy { it.title }
+                ScriptSort.LANGUAGE -> list.sortedWith(compareBy<CallScript> { it.lang ?: "~" }.thenBy { it.title })
+                ScriptSort.LENGTH -> list.sortedWith(compareBy<CallScript> { it.lines.size }.thenBy { it.title })
+            }
+        }
+
     Page("Call scripts", onBack) {
         if (scripts.isEmpty()) Text("No scripts found in assets/scripts/.")
+        // Collapsed by default; the header always says what is active, so nothing is hidden silently.
+        val active = listOfNotNull(
+            kind?.replaceFirstChar { it.uppercase() },
+            lang?.let { langLabel(it) },
+            sort.label,
+        ).joinToString(" · ")
+        Row(
+            Modifier.fillMaxWidth().clickable { filtersOpen = !filtersOpen }.padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "${if (filtersOpen) "▾" else "▸"}  Filter & sort",
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                "$active · ${shown.size} of ${scripts.size}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        AnimatedVisibility(filtersOpen) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ChipRow("Type") {
+                    listOf(null to "All", "scam" to "Scam", "normal" to "Normal").forEach { (k, l) ->
+                        FilterChip(selected = kind == k, onClick = { kind = k }, label = { Text(l) })
+                    }
+                }
+                ChipRow("Language") {
+                    listOf(null to "All", "en" to "English", "zh" to "Chinese").forEach { (k, l) ->
+                        FilterChip(selected = lang == k, onClick = { lang = k }, label = { Text(l) })
+                    }
+                }
+                ChipRow("Sort") {
+                    ScriptSort.entries.forEach { s ->
+                        FilterChip(selected = sort == s, onClick = { sort = s }, label = { Text(s.label) })
+                    }
+                }
+            }
+        }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(scripts, key = { it.fileName }) { s ->
+            items(shown, key = { it.fileName }) { s ->
+                val color = kindColor(s.kind)
                 Card(onClick = { onPick(s) }, modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text(s.title, fontWeight = FontWeight.SemiBold)
-                        Text(
-                            "${s.kind.uppercase()} · ${(s.lang ?: "auto").uppercase()} · ${s.lines.size} lines",
-                            style = MaterialTheme.typography.labelMedium
-                        )
+                    Row(Modifier.height(IntrinsicSize.Min)) {
+                        Box(Modifier.width(6.dp).fillMaxHeight().background(color))
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                kindLabel(s.kind),
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.background(color, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                            Text(s.title, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "${langLabel(s.lang)} · ${s.lines.size} lines",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
