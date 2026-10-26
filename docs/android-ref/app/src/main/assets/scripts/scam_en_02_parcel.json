@@ -1,0 +1,5 @@
+[
+  {"speaker": "caller", "text": "Good afternoon, I am calling from the courier company about your parcel.", "delay_ms": 1800},
+  {"speaker": "receiver", "text": "Okay, which parcel?", "delay_ms": 1800},
+  {"speaker": "caller", "text": "You need to pay a small customs fee today by bank transfer or the parcel will be returned.", "delay_ms": 1800}
+]
