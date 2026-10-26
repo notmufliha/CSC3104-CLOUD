@@ -407,7 +407,7 @@ Navigation is one `enum` in `MainActivity`, with no navigation library. During a
 
 | Task | Screen | What the user sees |
 | --- | --- | --- |
-| 4.1 | `HomeScreen` | Simulate scam call, Simulate normal call, Choose a script, Paste text, Live mic (disabled, "coming later"), History, Settings |
+| 4.1 | `HomeScreen` | Simulate scam call, Simulate normal call, Choose a script, Paste text, History, Settings |
 | 4.3 | `IncomingCallScreen` (existing) | "Unknown caller", Answer / Decline |
 | 4.4 | `InCallScreen` | Risk bar, 3 chips, yellow banner with reason + action, chat bubbles: Speaker 1 · Caller on the left, Speaker 2 · You on the right; flagged caller lines get a red border |
 | 4.5 | `ScamAlert` inside `InCallScreen` | Full-width red pop-up slides down from the top, one vibration, "Hang up now" / "Dismiss" |
@@ -864,7 +864,6 @@ fun HomeScreen(
         Button(onClick = onNormalCall, modifier = wide) { Text("Simulate normal call") }
         OutlinedButton(onClick = onPickScript, modifier = wide) { Text("Choose a call script…") }
         OutlinedButton(onClick = onPasteText, modifier = wide) { Text("Paste text") }
-        OutlinedButton(onClick = {}, enabled = false, modifier = wide) { Text("Live mic (coming later)") }
         HorizontalDivider()
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = onHistory) { Text("History") }
