@@ -14,34 +14,32 @@ the rules.
 | Text prep | `bert_text.py` = the same file the training notebook used (NFKC, traditional to simplified, lines joined with " \| ", last 5 lines, tokenizer truncates from the LEFT) |
 | Score | softmax(logits / temperature)[scam]. The temperature was fitted on the validation split so the score is a real probability (the aggregator averages it with the workers' calibrated vote) |
 
-## Model files (not in git)
+## Model files (downloaded automatically, not in git)
 
-`model/` needs the 3 files the notebook (`notebooks/bert_cascade.ipynb`) writes:
+`model/` needs 3 files: `model.onnx` (int8, ~136 MB), `tokenizer.json`, `bert_config.json`. They are **not in
+git** (`model.onnx` is over GitHub's 100 MB limit). **You don't need to copy them anywhere**:
 
-```
-model.onnx          fine-tuned model, ONNX, int8-quantised
-tokenizer.json      the tokenizer it was trained with
-bert_config.json    version, max_len, temperature, max_turns, model_sha256, metrics
-```
+- `docker compose up -d --build` (or a plain `docker build`) downloads them from the team's Hugging Face repo
+  and checks the SHA256. Nothing to set up.
+- To run `predict.py` on your laptop, download them once: `cd backend/workers/bert && python fetch_model.py`.
 
-Either:
+Published model: `https://huggingface.co/gouthamsaravanan/csc3104-scam-bert/resolve/a0ebfbc63c1591a889798d7828cd5c65e063c57a`
+(model_sha256 `de0f771d861a5029666d97736f9715bef097b52eead991c973a67855d82f0c1c`).
 
-1. **Local**: copy them into `backend/workers/bert/model/`, then `docker compose build bert`; or
-2. **Download at build**: upload them (Hugging Face model repo, or a GitHub release) and build with the folder URL,
-   pinned to a commit so a later upload can't silently change the image:
-   ```bash
-   echo 'MODEL_BASE_URL=https://huggingface.co/<user>/csc3104-scam-bert/resolve/<commit>' >> .env
-   docker compose build bert
-   ```
-   `fetch_model.py` checks `model.onnx` against `model_sha256` in `bert_config.json`.
+Keep `model/` empty apart from `.gitkeep` unless you are testing a new model: anything in it is used instead of
+the download, and a file with the wrong hash fails the build. Delete old dummy files.
 
-No model yet? `python tools/bert_dummy_model.py` writes a FAKE model (meaningless scores) so the wiring,
-timeouts and fallbacks can be tested.
+**After retraining** (`notebooks/bert_cascade.ipynb`, last cell uploads to Hugging Face): put the new commit URL
+and `model_sha256` in `fetch_model.py` (DEFAULT_URL / DEFAULT_SHA256), the Dockerfile ARGs and
+`docker-compose.yml`.
+
+`tools/bert_dummy_model.py` (a FAKE model with meaningless scores) was only for wiring tests before the real
+model existed. Don't use it now.
 
 ## Check it
 
 ```bash
-cd backend/workers/bert && python predict.py "您好，我是新加坡警察部队的" "你的户口涉及洗钱案" "请马上把钱转到安全账户"
+cd backend/workers/bert && python fetch_model.py && python predict.py "您好，我是新加坡警察部队的" "你的户口涉及洗钱案" "请马上把钱转到安全账户"
 docker compose up -d --build bert aggregator
 docker compose logs -f aggregator | grep bert_status
 ```

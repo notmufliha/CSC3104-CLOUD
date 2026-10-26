@@ -378,10 +378,12 @@ deployed, every line is decided exactly as without it.
   (Redis stays text-free).
 - Model: `notebooks/bert_cascade.ipynb` (Colab, free T4) builds the training windows, fine-tunes
   `distilbert-base-multilingual-cased`, fits the temperature, exports ONNX int8 and writes the 3 files the pod
-  needs (`model.onnx`, `tokenizer.json`, `bert_config.json`). They are not in git: copy them into
-  `backend/workers/bert/model/`, or upload them and build with `MODEL_BASE_URL` (see the pod's README).
-- Before the real model exists, `python tools/bert_dummy_model.py` writes a FAKE model so the wiring can be
-  tested (`bert_status` "ok", meaningless scores).
+  needs (`model.onnx`, `tokenizer.json`, `bert_config.json`). They are not in git (too big), but
+  **the build downloads them automatically** from the team's Hugging Face repo and checks the SHA256, so
+  `docker compose up -d --build` is all you need. On a laptop: `python backend/workers/bert/fetch_model.py`.
+  See the pod's README.
+- `tools/bert_dummy_model.py` (FAKE model) was only for wiring tests before the real model existed. Don't use it
+  now: its files in `backend/workers/bert/model/` would fail the build's hash check.
 - Evaluation (7.5 + 7.12): `python tools/eval_cascade.py` replays labelled calls through the running stack
   and reports fast-only vs cascade (and BERT alone), the share of lines that needed BERT, and latency.
 
