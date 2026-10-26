@@ -1,0 +1,72 @@
+[
+  {
+    "speaker": "caller",
+    "text": "Good morning, I am calling from the technical support team of your internet provider.",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "Oh, okay? Is there a problem with my line?",
+    "delay_ms": 5300
+  },
+  {
+    "speaker": "caller",
+    "text": "Yes, our system shows your router has been hacked and your computer is sending out viruses.",
+    "delay_ms": 4050
+  },
+  {
+    "speaker": "receiver",
+    "text": "Oh no, my son uses that computer for school.",
+    "delay_ms": 6000
+  },
+  {
+    "speaker": "caller",
+    "text": "It is very serious. Hackers may already have access to your personal files.",
+    "delay_ms": 4050
+  },
+  {
+    "speaker": "receiver",
+    "text": "What should I do?",
+    "delay_ms": 5000
+  },
+  {
+    "speaker": "caller",
+    "text": "Please turn on your computer and open the web browser. I will guide you to download a support app.",
+    "delay_ms": 2400
+  },
+  {
+    "speaker": "receiver",
+    "text": "Okay, I am downloading it. It asks for a code.",
+    "delay_ms": 6950
+  },
+  {
+    "speaker": "caller",
+    "text": "Yes, give me the nine-digit code on the screen so I can connect and clean your computer.",
+    "delay_ms": 4400
+  },
+  {
+    "speaker": "receiver",
+    "text": "Okay, here it is.",
+    "delay_ms": 6300
+  },
+  {
+    "speaker": "caller",
+    "text": "Now I can see your screen. The virus has reached your banking. Please log in to your internet banking so I can check.",
+    "delay_ms": 2400
+  },
+  {
+    "speaker": "receiver",
+    "text": "Is that really necessary?",
+    "delay_ms": 8300
+  },
+  {
+    "speaker": "caller",
+    "text": "Yes, we must move your money to a protected account before the hackers take it. Please do it right now.",
+    "delay_ms": 2400
+  },
+  {
+    "speaker": "caller",
+    "text": "The cleaning service also costs two hundred dollars. Please pay with gift cards from any convenience store.",
+    "delay_ms": 7700
+  }
+]
