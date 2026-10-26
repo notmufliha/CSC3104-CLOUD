@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aggregator
+  namespace: scamguard
+  labels: { app: aggregator }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: aggregator }
+  template:
+    metadata:
+      labels: { app: aggregator }
+    spec:
+      containers:
+        - name: aggregator
+          image: scam/aggregator:demo
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50052
+              name: grpc
+            - containerPort: 8082
+              name: http
+          env:
+            - name: AGGREGATOR_GRPC_ADDR
+              value: "0.0.0.0:50052"
+            - name: AGGREGATOR_HTTP_ADDR
+              value: "0.0.0.0:8082"
+            - name: REDIS_URL
+              value: "redis://redis:6379"
+            - name: AGG_W_URGENCY
+              value: "0.3333"
+            - name: AGG_W_MONEY
+              value: "0.3333"
+            - name: AGG_W_IMPERSONATION
+              value: "0.3333"
+            - name: AGG_SCAM_THRESHOLD
+              value: "0.6"
+            - name: AGG_UNSURE_THRESHOLD
+              value: "0.45"
+            - name: AGG_WINDOW_LINES
+              value: "6"
+            - name: AGG_WARMUP_SECS
+              value: "15"
+            - name: AGG_WARMUP_OVERRIDE
+              value: "0.9"
+            - name: AGG_SCAM_STREAK
+              value: "2"
+            - name: AGG_MONEY_RULE
+              value: "0.7"
+            - name: AGG_MONEY_RULE_OTHER
+              value: "0.5"
+            - name: AGG_REASON_THRESHOLD
+              value: "0.5"
+            - name: AGG_MIN_QUORUM
+              value: "2"
+            - name: AGG_CALL_TTL_SECS
+              value: "3600"
+            - name: BERT_TIMEOUT_MS
+              value: "300"
+            - name: AGG_BERT_WEIGHT
+              value: "0.5"
+            - name: AGG_BERT_VETO
+              value: "0"
+            - name: BERT_ADDR
+              value: "envoy-lb:50068"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          readinessProbe:
+            httpGet: { path: /health, port: 8082 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 8082 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+# Headless (clusterIP: None) so Envoy's STRICT_DNS cluster resolves every pod IP, not one ClusterIP VIP --
+# see demo/make_envoy_config.py's header comment for why this matters for a gRPC server with 2+ replicas.
+apiVersion: v1
+kind: Service
+metadata:
+  name: aggregator-hl
+  namespace: scamguard
+spec:
+  clusterIP: None
+  selector: { app: aggregator }
+  ports:
+    - name: grpc
+      port: 50052
+      targetPort: 50052
+---
+# Plain ClusterIP too, for the HTTP /health endpoint (kubectl port-forward svc/aggregator 8082:8082) and
+# anything that wants ordinary round-the-robin-per-connection access instead of going through Envoy.
+apiVersion: v1
+kind: Service
+metadata:
+  name: aggregator
+  namespace: scamguard
+spec:
+  selector: { app: aggregator }
+  ports:
+    - name: grpc
+      port: 50052
+      targetPort: 50052
+    - name: http
+      port: 8082
+      targetPort: 8082

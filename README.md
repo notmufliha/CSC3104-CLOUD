@@ -364,6 +364,14 @@ example). The gateway and aggregator aren't templated here yet — TODO.
 aggregator's `BERT_ADDR` at it (through Envoy if you want the HPA's extra replicas to share the load, like the
 workers: a gRPC client keeps one connection to one pod).
 
+## Demo deployment
+
+[demo/](demo/) runs the whole backend on a free, one-node Kubernetes cluster (minikube) on a laptop, with
+multiple replicas, autoscaling (HPA) and Envoy-based gRPC load balancing — the presentation version of
+this repo's architecture. `docker compose up` above is still the simplest way to run it locally day to
+day; `demo/` is for showing the distributed-systems behaviour live. Start at
+[demo/README.md](demo/README.md).
+
 ## BERT second opinion
 
 The six fast workers score every caller line in milliseconds but read one sentence at a time and know only

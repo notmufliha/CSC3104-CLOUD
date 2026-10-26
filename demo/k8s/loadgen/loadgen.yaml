@@ -1,0 +1,1187 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loadgen-script
+  namespace: scamguard
+data:
+  load_sim.py: |
+    #!/usr/bin/env python3
+    """load_sim.py - generates realistic concurrent load against a running gateway, to show load balancing
+    (demo/spread.sh) and autoscaling (demo/watch.sh) actually working under load.
+
+    Each simulated "user" plays one of the app's own scripted calls (android-app/app/src/main/assets/scripts/
+    *.json -- the same files tools/testing/replay.py uses) through POST /v1/utterance, sending only caller
+    lines (exactly what the real app sends -- see DEMO_TASK.md section 7: the app never sends receiver
+    lines or t_ms), with the same call_id and increasing seq for the whole call, then immediately starts a
+    new call with a fresh call_id, for as long as --duration lasts.
+
+    Standard library only (urllib + concurrent.futures), so there's nothing to `pip install` on stage.
+
+    Usage:
+        python demo/tools/load_sim.py                                   # defaults, against http://localhost:8080
+        python demo/tools/load_sim.py --url http://localhost:8080 --users 30 --duration 60 --ramp 10
+        python demo/tools/load_sim.py --scam-ratio 0.5 --zh-ratio 0.3 --pace 8
+        python demo/tools/load_sim.py --error-threshold 0.1             # exit 1 if >10% of requests error
+
+    Run `python demo/tools/load_sim.py --help` for every flag and its default.
+    """
+    import argparse
+    import concurrent.futures
+    import json
+    import os
+    import random
+    import statistics
+    import sys
+    import threading
+    import time
+    import urllib.error
+    import urllib.request
+    import uuid
+
+    HERE = os.path.dirname(os.path.abspath(__file__))
+    DEFAULT_SCRIPTS_DIR = os.path.normpath(os.path.join(HERE, "..", "..", "android-app", "app", "src", "main", "assets", "scripts"))
+
+
+    def load_scripts(scripts_dir: str):
+        """Returns {(kind, lang): [ (filename, lines) ]} for every *.json script under scripts_dir whose
+        filename starts with scam_/normal_ and <lang> (en/zh), the app's own naming rule (6.1)."""
+        buckets: dict = {}
+        for name in sorted(os.listdir(scripts_dir)):
+            if not name.endswith(".json"):
+                continue
+            parts = name[:-5].split("_")
+            if len(parts) < 2 or parts[0] not in ("scam", "normal"):
+                continue
+            kind, lang = parts[0], parts[1]
+            if lang not in ("en", "zh"):
+                continue
+            with open(os.path.join(scripts_dir, name), encoding="utf-8") as f:
+                lines = json.load(f)
+            buckets.setdefault((kind, lang), []).append((name, lines))
+        return buckets
+
+
+    def post(url: str, body: dict, timeout: float):
+        req = urllib.request.Request(
+            f"{url}/v1/utterance", data=json.dumps(body).encode("utf-8"),
+            headers={"Content-Type": "application/json"}, method="POST",
+        )
+        t0 = time.perf_counter()
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                data = json.loads(r.read())
+                return r.status, data, (time.perf_counter() - t0) * 1000
+        except urllib.error.HTTPError as e:
+            try:
+                data = json.loads(e.read() or b"{}")
+            except ValueError:
+                data = {}
+            return e.code, data, (time.perf_counter() - t0) * 1000
+        except (urllib.error.URLError, OSError) as e:
+            return 0, {"error": str(e)}, (time.perf_counter() - t0) * 1000
+
+
+    def pick_script(buckets: dict, scam_ratio: float, zh_ratio: float):
+        kind = "scam" if random.random() < scam_ratio else "normal"
+        lang = "zh" if random.random() < zh_ratio else "en"
+        options = buckets.get((kind, lang)) or buckets.get((kind, "en")) or next(iter(buckets.values()))
+        return random.choice(options)
+
+
+    def user_worker(user_id: int, url: str, buckets: dict, args, end_time: float, results: list, lock: threading.Lock, stop: threading.Event):
+        while time.time() < end_time and not stop.is_set():
+            name, lines = pick_script(buckets, args.scam_ratio, args.zh_ratio)
+            call_id = f"load-{user_id}-{uuid.uuid4().hex[:8]}"
+            lang = name.split("_")[1]
+            for seq, line in enumerate(lines, start=1):
+                if time.time() >= end_time or stop.is_set():
+                    return
+                delay_s = line.get("delay_ms", 0) / 1000 / max(args.pace, 0.01)
+                time.sleep(delay_s)
+                if line.get("speaker") != "caller":
+                    continue  # the real app never sends receiver lines
+                body = {"call_id": call_id, "seq": seq, "speaker": "caller", "text": line["text"], "lang": lang}
+                status, data, ms = post(url, body, args.timeout)
+                rec = {
+                    "status": status,
+                    "ms": ms,
+                    "verdict": data.get("verdict"),
+                    "missing": data.get("missing") or [],
+                    "quorum_met": data.get("quorum_met"),
+                    "bert_status": data.get("bert_status"),
+                }
+                with lock:
+                    results.append(rec)
+
+
+    def percentile(sorted_vals, p):
+        if not sorted_vals:
+            return float("nan")
+        k = (len(sorted_vals) - 1) * p
+        f, c = int(k), min(int(k) + 1, len(sorted_vals) - 1)
+        if f == c:
+            return sorted_vals[f]
+        return sorted_vals[f] + (sorted_vals[c] - sorted_vals[f]) * (k - f)
+
+
+    def main() -> int:
+        ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+        # Every default also reads an env var of the same name (LOAD_*), so the in-cluster Job
+        # (demo/k8s/loadgen/loadgen.yaml) can be tuned with `kubectl set env job/loadgen LOAD_USERS=50` /
+        # editing the Job spec, without touching the script. A flag on the command line always wins.
+        ap.add_argument("--url", default=os.environ.get("GATEWAY_URL", "http://localhost:8080"), help="gateway base URL (default: %(default)s, or $GATEWAY_URL)")
+        ap.add_argument("--users", type=int, default=int(os.environ.get("LOAD_USERS", 20)), help="concurrent simulated users (default: %(default)s, or $LOAD_USERS)")
+        ap.add_argument("--duration", type=float, default=float(os.environ.get("LOAD_DURATION", 60)), help="seconds to run the test for (default: %(default)s, or $LOAD_DURATION)")
+        ap.add_argument("--ramp", type=float, default=float(os.environ.get("LOAD_RAMP", 10)), help="seconds to stagger user start-up over, 0 = all at once (default: %(default)s, or $LOAD_RAMP)")
+        ap.add_argument("--pace", type=float, default=float(os.environ.get("LOAD_PACE", 10)), help="speed-up factor for each script's delay_ms (10 = 10x faster than a real call, default: %(default)s, or $LOAD_PACE)")
+        ap.add_argument("--scam-ratio", type=float, default=float(os.environ.get("LOAD_SCAM_RATIO", 0.5)), help="fraction of calls that play a scam script (default: %(default)s, or $LOAD_SCAM_RATIO)")
+        ap.add_argument("--zh-ratio", type=float, default=float(os.environ.get("LOAD_ZH_RATIO", 0.3)), help="fraction of calls in Mandarin (default: %(default)s, or $LOAD_ZH_RATIO)")
+        ap.add_argument("--scripts-dir", default=os.environ.get("LOAD_SCRIPTS_DIR", DEFAULT_SCRIPTS_DIR), help="where the *.json call scripts live (default: the app's assets/scripts/, or $LOAD_SCRIPTS_DIR)")
+        ap.add_argument("--timeout", type=float, default=5.0, help="per-request timeout, seconds (default: %(default)s)")
+        ap.add_argument("--error-threshold", type=float, default=float(os.environ.get("LOAD_ERROR_THRESHOLD", 0.05)), help="exit 1 if the HTTP-error rate exceeds this fraction (default: %(default)s, or $LOAD_ERROR_THRESHOLD)")
+        args = ap.parse_args()
+
+        if not os.path.isdir(args.scripts_dir):
+            print(f"scripts dir not found: {args.scripts_dir}", file=sys.stderr)
+            return 2
+        buckets = load_scripts(args.scripts_dir)
+        if not buckets:
+            print(f"no scam_*/normal_* *.json scripts found under {args.scripts_dir}", file=sys.stderr)
+            return 2
+        print(f"Loaded {sum(len(v) for v in buckets.values())} call scripts: "
+              + ", ".join(f"{k[0]}/{k[1]}={len(v)}" for k, v in sorted(buckets.items())))
+
+        try:
+            import urllib.request as _u
+            with _u.urlopen(f"{args.url}/healthz", timeout=3) as r:
+                print(f"Gateway reachable at {args.url} ({r.read().decode().strip()})")
+        except Exception as e:
+            print(f"WARNING: could not reach {args.url}/healthz ({e}). Starting anyway.", file=sys.stderr)
+
+        results: list = []
+        lock = threading.Lock()
+        stop = threading.Event()
+        start = time.time()
+        end_time = start + args.duration
+
+        print(f"\nRunning {args.users} users for {args.duration:.0f}s (ramp {args.ramp:.0f}s, pace {args.pace}x, "
+              f"scam_ratio={args.scam_ratio}, zh_ratio={args.zh_ratio})...")
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=args.users) as pool:
+            futures = []
+            for i in range(args.users):
+                if args.ramp > 0:
+                    time.sleep(args.ramp / args.users)
+                futures.append(pool.submit(user_worker, i, args.url, buckets, args, end_time, results, lock, stop))
+            # Progress ticker while the ramp + duration play out.
+            while time.time() < end_time:
+                time.sleep(min(5, max(0.5, end_time - time.time())))
+                with lock:
+                    n = len(results)
+                print(f"  ... {time.time() - start:5.0f}s elapsed, {n} requests sent so far")
+            stop.set()
+            concurrent.futures.wait(futures, timeout=args.timeout + 2)
+
+        elapsed = time.time() - start
+        n = len(results)
+        if n == 0:
+            print("\nNo requests completed -- is the gateway reachable? Nothing to report.", file=sys.stderr)
+            return 1
+
+        latencies = sorted(r["ms"] for r in results)
+        errors = [r for r in results if r["status"] != 200]
+        verdict_counts: dict = {}
+        bert_status_counts: dict = {}
+        non_empty_missing = 0
+        quorum_false = 0
+        for r in results:
+            verdict_counts[r["verdict"]] = verdict_counts.get(r["verdict"], 0) + 1
+            bert_status_counts[r["bert_status"]] = bert_status_counts.get(r["bert_status"], 0) + 1
+            if r["missing"]:
+                non_empty_missing += 1
+            if r["quorum_met"] is False:
+                quorum_false += 1
+
+        error_rate = len(errors) / n
+
+        print("\n" + "=" * 60)
+        print("LOAD TEST RESULTS")
+        print("=" * 60)
+        print(f"Duration:            {elapsed:.1f}s (requested {args.duration:.0f}s)")
+        print(f"Requests sent:       {n}")
+        print(f"Requests/s:          {n / elapsed:.2f}")
+        print(f"Latency p50/p95/p99: {percentile(latencies, 0.50):.0f} / {percentile(latencies, 0.95):.0f} / {percentile(latencies, 0.99):.0f} ms")
+        print(f"HTTP errors:         {len(errors)}  ({error_rate:.1%})")
+        print(f"Verdict counts:      {verdict_counts}")
+        print(f"bert_status counts:  {bert_status_counts}")
+        print(f"Non-empty 'missing': {non_empty_missing}")
+        print(f"quorum_met=false:    {quorum_false}")
+        print("=" * 60)
+
+        if error_rate > args.error_threshold:
+            print(f"\nFAIL: error rate {error_rate:.1%} exceeds --error-threshold {args.error_threshold:.1%}", file=sys.stderr)
+            return 1
+        return 0
+
+
+    if __name__ == "__main__":
+        sys.exit(main())
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loadgen-scripts
+  namespace: scamguard
+data:
+  normal_en_10_bank_reminder.json: |
+    [
+      {
+        "speaker": "caller",
+        "text": "Good morning, this is a reminder call from your bank's card services.",
+        "delay_ms": 1500
+      },
+      {
+        "speaker": "receiver",
+        "text": "Oh, hello. Is something wrong?",
+        "delay_ms": 4650
+      },
+      {
+        "speaker": "caller",
+        "text": "Not at all. Your credit card payment of two hundred and forty dollars is due on the twenty-fifth.",
+        "delay_ms": 2750
+      },
+      {
+        "speaker": "receiver",
+        "text": "Right, I forgot about that. Thanks for reminding me.",
+        "delay_ms": 6650
+      },
+      {
+        "speaker": "caller",
+        "text": "You can pay through the mobile app, internet banking, or GIRO if you have set it up.",
+        "delay_ms": 4050
+      },
+      {
+        "speaker": "receiver",
+        "text": "I'll just use the app.",
+        "delay_ms": 6300
+      },
+      {
+        "speaker": "caller",
+        "text": "Sure. And please remember, the bank will never ask you for your OTP or password over the phone.",
+        "delay_ms": 2750
+      },
+      {
+        "speaker": "receiver",
+        "text": "Yes, I know. Thanks for the reminder.",
+        "delay_ms": 6650
+      },
+      {
+        "speaker": "caller",
+        "text": "No problem. If you have any questions, call the number printed on the back of your card.",
+        "delay_ms": 3400
+      },
+      {
+        "speaker": "receiver",
+        "text": "Okay, will do.",
+        "delay_ms": 6300
+      },
+      {
+        "speaker": "caller",
+        "text": "Thank you, have a good day.",
+        "delay_ms": 2100
+      }
+    ]
+  normal_en_11_clinic_appointment.json: |
+    [
+      {
+        "speaker": "caller",
+        "text": "Hello, this is the clinic calling to confirm your appointment tomorrow at ten thirty.",
+        "delay_ms": 1500
+      },
+      {
+        "speaker": "receiver",
+        "text": "Yes, I'll be there.",
+        "delay_ms": 5300
+      },
+      {
+        "speaker": "caller",
+        "text": "Great. Please bring your NRIC and any medication you are currently taking.",
+        "delay_ms": 2400
+      },
+      {
+        "speaker": "receiver",
+        "text": "Okay. Should I fast beforehand?",
+        "delay_ms": 4650
+      },
+      {
+        "speaker": "caller",
+        "text": "Yes, no food for eight hours before the blood test, but you can drink plain water.",
+        "delay_ms": 2750
+      },
+      {
+        "speaker": "receiver",
+        "text": "Alright. How long will it take?",
+        "delay_ms": 6000
+      },
+      {
+        "speaker": "caller",
+        "text": "About thirty minutes. Please arrive ten minutes early to register at the counter.",
+        "delay_ms": 3100
+      },
+      {
+        "speaker": "receiver",
+        "text": "Noted. Is parking available?",
+        "delay_ms": 5000
+      },
+      {
+        "speaker": "caller",
+        "text": "Yes, there is a carpark behind the building. The consultation fee can be paid at the counter after your visit.",
+        "delay_ms": 2400
+      },
+      {
+        "speaker": "receiver",
+        "text": "Okay, thanks.",
+        "delay_ms": 7300
+      },
+      {
+        "speaker": "caller",
+        "text": "See you tomorrow. Take care.",
+        "delay_ms": 1750
+      }
+    ]
+  normal_en_12_delivery_driver.json: |
+    [
+      {
+        "speaker": "caller",
+        "text": "Hi, I'm the delivery driver. I'm downstairs at your block now with your order.",
+        "delay_ms": 1500
+      },
+      {
+        "speaker": "receiver",
+        "text": "Oh, I'll come down. Which entrance are you at?",
+        "delay_ms": 5300
+      },
+      {
+        "speaker": "caller",
+        "text": "I'm at the lobby near the letterboxes. Blue jacket.",
+        "delay_ms": 4050
+      },
+      {
+        "speaker": "receiver",
+        "text": "Okay, give me two minutes. I'm just putting on my shoes.",
+        "delay_ms": 3650
+      },
+      {
+        "speaker": "caller",
+        "text": "No problem. Can you confirm the unit number? The app shows number twelve.",
+        "delay_ms": 4750
+      },
+      {
+        "speaker": "receiver",
+        "text": "Yes, number twelve, thanks.",
+        "delay_ms": 5000
+      },
+      {
+        "speaker": "caller",
+        "text": "The total is twenty-three dollars fifty. It's cash on delivery, or you can PayNow me.",
+        "delay_ms": 2400
+      },
+      {
+        "speaker": "receiver",
+        "text": "I'll pay cash. Do you have change for fifty?",
+        "delay_ms": 5650
+      },
+      {
+        "speaker": "caller",
+        "text": "Yes, no problem.",
+        "delay_ms": 4050
+      },
+      {
+        "speaker": "receiver",
+        "text": "Great, coming down now.",
+        "delay_ms": 1700
+      }
+    ]
+  normal_en_13_insurance_sales.json: |
+    [
+      {
+        "speaker": "caller",
+        "text": "Hello, good afternoon. My name is Amelia, I'm calling from a financial advisory firm. Do you have a minute?",
+        "delay_ms": 1500
+      },
+      {
+        "speaker": "receiver",
+        "text": "I'm a bit busy, but go ahead.",
+        "delay_ms": 6950
+      },
+      {
+        "speaker": "caller",
+        "text": "We have a new hospitalisation plan for young working adults. I would like to explain the benefits briefly.",
+        "delay_ms": 3400
+      },
+      {
+        "speaker": "receiver",
+        "text": "I already have an insurance plan through my company.",
+        "delay_ms": 6650
+      },
+      {
+        "speaker": "caller",
+        "text": "That's great. Many people find employer coverage ends when they change jobs, so a personal plan can be a good backup.",
+        "delay_ms": 4050
+      },
+      {
+        "speaker": "receiver",
+        "text": "How much is the premium?",
+        "delay_ms": 7650
+      },
+      {
+        "speaker": "caller",
+        "text": "It starts from about thirty dollars a month, depending on your age and the ward type.",
+        "delay_ms": 2750
+      },
+      {
+        "speaker": "receiver",
+        "text": "Hmm, I'd need to think about it.",
+        "delay_ms": 6000
+      },
+      {
+        "speaker": "caller",
+        "text": "Of course. This promotion ends at the end of the month, but there's no obligation. May I send you the brochure by email?",
+        "delay_ms": 3400
+      },
+      {
+        "speaker": "receiver",
+        "text": "Sure, you can email it. Please don't call again.",
+        "delay_ms": 8300
+      },
+      {
+        "speaker": "caller",
+        "text": "Understood, thank you for your time.",
+        "delay_ms": 4050
+      }
+    ]
+  normal_en_14_family_call.json: |
+    [
+      {
+        "speaker": "caller",
+        "text": "Hello, it's Mum. Are you free this weekend?",
+        "delay_ms": 1500
+      },
+      {
+        "speaker": "receiver",
+        "text": "Hi Mum, I think so. What's happening?",
+        "delay_ms": 3350
+      },
+      {
+        "speaker": "caller",
+        "text": "Ah Ma's birthday is on Sunday. Your aunt booked the restaurant for twelve o'clock.",
+        "delay_ms": 3400
+      },
+      {
+        "speaker": "receiver",
+        "text": "Nice. Do you want me to bring anything?",
+        "delay_ms": 5300
+      },
+      {
+        "speaker": "caller",
+        "text": "Can you pick up the cake on the way? I'll PayNow you back after dinner.",
+        "delay_ms": 3750
+      },
+      {
+        "speaker": "receiver",
+        "text": "Sure, no problem. Which bakery?",
+        "delay_ms": 5650
+      },
+      {
+        "speaker": "caller",
+        "text": "The one near your office. Please remember to ask them to write her name on it.",
+        "delay_ms": 2750
+      },
+      {
+        "speaker": "receiver",
+        "text": "Okay, will do. What time should I reach?",
+        "delay_ms": 6000
+      },
+      {
+        "speaker": "caller",
+        "text": "Come by eleven thirty, so we can all walk in together.",
+        "delay_ms": 3750
+      },
+      {
+        "speaker": "receiver",
+        "text": "Got it. See you Sunday, Mum.",
+        "delay_ms": 4350
+      },
+      {
+        "speaker": "caller",
+        "text": "Bye bye. Take care and eat properly ah.",
+        "delay_ms": 3100
+      }
+    ]
+  normal_zh_10_bank_reminder.json: |
+    [
+      {
+        "speaker": "caller",
+        "text": "早上好，这里是银行信用卡服务部的提醒电话。",
+        "delay_ms": 1500
+      },
+      {
+        "speaker": "receiver",
+        "text": "哦，你好，有什么问题吗？",
+        "delay_ms": 5050
+      },
+      {
+        "speaker": "caller",
+        "text": "没有问题。您的信用卡有两百四十元的款项，本月二十五号到期。",
+        "delay_ms": 3150
+      },
+      {
+        "speaker": "receiver",
+        "text": "对，我差点忘了，谢谢你提醒我。",
+        "delay_ms": 6700
+      },
+      {
+        "speaker": "caller",
+        "text": "您可以用手机银行、网上银行，或者GIRO自动扣款来缴付。",
+        "delay_ms": 3850
+      },
+      {
+        "speaker": "receiver",
+        "text": "我用手机银行就好。",
+        "delay_ms": 5550
+      },
+      {
+        "speaker": "caller",
+        "text": "好的。另外请记住，银行绝对不会通过电话向您索取验证码或密码。",
+        "delay_ms": 2950
+      },
+      {
+        "speaker": "receiver",
+        "text": "我知道的，谢谢提醒。",
+        "delay_ms": 6900
+      },
+      {
+        "speaker": "caller",
+        "text": "不客气。如果有疑问，请拨打您信用卡背面印着的号码。",
+        "delay_ms": 2950
+      },
+      {
+        "speaker": "receiver",
+        "text": "好的。",
+        "delay_ms": 5750
+      },
+      {
+        "speaker": "caller",
+        "text": "谢谢您，祝您有愉快的一天。",
+        "delay_ms": 1550
+      }
+    ]
+  normal_zh_14_family_call.json: |
+    [
+      {
+        "speaker": "caller",
+        "text": "喂，是妈妈。这个周末你有空吗？",
+        "delay_ms": 1500
+      },
+      {
+        "speaker": "receiver",
+        "text": "妈，我应该有空。怎么了？",
+        "delay_ms": 3450
+      },
+      {
+        "speaker": "caller",
+        "text": "星期天是阿嬷的生日，你阿姨订了中午十二点的餐厅。",
+        "delay_ms": 3150
+      },
+      {
+        "speaker": "receiver",
+        "text": "太好了。要我带点什么吗？",
+        "delay_ms": 5750
+      },
+      {
+        "speaker": "caller",
+        "text": "你来的路上能不能顺便取一下蛋糕？吃完饭我再用PayNow把钱转给你。",
+        "delay_ms": 3400
+      },
+      {
+        "speaker": "receiver",
+        "text": "没问题，哪一家面包店？",
+        "delay_ms": 6700
+      },
+      {
+        "speaker": "caller",
+        "text": "就是你公司附近那一家。记得请他们在蛋糕上写阿嬷的名字。",
+        "delay_ms": 3150
+      },
+      {
+        "speaker": "receiver",
+        "text": "好的。我几点到比较好？",
+        "delay_ms": 6450
+      },
+      {
+        "speaker": "caller",
+        "text": "十一点半到吧，我们一起进去。",
+        "delay_ms": 3150
+      },
+      {
+        "speaker": "receiver",
+        "text": "知道了，星期天见，妈。",
+        "delay_ms": 3450
+      },
+      {
+        "speaker": "caller",
+        "text": "再见，路上小心，要好好吃饭哦。",
+        "delay_ms": 2950
+      }
+    ]
+  scam_en_10_gov_official.json: |
+    [
+      {
+        "speaker": "caller",
+        "text": "Good afternoon, this is the fraud prevention unit calling about your bank account.",
+        "delay_ms": 1500
+      },
+      {
+        "speaker": "receiver",
+        "text": "Oh, hello? What is this about?",
+        "delay_ms": 5000
+      },
+      {
+        "speaker": "caller",
+        "text": "We detected a credit card opened under your NRIC that was used for money laundering.",
+        "delay_ms": 3100
+      },
+      {
+        "speaker": "receiver",
+        "text": "What? I never opened any card. Are you sure?",
+        "delay_ms": 5650
+      },
+      {
+        "speaker": "caller",
+        "text": "I understand. Because this is a serious case, I will transfer you to the Singapore Police Force now.",
+        "delay_ms": 4050
+      },
+      {
+        "speaker": "receiver",
+        "text": "Police? Okay, okay.",
+        "delay_ms": 6650
+      },
+      {
+        "speaker": "caller",
+        "text": "I am Inspector Tan from the Singapore Police Force, badge number two zero four seven.",
+        "delay_ms": 2100
+      },
+      {
+        "speaker": "caller",
+        "text": "Your name is linked to a criminal case and you may be arrested today if you do not cooperate.",
+        "delay_ms": 6050
+      },
+      {
+        "speaker": "receiver",
+        "text": "I didn't do anything. What do I need to do?",
+        "delay_ms": 6950
+      },
+      {
+        "speaker": "caller",
+        "text": "You must not tell anyone, not your family and not your bank. This investigation is confidential.",
+        "delay_ms": 4400
+      },
+      {
+        "speaker": "caller",
+        "text": "To prove your innocence, we need to check your funds. Transfer your savings into a safety account that we provide.",
+        "delay_ms": 6400
+      },
+      {
+        "speaker": "receiver",
+        "text": "Transfer my savings? Is that really okay?",
+        "delay_ms": 7300
+      },
+      {
+        "speaker": "caller",
+        "text": "Do it right now, within the next thirty minutes, or a warrant will be issued.",
+        "delay_ms": 3400
+      },
+      {
+        "speaker": "caller",
+        "text": "Open your banking app and send all the money to this account number. Read me the OTP when the bank sends it.",
+        "delay_ms": 6050
+      },
+      {
+        "speaker": "receiver",
+        "text": "I'm scared. Let me find my phone.",
+        "delay_ms": 7950
+      },
+      {
+        "speaker": "caller",
+        "text": "Stay on the line. Do not hang up until the transfer is done.",
+        "delay_ms": 3400
+      }
+    ]
+  scam_en_11_bank_otp.json: |
+    [
+      {
+        "speaker": "caller",
+        "text": "Hello, this is the security department of your bank. Is this the account holder?",
+        "delay_ms": 1500
+      },
+      {
+        "speaker": "receiver",
+        "text": "Yes, speaking. What happened?",
+        "delay_ms": 5300
+      },
+      {
+        "speaker": "caller",
+        "text": "We noticed a suspicious payment of three thousand two hundred dollars from your account to an overseas merchant.",
+        "delay_ms": 2400
+      },
+      {
+        "speaker": "receiver",
+        "text": "I didn't make any payment! Please stop it.",
+        "delay_ms": 6650
+      },
+      {
+        "speaker": "caller",
+        "text": "Don't worry, I can cancel it, but I need to verify your identity quickly.",
+        "delay_ms": 3750
+      },
+      {
+        "speaker": "receiver",
+        "text": "Okay, what do you need?",
+        "delay_ms": 5300
+      },
+      {
+        "speaker": "caller",
+        "text": "The transaction will go through in five minutes, so we must act immediately.",
+        "delay_ms": 2750
+      },
+      {
+        "speaker": "receiver",
+        "text": "Please hurry, I don't want to lose my money.",
+        "delay_ms": 5000
+      },
+      {
+        "speaker": "caller",
+        "text": "I am sending a six-digit code to your phone now. Please read it out to me.",
+        "delay_ms": 4050
+      },
+      {
+        "speaker": "receiver",
+        "text": "It just came. It says it's for adding a new payee, is that okay?",
+        "delay_ms": 6000
+      },
+      {
+        "speaker": "caller",
+        "text": "Yes, that is normal, it is part of the cancellation process. Just tell me the numbers.",
+        "delay_ms": 5700
+      },
+      {
+        "speaker": "receiver",
+        "text": "Okay, one moment.",
+        "delay_ms": 6000
+      },
+      {
+        "speaker": "caller",
+        "text": "Also give me your card number and the three digits at the back so I can block it.",
+        "delay_ms": 2100
+      }
+    ]
+  scam_en_12_parcel_customs.json: |
+    [
+      {
+        "speaker": "caller",
+        "text": "Hello, this is the courier service. We have a parcel under your name that is held at customs.",
+        "delay_ms": 1500
+      },
+      {
+        "speaker": "receiver",
+        "text": "A parcel? I'm not expecting anything.",
+        "delay_ms": 6650
+      },
+      {
+        "speaker": "caller",
+        "text": "It was sent from overseas and the declared contents do not match, so customs has flagged it.",
+        "delay_ms": 3100
+      },
+      {
+        "speaker": "receiver",
+        "text": "Oh. So what happens now?",
+        "delay_ms": 6300
+      },
+      {
+        "speaker": "caller",
+        "text": "I will connect you to the customs enforcement officer. Please hold.",
+        "delay_ms": 2750
+      },
+      {
+        "speaker": "caller",
+        "text": "Good afternoon, I am Officer Lim from Singapore Customs. You are being investigated for importing prohibited items.",
+        "delay_ms": 4750
+      },
+      {
+        "speaker": "receiver",
+        "text": "Prohibited items? I never ordered anything like that.",
+        "delay_ms": 6300
+      },
+      {
+        "speaker": "caller",
+        "text": "If you do not resolve this today, we will refer your case to the police and the parcel will be destroyed.",
+        "delay_ms": 3750
+      },
+      {
+        "speaker": "receiver",
+        "text": "How can I settle it?",
+        "delay_ms": 7650
+      },
+      {
+        "speaker": "caller",
+        "text": "You need to pay a release fee of four hundred and eighty dollars through PayNow.",
+        "delay_ms": 2750
+      },
+      {
+        "speaker": "receiver",
+        "text": "PayNow? To whom?",
+        "delay_ms": 5650
+      },
+      {
+        "speaker": "caller",
+        "text": "I will send you the number now. Pay within one hour, otherwise the fine will double.",
+        "delay_ms": 2100
+      },
+      {
+        "speaker": "caller",
+        "text": "After you pay, take a screenshot of the receipt and send it to me on WhatsApp.",
+        "delay_ms": 6400
+      }
+    ]
+  scam_en_13_tech_support.json: |
+    [
+      {
+        "speaker": "caller",
+        "text": "Good morning, I am calling from the technical support team of your internet provider.",
+        "delay_ms": 1500
+      },
+      {
+        "speaker": "receiver",
+        "text": "Oh, okay? Is there a problem with my line?",
+        "delay_ms": 5300
+      },
+      {
+        "speaker": "caller",
+        "text": "Yes, our system shows your router has been hacked and your computer is sending out viruses.",
+        "delay_ms": 4050
+      },
+      {
+        "speaker": "receiver",
+        "text": "Oh no, my son uses that computer for school.",
+        "delay_ms": 6000
+      },
+      {
+        "speaker": "caller",
+        "text": "It is very serious. Hackers may already have access to your personal files.",
+        "delay_ms": 4050
+      },
+      {
+        "speaker": "receiver",
+        "text": "What should I do?",
+        "delay_ms": 5000
+      },
+      {
+        "speaker": "caller",
+        "text": "Please turn on your computer and open the web browser. I will guide you to download a support app.",
+        "delay_ms": 2400
+      },
+      {
+        "speaker": "receiver",
+        "text": "Okay, I am downloading it. It asks for a code.",
+        "delay_ms": 6950
+      },
+      {
+        "speaker": "caller",
+        "text": "Yes, give me the nine-digit code on the screen so I can connect and clean your computer.",
+        "delay_ms": 4400
+      },
+      {
+        "speaker": "receiver",
+        "text": "Okay, here it is.",
+        "delay_ms": 6300
+      },
+      {
+        "speaker": "caller",
+        "text": "Now I can see your screen. The virus has reached your banking. Please log in to your internet banking so I can check.",
+        "delay_ms": 2400
+      },
+      {
+        "speaker": "receiver",
+        "text": "Is that really necessary?",
+        "delay_ms": 8300
+      },
+      {
+        "speaker": "caller",
+        "text": "Yes, we must move your money to a protected account before the hackers take it. Please do it right now.",
+        "delay_ms": 2400
+      },
+      {
+        "speaker": "caller",
+        "text": "The cleaning service also costs two hundred dollars. Please pay with gift cards from any convenience store.",
+        "delay_ms": 7700
+      }
+    ]
+  scam_en_14_friend_in_trouble.json: |
+    [
+      {
+        "speaker": "caller",
+        "text": "Hello Auntie, it's me! Guess who this is?",
+        "delay_ms": 1500
+      },
+      {
+        "speaker": "receiver",
+        "text": "Eh, who is this? Is it Jason?",
+        "delay_ms": 3350
+      },
+      {
+        "speaker": "caller",
+        "text": "Yes yes, it's Jason! Sorry, I changed my number, my old phone fell into the water.",
+        "delay_ms": 3400
+      },
+      {
+        "speaker": "receiver",
+        "text": "Aiyo, why you call so late? Everything okay?",
+        "delay_ms": 6000
+      },
+      {
+        "speaker": "caller",
+        "text": "Auntie, I'm in a bit of trouble. I was in a car accident and the police are holding me at the station.",
+        "delay_ms": 3750
+      },
+      {
+        "speaker": "receiver",
+        "text": "Accident?! Are you hurt?",
+        "delay_ms": 7950
+      },
+      {
+        "speaker": "caller",
+        "text": "I'm fine, but I need to pay the other driver's repair cost and bail today or they will charge me.",
+        "delay_ms": 2400
+      },
+      {
+        "speaker": "receiver",
+        "text": "How much?",
+        "delay_ms": 7300
+      },
+      {
+        "speaker": "caller",
+        "text": "Five thousand five hundred dollars. Please don't tell Mum, she will be so worried.",
+        "delay_ms": 1750
+      },
+      {
+        "speaker": "caller",
+        "text": "Can you PayNow it now? I'll give you the number. It's really urgent, they are waiting.",
+        "delay_ms": 5700
+      },
+      {
+        "speaker": "receiver",
+        "text": "Okay okay, let me open my app.",
+        "delay_ms": 6000
+      },
+      {
+        "speaker": "caller",
+        "text": "Thank you Auntie, I'll pay you back next week, I promise. Please hurry.",
+        "delay_ms": 3400
+      }
+    ]
+  scam_zh_10_gov_official.json: |
+    [
+      {
+        "speaker": "caller",
+        "text": "您好，这里是银行的反欺诈部门，想跟您确认一下您的银行账户情况。",
+        "delay_ms": 1500
+      },
+      {
+        "speaker": "receiver",
+        "text": "哦，你好？请问有什么事吗？",
+        "delay_ms": 7150
+      },
+      {
+        "speaker": "caller",
+        "text": "我们发现有人用您的身份证号码开了一张信用卡，而且这张卡被用于洗钱。",
+        "delay_ms": 3400
+      },
+      {
+        "speaker": "receiver",
+        "text": "什么？我从来没有开过什么卡，你们搞错了吧？",
+        "delay_ms": 7850
+      },
+      {
+        "speaker": "caller",
+        "text": "我理解。因为案情严重，我现在把电话转接给新加坡警察部队的警官。",
+        "delay_ms": 5250
+      },
+      {
+        "speaker": "receiver",
+        "text": "警察？好的好的。",
+        "delay_ms": 7150
+      },
+      {
+        "speaker": "caller",
+        "text": "我是新加坡警察部队的陈警官，警号二零四七。",
+        "delay_ms": 2500
+      },
+      {
+        "speaker": "caller",
+        "text": "您已经涉及一宗刑事案件，如果今天不配合调查，可能会被逮捕。",
+        "delay_ms": 5450
+      },
+      {
+        "speaker": "receiver",
+        "text": "我什么都没做过啊，我要怎么做？",
+        "delay_ms": 6700
+      },
+      {
+        "speaker": "caller",
+        "text": "这件事绝对保密，不能告诉任何人，包括您的家人和银行。",
+        "delay_ms": 4100
+      },
+      {
+        "speaker": "caller",
+        "text": "为了证明您的清白，我们需要核查您的资金，请把您的存款转到我们提供的安全账户。",
+        "delay_ms": 6400
+      },
+      {
+        "speaker": "receiver",
+        "text": "把存款全部转走？这样真的可以吗？",
+        "delay_ms": 8750
+      },
+      {
+        "speaker": "caller",
+        "text": "必须现在就办，三十分钟内，否则法院会发出拘捕令。",
+        "delay_ms": 4300
+      },
+      {
+        "speaker": "caller",
+        "text": "请打开手机银行，把钱转到这个账户，银行发来验证码时马上念给我听。",
+        "delay_ms": 5950
+      },
+      {
+        "speaker": "receiver",
+        "text": "我有点害怕，我先找一下手机。",
+        "delay_ms": 7350
+      },
+      {
+        "speaker": "caller",
+        "text": "不要挂电话，转账完成之前请一直保持通话。",
+        "delay_ms": 3850
+      }
+    ]
+  scam_zh_12_parcel_customs.json: |
+    [
+      {
+        "speaker": "caller",
+        "text": "您好，这里是快递公司。有一个以您名字寄出的包裹被海关扣留了。",
+        "delay_ms": 1500
+      },
+      {
+        "speaker": "receiver",
+        "text": "包裹？我没有买什么东西啊。",
+        "delay_ms": 6900
+      },
+      {
+        "speaker": "caller",
+        "text": "包裹是从海外寄来的，申报的内容和实际不符，所以被海关标记了。",
+        "delay_ms": 3650
+      },
+      {
+        "speaker": "receiver",
+        "text": "哦，那现在怎么办？",
+        "delay_ms": 6900
+      },
+      {
+        "speaker": "caller",
+        "text": "我现在帮您转接海关执法人员，请稍等。",
+        "delay_ms": 2700
+      },
+      {
+        "speaker": "caller",
+        "text": "您好，我是新加坡海关的林官员，您涉嫌进口违禁物品，现在正在被调查。",
+        "delay_ms": 4800
+      },
+      {
+        "speaker": "receiver",
+        "text": "违禁物品？我根本没订过那种东西。",
+        "delay_ms": 7350
+      },
+      {
+        "speaker": "caller",
+        "text": "如果今天之内不处理，案件会移交给警方，包裹也会被销毁。",
+        "delay_ms": 4300
+      },
+      {
+        "speaker": "receiver",
+        "text": "那我该怎么处理？",
+        "delay_ms": 6200
+      },
+      {
+        "speaker": "caller",
+        "text": "您需要通过PayNow缴付四百八十元的放行费。",
+        "delay_ms": 2700
+      },
+      {
+        "speaker": "receiver",
+        "text": "PayNow？转给谁？",
+        "delay_ms": 4400
+      },
+      {
+        "speaker": "caller",
+        "text": "我马上把号码发给您，请在一小时内付款，否则罚款会加倍。",
+        "delay_ms": 1800
+      },
+      {
+        "speaker": "caller",
+        "text": "付款后请把收据截图，用WhatsApp发给我。",
+        "delay_ms": 6600
+      }
+    ]
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: loadgen
+  namespace: scamguard
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: loadgen
+          image: python:3.11-slim
+          command: ["python", "/app/load_sim.py", "--url", "http://gateway:8080", "--scripts-dir", "/scripts"]
+          env:
+            - name: LOAD_USERS
+              value: "30"
+            - name: LOAD_DURATION
+              value: "60"
+            - name: LOAD_RAMP
+              value: "10"
+            - name: LOAD_PACE
+              value: "10"
+            - name: LOAD_SCAM_RATIO
+              value: "0.5"
+            - name: LOAD_ZH_RATIO
+              value: "0.3"
+            - name: LOAD_ERROR_THRESHOLD
+              value: "0.05"
+          volumeMounts:
+            - name: script
+              mountPath: /app
+            - name: scripts
+              mountPath: /scripts
+          resources:
+            requests: { cpu: "200m", memory: "128Mi" }
+            limits: { cpu: "1", memory: "256Mi" }
+      volumes:
+        - name: script
+          configMap:
+            name: loadgen-script
+        - name: scripts
+          configMap:
+            name: loadgen-scripts
