@@ -21,7 +21,17 @@ Say "Checking required tools"
 if (-not (Get-Command docker -ErrorAction SilentlyContinue))   { Die "Docker not found. Install Docker Desktop: https://www.docker.com/products/docker-desktop/" }
 if (-not (Get-Command kubectl -ErrorAction SilentlyContinue))  { Die "kubectl not found. Install: https://kubernetes.io/docs/tasks/tools/#kubectl" }
 if (-not (Get-Command minikube -ErrorAction SilentlyContinue)) { Die "minikube not found. Install: https://minikube.sigs.k8s.io/docs/start/" }
-try { docker info *> $null } catch { Die "Docker is installed but not running. Start Docker Desktop and re-run this script." }
+# Not `try { docker info *> $null } catch {...}`: with $ErrorActionPreference = "Stop" (set above),
+# redirecting a native command's stderr in PowerShell 5.1 turns ANY stderr line -- even a harmless
+# WARNING docker info prints on some setups -- into a terminating NativeCommandError, falsely reporting
+# Docker as not running even though it exited 0. Check $LASTEXITCODE instead, with ErrorActionPreference
+# relaxed just for this one call. (Found for real while testing this script.)
+$prevEAP = $ErrorActionPreference
+$ErrorActionPreference = "SilentlyContinue"
+docker info *> $null
+$dockerOk = ($LASTEXITCODE -eq 0)
+$ErrorActionPreference = $prevEAP
+if (-not $dockerOk) { Die "Docker is installed but not running. Start Docker Desktop and re-run this script." }
 Write-Host "docker, kubectl, minikube all found."
 
 # ---------------------------------------------------------------------------------------- 2. size the host
@@ -50,8 +60,11 @@ if ($hostMemGb -lt 8) {
 
 # ---------------------------------------------------------------------------------------- 3. minikube
 Say "Starting minikube (docker driver -- no Hyper-V/VM needed, runs the k8s node as a container)"
-$already = $false
-try { minikube status *> $null; if ($LASTEXITCODE -eq 0) { $already = $true } } catch {}
+$prevEAP = $ErrorActionPreference
+$ErrorActionPreference = "SilentlyContinue"
+minikube status *> $null
+$already = ($LASTEXITCODE -eq 0)
+$ErrorActionPreference = $prevEAP
 if ($already) {
     Write-Host "minikube is already running. (Resource flags below only take effect on a fresh cluster --"
     Write-Host " run 'minikube delete' first if you need to change --cpus/--memory.)"

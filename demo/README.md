@@ -85,9 +85,13 @@ Then, in **3 separate terminals**:
 
 2. **Check it's alive**:
    ```bash
-   curl http://localhost:8080/healthz             # should print {"status":"ok",...}
+   curl http://127.0.0.1:8080/healthz             # should print {"status":"ok",...}
    python3 demo/tools/demo_flow.py                 # plays 4 real scripted calls, prints the verdicts
    ```
+   Use `127.0.0.1`, not `localhost`: on Windows, resolving `localhost` can add 400-2000ms to **every**
+   request (confirmed on this laptop: `127.0.0.1` ~50-110ms, `localhost` ~500-2300ms for the exact same
+   request) — enough to make a live demo look sluggish or even blow the gateway's 2-second budget. The
+   tools in `demo/tools/` already default to `127.0.0.1`; just avoid typing `localhost` yourself on stage.
    `demo_flow.py`'s table is "what the app should show" — if a line's `verdict` looks wrong, something is
    genuinely broken; if it just looks aggressive (e.g. turns SCAM earlier than you'd expect), see
    `demo/EXPECTED.md` section 5 — this is a known, measured model-tuning issue, not a demo bug.
@@ -173,6 +177,7 @@ A suggested order — adjust to your own style, this is just a safe default:
 | `minikube start` fails mentioning memory/resources | Docker Desktop's own resource limit is too low | Docker Desktop → Settings → Resources → raise CPU/Memory limits, restart Docker Desktop, retry. |
 | Requests to `localhost:8080` go to the wrong backend, or `port-forward.sh`/`.ps1` seems to silently do nothing | `docker compose up`'s gateway and this demo's `port-forward` both default to host port 8080 — whichever started first "wins" the port, and the second one fails to bind without always making it obvious | Don't run both at once. Stop `docker compose down` before using the Kubernetes demo (or vice versa), or point one of them at a different host port, e.g. `kubectl port-forward -n scamguard svc/gateway 18080:8080` and use `http://localhost:18080`. (Found for real while testing this demo — see `demo/EXPECTED.md`.) |
 | `bert_status` shows `timeout` or `error` even though BERT looks fine | BERT's 300ms budget is tight; it's sensitive to CPU contention (e.g. another heavy stack — Compose, another minikube, a big build — running on the same machine at the same time) | Check `docker stats` / `kubectl top pods` for anything hogging CPU. Close other heavy processes. This is not usually a BERT code problem — see `demo/EXPECTED.md` for a reproduced example. |
+| Everything feels slow (every request ~0.5-2s, even a plain `/healthz`) on Windows | Windows resolving `localhost` tries IPv6 (`::1`) first and times out before falling back to IPv4 — adds 400-2000ms to every single request | Use `http://127.0.0.1:8080` instead of `http://localhost:8080`, in curl, the browser, and any script's `--url`. The tools in `demo/tools/` already default to `127.0.0.1` for this reason. Confirmed for real on this laptop — see `demo/EXPECTED.md`. |
 
 ## Tearing down
 

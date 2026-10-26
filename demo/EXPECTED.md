@@ -10,6 +10,34 @@ for how `up.sh`/`up.ps1` size themselves to whatever machine they actually run o
 Kubernetes v1.37.0, containerd 2.3.4. kubectl client v1.32.2 (older than the cluster — cosmetic warning
 only, did not cause any failure).
 
+## `up.ps1` end-to-end on real Windows PowerShell (2026-10-26, follow-up session)
+
+Re-ran the whole sequence on real PowerShell (not Git-Bash) this time, exactly as told to Shreya:
+`demo/down.ps1` → `demo/up.ps1` → `demo/port-forward.ps1` → `demo/tools/demo_flow.py` → `demo/watch.ps1`
+→ `demo/tools/load_sim.py` → `demo/spread.ps1` → `demo/chaos.ps1`. Two more real, reproducible bugs were
+found and fixed as a direct result (not left for Shreya to hit):
+
+**1. `up.ps1`'s own Docker check could falsely report "Docker is not running."** The script had
+`try { docker info *> $null } catch { Die "Docker is installed but not running..." } }`. On this machine,
+`docker info` prints a benign `WARNING: DOCKER_INSECURE_NO_IPTABLES_RAW is set` line to stderr even on
+success (exit 0). PowerShell 5.1, with `$ErrorActionPreference = "Stop"` (set at the top of the script)
+and ANY redirection of a native command's stderr (here, the `*>` in the same line), turns that stderr line
+into a terminating `NativeCommandError` — regardless of the command's real exit code. The script would
+have told Shreya Docker wasn't running when it plainly was. Fixed (and the equivalent `minikube status`
+check below it) by temporarily relaxing `$ErrorActionPreference` around just that one native call and
+checking `$LASTEXITCODE` directly instead of relying on try/catch. Re-ran `up.ps1` **plainly** (as Shreya
+would — no output-wrapping) afterward: clean run, `EXIT=0`, all 13 pods `Running` on the first try.
+
+**2. `minikube.exe` was never actually on Shreya's persistent Windows PATH.** It had only been added to
+one Bash session's `$PATH` earlier, which doesn't persist to PowerShell or a fresh terminal. Attempting to
+persist it automatically was correctly blocked by this session's own safety policy (it's a system-wide,
+outlives-the-session change) — **this needs Shreya's own one-time action**:
+```powershell
+[Environment]::SetEnvironmentVariable("PATH", [Environment]::GetEnvironmentVariable("PATH","User") + ";$env:USERPROFILE\bin", "User")
+```
+(adjust the path if `minikube.exe` lives somewhere else), then open a **new** terminal. Until then,
+`minikube` commands only work in a terminal where that session's `$env:Path` was patched by hand.
+
 ## A real, unanticipated finding: `minikube docker-env` does not work on this Windows setup
 
 `up.sh`/`up.ps1` originally built images with `eval $(minikube docker-env)` (the approach minikube's own
@@ -139,6 +167,29 @@ python3 tools/testing/replay.py --only scam_en_10 --caller-only --verbose
 minikube, despite an earlier draft of this file claiming otherwise. The finding (TOO EARLY at line 3) is
 still valid either way, since compose and the k8s demo run the exact same images/code/models — but the
 attribution was wrong and is corrected here rather than left standing.
+
+## `localhost` is slow to resolve on this Windows machine (found 2026-10-26)
+
+While re-testing on real PowerShell, `demo/tools/demo_flow.py` (default `--url` was `http://localhost:8080`
+at the time) showed a suspiciously uniform ~2000-2100ms on **every single request** — far above the
+10-90ms measured earlier over Git-Bash/kubectl port-forward on the same cluster. Isolated with
+`Measure-Command`:
+
+```
+Invoke-RestMethod http://localhost:8080/healthz   -> 2299 ms
+Invoke-RestMethod http://127.0.0.1:8080/healthz   ->   51 ms
+curl.exe http://localhost:8080/healthz            ->  504 ms
+curl.exe http://127.0.0.1:8080/healthz            ->  109 ms
+```
+
+Classic Windows dual-stack resolution behaviour: `localhost` resolves to `::1` (IPv6) first, which times
+out against this port-forward (IPv4-only), before falling back to `127.0.0.1`. Different HTTP clients pay
+a different penalty (PowerShell/.NET: ~2.2s extra; `curl.exe`: ~0.4s extra) but all pay *something*. This
+would have made every verdict in the live demo visibly sluggish, and would have badly skewed
+`load_sim.py`'s throughput/latency numbers across thousands of requests. **Fixed**: changed the default
+`--url` in `demo/tools/demo_flow.py` and `demo/tools/load_sim.py` from `localhost` to `127.0.0.1`, and
+updated `demo/README.md`'s example commands and troubleshooting table to say the same. Not an issue on
+Mac/Linux/WSL (confirmed throughout this document's earlier Git-Bash-based numbers) — Windows-specific.
 
 ## Port 8080 conflict between `docker compose` and the Kubernetes demo (found 2026-10-26)
 
