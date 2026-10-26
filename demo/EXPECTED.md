@@ -122,7 +122,7 @@ infrastructure — the same result reproduced at both `--pace 15` and real-time 
 documented false-positive weak spots). **This requires the team's own re-check against `expected.json`**;
 it is flagged here, not silently "fixed" (no model or aggregator code was touched).
 
-Independently confirmed with the repo's own test tool, against the same live minikube deployment:
+Independently confirmed with the repo's own test tool:
 
 ```
 python3 tools/testing/replay.py --only scam_en_10 --caller-only --verbose
@@ -133,7 +133,36 @@ python3 tools/testing/replay.py --only scam_en_10 --caller-only --verbose
 | scam_en_10_gov_official | SCAM   | SCAM  | 3 (11)             | -42.2           | TOO EARLY |
 ```
 
-Same conclusion, the team's own tool, real time (not `--pace`-accelerated).
+**Correction**: this command was run with no `--gateway`/`GATEWAY_URL` override, so it used its default
+`http://localhost:8080`. That port was already claimed by Shreya's own long-running `docker compose up`
+(see "Port 8080 conflict" below) — so this result is actually from the **docker-compose** stack, not
+minikube, despite an earlier draft of this file claiming otherwise. The finding (TOO EARLY at line 3) is
+still valid either way, since compose and the k8s demo run the exact same images/code/models — but the
+attribution was wrong and is corrected here rather than left standing.
+
+## Port 8080 conflict between `docker compose` and the Kubernetes demo (found 2026-10-26)
+
+Both `docker compose up`'s gateway and `demo/port-forward.sh`/`.ps1` (the Kubernetes demo's gateway
+access) bind **host port 8080** by default. Running both at once means whichever started first wins that
+port; the second one's `kubectl port-forward` either fails to bind (silently, in the background) or you
+simply end up talking to the wrong stack without realizing it — which is exactly what happened in this
+session (see the correction above). **Do not run `docker compose up` and the Kubernetes demo's
+port-forward at the same time on the same port.** Stop one before starting the other, or change one
+side's host port (e.g. `kubectl port-forward ... 18080:8080` and use `http://localhost:18080` instead).
+Added to `demo/README.md`'s troubleshooting table.
+
+## BERT's 300ms timeout is tight under real CPU contention (found 2026-10-26)
+
+While this session had **both** docker-compose (10 containers) and minikube (a 13-pod cluster) running
+simultaneously on one machine, the compose stack's BERT cascade intermittently returned
+`bert_status: "timeout"` instead of `"ok"` on lines that should have gotten a real score (confirmed via
+`docker stats`: the `minikube` container alone was using 42% CPU at that moment). Pausing minikube
+(`minikube pause`) and re-running the identical call immediately fixed it — every line got
+`bert_status: "ok"` with real scores again. This is **not a code defect**: `BERT_TIMEOUT_MS=300` is a
+deliberately tight budget (to fit inside the gateway's 2s promise), and it is sensitive to real CPU
+scheduling delays when the host is heavily oversubscribed, as this session's host was with two full
+stacks running at once. Shreya's normal workflow (one stack at a time) should not hit this; if BERT
+timeouts show up unexpectedly, check `docker stats`/`kubectl top pods` for CPU contention first.
 
 ## 6. Load test (2026-10-26)
 
@@ -261,11 +290,17 @@ were made to produce or fix any of this.
 
 ## 11. `phone_check.sh` (2026-10-26)
 
-Run for real (`bash demo/tools/phone_check.sh`) against the port-forwarded gateway: auto-detected a LAN
-IP, printed it, then got a real `200` from `/healthz` and a real `SCAM` verdict from one sample POST.
-First request after the port-forward had just (re)started showed `latency_ms: 1536` — a one-off
-connection-warm-up cost, not representative of steady-state latency (compare the ~10-90ms seen everywhere
-else in this document once a connection is warm).
+Run for real (`bash demo/tools/phone_check.sh`): auto-detected a LAN IP, printed it, then got a real `200`
+from `/healthz` and a real `SCAM` verdict from one sample POST. **Correction, same cause as the port 8080
+conflict above**: the `kubectl port-forward ... 8080:8080` started just before this test silently failed
+to bind (compose's gateway already had host port 8080), so this request also landed on docker-compose,
+not minikube — confirmed by `docker compose logs aggregator` showing exactly one `"phone-check"` call_id.
+The script itself worked correctly end-to-end; it simply talked to whichever stack already owned port
+8080, which is the real, demo-relevant lesson here (see "Port 8080 conflict" above), not a flaw in
+`phone_check.sh`. First request after the port-forward (compose's gateway, already warm) showed
+`latency_ms: 1536` — likely a one-off cold TCP/TLS-handshake-free-but-still-cold-connection cost through
+the auto-detected LAN IP rather than `localhost`, not representative of steady-state latency (compare the
+~10-90ms seen everywhere else in this document once a connection is warm).
 
 ## 12. What was NOT tested here (be specific, don't guess)
 
