@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: envoy-lb
+  namespace: scamguard
+  labels: { app: envoy-lb }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: envoy-lb }
+  template:
+    metadata:
+      labels: { app: envoy-lb }
+    spec:
+      containers:
+        - name: envoy
+          image: envoyproxy/envoy:v1.31-latest
+          args: ["-c", "/etc/envoy/envoy.yaml"]
+          ports:
+            - containerPort: 9901
+              name: admin
+            - containerPort: 50061
+              name: p-urgency-en
+            - containerPort: 50062
+              name: p-money-en
+            - containerPort: 50063
+              name: p-imperson-en
+            - containerPort: 50064
+              name: p-urgency-zh
+            - containerPort: 50065
+              name: p-money-zh
+            - containerPort: 50066
+              name: p-imperson-zh
+            - containerPort: 50067
+              name: p-aggregator
+            - containerPort: 50068
+              name: p-bert
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          readinessProbe:
+            httpGet: { path: /ready, port: 9901 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /ready, port: 9901 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: config
+              mountPath: /etc/envoy
+      volumes:
+        - name: config
+          configMap:
+            name: envoy-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: envoy-lb
+  namespace: scamguard
+spec:
+  selector: { app: envoy-lb }
+  ports:
+    - name: admin
+      port: 9901
+      targetPort: 9901
+    - name: urgency-en
+      port: 50061
+      targetPort: 50061
+    - name: money-en
+      port: 50062
+      targetPort: 50062
+    - name: impersonation-en
+      port: 50063
+      targetPort: 50063
+    - name: urgency-zh
+      port: 50064
+      targetPort: 50064
+    - name: money-zh
+      port: 50065
+      targetPort: 50065
+    - name: impersonation-zh
+      port: 50066
+      targetPort: 50066
+    - name: aggregator
+      port: 50067
+      targetPort: 50067
+    - name: bert
+      port: 50068
+      targetPort: 50068
