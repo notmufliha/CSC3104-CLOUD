@@ -12,6 +12,8 @@ RUN python -m grpc_tools.protoc -I proto --python_out=. --grpc_python_out=. scam
 
 COPY workers/money_zh/server.py workers/money_zh/predict.py workers/money_zh/train.py workers/money_zh/model_config.json ./
 COPY workers/money_zh/data/money_zh.csv data/money_zh.csv
+# Hand-written bill / payment-channel rows (v7): see tools/build_money_zh_extra.py
+COPY workers/money_zh/data/money_zh_extra.csv data/money_zh_extra.csv
 # The ONE shared ZH cleaning + training code, gold set and probes (same files for all three ZH workers).
 COPY workers/common_zh/text_norm.py workers/common_zh/train_zh.py ./
 COPY workers/common_zh/gold_test_zh.csv workers/common_zh/probes_zh.csv data/
