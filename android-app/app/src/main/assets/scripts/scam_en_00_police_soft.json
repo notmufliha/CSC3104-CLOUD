@@ -1,8 +1,0 @@
-[
-  {"speaker": "receiver", "text": "Hello?", "delay_ms": 800},
-  {"speaker": "caller", "text": "Good afternoon, this is Officer Tan from the Singapore Police Force.", "delay_ms": 1500},
-  {"speaker": "receiver", "text": "Oh, what is this about?", "delay_ms": 2000},
-  {"speaker": "caller", "text": "Your bank account is linked to a money laundering case. You must act now or a warrant will be issued today.", "delay_ms": 2500},
-  {"speaker": "receiver", "text": "What? I didn't do anything.", "delay_ms": 2000},
-  {"speaker": "caller", "text": "To clear your name, transfer your savings to a safe account and read me the OTP you just received.", "delay_ms": 2500}
-]

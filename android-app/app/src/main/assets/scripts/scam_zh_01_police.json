@@ -1,5 +1,0 @@
-[
-  {"speaker": "caller", "text": "我是警察，你必须马上把钱转到安全账户，并告诉我验证码。", "delay_ms": 1800},
-  {"speaker": "receiver", "text": "什么？怎么回事？", "delay_ms": 1800},
-  {"speaker": "caller", "text": "你的账户已被冻结，请立刻配合，不要告诉任何人。", "delay_ms": 1800}
-]

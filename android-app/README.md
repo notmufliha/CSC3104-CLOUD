@@ -231,20 +231,17 @@ Scripts live in `app/src/main/assets/scripts/`. Each file is a JSON list:
 - **File name:** `<kind>_<lang>_<nn>_<title>.json`. The app reads the call type, language and title from it:
   - `kind`: `scam` or `normal`
   - `lang`: `en` or `zh` (sent to the gateway). Anything else is left out, so the gateway detects the language.
-  - `title`: the rest of the name, shown in the script picker (`police_soft` → "Police soft")
-- "Simulate scam call" and "Simulate normal call" play the first file of that kind in alphabetical order. "Choose a call script…" lists them all.
+  - `title`: the rest of the name, shown in the script picker (`gov_official` → "Gov official")
+- "Simulate scam call" and "Simulate normal call" play a random file of that kind (never the same one twice in a row). "Choose a call script…" lists them all.
 
 ### Current scripts
 
-| File | Verdict after each caller line | On the bar |
-|---|---|---|
-| `scam_en_00_police_soft.json` | UNSURE 0.47 → SCAM 0.94 → SCAM 0.94 | Yellow, then red (plays on "Simulate scam call") |
-| `scam_en_01_police.json` | SCAM 0.84 → SCAM 0.96 → SCAM 0.96 | Straight to red |
-| `scam_en_02_parcel.json` | SAFE 0.10 → SCAM 0.87 | Green, then red |
-| `scam_zh_01_police.json` | UNSURE 0.54 → SCAM 0.71 | Yellow, then red |
-| `normal_en_01_clinic.json` | SAFE 0.13 → SAFE 0.13 | Green |
+14 scripts from workstream 6:
 
-Measured against the real backend (`docker compose`) on 25 Oct 2026 with `tools/backend_script_test.py`. Re-run it if the models change.
+| Kind | English | Chinese |
+|---|---|---|
+| Scam (7) | `scam_en_10_gov_official`, `scam_en_11_bank_otp`, `scam_en_12_parcel_customs`, `scam_en_13_tech_support`, `scam_en_14_friend_in_trouble` | `scam_zh_10_gov_official`, `scam_zh_12_parcel_customs` |
+| Normal (7) | `normal_en_10_bank_reminder`, `normal_en_11_clinic_appointment`, `normal_en_12_delivery_driver`, `normal_en_13_insurance_sales`, `normal_en_14_family_call` | `normal_zh_10_bank_reminder`, `normal_zh_14_family_call` |
 
 To measure them yourself with the backend running: `python3 -I tools/backend_script_test.py app/src/main/assets/scripts` (from `android-app/`). It sends each script's caller lines with the same `call_id`, `seq` and `lang` the app uses and prints a verdict table.
 ---
