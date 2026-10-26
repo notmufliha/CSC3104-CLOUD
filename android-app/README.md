@@ -49,7 +49,7 @@ Select **`app`** and your device in the toolbar → press **Run ▶**. The app i
 
 | Task | Screen | What it does |
 |---|---|---|
-| 4.1 | Home | Simulate scam call, Simulate normal call, Choose a call script, Paste text, Live mic (disabled, later), History, Settings |
+| 4.1 | Home | Simulate scam call, Simulate normal call, Choose a call script, Paste text, History, Settings |
 | 4.2 | Call scripts | Loads every `.json` file in `assets/scripts/` |
 | 4.3 | Incoming call → In call | Answer plays the script line by line. Caller lines are sent to the gateway one at a time. |
 | 4.4 | In call | Chat transcript (Speaker 1 · Caller on the left, Speaker 2 · You on the right), risk bar, Urgency / Money / Impersonation chips, banner with reason and suggested action |
@@ -333,7 +333,7 @@ app/src/main/
 
 ## Limitations and next steps
 
-- **Simulated calls only.** Live mic is not built. The next step is on-device speech-to-text feeding the same `POST /v1/utterance` call.
+- **Simulated calls only.** The app does not use the microphone or record real phone calls.
 - **Plain HTTP.** Debug and demo only. A real release needs TLS and `usesCleartextTraffic` removed.
 - **No login.** The gateway has no JWT check yet.
 - **Mandarin accuracy.** The Mandarin impersonation model is the weakest worker, so Mandarin verdicts may lag by a line.
