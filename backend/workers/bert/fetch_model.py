@@ -10,6 +10,10 @@ repo pinned to a commit:
     https://github.com/<org>/<repo>/releases/download/bert-v1
 
 If MODEL_SHA256 is set, model.onnx must match it (bert_config.json from the notebook also records it).
+
+With no MODEL_BASE_URL / MODEL_SHA256 set, the team's published model (DEFAULT_URL / DEFAULT_SHA256 below) is
+used, so `python fetch_model.py` on a laptop works with no setup. After retraining, update both here, in the
+Dockerfile ARGs and in docker-compose.yml.
 Standard library only.
 """
 import hashlib
@@ -21,6 +25,8 @@ from pathlib import Path
 
 DIR = Path(__file__).resolve().parent / "model"
 FILES = ["bert_config.json", "tokenizer.json", "model.onnx"]
+DEFAULT_URL = "https://huggingface.co/gouthamsaravanan/csc3104-scam-bert/resolve/a0ebfbc63c1591a889798d7828cd5c65e063c57a"
+DEFAULT_SHA256 = "de0f771d861a5029666d97736f9715bef097b52eead991c973a67855d82f0c1c"
 
 
 def sha256(p):
@@ -33,7 +39,7 @@ def sha256(p):
 
 def main():
     DIR.mkdir(exist_ok=True)
-    base = os.environ.get("MODEL_BASE_URL", "").rstrip("/")
+    base = (os.environ.get("MODEL_BASE_URL") or DEFAULT_URL).rstrip("/")
     for name in FILES:
         dest = DIR / name
         if dest.exists() and dest.stat().st_size > 0:
@@ -51,7 +57,8 @@ def main():
             while chunk := r.read(1 << 20):
                 f.write(chunk)
         print(f"model/{name}: {dest.stat().st_size / 1e6:.1f} MB")
-    want = os.environ.get("MODEL_SHA256") or json.loads((DIR / "bert_config.json").read_text()).get("model_sha256")
+    want = os.environ.get("MODEL_SHA256") or (DEFAULT_SHA256 if base == DEFAULT_URL else None) \
+        or json.loads((DIR / "bert_config.json").read_text()).get("model_sha256")
     if want:
         got = sha256(DIR / "model.onnx")
         if got != want:
