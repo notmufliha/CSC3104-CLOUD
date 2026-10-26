@@ -91,7 +91,6 @@ fun HomeScreen(
         Button(onClick = onNormalCall, modifier = wide) { Text("Simulate normal call") }
         OutlinedButton(onClick = onPickScript, modifier = wide) { Text("Choose a call script…") }
         OutlinedButton(onClick = onPasteText, modifier = wide) { Text("Paste text") }
-        OutlinedButton(onClick = {}, enabled = false, modifier = wide) { Text("Live mic (coming later)") }
         HorizontalDivider()
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = onHistory) { Text("History") }
