@@ -168,6 +168,35 @@ minikube, despite an earlier draft of this file claiming otherwise. The finding 
 still valid either way, since compose and the k8s demo run the exact same images/code/models — but the
 attribution was wrong and is corrected here rather than left standing.
 
+## `watch.sh`/`watch.ps1` used an unsupported `kubectl -w` form (found and fixed 2026-10-26)
+
+Running the real `watch.ps1` for the first time failed outright:
+```
+kubectl : error: you may only specify a single resource type
+```
+`kubectl get pods,hpa -n scamguard -w` — watching **two** resource types at once — is rejected by this
+repo's kubectl version (client v1.32.2). Rewrote both `watch.sh` and `watch.ps1` to use the
+clear-and-reprint-every-2s pattern DEMO_TASK.md itself offered as an alternative, instead of `-w`. Verified
+the fix for real (PowerShell): refreshed cleanly twice in a 5-second capture window, correct pod/HPA table
+each time.
+
+## A hand-typed PowerShell `curl -X POST ... -d '{"...":"..."}'` sends broken JSON (found 2026-10-26)
+
+While re-verifying the Redis-down/up failure behavior from `demo/README.md`'s "on stage" step 7, on
+PowerShell:
+```powershell
+curl.exe -X POST http://127.0.0.1:8080/v1/utterance -H "Content-Type: application/json" -d '{"call_id":"test1","seq":1,"speaker":"caller","lang":"en","text":"test"}'
+```
+returned `{"error":"Json deserialize error: key must be a string at line 1 column 2"}` -- not the expected
+502. This is **not** a gateway bug: PowerShell re-quotes arguments before handing them to a native `.exe`,
+and embedded double-quotes inside a single-quoted string arrive at `curl.exe` mangled. Re-tested with
+`Invoke-RestMethod` + a real PowerShell object (`@{...} | ConvertTo-Json`) instead of hand-typed JSON text:
+got the correct `502 {"error":"aggregator timed out"}` while Redis was scaled to 0, and a correct `SAFE`
+verdict immediately after scaling it back to 1. The Redis down/up failure behavior itself is confirmed
+correct (again); only the ad-hoc curl command needed a different shape on PowerShell. Added a
+troubleshooting row and a copy-pasteable `Invoke-RestMethod` pattern to `demo/README.md`
+(`demo/tools/phone_check.ps1` already used the correct pattern all along).
+
 ## `localhost` is slow to resolve on this Windows machine (found 2026-10-26)
 
 While re-testing on real PowerShell, `demo/tools/demo_flow.py` (default `--url` was `http://localhost:8080`
