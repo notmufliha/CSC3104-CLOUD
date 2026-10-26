@@ -1,0 +1,7 @@
+[
+  {"speaker": "caller", "text": "Hello, this is Officer Tan from the Singapore Police Force. We are investigating a money laundering case linked to your name.", "delay_ms": 1800},
+  {"speaker": "receiver", "text": "What? I did not do anything.", "delay_ms": 1800},
+  {"speaker": "caller", "text": "Your bank account will be frozen today unless you cooperate immediately. Do not tell anyone about this call.", "delay_ms": 1800},
+  {"speaker": "receiver", "text": "Oh no, what should I do?", "delay_ms": 1800},
+  {"speaker": "caller", "text": "To clear your name, transfer your savings to the safe account I give you and read me the OTP you receive.", "delay_ms": 1800}
+]
