@@ -1,0 +1,82 @@
+[
+  {
+    "speaker": "caller",
+    "text": "Good afternoon, this is the fraud prevention unit calling about your bank account.",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "Oh, hello? What is this about?",
+    "delay_ms": 5000
+  },
+  {
+    "speaker": "caller",
+    "text": "We detected a credit card opened under your NRIC that was used for money laundering.",
+    "delay_ms": 3100
+  },
+  {
+    "speaker": "receiver",
+    "text": "What? I never opened any card. Are you sure?",
+    "delay_ms": 5650
+  },
+  {
+    "speaker": "caller",
+    "text": "I understand. Because this is a serious case, I will transfer you to the Singapore Police Force now.",
+    "delay_ms": 4050
+  },
+  {
+    "speaker": "receiver",
+    "text": "Police? Okay, okay.",
+    "delay_ms": 6650
+  },
+  {
+    "speaker": "caller",
+    "text": "I am Inspector Tan from the Singapore Police Force, badge number two zero four seven.",
+    "delay_ms": 2100
+  },
+  {
+    "speaker": "caller",
+    "text": "Your name is linked to a criminal case and you may be arrested today if you do not cooperate.",
+    "delay_ms": 6050
+  },
+  {
+    "speaker": "receiver",
+    "text": "I didn't do anything. What do I need to do?",
+    "delay_ms": 6950
+  },
+  {
+    "speaker": "caller",
+    "text": "You must not tell anyone, not your family and not your bank. This investigation is confidential.",
+    "delay_ms": 4400
+  },
+  {
+    "speaker": "caller",
+    "text": "To prove your innocence, we need to check your funds. Transfer your savings into a safety account that we provide.",
+    "delay_ms": 6400
+  },
+  {
+    "speaker": "receiver",
+    "text": "Transfer my savings? Is that really okay?",
+    "delay_ms": 7300
+  },
+  {
+    "speaker": "caller",
+    "text": "Do it right now, within the next thirty minutes, or a warrant will be issued.",
+    "delay_ms": 3400
+  },
+  {
+    "speaker": "caller",
+    "text": "Open your banking app and send all the money to this account number. Read me the OTP when the bank sends it.",
+    "delay_ms": 6050
+  },
+  {
+    "speaker": "receiver",
+    "text": "I'm scared. Let me find my phone.",
+    "delay_ms": 7950
+  },
+  {
+    "speaker": "caller",
+    "text": "Stay on the line. Do not hang up until the transfer is done.",
+    "delay_ms": 3400
+  }
+]

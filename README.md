@@ -77,6 +77,15 @@ python tools/gateway_test.py
 python tools/aggregator_replay.py
 ```
 
+Replay the 14 demo calls (Workstream 6: 5 scam + 5 normal in English, 2 scam +
+2 normal in Mandarin) through the gateway and compare the verdicts with what
+we expect (details in [tools/testing/README.md](tools/testing/README.md)):
+
+```bash
+python tools/testing/replay.py --only scam_en_10 --verbose   # one call
+python tools/testing/replay.py                               # all 14, real time, prints the results table
+```
+
 ### Gateway API
 
 `POST /v1/utterance`, one line of a call at a time:
@@ -391,10 +400,15 @@ backend/
     common_zh/                  ONE shared ZH text_norm.py + train_zh.py + gold set + probes, copied into each ZH image
     bert/                       BERT second opinion (ONNX), model files fetched at build
 data/                            training data per worker (data/urgency_en/archive/ = cleaning history)
+<<<<<<< HEAD
 tools/                           datagen, eval helpers, zh_check (try the 3 ZH workers interactively),
                                  zh_eval.py (gold + probes, as served), eval_cascade.py (7.5 / 7.12),
                                  bert_dummy_model.py, gateway_test.py + aggregator_replay.py (end-to-end checks)
 notebooks/bert_cascade.ipynb     BERT training (Colab): data windows, fine-tune, calibrate, ONNX export
+=======
+tools/                           datagen, eval helpers, zh_check (try the 3 ZH workers interactively)
+tools/testing/                       demo-call replay + expected verdicts + window experiment 
+>>>>>>> maryam
 android-app/                    Kotlin + Jetpack Compose client
 k8s/                             Deployment/Service/HPA templates, bert.yaml
 docker-compose.yml               local dev stack (incl. Redis)
