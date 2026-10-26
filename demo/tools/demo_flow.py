@@ -16,7 +16,11 @@ app sends (no t_ms -- the app does not send it either, see DEMO_TASK.md section 
 Usage:
     python demo/tools/demo_flow.py                      # real time (~serveral minutes total)
     python demo/tools/demo_flow.py --pace 10             # 10x faster (breaks the 15s warm-up timing)
-    python demo/tools/demo_flow.py --url http://localhost:8080
+    python demo/tools/demo_flow.py --url http://127.0.0.1:8080
+
+Use 127.0.0.1, not localhost, in --url/$GATEWAY_URL: on Windows, resolving "localhost" can take 400-2000ms
+extra per request (IPv6 ::1 attempted and timed out before falling back to IPv4) -- measured for real while
+testing this script (plain IP: ~50ms; "localhost": up to ~2.3s). The default below already uses 127.0.0.1.
 """
 import argparse
 import json
@@ -103,7 +107,7 @@ def print_table(name: str, lang: str, rows: list):
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--url", default=os.environ.get("GATEWAY_URL", "http://localhost:8080"))
+    ap.add_argument("--url", default=os.environ.get("GATEWAY_URL", "http://127.0.0.1:8080"))
     ap.add_argument("--pace", type=float, default=1.0, help="speed-up factor for delay_ms (1 = real time, default: %(default)s)")
     ap.add_argument("--timeout", type=float, default=5.0)
     args = ap.parse_args()

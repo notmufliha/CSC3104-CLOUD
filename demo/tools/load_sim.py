@@ -11,10 +11,15 @@ new call with a fresh call_id, for as long as --duration lasts.
 Standard library only (urllib + concurrent.futures), so there's nothing to `pip install` on stage.
 
 Usage:
-    python demo/tools/load_sim.py                                   # defaults, against http://localhost:8080
-    python demo/tools/load_sim.py --url http://localhost:8080 --users 30 --duration 60 --ramp 10
+    python demo/tools/load_sim.py                                   # defaults, against http://127.0.0.1:8080
+    python demo/tools/load_sim.py --url http://127.0.0.1:8080 --users 30 --duration 60 --ramp 10
     python demo/tools/load_sim.py --scam-ratio 0.5 --zh-ratio 0.3 --pace 8
     python demo/tools/load_sim.py --error-threshold 0.1             # exit 1 if >10% of requests error
+
+Use 127.0.0.1, not localhost, in --url/$GATEWAY_URL: on Windows, resolving "localhost" can take an extra
+400-2000ms PER REQUEST (IPv6 ::1 tried and timed out before falling back to IPv4) -- measured for real
+while testing this script, and it would badly skew req/s and latency numbers across thousands of
+requests. The default below already uses 127.0.0.1.
 
 Run `python demo/tools/load_sim.py --help` for every flag and its default.
 """
@@ -122,7 +127,7 @@ def main() -> int:
     # Every default also reads an env var of the same name (LOAD_*), so the in-cluster Job
     # (demo/k8s/loadgen/loadgen.yaml) can be tuned with `kubectl set env job/loadgen LOAD_USERS=50` /
     # editing the Job spec, without touching the script. A flag on the command line always wins.
-    ap.add_argument("--url", default=os.environ.get("GATEWAY_URL", "http://localhost:8080"), help="gateway base URL (default: %(default)s, or $GATEWAY_URL)")
+    ap.add_argument("--url", default=os.environ.get("GATEWAY_URL", "http://127.0.0.1:8080"), help="gateway base URL (default: %(default)s, or $GATEWAY_URL)")
     ap.add_argument("--users", type=int, default=int(os.environ.get("LOAD_USERS", 20)), help="concurrent simulated users (default: %(default)s, or $LOAD_USERS)")
     ap.add_argument("--duration", type=float, default=float(os.environ.get("LOAD_DURATION", 60)), help="seconds to run the test for (default: %(default)s, or $LOAD_DURATION)")
     ap.add_argument("--ramp", type=float, default=float(os.environ.get("LOAD_RAMP", 10)), help="seconds to stagger user start-up over, 0 = all at once (default: %(default)s, or $LOAD_RAMP)")
