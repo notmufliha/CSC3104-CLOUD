@@ -147,8 +147,8 @@ A suggested order — adjust to your own style, this is just a safe default:
    unsure; Envoy load-balances gRPC traffic because plain Kubernetes doesn't do that well for it."
 2. **Live call**: play a scripted scam call on the emulator/phone. Narrate: "watch it start green, go
    amber, then red with a reason."
-3. **Ops view** (second terminal): `./demo/watch.sh` (or `.ps1`) — `kubectl get pods,hpa -w`, left running
-   on screen the whole time so pod counts visibly change later.
+3. **Ops view** (second terminal): `./demo/watch.sh` (or `.ps1`) — a pods+HPA table that refreshes every
+   2s, left running on screen the whole time so pod counts visibly change later.
 4. **Load + scaling**: `python3 demo/tools/load_sim.py --users 40 --duration 70 --pace 25` in a third
    terminal. Narrate: "CPU is climbing — watch the REPLICAS column." (Measured in testing: this reliably
    pushes several workers' CPU utilization well past 100% of target and triggers visible scale-up within
@@ -160,8 +160,15 @@ A suggested order — adjust to your own style, this is just a safe default:
    Narrate while the deleted pod is replaced: "that pod just died — the call that was in flight wasn't
    dropped, Kubernetes just started a new one."
 7. **(Optional, if asked) Failure-by-design**: `kubectl scale deployment redis -n scamguard --replicas=0`,
-   send one line (`curl .../v1/utterance`) → 502 → `kubectl scale deployment redis --replicas=1` → works
-   again. Narrate: "the system fails loudly and honestly instead of guessing when its memory is gone."
+   send one line → 502 → `kubectl scale deployment redis --replicas=1` → works again. Narrate: "the system
+   fails loudly and honestly instead of guessing when its memory is gone." On Mac/Linux, a plain
+   `curl -X POST .../v1/utterance -d '{"call_id":"test1",...}'` works. **On PowerShell, don't hand-type
+   that JSON** — use `Invoke-RestMethod` with a real object instead (PowerShell mangles embedded quotes
+   passed to `curl.exe`, see the troubleshooting table):
+   ```powershell
+   $body = @{call_id="test1";seq=1;speaker="caller";lang="en";text="test"} | ConvertTo-Json
+   Invoke-RestMethod -Uri http://127.0.0.1:8080/v1/utterance -Method Post -ContentType application/json -Body $body
+   ```
 
 ## If something goes wrong
 
