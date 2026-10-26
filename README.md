@@ -400,15 +400,12 @@ backend/
     common_zh/                  ONE shared ZH text_norm.py + train_zh.py + gold set + probes, copied into each ZH image
     bert/                       BERT second opinion (ONNX), model files fetched at build
 data/                            training data per worker (data/urgency_en/archive/ = cleaning history)
-<<<<<<< HEAD
 tools/                           datagen, eval helpers, zh_check (try the 3 ZH workers interactively),
                                  zh_eval.py (gold + probes, as served), eval_cascade.py (7.5 / 7.12),
                                  bert_dummy_model.py, gateway_test.py + aggregator_replay.py (end-to-end checks)
 notebooks/bert_cascade.ipynb     BERT training (Colab): data windows, fine-tune, calibrate, ONNX export
-=======
 tools/                           datagen, eval helpers, zh_check (try the 3 ZH workers interactively)
 tools/testing/                       demo-call replay + expected verdicts + window experiment 
->>>>>>> maryam
 android-app/                    Kotlin + Jetpack Compose client
 k8s/                             Deployment/Service/HPA templates, bert.yaml
 docker-compose.yml               local dev stack (incl. Redis)
