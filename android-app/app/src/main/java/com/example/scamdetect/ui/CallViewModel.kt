@@ -83,7 +83,15 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     private var lastOutcomeSeq = 0L
     private var saved = false
 
-    fun firstScript(kind: String): CallScript? = scripts.firstOrNull { it.kind == kind }
+    private var lastRandom: String? = null
+
+    /** A random script of this kind, avoiding the one picked last time when there is another to choose. */
+    fun randomScript(kind: String): CallScript? {
+        val pool = scripts.filter { it.kind == kind }
+        val pick = pool.filter { it.fileName != lastRandom }.randomOrNull() ?: pool.randomOrNull()
+        lastRandom = pick?.fileName
+        return pick
+    }
 
     // ---------------------------------------------------------------- call lifecycle
 

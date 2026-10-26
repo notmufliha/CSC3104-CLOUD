@@ -63,7 +63,7 @@ fun ScamGuardApp(vm: CallViewModel = viewModel()) {
     }
 
     fun ringKind(kind: String) {
-        vm.firstScript(kind)?.let { vm.ring(it); screen = Screen.CALL }
+        vm.randomScript(kind)?.let { vm.ring(it); screen = Screen.CALL }
     }
 
     when (screen) {
