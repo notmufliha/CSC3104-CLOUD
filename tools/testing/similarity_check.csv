@@ -1,0 +1,174 @@
+﻿script,line,speaker,max_cosine,nearest_file,nearest_text,text
+scam_en_10_gov_official,1,caller,0.241,data/impersonation_en/impersonation_data.csv,"Caller: Hi, this is Mr Hakim calling about your bank account. Receiver: Okay. Caller: Do n","Good afternoon, this is the fraud prevention unit calling about your bank account."
+scam_en_10_gov_official,2,receiver,0.627,assets/scripts/scam_en_00_police_soft.json,"Oh, what is this about?","Oh, hello? What is this about?"
+scam_en_10_gov_official,3,caller,0.192,data/impersonation_en/gold_test.csv,"Hello, OCBC here. Your account is being used for money laundering. We need you to cooperat",We detected a credit card opened under your NRIC that was used for money laundering.
+scam_en_10_gov_official,4,receiver,0.166,data/urgency_en/final_cleaned_dataset.csv,Are you the.,What? I never opened any card. Are you sure?
+scam_en_10_gov_official,5,caller,0.331,assets/scripts/scam_en_00_police_soft.json,"Good afternoon, this is Officer Tan from the Singapore Police Force.","I understand. Because this is a serious case, I will transfer you to the Singapore Police Force now."
+scam_en_10_gov_official,6,receiver,0.291,data/urgency_en/final_cleaned_dataset.csv,"okay , okay , thanks for calling and have a good day .","Police? Okay, okay."
+scam_en_10_gov_official,7,caller,0.417,assets/scripts/scam_en_00_police_soft.json,"Good afternoon, this is Officer Tan from the Singapore Police Force.","I am Inspector Tan from the Singapore Police Force, badge number two zero four seven."
+scam_en_10_gov_official,8,caller,0.352,backend/workers/urgency_en/eval/gold_handwritten.csv,Your parcel contains illegal items and you will be arrested if you do not cooperate immedi,Your name is linked to a criminal case and you may be arrested today if you do not cooperate.
+scam_en_10_gov_official,9,receiver,0.591,assets/scripts/scam_en_00_police_soft.json,What? I didn't do anything.,I didn't do anything. What do I need to do?
+scam_en_10_gov_official,10,caller,0.271,data/impersonation_en/gold_test.csv,"Actually, I'm not from the bank. I'm from the Monetary Authority of Singapore. Your name a","You must not tell anyone, not your family and not your bank. This investigation is confidential."
+scam_en_10_gov_official,11,caller,0.177,data/urgency_en/augment_review_flips.csv,"Well, we need to set up a new account for you and transfer your funds to a secure location","To prove your innocence, we need to check your funds. Transfer your savings into a safety account that we provide."
+scam_en_10_gov_official,12,receiver,0.248,data/urgency_en/final_cleaned_dataset.csv,Person A: That's really interesting .,Transfer my savings? Is that really okay?
+scam_en_10_gov_official,13,caller,0.336,backend/workers/urgency_en/eval/gold_handwritten.csv,This is the Singapore Police Force. You must settle this matter immediately or a warrant w,"Do it right now, within the next thirty minutes, or a warrant will be issued."
+scam_en_10_gov_official,14,caller,0.194,assets/scripts/scam_en_00_police_soft.json,"To clear your name, transfer your savings to a safe account and read me the OTP you just r",Open your banking app and send all the money to this account number. Read me the OTP when the bank sends it.
+scam_en_10_gov_official,15,receiver,0.434,data/urgency_en/final_cleaned_dataset.csv,let me find that?,I'm scared. Let me find my phone.
+scam_en_10_gov_official,16,caller,0.473,data/urgency_en/archive/removed_by_manual_review.csv,Do not hang up.,Stay on the line. Do not hang up until the transfer is done.
+scam_en_11_bank_otp,1,caller,0.292,data/impersonation_en/impersonation_data.csv,"Caller: Hello, may I speak to Mr Lim? Receiver: Speaking. Caller: Thank you. This is the s","Hello, this is the security department of your bank. Is this the account holder?"
+scam_en_11_bank_otp,2,receiver,0.525,data/urgency_en/final_cleaned_dataset.csv,"Person B: Yes , speaking .","Yes, speaking. What happened?"
+scam_en_11_bank_otp,3,caller,0.213,data/impersonation_en/gold_test.csv,This automated alert originates from OCBC card security centre. A pending transaction of n,We noticed a suspicious payment of three thousand two hundred dollars from your account to an overseas merchant.
+scam_en_11_bank_otp,4,receiver,0.168,data/impersonation_en/impersonation_data.csv,Caller: StarHub calling. Your line was used for scam calls and we need to verify you. Rece,I didn't make any payment! Please stop it.
+scam_en_11_bank_otp,5,caller,0.36,data/urgency_en/final_cleaned_dataset.csv,First I need to verify your identity,"Don't worry, I can cancel it, but I need to verify your identity quickly."
+scam_en_11_bank_otp,6,receiver,0.642,data/urgency_en/final_cleaned_dataset.csv,What do you need to know?,"Okay, what do you need?"
+scam_en_11_bank_otp,7,caller,0.317,data/urgency_en/final_cleaned_dataset.csv,ACT IMMEDIATELY,"The transaction will go through in five minutes, so we must act immediately."
+scam_en_11_bank_otp,8,receiver,0.486,data/urgency_en/final_cleaned_dataset.csv,I don't want to lose it.,"Please hurry, I don't want to lose my money."
+scam_en_11_bank_otp,9,caller,0.289,data/impersonation_en/impersonation_data.csv,Caller: This is the Google security team. Receiver: Okay. Caller: Someone is trying to tak,I am sending a six-digit code to your phone now. Please read it out to me.
+scam_en_11_bank_otp,10,receiver,0.208,backend/workers/urgency_en/eval/robocall_gold.csv,Is that okay with you?,"It just came. It says it's for adding a new payee, is that okay?"
+scam_en_11_bank_otp,11,caller,0.294,data/urgency_en/final_cleaned_dataset.csv,Just tell me this.,"Yes, that is normal, it is part of the cancellation process. Just tell me the numbers."
+scam_en_11_bank_otp,12,receiver,0.467,data/urgency_en/final_cleaned_dataset.csv,"okay , one moment let me just quickly search it to my database .","Okay, one moment."
+scam_en_11_bank_otp,13,caller,0.391,data/impersonation_en/gold_test.csv,"Your DBS card was used overseas just now. We can block it, but first confirm the card numb",Also give me your card number and the three digits at the back so I can block it.
+scam_en_12_parcel_customs,1,caller,0.237,data/impersonation_en/impersonation_data.csv,Caller: This is a courier. Your parcel is held at customs and there's a fee. Receiver: How,"Hello, this is the courier service. We have a parcel under your name that is held at customs."
+scam_en_12_parcel_customs,2,receiver,0.219,data/impersonation_en/impersonation_data.csv,"Caller: Hello, this DHL customs department. Your parcel have prohibited item. Receiver: I ",A parcel? I'm not expecting anything.
+scam_en_12_parcel_customs,3,caller,0.124,data/impersonation_en/gold_test.csv,Good morning. A parcel sent from overseas in your name was intercepted and is being held b,"It was sent from overseas and the declared contents do not match, so customs has flagged it."
+scam_en_12_parcel_customs,4,receiver,0.241,data/urgency_en/final_cleaned_dataset.csv,So what I'm going to do is.,Oh. So what happens now?
+scam_en_12_parcel_customs,5,caller,0.223,data/urgency_en/final_cleaned_dataset.csv,"""If you wish to cancel this order please hold the line will connect to customer care execu",I will connect you to the customs enforcement officer. Please hold.
+scam_en_12_parcel_customs,6,caller,0.155,assets/scripts/scam_en_02_parcel.json,"Good afternoon, I am calling from the courier company about your parcel.","Good afternoon, I am Officer Lim from Singapore Customs. You are being investigated for importing prohibited items."
+scam_en_12_parcel_customs,7,receiver,0.285,data/urgency_en/final_cleaned_dataset.csv,"I said, never heard anything like that before.",Prohibited items? I never ordered anything like that.
+scam_en_12_parcel_customs,8,caller,0.28,backend/workers/urgency_en/checks/probes.csv,Your parcel will be destroyed tomorrow morning if you don't pay the customs fee.,"If you do not resolve this today, we will refer your case to the police and the parcel will be destroyed."
+scam_en_12_parcel_customs,9,receiver,0.298,data/urgency_en/augment_urgency_en.csv,how can i help today,How can I settle it?
+scam_en_12_parcel_customs,10,caller,0.221,backend/workers/impersonation_en/training_outputs/errors_gold.csv,Hello. A parcel addressed to you has been held at the Changi airfreight centre because it ,You need to pay a release fee of four hundred and eighty dollars through PayNow.
+scam_en_12_parcel_customs,11,receiver,0.167,data/urgency_en/final_cleaned_dataset.csv,Person B: Speaking . May I ask whom I am talking to ?,PayNow? To whom?
+scam_en_12_parcel_customs,12,caller,0.162,data/urgency_en/final_cleaned_dataset.csv,can i send you the booking order .,"I will send you the number now. Pay within one hour, otherwise the fine will double."
+scam_en_12_parcel_customs,13,caller,0.136,data/urgency_en/final_cleaned_dataset.csv,We'll send it to you via wire transfer within 24 hours.,"After you pay, take a screenshot of the receipt and send it to me on WhatsApp."
+scam_en_13_tech_support,1,caller,0.22,data/impersonation_en/impersonation_data.csv,"Caller: Good morning, I am calling regarding your recent broadband migration request. Rece","Good morning, I am calling from the technical support team of your internet provider."
+scam_en_13_tech_support,2,receiver,0.435,data/urgency_en/final_cleaned_dataset.csv,Person B: Is there a problem ?,"Oh, okay? Is there a problem with my line?"
+scam_en_13_tech_support,3,caller,0.23,data/urgency_en/augment_review_flips.csv,"Ah, good question, sir. Our system has been hacked and we lost some data. We're having to ","Yes, our system shows your router has been hacked and your computer is sending out viruses."
+scam_en_13_tech_support,4,receiver,0.199,data/urgency_en/final_cleaned_dataset.csv,"Well, my son has my check.","Oh no, my son uses that computer for school."
+scam_en_13_tech_support,5,caller,0.239,data/urgency_en/augment_review_flips.csv,"It's a very malicious one, sir. It's spreading fast and can cause damage to your personal ",It is very serious. Hackers may already have access to your personal files.
+scam_en_13_tech_support,6,receiver,0.745,assets/scripts/scam_en_01_police.json,"Oh no, what should I do?",What should I do?
+scam_en_13_tech_support,7,caller,0.407,data/urgency_en/augment_review_flips.csv,I'll need to guide you through a few steps to fix the issue. Can you please turn on your c,Please turn on your computer and open the web browser. I will guide you to download a support app.
+scam_en_13_tech_support,8,receiver,0.157,data/urgency_en/final_cleaned_dataset.csv,"yes , it's a it's a rival .","Okay, I am downloading it. It asks for a code."
+scam_en_13_tech_support,9,caller,0.166,data/urgency_en/final_cleaned_dataset.csv,He give me the number.,"Yes, give me the nine-digit code on the screen so I can connect and clean your computer."
+scam_en_13_tech_support,10,receiver,0.318,data/urgency_en/final_cleaned_dataset.csv,Person B: I think so . Here it is . It's by the basin .,"Okay, here it is."
+scam_en_13_tech_support,11,caller,0.217,data/urgency_en/final_cleaned_dataset.csv,Just so I can see.,Now I can see your screen. The virus has reached your banking. Please log in to your internet banking so I can check.
+scam_en_13_tech_support,12,receiver,0.359,data/urgency_en/final_cleaned_dataset.csv,Person A: That's really interesting .,Is that really necessary?
+scam_en_13_tech_support,13,caller,0.25,data/urgency_en/augment_review_flips.csv,Do it right away.,"Yes, we must move your money to a protected account before the hackers take it. Please do it right now."
+scam_en_13_tech_support,14,caller,0.139,data/urgency_en/final_cleaned_dataset.csv,please pay promptly,The cleaning service also costs two hundred dollars. Please pay with gift cards from any convenience store.
+scam_en_14_friend_in_trouble,1,caller,0.205,data/urgency_en/final_cleaned_dataset.csv,let me guess maybe . the departure is leicester .,"Hello Auntie, it's me! Guess who this is?"
+scam_en_14_friend_in_trouble,2,receiver,0.198,data/urgency_en/final_cleaned_dataset.csv,Person A: Is it out ?,"Eh, who is this? Is it Jason?"
+scam_en_14_friend_in_trouble,3,caller,0.26,data/urgency_en/final_cleaned_dataset.csv,yes . yes .,"Yes yes, it's Jason! Sorry, I changed my number, my old phone fell into the water."
+scam_en_14_friend_in_trouble,4,receiver,0.215,data/urgency_en/final_cleaned_dataset.csv,You know why you're taking?,"Aiyo, why you call so late? Everything okay?"
+scam_en_14_friend_in_trouble,5,caller,0.16,data/urgency_en/final_cleaned_dataset.csv,"[PERSON_NAME], I am in a bit of a pinch and I'm hoping you can help me out.","Auntie, I'm in a bit of trouble. I was in a car accident and the police are holding me at the station."
+scam_en_14_friend_in_trouble,6,receiver,0.633,data/urgency_en/final_cleaned_dataset.csv,Person A: Are you hurt ?,Accident?! Are you hurt?
+scam_en_14_friend_in_trouble,7,caller,0.175,data/urgency_en/final_cleaned_dataset.csv,Person B: That's fine . But you have to pay another $ 10 .,"I'm fine, but I need to pay the other driver's repair cost and bail today or they will charge me."
+scam_en_14_friend_in_trouble,8,receiver,0.595,data/urgency_en/final_cleaned_dataset.csv,Person A: Okay . How much ?,How much?
+scam_en_14_friend_in_trouble,9,caller,0.196,data/urgency_en/archive/removed_by_manual_review.csv,Person B: Please don't tell my mom .,"Five thousand five hundred dollars. Please don't tell Mum, she will be so worried."
+scam_en_14_friend_in_trouble,10,caller,0.244,data/urgency_en/final_cleaned_dataset.csv,i'll give you a mom .,"Can you PayNow it now? I'll give you the number. It's really urgent, they are waiting."
+scam_en_14_friend_in_trouble,11,receiver,0.283,data/urgency_en/final_cleaned_dataset.csv,"Okay, let me get that for you.","Okay okay, let me open my app."
+scam_en_14_friend_in_trouble,12,caller,0.292,data/impersonation_en/gold_test.csv,"Hi, it's me. I'm in trouble and need some cash. Can you lend me $500? I'll pay you back ne","Thank you Auntie, I'll pay you back next week, I promise. Please hurry."
+normal_en_10_bank_reminder,1,caller,0.264,backend/workers/urgency_en/eval/robocall_gold.csv,"So, it's a reminder call to you.","Good morning, this is a reminder call from your bank's card services."
+normal_en_10_bank_reminder,2,receiver,0.368,data/urgency_en/final_cleaned_dataset.csv,There's something wrong with me.,"Oh, hello. Is something wrong?"
+normal_en_10_bank_reminder,3,caller,0.227,data/urgency_en/archive/targeted_urgency_augmentation_v1.csv,Your credit card payment is due this Friday. You can pay through the official banking app.,Not at all. Your credit card payment of two hundred and forty dollars is due on the twenty-fifth.
+normal_en_10_bank_reminder,4,receiver,0.196,data/urgency_en/final_cleaned_dataset.csv,"Thanks for that, [PERSON_NAME].","Right, I forgot about that. Thanks for reminding me."
+normal_en_10_bank_reminder,5,caller,0.251,data/urgency_en/archive/targeted_urgency_augmentation_v1.csv,Your credit card payment is due this Friday. You can pay through the official banking app.,"You can pay through the mobile app, internet banking, or GIRO if you have set it up."
+normal_en_10_bank_reminder,6,receiver,0.618,data/urgency_en/final_cleaned_dataset.csv,Person A: I'll just use the ATM .,I'll just use the app.
+normal_en_10_bank_reminder,7,caller,0.394,data/impersonation_en/gold_test.csv,"Good afternoon, this is OCBC. A transfer you initiated has been held for verification. Ple","Sure. And please remember, the bank will never ask you for your OTP or password over the phone."
+normal_en_10_bank_reminder,8,receiver,0.314,data/urgency_en/final_cleaned_dataset.csv,"okay , yes , i know the restaurant .","Yes, I know. Thanks for the reminder."
+normal_en_10_bank_reminder,9,caller,0.344,backend/workers/urgency_en/eval/gold_handwritten.csv,"If you receive a suspicious call, hang up and dial the number on the back of your card.","No problem. If you have any questions, call the number printed on the back of your card."
+normal_en_10_bank_reminder,10,receiver,0.365,data/urgency_en/final_cleaned_dataset.csv,Okay. I will remove it for you.,"Okay, will do."
+normal_en_10_bank_reminder,11,caller,0.58,data/urgency_en/final_cleaned_dataset.csv,"okay , have a good day and thank you for calling .","Thank you, have a good day."
+normal_en_11_clinic_appointment,1,caller,0.561,assets/scripts/normal_en_01_clinic.json,"Hi, this is the clinic calling to confirm your appointment on Tuesday.","Hello, this is the clinic calling to confirm your appointment tomorrow at ten thirty."
+normal_en_11_clinic_appointment,2,receiver,0.323,backend/workers/urgency_en/checks/probes.csv,"I'll be there in five minutes, I'm stuck in traffic.","Yes, I'll be there."
+normal_en_11_clinic_appointment,3,caller,0.259,data/impersonation_en/impersonation_data.csv,"Caller: Hi, CPF service centre, just confirming your appointment tomorrow at two. Receiver",Great. Please bring your NRIC and any medication you are currently taking.
+normal_en_11_clinic_appointment,4,receiver,0.247,data/urgency_en/final_cleaned_dataset.csv,"Okay, should I use the card on file?",Okay. Should I fast beforehand?
+normal_en_11_clinic_appointment,5,caller,0.203,data/urgency_en/final_cleaned_dataset.csv,"Person A: The blood test is for cholesterol , white blood cell count , and blood sugar .","Yes, no food for eight hours before the blood test, but you can drink plain water."
+normal_en_11_clinic_appointment,6,receiver,0.291,data/urgency_en/final_cleaned_dataset.csv,How long is it going to take?,Alright. How long will it take?
+normal_en_11_clinic_appointment,7,caller,0.345,data/urgency_en/archive/targeted_urgency_augmentation_v1.csv,Reminder: your dental appointment is tomorrow at 9 am. Please arrive ten minutes early for,About thirty minutes. Please arrive ten minutes early to register at the counter.
+normal_en_11_clinic_appointment,8,receiver,0.129,data/urgency_en/final_cleaned_dataset.csv,okay . how about the free parking you need the parking sport .,Noted. Is parking available?
+normal_en_11_clinic_appointment,9,caller,0.155,data/urgency_en/final_cleaned_dataset.csv,Bless you and yes there is.,"Yes, there is a carpark behind the building. The consultation fee can be paid at the counter after your visit."
+normal_en_11_clinic_appointment,10,receiver,0.482,data/urgency_en/final_cleaned_dataset.csv,"i'm okay . thanks , mary . how are you .","Okay, thanks."
+normal_en_11_clinic_appointment,11,caller,0.246,data/urgency_en/final_cleaned_dataset.csv,Person A: Thanks . See you .,See you tomorrow. Take care.
+normal_en_12_delivery_driver,1,caller,0.215,data/urgency_en/final_cleaned_dataset.csv,What is the delivery status of your order?,"Hi, I'm the delivery driver. I'm downstairs at your block now with your order."
+normal_en_12_delivery_driver,2,receiver,0.24,data/urgency_en/final_cleaned_dataset.csv,Person A: Then I'll come down and pick up the message immediately .,"Oh, I'll come down. Which entrance are you at?"
+normal_en_12_delivery_driver,3,caller,0.149,data/impersonation_en/impersonation_data.csv,"Caller: Hi, Amazon delivery partner. Receiver: Yes. Caller: Your parcel is at the lobby co",I'm at the lobby near the letterboxes. Blue jacket.
+normal_en_12_delivery_driver,4,receiver,0.232,data/urgency_en/final_cleaned_dataset.csv,"Person A: Okay , give me the roses .","Okay, give me two minutes. I'm just putting on my shoes."
+normal_en_12_delivery_driver,5,caller,0.207,data/impersonation_en/gold_test.csv,"Hi, this is the courier. Your parcel will be delivered today but the driver cannot find th",No problem. Can you confirm the unit number? The app shows number twelve.
+normal_en_12_delivery_driver,6,receiver,0.126,data/urgency_en/final_cleaned_dataset.csv,yes . yes .,"Yes, number twelve, thanks."
+normal_en_12_delivery_driver,7,caller,0.147,data/urgency_en/final_cleaned_dataset.csv,"ok, the total is $23, can i continue purchasing your tickets?","The total is twenty-three dollars fifty. It's cash on delivery, or you can PayNow me."
+normal_en_12_delivery_driver,8,receiver,0.209,backend/workers/urgency_en/eval/mathur_darkpatterns_test.csv,I'LL PAY FULL PRICE,I'll pay cash. Do you have change for fifty?
+normal_en_12_delivery_driver,9,caller,0.435,data/urgency_en/final_cleaned_dataset.csv,Great no problem.,"Yes, no problem."
+normal_en_12_delivery_driver,10,receiver,0.19,data/urgency_en/augment_review_flips.csv,"We have our ways of tracking these things down. Now, can you please confirm your social se","Great, coming down now."
+normal_en_13_insurance_sales,1,caller,0.234,data/urgency_en/final_cleaned_dataset.csv,Urgent Financial Advisory Notification,"Hello, good afternoon. My name is Amelia, I'm calling from a financial advisory firm. Do you have a minute?"
+normal_en_13_insurance_sales,2,receiver,0.376,data/urgency_en/final_cleaned_dataset.csv,go ahead and .,"I'm a bit busy, but go ahead."
+normal_en_13_insurance_sales,3,caller,0.181,data/urgency_en/final_cleaned_dataset.csv,"Well, according to our records, you're not currently covered under any health insurance pl",We have a new hospitalisation plan for young working adults. I would like to explain the benefits briefly.
+normal_en_13_insurance_sales,4,receiver,0.246,data/urgency_en/final_cleaned_dataset.csv,Should already have it.,I already have an insurance plan through my company.
+normal_en_13_insurance_sales,5,caller,0.135,data/urgency_en/final_cleaned_dataset.csv,how many people will be going?,"That's great. Many people find employer coverage ends when they change jobs, so a personal plan can be a good backup."
+normal_en_13_insurance_sales,6,receiver,0.545,data/urgency_en/final_cleaned_dataset.csv,Person A: How much is the hat ?,How much is the premium?
+normal_en_13_insurance_sales,7,caller,0.22,data/urgency_en/augment_urgency_en.csv,it looks like it would take about thirty five minutes depending on traffic,"It starts from about thirty dollars a month, depending on your age and the ward type."
+normal_en_13_insurance_sales,8,receiver,0.591,data/urgency_en/final_cleaned_dataset.csv,"Oh, I have to think about it.","Hmm, I'd need to think about it."
+normal_en_13_insurance_sales,9,caller,0.215,data/urgency_en/archive/targeted_urgency_augmentation_v1.csv,Please complete the mandatory training module by the end of the month.,"Of course. This promotion ends at the end of the month, but there's no obligation. May I send you the brochure by email?"
+normal_en_13_insurance_sales,10,receiver,0.207,data/urgency_en/final_cleaned_dataset.csv,"yes , got it , please .","Sure, you can email it. Please don't call again."
+normal_en_13_insurance_sales,11,caller,0.384,data/urgency_en/final_cleaned_dataset.csv,"Okay, thank you for your time. Sorry again for the mistake.","Understood, thank you for your time."
+normal_en_14_family_call,1,caller,0.221,data/impersonation_en/impersonation_data.csv,"Caller: Hey, are you free to catch up this weekend? Receiver: Sure, Saturday afternoon? Ca","Hello, it's Mum. Are you free this weekend?"
+normal_en_14_family_call,2,receiver,0.218,backend/workers/urgency_en/checks/probes.csv,"Hi mum I'll call you back in an hour, I'm in a meeting.","Hi Mum, I think so. What's happening?"
+normal_en_14_family_call,3,caller,0.153,data/urgency_en/final_cleaned_dataset.csv,His [MARITAL_STATUS] s birthday is actually tomorrow.,Ah Ma's birthday is on Sunday. Your aunt booked the restaurant for twelve o'clock.
+normal_en_14_family_call,4,receiver,0.385,data/urgency_en/final_cleaned_dataset.csv,You want me to check it?,Nice. Do you want me to bring anything?
+normal_en_14_family_call,5,caller,0.187,data/urgency_en/final_cleaned_dataset.csv,Person B: Can you pick me up from the airport ?,Can you pick up the cake on the way? I'll PayNow you back after dinner.
+normal_en_14_family_call,6,receiver,0.331,data/urgency_en/final_cleaned_dataset.csv,"sure , not a problem . which department is that .","Sure, no problem. Which bakery?"
+normal_en_14_family_call,7,caller,0.178,assets/scripts/normal_en_01_clinic.json,Please remember to bring your health booklet. See you then.,The one near your office. Please remember to ask them to write her name on it.
+normal_en_14_family_call,8,receiver,0.3,data/urgency_en/final_cleaned_dataset.csv,and what time?,"Okay, will do. What time should I reach?"
+normal_en_14_family_call,9,caller,0.128,data/urgency_en/final_cleaned_dataset.csv,Person B: Yes . We went for a walk in the woods near the highway .,"Come by eleven thirty, so we can all walk in together."
+normal_en_14_family_call,10,receiver,0.244,data/urgency_en/final_cleaned_dataset.csv,"Got it, Got.","Got it. See you Sunday, Mum."
+normal_en_14_family_call,11,caller,0.338,data/urgency_en/final_cleaned_dataset.csv,thanks for calling bye bye .,Bye bye. Take care and eat properly ah.
+scam_zh_10_gov_official,1,caller,0.219,backend/workers/money_zh/data/money_zh.csv,请您开启屏幕共享，我们需要查看您的银行账户情况。,您好，这里是银行的反欺诈部门，想跟您确认一下您的银行账户情况。
+scam_zh_10_gov_official,2,receiver,0.308,backend/workers/money_zh/data/money_zh.csv,你可以跟我说说发生了什么事吗？,哦，你好？请问有什么事吗？
+scam_zh_10_gov_official,3,caller,0.255,backend/workers/impersonation_zh/data/impersonation_zh.csv,您好，这里是市公安局，我们发现有人用您的身份信息注册了银行卡，并涉嫌参与了一起特大洗钱案件。,我们发现有人用您的身份证号码开了一张信用卡，而且这张卡被用于洗钱。
+scam_zh_10_gov_official,4,receiver,0.16,backend/workers/urgency_zh/data/urgency_zh.csv,可是我从来没有参与过任何非法活动，也从未收到过任何关于银行账户异常的通知。,什么？我从来没有开过什么卡，你们搞错了吧？
+scam_zh_10_gov_official,5,caller,0.311,backend/workers/common_zh/gold_test_zh.csv,您好，我是新加坡警察部队商业事务局的林警官。,我理解。因为案情严重，我现在把电话转接给新加坡警察部队的警官。
+scam_zh_10_gov_official,6,receiver,0.167,backend/workers/money_zh/data/money_zh.csv,好的好的，行，谢谢王总，那先今天先这样。,警察？好的好的。
+scam_zh_10_gov_official,7,caller,0.394,backend/workers/common_zh/gold_test_zh.csv,您好，我是新加坡警察部队商业事务局的林警官。,我是新加坡警察部队的陈警官，警号二零四七。
+scam_zh_10_gov_official,8,caller,0.334,backend/workers/urgency_zh/data/urgency_zh.csv,您好，这里是长沙市公安局，我们发现您涉嫌一宗刑事案件，需要您立即配合调查。,您已经涉及一宗刑事案件，如果今天不配合调查，可能会被逮捕。
+scam_zh_10_gov_official,9,receiver,0.294,backend/workers/urgency_zh/data/urgency_zh.csv,合同我已经签好并汇款了，接下来我要怎么做？,我什么都没做过啊，我要怎么做？
+scam_zh_10_gov_official,10,caller,0.383,backend/workers/common_zh/gold_test_zh.csv,这件案子是机密，不要告诉任何人，包括你的家人。,这件事绝对保密，不能告诉任何人，包括您的家人和银行。
+scam_zh_10_gov_official,11,caller,0.369,backend/workers/money_zh/data/money_zh.csv,为了证明您的清白，需要您立即转账20000元到一个指定的安全账户进行资金核查。,为了证明您的清白，我们需要核查您的资金，请把您的存款转到我们提供的安全账户。
+scam_zh_10_gov_official,12,receiver,0.13,backend/workers/money_zh/data/money_zh.csv,我出900元可以吗？,把存款全部转走？这样真的可以吗？
+scam_zh_10_gov_official,13,caller,0.122,backend/workers/urgency_zh/data/urgency_zh.csv,请在5分钟内完成转账，否则视频将自动发送。,必须现在就办，三十分钟内，否则法院会发出拘捕令。
+scam_zh_10_gov_official,14,caller,0.207,backend/workers/common_zh/gold_test_zh.csv,为了确认你是持卡人，请把手机收到的OTP验证码念给我听。,请打开手机银行，把钱转到这个账户，银行发来验证码时马上念给我听。
+scam_zh_10_gov_official,15,receiver,0.169,backend/workers/impersonation_zh/data/impersonation_zh.csv,您好，张先生，我是领事馆的小王，您提交的签证申请需要验证一下手机号确保安全，请您提供一下手机号后四位，我们会立即为您处理。,我有点害怕，我先找一下手机。
+scam_zh_10_gov_official,16,caller,0.345,backend/workers/money_zh/data/money_zh.csv,请您保持通话，不要挂断。,不要挂电话，转账完成之前请一直保持通话。
+scam_zh_12_parcel_customs,1,caller,0.394,backend/workers/common_zh/gold_test_zh.csv,我是新加坡邮政的工作人员，你有一个包裹被海关扣留了。,您好，这里是快递公司。有一个以您名字寄出的包裹被海关扣留了。
+scam_zh_12_parcel_customs,2,receiver,0.172,backend/workers/urgency_zh/data/urgency_zh.csv,我没有什么特别的要求。,包裹？我没有买什么东西啊。
+scam_zh_12_parcel_customs,3,caller,0.106,backend/workers/common_zh/gold_test_zh.csv,我是新加坡邮政的工作人员，你有一个包裹被海关扣留了。,包裹是从海外寄来的，申报的内容和实际不符，所以被海关标记了。
+scam_zh_12_parcel_customs,4,receiver,0.389,backend/workers/impersonation_zh/data/impersonation_zh.csv,那我现在应该怎么办？,哦，那现在怎么办？
+scam_zh_12_parcel_customs,5,caller,0.226,backend/workers/urgency_zh/data/urgency_zh.csv,我会尽快安排发货的，请稍等。,我现在帮您转接海关执法人员，请稍等。
+scam_zh_12_parcel_customs,6,caller,0.197,backend/workers/common_zh/gold_test_zh.csv,您好，我是新加坡警察部队商业事务局的林警官。,您好，我是新加坡海关的林官员，您涉嫌进口违禁物品，现在正在被调查。
+scam_zh_12_parcel_customs,7,receiver,0.129,backend/workers/money_zh/data/money_zh.csv,您的旧币已经到货，但由于这是违禁物品，我们需要一些保证金和手续费来“打点”才可以提取。,违禁物品？我根本没订过那种东西。
+scam_zh_12_parcel_customs,8,caller,0.28,backend/workers/common_zh/gold_test_zh.csv,包裹里面有违禁品，如果今天不处理，我们就把资料交给警方。,如果今天之内不处理，案件会移交给警方，包裹也会被销毁。
+scam_zh_12_parcel_customs,9,receiver,0.446,backend/workers/money_zh/data/money_zh.csv,非常感谢，那我该怎么操作呢？,那我该怎么处理？
+scam_zh_12_parcel_customs,10,caller,0.263,backend/workers/common_zh/gold_test_zh.csv,请你提供PayNow绑定的手机号码和网银密码。,您需要通过PayNow缴付四百八十元的放行费。
+scam_zh_12_parcel_customs,11,receiver,0.368,backend/workers/common_zh/gold_test_zh.csv,请你提供PayNow绑定的手机号码和网银密码。,PayNow？转给谁？
+scam_zh_12_parcel_customs,12,caller,0.228,backend/workers/money_zh/data/money_zh.csv,您确认收货后，我马上把密码发给您。,我马上把号码发给您，请在一小时内付款，否则罚款会加倍。
+scam_zh_12_parcel_customs,13,caller,0.194,backend/workers/money_zh/data/money_zh.csv,转账后请把购买单据发给我。,付款后请把收据截图，用WhatsApp发给我。
+normal_zh_10_bank_reminder,1,caller,0.333,backend/workers/urgency_zh/data/urgency_zh.csv,您好，这里是信用卡服务中心。,早上好，这里是银行信用卡服务部的提醒电话。
+normal_zh_10_bank_reminder,2,receiver,0.44,backend/workers/impersonation_zh/data/impersonation_zh.csv,你好，我是张磊，确实是我在用这个银行账户，有什么问题吗？,哦，你好，有什么问题吗？
+normal_zh_10_bank_reminder,3,caller,0.142,backend/workers/urgency_zh/data/urgency_zh.csv,您好，我们是信用卡服务中心，我们注意到您的信用卡有逾期情况，这可能会影响您的信用记录。,没有问题。您的信用卡有两百四十元的款项，本月二十五号到期。
+normal_zh_10_bank_reminder,4,receiver,0.277,backend/workers/money_zh/data/money_zh.csv,太好了，谢谢你们！,对，我差点忘了，谢谢你提醒我。
+normal_zh_10_bank_reminder,5,caller,0.142,backend/workers/urgency_zh/data/urgency_zh.csv,保持在线，不然系统会自动扣款。,您可以用手机银行、网上银行，或者GIRO自动扣款来缴付。
+normal_zh_10_bank_reminder,6,receiver,0.281,backend/workers/urgency_zh/data/urgency_zh.csv,你用手机银行转到我这个账户就好，账户信息我发给你。,我用手机银行就好。
+normal_zh_10_bank_reminder,7,caller,0.264,backend/workers/money_zh/data/money_zh.csv,请记住，公安机关绝不会通过电话索要您的身份证照片或银行验证码。,好的。另外请记住，银行绝对不会通过电话向您索取验证码或密码。
+normal_zh_10_bank_reminder,8,receiver,0.265,backend/workers/urgency_zh/data/urgency_zh.csv,好的，谢谢，请尽快！,我知道的，谢谢提醒。
+normal_zh_10_bank_reminder,9,caller,0.242,backend/workers/impersonation_zh/data/impersonation_zh.csv,如有疑问，请拨打银行官方客服电话咨询。,不客气。如果有疑问，请拨打您信用卡背面印着的号码。
+normal_zh_10_bank_reminder,10,receiver,0.346,backend/workers/urgency_zh/data/urgency_zh.csv,不客气，我会尽快处理好的。,好的。
+normal_zh_10_bank_reminder,11,caller,0.314,backend/workers/impersonation_zh/data/impersonation_zh.csv,祝您在我们平台有愉快的体验！,谢谢您，祝您有愉快的一天。
+normal_zh_14_family_call,1,caller,0.156,backend/workers/urgency_zh/data/urgency_zh.csv,好的，我们可以约一个周末见面。,喂，是妈妈。这个周末你有空吗？
+normal_zh_14_family_call,2,receiver,0.157,backend/workers/urgency_zh/data/urgency_zh.csv,没问题，这都是我应该做的。,妈，我应该有空。怎么了？
+normal_zh_14_family_call,3,caller,0.09,backend/workers/urgency_zh/data/urgency_zh.csv,为您推荐翰风餐厅。,星期天是阿嬷的生日，你阿姨订了中午十二点的餐厅。
+normal_zh_14_family_call,4,receiver,0.255,backend/workers/urgency_zh/data/urgency_zh.csv,那我需要准备些什么吗？,太好了。要我带点什么吗？
+normal_zh_14_family_call,5,caller,0.217,backend/workers/common_zh/gold_test_zh.csv,请你提供PayNow绑定的手机号码和网银密码。,你来的路上能不能顺便取一下蛋糕？吃完饭我再用PayNow把钱转给你。
+normal_zh_14_family_call,6,receiver,0.16,backend/workers/urgency_zh/data/urgency_zh.csv,没问题，我们会尽快通知您。,没问题，哪一家面包店？
+normal_zh_14_family_call,7,caller,0.167,backend/workers/urgency_zh/data/urgency_zh.csv,记得转账时备注一下你的名字。,就是你公司附近那一家。记得请他们在蛋糕上写阿嬷的名字。
+normal_zh_14_family_call,8,receiver,0.16,backend/workers/urgency_zh/data/urgency_zh.csv,我想了解一下，如果我在美国遇到资金问题，一般应该怎么处理比较好？,好的。我几点到比较好？
+normal_zh_14_family_call,9,caller,0.203,backend/workers/money_zh/data/money_zh.csv,是的，我们可以一起进步。,十一点半到吧，我们一起进去。
+normal_zh_14_family_call,10,receiver,0.178,backend/workers/urgency_zh/data/urgency_zh.csv,知道了，我会帮你们购买并尽快发货。,知道了，星期天见，妈。
+normal_zh_14_family_call,11,caller,0.175,backend/workers/urgency_zh/data/urgency_zh.csv,再见，我要报警了！,再见，路上小心，要好好吃饭哦。

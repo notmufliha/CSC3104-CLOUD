@@ -1,5 +1,7 @@
 # Android Studio / Gradle
 android-app/.gradle/
+# Gradle's local cache, wherever a build runs (e.g. docs/android-ref/app/.gradle/)
+**/.gradle/
 android-app/**/build/
 android-app/local.properties
 android-app/.idea/
@@ -27,6 +29,8 @@ backend/workers/**/scam_detect_pb2_grpc.py
 
 # General
 .DS_Store
+# IDE settings for whoever opens the repo root (JetBrains): per-user, not shared
+/.idea/
 
 #Tools
 tools/datagen/call_transcript_dataset_output/
@@ -35,3 +39,6 @@ data/**/raw/
 .env
 __pycache__/
 .venv312
+
+# Workstream 6 replay results (generated)
+tools/testing/results_*.csv

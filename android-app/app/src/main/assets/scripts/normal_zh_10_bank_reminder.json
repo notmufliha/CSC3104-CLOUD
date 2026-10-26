@@ -1,0 +1,57 @@
+[
+  {
+    "speaker": "caller",
+    "text": "早上好，这里是银行信用卡服务部的提醒电话。",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "哦，你好，有什么问题吗？",
+    "delay_ms": 5050
+  },
+  {
+    "speaker": "caller",
+    "text": "没有问题。您的信用卡有两百四十元的款项，本月二十五号到期。",
+    "delay_ms": 3150
+  },
+  {
+    "speaker": "receiver",
+    "text": "对，我差点忘了，谢谢你提醒我。",
+    "delay_ms": 6700
+  },
+  {
+    "speaker": "caller",
+    "text": "您可以用手机银行、网上银行，或者GIRO自动扣款来缴付。",
+    "delay_ms": 3850
+  },
+  {
+    "speaker": "receiver",
+    "text": "我用手机银行就好。",
+    "delay_ms": 5550
+  },
+  {
+    "speaker": "caller",
+    "text": "好的。另外请记住，银行绝对不会通过电话向您索取验证码或密码。",
+    "delay_ms": 2950
+  },
+  {
+    "speaker": "receiver",
+    "text": "我知道的，谢谢提醒。",
+    "delay_ms": 6900
+  },
+  {
+    "speaker": "caller",
+    "text": "不客气。如果有疑问，请拨打您信用卡背面印着的号码。",
+    "delay_ms": 2950
+  },
+  {
+    "speaker": "receiver",
+    "text": "好的。",
+    "delay_ms": 5750
+  },
+  {
+    "speaker": "caller",
+    "text": "谢谢您，祝您有愉快的一天。",
+    "delay_ms": 1550
+  }
+]
