@@ -28,6 +28,11 @@ services:
       URGENCY_ZH_ADDR: "http://urgency_zh:50051"
       MONEY_ZH_ADDR: "http://money_zh:50051"
       IMPERSONATION_ZH_ADDR: "http://impersonation_zh:50051"
+      # 2 s promise to the phone: workers 1400 ms + aggregator 550 ms (Redis + the BERT second opinion)
+      WORKER_TIMEOUT_MS: "1400"
+      AGGREGATOR_TIMEOUT_MS: "550"
+      # caller lines per call sent along for BERT (0 = never send text to the aggregator)
+      BERT_CONTEXT_LINES: "5"
     depends_on:
       - aggregator
       - urgency_en
@@ -72,9 +77,18 @@ services:
       AGG_SCAM_STREAK: "2"
       AGG_MONEY_RULE: "0.7"
       AGG_MONEY_RULE_OTHER: "0.5"
+      # money and the other signal must both be within this many recent caller lines (6 = whole window = the
+      # original rule; 1 = same line; 2 = same or adjacent line). Try: AGG_MONEY_RULE_LINES=1 docker compose up -d aggregator
+      AGG_MONEY_RULE_LINES: "${AGG_MONEY_RULE_LINES-6}"
       AGG_REASON_THRESHOLD: "0.5"
       AGG_MIN_QUORUM: "2"
       AGG_CALL_TTL_SECS: "3600"
+      # BERT second opinion (cascade, task 7.4). Empty BERT_ADDR = off, the aggregator then works as before.
+      # `BERT_ADDR= docker compose up -d aggregator` switches the cascade off (fast-only run for 7.5)
+      BERT_ADDR: "${BERT_ADDR-http://bert:50051}"
+      BERT_TIMEOUT_MS: "300"
+      AGG_BERT_WEIGHT: "0.5"   # final = 0.5 * fast vote + 0.5 * BERT
+      AGG_BERT_VETO: "${AGG_BERT_VETO-0}"   # 0 = BERT can't cancel the money rule (recall first); see README
     depends_on:
       redis:
         condition: service_healthy
@@ -132,5 +146,22 @@ services:
       dockerfile: workers/impersonation_zh/Dockerfile
     environment:
       PORT: "50051"
+    networks:
+      - scamnet
+
+  # BERT second opinion (backend/workers/bert). The model is NOT in git: put the notebook's 3 files in
+  # backend/workers/bert/model/ before building, or set MODEL_BASE_URL (e.g. in a .env file next to this file)
+  # to the folder they were uploaded to. If BERT is down or slow, the aggregator decides without it.
+  bert:
+    build:
+      context: ./backend
+      dockerfile: workers/bert/Dockerfile
+      args:
+        MODEL_BASE_URL: "${MODEL_BASE_URL:-https://huggingface.co/gouthamsaravanan/csc3104-scam-bert/resolve/8fe16111564b97977b5526f9ca75ac4e60539bc2}"
+        MODEL_SHA256: "${MODEL_SHA256:-dfbb28873dff42d3ef93d2872de2084becf5216b234330ff99d430cdbfde27c4}"
+    environment:
+      PORT: "50051"
+      ORT_THREADS: "2"
+      GRPC_THREADS: "2"
     networks:
       - scamnet

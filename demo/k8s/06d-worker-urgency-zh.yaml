@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: urgency-zh
+  namespace: scamguard
+  labels: { app: urgency-zh, signal: urgency, language: zh }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: urgency-zh }
+  template:
+    metadata:
+      labels: { app: urgency-zh, signal: urgency, language: zh }
+    spec:
+      containers:
+        - name: urgency-zh
+          image: scam/urgency_zh:demo
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50051
+              name: grpc
+          env:
+            - name: PORT
+              value: "50051"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "224Mi"
+            limits:
+              cpu: "500m"
+              memory: "448Mi"
+          readinessProbe:
+            grpc: { port: 50051 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            grpc: { port: 50051 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+# Headless: Envoy's cluster for this worker needs every pod IP (see make_envoy_config.py).
+apiVersion: v1
+kind: Service
+metadata:
+  name: urgency-zh-hl
+  namespace: scamguard
+  labels: { app: urgency-zh }
+spec:
+  clusterIP: None
+  selector: { app: urgency-zh }
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: urgency-zh
+  namespace: scamguard
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: urgency-zh }
+  minReplicas: 1
+  maxReplicas: 4
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 30
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 50 }

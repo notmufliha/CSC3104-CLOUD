@@ -1,0 +1,57 @@
+[
+  {
+    "speaker": "caller",
+    "text": "喂，是妈妈。这个周末你有空吗？",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "妈，我应该有空。怎么了？",
+    "delay_ms": 3450
+  },
+  {
+    "speaker": "caller",
+    "text": "星期天是阿嬷的生日，你阿姨订了中午十二点的餐厅。",
+    "delay_ms": 3150
+  },
+  {
+    "speaker": "receiver",
+    "text": "太好了。要我带点什么吗？",
+    "delay_ms": 5750
+  },
+  {
+    "speaker": "caller",
+    "text": "你来的路上能不能顺便取一下蛋糕？吃完饭我再用PayNow把钱转给你。",
+    "delay_ms": 3400
+  },
+  {
+    "speaker": "receiver",
+    "text": "没问题，哪一家面包店？",
+    "delay_ms": 6700
+  },
+  {
+    "speaker": "caller",
+    "text": "就是你公司附近那一家。记得请他们在蛋糕上写阿嬷的名字。",
+    "delay_ms": 3150
+  },
+  {
+    "speaker": "receiver",
+    "text": "好的。我几点到比较好？",
+    "delay_ms": 6450
+  },
+  {
+    "speaker": "caller",
+    "text": "十一点半到吧，我们一起进去。",
+    "delay_ms": 3150
+  },
+  {
+    "speaker": "receiver",
+    "text": "知道了，星期天见，妈。",
+    "delay_ms": 3450
+  },
+  {
+    "speaker": "caller",
+    "text": "再见，路上小心，要好好吃饭哦。",
+    "delay_ms": 2950
+  }
+]

@@ -1,0 +1,6 @@
+{
+  "threshold": 0.34,
+  "selected_on": "max F2 on the validation split (v6 data, seed 42)",
+  "frozen_on": "2026-10-25",
+  "note": "display/report only: the aggregator uses the raw score. Frozen because the val-F2 curve is flat and the optimum moved between machines (0.20 vs 0.33)."
+}
