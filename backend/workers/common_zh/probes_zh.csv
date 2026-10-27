@@ -43,3 +43,6 @@ text,worker,expected,group
 如果有人打电话自称是警察，要你转账，请马上挂断。,impersonation,0,advice_hard
 银行不会打电话要你提供验证码。,impersonation,0,advice_hard
 有人冒充星展银行的客服，大家要小心。,impersonation,0,advice_hard
+没有问题。您的信用卡有两百四十元的款项，本月二十五号到期。,money,0,canonical
+您需要通过PayNow缴付四百八十元的放行费。,money,1,canonical
+好的。另外请记住，银行绝对不会通过电话向您索取验证码或密码。,money,0,advice_hard

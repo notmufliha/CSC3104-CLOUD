@@ -16,7 +16,8 @@
 //!   5. Warm-up: inside the first `warmup` of the call and no recent score (nor BERT) >= `warmup_override`
 //!      -> SAFE (quiet). Rules 6-9 are skipped, the money rule included; the scores stay in the window, so they
 //!      still count on the first line after the warm-up.
-//!   6. Money rule: money >= `money_rule` while another signal >= `money_rule_other` -> SCAM immediately,
+//!   6. Money rule: money >= `money_rule` while another signal >= `money_rule_other`, both within the last
+//!      `money_rule_lines` caller lines (default 6 = the whole window) -> SCAM immediately,
 //!      unless BERT answered below `bert_veto` (then rules 7-9 decide on final). bert_veto is 0 (off) by
 //!      default: BERT can soften the unsure/high path but not cancel the money rule unless switched on.
 //!   7. final >= `scam_threshold` -> one more in the streak; `scam_streak` in a row -> SCAM, else UNSURE.
@@ -193,7 +194,7 @@ pub fn decide(
         // 5.
         state.streak = 0;
         (Verdict::Safe, "warmup")
-    } else if quorum_met && money_rule(&recent, cfg) && !vetoed {
+    } else if quorum_met && money_rule(&state.window, cfg) && !vetoed {
         // 6.
         (Verdict::Scam, "money_rule")
     } else if combined >= cfg.scam_threshold {
@@ -255,7 +256,7 @@ pub fn decide_one_shot(line: LineScores, bert: Option<f32>, cfg: &Settings) -> D
     let vetoed = bert.is_some_and(|b| b < cfg.bert_veto);
     let (verdict, rule) = if !quorum_met && bert.is_none() {
         (Verdict::Unsure, "quorum")
-    } else if quorum_met && money_rule(&recent, cfg) && !vetoed {
+    } else if quorum_met && money_rule(&[line], cfg) && !vetoed {
         (Verdict::Scam, "money_rule")
     } else if combined >= cfg.scam_threshold {
         (Verdict::Scam, "streak")
@@ -309,7 +310,11 @@ fn combined_score(recent: &LineScores, cfg: &Settings) -> f32 {
     }
 }
 
-fn money_rule(recent: &LineScores, cfg: &Settings) -> bool {
+/// Money >= `money_rule` while another signal >= `money_rule_other`, both within the last `money_rule_lines`
+/// caller lines of the window. A short span (2) keeps two unrelated sentences, e.g. "your card bill is due"
+/// and later "call the number on your card", from adding up to one scam request.
+fn money_rule(window: &[LineScores], cfg: &Settings) -> bool {
+    let recent = recent_highs(&window[window.len().saturating_sub(cfg.money_rule_lines)..]);
     let money = SIGNALS.iter().position(|s| *s == "money").expect("money is a signal");
     let money_high = recent[money].is_some_and(|m| m >= cfg.money_rule);
     let other_high = recent
@@ -421,6 +426,49 @@ mod tests {
         let (_, d) = replay(&cfg(), &[(20, all(0.1, 0.95, 0.1))]);
         assert_ne!(d[0].rule, "money_rule"); // money alone ("your bill is due") is not enough
         assert_ne!(d[0].verdict, Verdict::Scam);
+    }
+
+    #[test]
+    fn money_rule_default_span_is_the_whole_window() {
+        // default (6 lines) = the behaviour before AGG_MONEY_RULE_LINES existed: money 3 caller lines before
+        // the urgency still fires (android script normal_en_10_bank_reminder, 2026-10-26)
+        let lines = [(20, all(0.4, 1.0, 0.0)), (25, all(0.4, 1.0, 0.0)), (30, all(0.3, 0.3, 0.0)), (35, all(0.5, 0.3, 0.0))];
+        let (_, d) = replay(&cfg(), &lines);
+        assert_eq!((d[3].verdict, d[3].rule), (Verdict::Scam, "money_rule"));
+    }
+
+    #[test]
+    fn money_rule_span_two_ignores_unrelated_lines() {
+        let cfg = cfg_with(&[("AGG_MONEY_RULE_LINES", "2")]);
+        // "your bill is due" (money 1.0) ... two calm lines ... "call the number on your card" (urgency 0.5)
+        let lines = [(20, all(0.4, 1.0, 0.0)), (25, all(0.4, 1.0, 0.0)), (30, all(0.3, 0.3, 0.0)), (35, all(0.5, 0.3, 0.0))];
+        let (_, d) = replay(&cfg, &lines);
+        assert!(d.iter().all(|d| d.rule != "money_rule" && d.verdict != Verdict::Scam), "{:?}", d.iter().map(|d| d.rule).collect::<Vec<_>>());
+        // the window itself is unchanged: the combined score still sees money 1.0 from 3 lines back
+        assert!((d[3].recent[1].unwrap() - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn money_rule_span_two_still_catches_money_next_to_the_claim() {
+        let cfg = cfg_with(&[("AGG_MONEY_RULE_LINES", "2")]);
+        // same line: "pay the other driver's repair cost today" (urgency 0.54, money 1.0)
+        let (_, d) = replay(&cfg, &[(20, all(0.2, 0.0, 0.0)), (25, all(0.54, 1.0, 0.0))]);
+        assert_eq!((d[1].verdict, d[1].rule), (Verdict::Scam, "money_rule"));
+        // adjacent lines: "this is the police" then "transfer to the safe account"
+        let (_, d) = replay(&cfg, &[(20, all(0.1, 0.1, 1.0)), (25, all(0.1, 0.71, 0.0))]);
+        assert_eq!((d[1].verdict, d[1].rule), (Verdict::Scam, "money_rule"));
+        // one calm line in between is already too far apart for span 2
+        let (_, d) = replay(&cfg, &[(20, all(0.1, 0.1, 1.0)), (25, all(0.1, 0.1, 0.1)), (30, all(0.1, 0.71, 0.0))]);
+        assert_ne!(d[2].rule, "money_rule");
+    }
+
+    #[test]
+    fn money_rule_span_one_is_same_line_only() {
+        let cfg = cfg_with(&[("AGG_MONEY_RULE_LINES", "1")]);
+        let (_, d) = replay(&cfg, &[(20, all(0.1, 0.1, 1.0)), (25, all(0.1, 0.9, 0.0))]);
+        assert_ne!(d[1].rule, "money_rule");
+        let (_, d) = replay(&cfg, &[(20, all(0.1, 0.9, 0.8))]);
+        assert_eq!(d[0].rule, "money_rule");
     }
 
     #[test]
