@@ -77,6 +77,9 @@ services:
       AGG_SCAM_STREAK: "2"
       AGG_MONEY_RULE: "0.7"
       AGG_MONEY_RULE_OTHER: "0.5"
+      # money and the other signal must both be within this many recent caller lines (6 = whole window = the
+      # original rule; 1 = same line; 2 = same or adjacent line). Try: AGG_MONEY_RULE_LINES=1 docker compose up -d aggregator
+      AGG_MONEY_RULE_LINES: "${AGG_MONEY_RULE_LINES-6}"
       AGG_REASON_THRESHOLD: "0.5"
       AGG_MIN_QUORUM: "2"
       AGG_CALL_TTL_SECS: "3600"
@@ -85,7 +88,7 @@ services:
       BERT_ADDR: "${BERT_ADDR-http://bert:50051}"
       BERT_TIMEOUT_MS: "300"
       AGG_BERT_WEIGHT: "0.5"   # final = 0.5 * fast vote + 0.5 * BERT
-      AGG_BERT_VETO: "0"       # 0 = BERT can't cancel the money rule (recall first); see README
+      AGG_BERT_VETO: "${AGG_BERT_VETO-0}"   # 0 = BERT can't cancel the money rule (recall first); see README
     depends_on:
       redis:
         condition: service_healthy
