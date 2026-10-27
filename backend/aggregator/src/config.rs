@@ -31,6 +31,9 @@ pub struct Settings {
     /// Money at or above this while another signal is at or above `money_rule_other` -> SCAM immediately.
     pub money_rule: f32,
     pub money_rule_other: f32,
+    /// ...both within this many of the most recent caller lines. Default 6 = the whole window (the original
+    /// rule); 2 = money and the other signal must come from the same or adjacent caller lines.
+    pub money_rule_lines: usize,
     /// A signal at or above this is listed as a reason.
     pub reason_threshold: f32,
     /// Fewer workers than this answering a line -> UNSURE ("not enough data").
@@ -74,6 +77,7 @@ impl Settings {
             scam_streak: number(&get, "AGG_SCAM_STREAK", 2)?,
             money_rule: number(&get, "AGG_MONEY_RULE", 0.7)?,
             money_rule_other: number(&get, "AGG_MONEY_RULE_OTHER", 0.5)?,
+            money_rule_lines: number(&get, "AGG_MONEY_RULE_LINES", 6)?,
             reason_threshold: number(&get, "AGG_REASON_THRESHOLD", 0.5)?,
             min_quorum: number(&get, "AGG_MIN_QUORUM", 2)?,
             call_ttl: Duration::from_secs(number(&get, "AGG_CALL_TTL_SECS", 3600)?),
@@ -117,6 +121,9 @@ impl Settings {
         }
         if self.window_lines == 0 {
             return Err("AGG_WINDOW_LINES must be at least 1".into());
+        }
+        if self.money_rule_lines == 0 {
+            return Err("AGG_MONEY_RULE_LINES must be at least 1".into());
         }
         if self.scam_streak == 0 {
             return Err("AGG_SCAM_STREAK must be at least 1".into());
@@ -172,6 +179,7 @@ mod tests {
         assert_eq!(s.weights, [1.0 / 3.0; 3]);
         assert_eq!((s.scam_threshold, s.unsure_threshold), (0.6, 0.45));
         assert_eq!(s.window_lines, 6);
+        assert_eq!(s.money_rule_lines, 6); // = the window: the original money rule
         assert_eq!(s.warmup, Duration::from_secs(15));
         assert_eq!(s.warmup_override, 0.9);
         assert_eq!(s.scam_streak, 2);
@@ -202,6 +210,7 @@ mod tests {
         assert!(with(&[("AGG_WINDOW_LINES", "0")]).is_err());
         assert!(with(&[("AGG_MIN_QUORUM", "4")]).is_err());
         assert!(with(&[("AGG_SCAM_STREAK", "0")]).is_err());
+        assert!(with(&[("AGG_MONEY_RULE_LINES", "0")]).is_err());
         assert!(with(&[("AGG_BERT_WEIGHT", "1.5")]).is_err());
         assert!(with(&[("BERT_ADDR", "http://bert:50051"), ("BERT_TIMEOUT_MS", "0")]).is_err());
     }

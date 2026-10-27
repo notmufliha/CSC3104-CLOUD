@@ -25,8 +25,8 @@ from pathlib import Path
 
 DIR = Path(__file__).resolve().parent / "model"
 FILES = ["bert_config.json", "tokenizer.json", "model.onnx"]
-DEFAULT_URL = "https://huggingface.co/gouthamsaravanan/csc3104-scam-bert/resolve/a0ebfbc63c1591a889798d7828cd5c65e063c57a"
-DEFAULT_SHA256 = "de0f771d861a5029666d97736f9715bef097b52eead991c973a67855d82f0c1c"
+DEFAULT_URL = "https://huggingface.co/gouthamsaravanan/csc3104-scam-bert/resolve/8fe16111564b97977b5526f9ca75ac4e60539bc2"
+DEFAULT_SHA256 = "dfbb28873dff42d3ef93d2872de2084becf5216b234330ff99d430cdbfde27c4"
 
 
 def sha256(p):

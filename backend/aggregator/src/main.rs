@@ -176,6 +176,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                    window_lines = settings.window_lines, warmup_secs = settings.warmup.as_secs(),
                    warmup_override = %settings.warmup_override, scam_streak = settings.scam_streak,
                    money_rule = %settings.money_rule, money_rule_other = %settings.money_rule_other,
+                   money_rule_lines = settings.money_rule_lines,
                    reason_threshold = %settings.reason_threshold, min_quorum = settings.min_quorum,
                    call_ttl_secs = settings.call_ttl.as_secs(),
                    bert_addr = if settings.bert_addr.is_empty() { "(off)" } else { settings.bert_addr.as_str() },
