@@ -15,8 +15,11 @@ pub struct Settings {
     pub workers: Vec<(&'static str, &'static str, String)>,
     /// How long to wait for the workers (all three run at the same time).
     pub worker_timeout: Duration,
-    /// How long to wait for the aggregator. worker + aggregator budget = the 2 s promise to the phone.
+    /// How long to wait for the aggregator (Redis + the BERT second opinion when it is asked).
+    /// worker + aggregator budget = the 2 s promise to the phone: 1400 + 550 ms by default.
     pub aggregator_timeout: Duration,
+    /// Caller lines per call sent to the aggregator for BERT (this line included). 0 = never send text.
+    pub bert_context_lines: usize,
     /// Forget a call this long after its last utterance.
     pub call_ttl: Duration,
     /// Upper bound on calls kept in memory.
@@ -39,8 +42,9 @@ impl Settings {
                 &env::var("AGGREGATOR_ADDR").unwrap_or_else(|_| "http://aggregator:50052".to_string()),
             ),
             workers,
-            worker_timeout: Duration::from_millis(env_u64("WORKER_TIMEOUT_MS", 1700)),
-            aggregator_timeout: Duration::from_millis(env_u64("AGGREGATOR_TIMEOUT_MS", 300)),
+            worker_timeout: Duration::from_millis(env_u64("WORKER_TIMEOUT_MS", 1400)),
+            aggregator_timeout: Duration::from_millis(env_u64("AGGREGATOR_TIMEOUT_MS", 550)),
+            bert_context_lines: env_u64("BERT_CONTEXT_LINES", 5) as usize,
             call_ttl: Duration::from_secs(env_u64("CALL_TTL_SECS", 1800)),
             max_calls: env_u64("MAX_CALLS", 10_000) as usize,
         }

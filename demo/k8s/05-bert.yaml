@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bert
+  namespace: scamguard
+  labels: { app: bert }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: bert }
+  template:
+    metadata:
+      labels: { app: bert }
+    spec:
+      containers:
+        - name: bert
+          image: scam/bert:demo
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50051
+              name: grpc
+          env:
+            - name: PORT
+              value: "50051"
+            - name: ORT_THREADS
+              value: "2"
+            - name: GRPC_THREADS
+              value: "2"
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2"
+              memory: "1Gi"
+          # Model load takes a few seconds; startupProbe gives it room before readiness/liveness kick in.
+          startupProbe:
+            grpc: { port: 50051 }
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            grpc: { port: 50051 }
+            periodSeconds: 5
+          livenessProbe:
+            grpc: { port: 50051 }
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bert-hl
+  namespace: scamguard
+spec:
+  clusterIP: None
+  selector: { app: bert }
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: bert
+  namespace: scamguard
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: bert }
+  minReplicas: 1
+  maxReplicas: 2
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 30
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 50 }

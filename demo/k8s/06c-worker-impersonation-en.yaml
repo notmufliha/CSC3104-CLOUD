@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: impersonation-en
+  namespace: scamguard
+  labels: { app: impersonation-en, signal: impersonation, language: en }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: impersonation-en }
+  template:
+    metadata:
+      labels: { app: impersonation-en, signal: impersonation, language: en }
+    spec:
+      containers:
+        - name: impersonation-en
+          image: scam/impersonation_en:demo
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50051
+              name: grpc
+          env:
+            - name: PORT
+              value: "50051"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "384Mi"
+          readinessProbe:
+            grpc: { port: 50051 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            grpc: { port: 50051 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+# Headless: Envoy's cluster for this worker needs every pod IP (see make_envoy_config.py).
+apiVersion: v1
+kind: Service
+metadata:
+  name: impersonation-en-hl
+  namespace: scamguard
+  labels: { app: impersonation-en }
+spec:
+  clusterIP: None
+  selector: { app: impersonation-en }
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: impersonation-en
+  namespace: scamguard
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: impersonation-en }
+  minReplicas: 2
+  maxReplicas: 4
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 30
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 50 }

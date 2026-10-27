@@ -4,8 +4,9 @@ package scam_detect;
 
 // Shared message/service definitions used by:
 //  - gateway (Rust)    -> gRPC client of both services below
-//  - aggregator (Rust) -> implements AggregatorService
+//  - aggregator (Rust) -> implements AggregatorService; gRPC client of BertService
 //  - workers (Python)  -> each implements WorkerService
+//  - bert (Python)     -> implements BertService (the second opinion, see below)
 //
 // Each worker specializes in one (signal, language) pair, e.g.
 // urgency_en, money_zh, impersonation_en, etc. The gateway decides which
@@ -17,6 +18,25 @@ service WorkerService {
 // Takes the fanned-out worker scores and produces a final verdict.
 service AggregatorService {
   rpc Aggregate(AggregateRequest) returns (AggregateResponse);
+}
+
+// The BERT second opinion (backend/workers/bert): one multilingual model that reads the call's last few
+// caller lines together and returns P(scam). Slower than the workers, so the aggregator asks it only when the
+// fast vote is unsure or alarmed (or when too few workers answered). This is the "cascade".
+service BertService {
+  rpc ScoreContext(ContextRequest) returns (BertScore);
+}
+
+message ContextRequest {
+  // The call's most recent caller lines, oldest first, this line last (the gateway keeps up to 5).
+  repeated string lines = 1;
+  string language = 2;
+}
+
+message BertScore {
+  // Calibrated probability in [0.0, 1.0] that the conversation so far is a scam.
+  float score = 1;
+  string model_version = 2;
 }
 
 message TranscriptRequest {
@@ -47,6 +67,10 @@ message AggregateRequest {
   // Milliseconds since the call started, as the phone measured it. 0 = use the aggregator's clock.
   // Lets a scripted replay say "this line was spoken 22 s into the call".
   int64 call_time_ms = 4;
+  // The call's most recent caller lines, oldest first, this line last (the gateway keeps them in RAM, up to
+  // BERT_CONTEXT_LINES). The aggregator only forwards them to BertService when it wants a second opinion; it
+  // never stores or logs them (Redis stays text-free). Empty = no second opinion possible.
+  repeated string context = 5;
 }
 
 // Why the verdict was given: one entry per signal that fired, strongest first.
@@ -78,4 +102,11 @@ message AggregateResponse {
   bool quorum_met = 7;
   // Caller lines seen for this call so far.
   uint32 caller_lines = 8;
+  // The workers' weighted vote alone, before BERT. combined_score is what the verdict was decided on:
+  // equal to fast_score when BERT was not asked or did not answer.
+  float fast_score = 9;
+  // BERT's score when it was asked and answered in time.
+  optional float bert_score = 10;
+  // "ok" | "timeout" | "error" (asked but no score) | "skipped" (not needed) | "off" (BERT_ADDR not set)
+  string bert_status = 11;
 }

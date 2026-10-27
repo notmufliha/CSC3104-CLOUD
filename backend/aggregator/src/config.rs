@@ -31,12 +31,26 @@ pub struct Settings {
     /// Money at or above this while another signal is at or above `money_rule_other` -> SCAM immediately.
     pub money_rule: f32,
     pub money_rule_other: f32,
+    /// ...both within this many of the most recent caller lines. Default 6 = the whole window (the original
+    /// rule); 2 = money and the other signal must come from the same or adjacent caller lines.
+    pub money_rule_lines: usize,
     /// A signal at or above this is listed as a reason.
     pub reason_threshold: f32,
     /// Fewer workers than this answering a line -> UNSURE ("not enough data").
     pub min_quorum: usize,
     /// A call's memory is deleted this long after its last update.
     pub call_ttl: Duration,
+    /// BERT second opinion (BertService) address; empty = off (the aggregator then works exactly as before).
+    pub bert_addr: String,
+    /// How long to wait for BERT. The gateway's AGGREGATOR_TIMEOUT_MS must leave room for this + Redis.
+    pub bert_timeout: Duration,
+    /// final = (1 - w) * fast vote + w * BERT, when BERT answered. 0.5 = plain average (task 7.4).
+    pub bert_weight: f32,
+    /// BERT below this cancels the instant money rule (the call then goes through the normal 2-in-a-row path
+    /// with the averaged score); would catch "This is DBS, your card bill is due". Default 0 = OFF: the team
+    /// tunes for recall (F2), so a second opinion may not cancel strong evidence until the evaluation (7.5)
+    /// shows it is safe to (try 0.1-0.2 there).
+    pub bert_veto: f32,
 }
 
 impl Settings {
@@ -63,9 +77,14 @@ impl Settings {
             scam_streak: number(&get, "AGG_SCAM_STREAK", 2)?,
             money_rule: number(&get, "AGG_MONEY_RULE", 0.7)?,
             money_rule_other: number(&get, "AGG_MONEY_RULE_OTHER", 0.5)?,
+            money_rule_lines: number(&get, "AGG_MONEY_RULE_LINES", 6)?,
             reason_threshold: number(&get, "AGG_REASON_THRESHOLD", 0.5)?,
             min_quorum: number(&get, "AGG_MIN_QUORUM", 2)?,
             call_ttl: Duration::from_secs(number(&get, "AGG_CALL_TTL_SECS", 3600)?),
+            bert_addr: text(&get, "BERT_ADDR", ""),
+            bert_timeout: Duration::from_millis(number(&get, "BERT_TIMEOUT_MS", 300)?),
+            bert_weight: number(&get, "AGG_BERT_WEIGHT", 0.5)?,
+            bert_veto: number(&get, "AGG_BERT_VETO", 0.0)?,
         };
         s.validate()?;
         Ok(s)
@@ -87,6 +106,8 @@ impl Settings {
             ("AGG_MONEY_RULE", self.money_rule),
             ("AGG_MONEY_RULE_OTHER", self.money_rule_other),
             ("AGG_REASON_THRESHOLD", self.reason_threshold),
+            ("AGG_BERT_WEIGHT", self.bert_weight),
+            ("AGG_BERT_VETO", self.bert_veto),
         ] {
             if !(0.0..=1.0).contains(&v) {
                 return Err(format!("{name} must be between 0 and 1, got {v}"));
@@ -101,6 +122,9 @@ impl Settings {
         if self.window_lines == 0 {
             return Err("AGG_WINDOW_LINES must be at least 1".into());
         }
+        if self.money_rule_lines == 0 {
+            return Err("AGG_MONEY_RULE_LINES must be at least 1".into());
+        }
         if self.scam_streak == 0 {
             return Err("AGG_SCAM_STREAK must be at least 1".into());
         }
@@ -109,6 +133,9 @@ impl Settings {
         }
         if self.call_ttl.is_zero() {
             return Err("AGG_CALL_TTL_SECS must be at least 1".into());
+        }
+        if !self.bert_addr.is_empty() && self.bert_timeout.is_zero() {
+            return Err("BERT_TIMEOUT_MS must be at least 1 when BERT_ADDR is set".into());
         }
         Ok(())
     }
@@ -152,6 +179,7 @@ mod tests {
         assert_eq!(s.weights, [1.0 / 3.0; 3]);
         assert_eq!((s.scam_threshold, s.unsure_threshold), (0.6, 0.45));
         assert_eq!(s.window_lines, 6);
+        assert_eq!(s.money_rule_lines, 6); // = the window: the original money rule
         assert_eq!(s.warmup, Duration::from_secs(15));
         assert_eq!(s.warmup_override, 0.9);
         assert_eq!(s.scam_streak, 2);
@@ -159,6 +187,9 @@ mod tests {
         assert_eq!(s.min_quorum, 2);
         assert_eq!(s.call_ttl, Duration::from_secs(3600));
         assert_eq!(s.redis_url, "redis://redis:6379");
+        assert_eq!(s.bert_addr, ""); // BERT off unless BERT_ADDR is set
+        assert_eq!(s.bert_timeout, Duration::from_millis(300));
+        assert_eq!((s.bert_weight, s.bert_veto), (0.5, 0.0)); // average; veto off
     }
 
     #[test]
@@ -179,6 +210,9 @@ mod tests {
         assert!(with(&[("AGG_WINDOW_LINES", "0")]).is_err());
         assert!(with(&[("AGG_MIN_QUORUM", "4")]).is_err());
         assert!(with(&[("AGG_SCAM_STREAK", "0")]).is_err());
+        assert!(with(&[("AGG_MONEY_RULE_LINES", "0")]).is_err());
+        assert!(with(&[("AGG_BERT_WEIGHT", "1.5")]).is_err());
+        assert!(with(&[("BERT_ADDR", "http://bert:50051"), ("BERT_TIMEOUT_MS", "0")]).is_err());
     }
 
     #[test]

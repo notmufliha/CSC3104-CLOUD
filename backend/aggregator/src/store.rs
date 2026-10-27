@@ -4,8 +4,12 @@
 //!   call:<call_id>     hash: started_at_ms, window (JSON, last N lines' scores), streak, red, caller_lines,
 //!                      verdict, combined, version. Deleted `call_ttl` after its last update.
 //!   calllog:<call_id>  list: one JSON verdict-log entry per caller line {call_id, seq, time_ms, verdict,
-//!                      combined, rule, scores, recent}. Never transcript text (the aggregator never sees any).
+//!                      combined, fast, bert, bert_status, rule, scores, recent}. Never transcript text (the
+//!                      call's recent lines pass through the aggregator to BERT but are never stored).
 //!                      Same expiry; capped at LOG_MAX entries.
+//!
+//! BERT: after reading the call, the update asks BERT (once; a retry reuses the answer) if
+//! policy::wants_second_opinion says the answer depends on it.
 //!
 //! Two copies updating the same call at once: each update reads the call, runs policy::decide, then saves with
 //! a Lua script that only writes if `version` is still what was read (and bumps it). The loser re-reads and
@@ -17,6 +21,7 @@ use std::time::Duration;
 use redis::aio::ConnectionManager;
 use redis::Script;
 
+use crate::bert::SecondOpinion;
 use crate::config::{Settings, SIGNALS};
 use crate::policy::{self, CallState, Decision, LineScores, Verdict};
 
@@ -100,7 +105,9 @@ impl Store {
         Ok(())
     }
 
-    /// Load the call, apply this line with policy::decide, save. Returns the decision.
+    /// Load the call, ask BERT if the answer depends on it, apply this line with policy::decide, save.
+    /// Returns the decision.
+    #[allow(clippy::too_many_arguments)]
     pub async fn apply(
         &self,
         call_id: &str,
@@ -109,6 +116,7 @@ impl Store {
         now_ms: i64,
         call_time_ms: i64,
         cfg: &Settings,
+        second: &mut SecondOpinion<'_>,
     ) -> Result<Decision, StoreError> {
         let mut con = self.con.clone();
         let (call_key, log_key) = (format!("call:{call_id}"), format!("calllog:{call_id}"));
@@ -118,8 +126,13 @@ impl Store {
             }
             let stored: HashMap<String, String> = redis::cmd("HGETALL").arg(&call_key).query_async(&mut con).await?;
             let (state, version) = from_hash(&stored)?;
-            let (state, decision) = policy::decide(state, line, now_ms, call_time_ms, cfg);
-            let entry = log_entry(call_id, seq, now_ms, &line, &decision);
+            let bert = if policy::wants_second_opinion(&state, line, now_ms, call_time_ms, cfg) {
+                second.ask().await
+            } else {
+                None
+            };
+            let (state, decision) = policy::decide(state, line, bert, now_ms, call_time_ms, cfg);
+            let entry = log_entry(call_id, seq, now_ms, &line, &decision, second.status());
 
             let mut invocation = self.save.key(&call_key);
             invocation
@@ -188,8 +201,8 @@ fn clean(v: f32) -> f64 {
     v.to_string().parse().unwrap_or(f64::from(v))
 }
 
-/// One verdict-log entry (3.8): ids, time, verdict and scores. Never text.
-pub fn log_entry(call_id: &str, seq: u64, now_ms: i64, line: &LineScores, d: &Decision) -> String {
+/// One verdict-log entry (3.8): ids, time, verdict and scores (BERT's too). Never text.
+pub fn log_entry(call_id: &str, seq: u64, now_ms: i64, line: &LineScores, d: &Decision, bert_status: &str) -> String {
     let named = |scores: &LineScores| -> serde_json::Map<String, serde_json::Value> {
         SIGNALS.iter().zip(scores).map(|(s, v)| (s.to_string(), serde_json::json!(v.map(clean)))).collect()
     };
@@ -199,6 +212,9 @@ pub fn log_entry(call_id: &str, seq: u64, now_ms: i64, line: &LineScores, d: &De
         "time_ms": now_ms,
         "verdict": d.verdict.as_str(),
         "combined": clean(d.combined),
+        "fast": clean(d.fast),
+        "bert": d.bert.map(clean),
+        "bert_status": bert_status,
         "rule": d.rule,
         "scores": named(line),
         "recent": named(&d.recent),
@@ -239,13 +255,18 @@ mod tests {
     fn log_entry_has_clean_numbers_and_no_text() {
         let cfg = crate::config::Settings::from_lookup(|_| None).unwrap();
         let line = [Some(0.6), Some(0.95), None];
-        let d = crate::policy::decide_one_shot(line, &cfg);
-        let entry: serde_json::Value = serde_json::from_str(&log_entry("c1", 3, 42, &line, &d)).unwrap();
+        let d = crate::policy::decide_one_shot(line, None, &cfg);
+        let entry: serde_json::Value = serde_json::from_str(&log_entry("c1", 3, 42, &line, &d, "skipped")).unwrap();
         assert_eq!(entry["scores"]["urgency"], serde_json::json!(0.6));
         assert_eq!(entry["scores"]["impersonation"], serde_json::Value::Null);
         assert_eq!(entry["verdict"], "SCAM");
         let keys: Vec<_> = entry.as_object().unwrap().keys().cloned().collect();
-        assert_eq!(keys, ["call_id", "combined", "recent", "rule", "scores", "seq", "time_ms", "verdict"]);
+        assert_eq!(entry["bert"], serde_json::Value::Null);
+        assert_eq!(entry["bert_status"], "skipped");
+        assert_eq!(
+            keys,
+            ["bert", "bert_status", "call_id", "combined", "fast", "recent", "rule", "scores", "seq", "time_ms", "verdict"]
+        );
     }
 
     #[test]
