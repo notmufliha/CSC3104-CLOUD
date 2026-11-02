@@ -119,10 +119,12 @@ Set the gateway URL in **Settings**, then press **Test connection**. "Connected:
 |---|---|---|
 | Emulator + Docker Compose | `http://10.0.2.2:8080/` (default) | `docker compose up --build` |
 | Real phone + Docker Compose | `http://<laptop Wi-Fi IP>:8080/` | Same Wi-Fi; allow port 8080 through the firewall |
-| Emulator + minikube | `http://10.0.2.2:8080/` | `kubectl -n scamguard port-forward svc/gateway 8080:8080` |
-| Real phone + minikube | `http://<laptop Wi-Fi IP>:8080/` | `kubectl -n scamguard port-forward --address 0.0.0.0 svc/gateway 8080:8080` (keep it open) |
+| **Emulator + minikube (HTTPS, recommended)** | `https://10.0.2.2:8443/api/` ("Emulator (HTTPS)" preset) | `demo/expose.ps1` / `.sh` (keep it open) |
+| **Real phone + minikube (HTTPS, recommended)** | `https://<laptop Wi-Fi IP>:8443/api/` (`expose` prints it) | `demo/expose.ps1` / `.sh`; allow port 8443 through the firewall |
+| Emulator + minikube (HTTP fallback) | `http://10.0.2.2:8080/` | `demo/port-forward.ps1` / `.sh` |
 
 - `10.0.2.2` is the emulator's name for the laptop.
+- **HTTPS addresses (Workstream E):** install `demo/tls/ca.crt` on the device once first; see [demo/STABLE_ADDRESS.md](../demo/STABLE_ADDRESS.md#install-the-demo-ca-on-a-device-once-per-device). The HTTPS address goes through the Kubernetes Ingress, so it stays the same when the cluster or the gateway pod restarts. Settings shows "Not encrypted" in red for any `http://` address.
 - Venue Wi-Fi often blocks phone-to-laptop traffic. Use a phone hotspot, or fall back to the emulator.
 
 **Find the laptop's IP**

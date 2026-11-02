@@ -40,6 +40,9 @@ data/**/raw/
 __pycache__/
 .venv312
 
+# Workstream E: demo CA + gateway certificate and their PRIVATE KEYS (made by demo/make_tls.py)
+demo/tls/
+
 # Workstream 6 replay results (generated)
 tools/testing/results_*.csv
 
