@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Workstream E.4. The demo gateway is reached over HTTPS through the Kubernetes Ingress
+  (https://<laptop IP>:8443/api/), with a certificate signed by our own "ScamGuard demo CA"
+  (demo/make_tls.py). Debug builds trust CAs the user installed on the device, so installing
+  demo/tls/ca.crt once in Android Settings is enough; no rebuild per laptop. Release builds
+  trust only the normal system CAs (e.g. Let's Encrypt on a cloud VM).
+
+  Cleartext stays allowed for the plain-http fallback (docker compose, port-forward.sh).
+  The Settings screen shows a warning whenever the saved address is http://.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>

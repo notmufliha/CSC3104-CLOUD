@@ -72,6 +72,9 @@ if ($already) {
 minikube start --driver=docker --cpus=$mkCpus --memory=$mkMem --disk-size=30g
 if ($LASTEXITCODE -ne 0) { Die "minikube start failed. If it mentions memory, raise Docker Desktop's memory limit (Settings > Resources) and retry." }
 minikube addons enable metrics-server | Out-Null
+# Workstream E: ingress-nginx, the one stable entry point for the phone (demo/STABLE_ADDRESS.md).
+minikube addons enable ingress | Out-Null
+if ($LASTEXITCODE -ne 0) { Die "minikube addons enable ingress failed. Try 'minikube addons enable ingress' by hand to see why." }
 
 # ---------------------------------------------------------------------------------- 4. build images
 # Built on the HOST's Docker, then copied into minikube with `minikube image load`. (An earlier version
@@ -119,7 +122,28 @@ python demo/make_envoy_config.py --docker
 python demo/make_loadgen.py
 python demo/make_manifests.py
 
-# ------------------------------------------------------------------------------------------ 6. apply
+# ------------------------------------------------------------------------- 6. ingress + HTTPS (Workstream E)
+# Before `kubectl apply`: the ingress addon has an admission webhook that rejects every Ingress until the
+# controller is up, so 08-ingress.yaml would fail if applied too early.
+Say "Ingress controller + HTTPS certificate (demo/tls/, reused if it already exists)"
+kubectl rollout status deployment/ingress-nginx-controller -n ingress-nginx --timeout=$RolloutTimeout
+if ($LASTEXITCODE -ne 0) { Die "ingress-nginx controller did not start. Check: kubectl get pods -n ingress-nginx" }
+python demo/make_tls.py --apply
+if ($LASTEXITCODE -ne 0) { Die "make_tls.py failed -- see the error above." }
+# A phone that connects by IP address sends no hostname (SNI), so nginx would show its own fake certificate.
+# Make gateway-tls nginx's default certificate. Re-checked on every run: `minikube start` re-applies the
+# addon and drops the extra argument.
+$ctlArgs = kubectl get deployment ingress-nginx-controller -n ingress-nginx -o jsonpath='{.spec.template.spec.containers[0].args}'
+if ($ctlArgs -notmatch 'default-ssl-certificate') {
+    $patch = '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--default-ssl-certificate=' + $Namespace + '/gateway-tls"}]'
+    $patchFile = Join-Path $env:TEMP "scamguard-ingress-patch.json"
+    [IO.File]::WriteAllText($patchFile, $patch)   # a file, not an argument: PowerShell 5.1 mangles quotes passed to kubectl
+    kubectl patch deployment ingress-nginx-controller -n ingress-nginx --type=json --patch-file $patchFile
+    Remove-Item $patchFile
+    kubectl rollout status deployment/ingress-nginx-controller -n ingress-nginx --timeout=$RolloutTimeout
+}
+
+# ------------------------------------------------------------------------------------------ 7. apply
 Say "Applying manifests to the '$Namespace' namespace"
 kubectl apply -f demo/k8s/
 
@@ -143,8 +167,10 @@ Say "Done"
 kubectl get pods,hpa -n $Namespace
 Write-Host ""
 Write-Host "Next steps:"
-Write-Host "  1. Port-forward the gateway:   .\demo\port-forward.ps1"
-Write-Host "  2. In Android Studio, run the app on an emulator (default URL http://10.0.2.2:8080/ already works)."
+Write-Host "  1. Expose the Ingress (HTTPS):  .\demo\expose.ps1     (prints the address to save in the app)"
+Write-Host "     Plain-HTTP fallback:        .\demo\port-forward.ps1"
+Write-Host "  2. In Android Studio, run the app; Settings -> 'Emulator (HTTPS)' preset -> Test connection."
+Write-Host "     First time only: install demo\tls\ca.crt on the emulator/phone (demo\STABLE_ADDRESS.md)."
 Write-Host "  3. Reference run:              python demo\tools\demo_flow.py"
 Write-Host "  4. Load test + spread:         python demo\tools\load_sim.py   then   .\demo\spread.ps1"
 Write-Host "  5. Live view for the stage:    .\demo\watch.ps1"

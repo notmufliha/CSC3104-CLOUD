@@ -76,12 +76,18 @@ it reuses everything already built, so this is fast.
 
 Then, in **3 separate terminals**:
 
-1. **Port-forward** (leave this running the whole time):
+1. **Expose the Ingress** (leave this running the whole time):
    ```bash
-   ./demo/port-forward.sh        # or .\demo\port-forward.ps1
+   ./demo/expose.sh        # or .\demo\expose.ps1
    ```
-   This prints the emulator URL and your laptop's Wi-Fi IP (for a real phone), and keeps the connection
-   to the gateway alive — if the gateway pod ever restarts, this script notices and reconnects on its own.
+   This prints the HTTPS address to save in the app (`https://10.0.2.2:8443/api/` for the emulator,
+   `https://<Wi-Fi IP>:8443/api/` for a phone). It goes through the Ingress, not a gateway pod, so the address
+   keeps working when the gateway pod or the whole cluster restarts. First time only, install
+   `demo/tls/ca.crt` on the device. Details, diagram and checks: [`demo/STABLE_ADDRESS.md`](STABLE_ADDRESS.md)
+   (Workstream E). Run `python demo/tools/address_check.py` to confirm it answers over HTTPS.
+
+   **Plain-HTTP fallback** (the steps below use it): `./demo/port-forward.sh` (or `.ps1`) forwards
+   `http://…:8080` straight to one gateway pod. If that pod restarts, the script reconnects on its own.
 
 2. **Check it's alive**:
    ```bash

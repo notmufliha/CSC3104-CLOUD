@@ -31,6 +31,8 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
+import javax.net.ssl.SSLHandshakeException
+import javax.net.ssl.SSLPeerUnverifiedException
 
 /**
  * One chat bubble. flags = signals this line scored high on; pending = waiting for the gateway;
@@ -273,11 +275,25 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     /** GET /healthz on the given URL; returns a short message for the Settings screen. */
     suspend fun testConnection(url: String): String = try {
         val resp = GatewayClient.get(url).health()
-        if (resp.isSuccessful) "Connected: ${resp.body()?.get("status") ?: "ok"}" else "Server answered ${resp.code()}"
+        val status = resp.body()?.get("status")
+        when {
+            !resp.isSuccessful -> "Server answered ${resp.code()}" +
+                if (resp.code() == 404) ": check the address (Kubernetes HTTPS addresses end in /api/)" else ""
+            // Only the gateway's own JSON counts. A proxy in front of it (e.g. nginx's built-in /healthz)
+            // can answer 200 with an empty body even when the gateway is down.
+            status == "ok" -> "Connected: ok"
+            else -> "Something answered, but not the ScamGuard gateway: check the address"
+        }
     } catch (e: CancellationException) {
         throw e
     } catch (e: IllegalArgumentException) {
         "Not a valid address"
+    } catch (e: SSLPeerUnverifiedException) {
+        // Connected, but the certificate doesn't list this address (e.g. the laptop moved to a new Wi-Fi).
+        "Certificate doesn't cover this address: re-run demo/expose script on the laptop"
+    } catch (e: SSLHandshakeException) {
+        // Usually: the demo CA isn't installed on this device, so the certificate isn't trusted.
+        "Certificate not trusted: install demo/tls/ca.crt on this device (Settings > Security > Encryption & credentials)"
     } catch (e: Exception) {
         if (Build.VERSION.SDK_INT >= 37 &&
             ContextCompat.checkSelfPermission(getApplication(), LOCAL_NETWORK_PERMISSION) != PackageManager.PERMISSION_GRANTED

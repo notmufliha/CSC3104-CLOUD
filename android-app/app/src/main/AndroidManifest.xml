@@ -7,10 +7,11 @@
     <!-- Android 17 (API 37) blocks private addresses (10.0.2.2, the laptop's Wi-Fi IP) without this runtime permission. -->
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
 
-    <!-- usesCleartextTraffic: the demo gateway is plain http on the laptop. Turn off for a real release. -->
+    <!-- networkSecurityConfig: HTTPS via the Ingress with the demo CA (debug builds), plus the plain-http
+         fallback for docker compose. See res/xml/network_security_config.xml. -->
     <application
         android:allowBackup="false"
-        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
