@@ -48,6 +48,8 @@ GATEWAY_REPLICAS = 1      # MUST stay 1: the gateway keeps "seq already seen" + 
                           # its own process RAM (CALL_TTL_SECS/MAX_CALLS, backend/gateway/src/calls.rs).
                           # A second replica would not share that memory and duplicate/resend handling
                           # would silently break. (DEMO_TASK.md section 2.)
+INGRESS_HOST = "scamguard.test"      # must match HOSTNAME in demo/make_tls.py
+INGRESS_TLS_SECRET = "gateway-tls"   # made by `python demo/make_tls.py --apply` (up.sh/up.ps1 run it)
 ENVOY_REPLICAS = 1
 REDIS_REPLICAS = 1
 BERT_HPA_MIN = 1
@@ -592,6 +594,59 @@ spec:
 """
 
 
+def ingress_yaml() -> str:
+    # Workstream E: the ONE way in from outside the cluster. Only the gateway is listed; the workers, BERT,
+    # aggregator, Envoy and Redis Services stay ClusterIP (internal names only, no route from outside).
+    # The phone's saved address points at the Ingress controller, which follows the gateway Service's
+    # endpoints, so deleting/restarting the gateway pod (new pod IP) never changes the phone's address.
+    #
+    # TLS (E.4): the certificate is the gateway-tls Secret made by demo/make_tls.py. The phone usually
+    # connects by IP address, which sends no hostname (SNI), so nginx would show its own fake certificate;
+    # up.sh/up.ps1 therefore also make gateway-tls the controller's --default-ssl-certificate.
+    # The hostless rule accepts any address (laptop IP, 10.0.2.2, 127.0.0.1); the named rule is for
+    # https://scamguard.test if you map that name in a hosts file. Same manifest works on k3s with
+    # ingress-nginx installed (the cloud-VM option in demo/STABLE_ADDRESS.md).
+    #
+    # Why the /api/ prefix: a request by IP lands on nginx's catch-all server, which has its OWN hard-coded
+    # `location /healthz { return 200; }` (nginx's load-balancer health check). Without a prefix, the
+    # app's "Test connection" got that empty 200 from nginx instead of the gateway's answer, even with the
+    # gateway down (found by testing). /api/healthz -> /healthz on the gateway can't be shadowed.
+    return f"""apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gateway
+  namespace: {NAMESPACE}
+  annotations:
+    # /api/<anything> -> /<anything> on the gateway (e.g. /api/v1/utterance -> /v1/utterance).
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    # Every answer must arrive within 2 s; fail fast instead of nginx's 60 s default if the gateway hangs.
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "3"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "5"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "5"
+    nginx.ingress.kubernetes.io/proxy-body-size: "64k"   # one transcript line is at most 10,000 characters
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [{INGRESS_HOST}]
+      secretName: {INGRESS_TLS_SECRET}
+  rules:
+    - host: {INGRESS_HOST}
+      http:
+        paths:
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service: {{ name: gateway, port: {{ number: 8080 }} }}
+    - http:
+        paths:
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service: {{ name: gateway, port: {{ number: 8080 }} }}
+"""
+
+
 def write(name: str, content: str) -> None:
     path = OUT_DIR / name
     path.write_text(content, encoding="utf-8")
@@ -614,7 +669,8 @@ def main() -> int:
     for i, (signal, lang) in enumerate(WORKERS):
         write(f"06{chr(ord('a') + i)}-worker-{signal}-{lang}.yaml", worker_yaml(signal, lang))
     write("07-gateway.yaml", gateway_yaml())
-    print(f"\n{2 + 1 + 1 + 1 + 1 + len(WORKERS) + 1} manifest files written to {OUT_DIR}")
+    write("08-ingress.yaml", ingress_yaml())
+    print(f"\n{2 + 1 + 1 + 1 + 1 + len(WORKERS) + 1 + 1} manifest files written to {OUT_DIR}")
     print("NOTE: loadgen (demo/k8s/loadgen/loadgen.yaml) is written separately -- see demo/tools/load_sim.py")
     return 0
 

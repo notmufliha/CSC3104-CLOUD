@@ -8,8 +8,12 @@ in this repo** — if a diagram or slide shows Kafka, it is wrong; remove it.
 ## Components, ports, who calls whom
 
 ```
-Android app (emulator/phone)
-        |  HTTP/JSON  POST /v1/utterance, GET /healthz
+Android app (emulator/phone)   saved address: https://<laptop IP>:8443/api/  (demo/expose.ps1/.sh)
+        |  HTTPS  POST /v1/utterance, GET /healthz
+        v
+   ingress-nginx (Ingress "gateway", TLS ends here; the ONLY thing reachable from outside -- Workstream E,
+        |         see demo/STABLE_ADDRESS.md)
+        |  HTTP, cluster network
         v
    gateway (Rust, 1 replica, ClusterIP Service "gateway:8080")
         |  gRPC, through Envoy -----------------------------+

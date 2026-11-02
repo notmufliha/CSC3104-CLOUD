@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gateway
+  namespace: scamguard
+  annotations:
+    # /api/<anything> -> /<anything> on the gateway (e.g. /api/v1/utterance -> /v1/utterance).
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    # Every answer must arrive within 2 s; fail fast instead of nginx's 60 s default if the gateway hangs.
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "3"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "5"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "5"
+    nginx.ingress.kubernetes.io/proxy-body-size: "64k"   # one transcript line is at most 10,000 characters
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [scamguard.test]
+      secretName: gateway-tls
+  rules:
+    - host: scamguard.test
+      http:
+        paths:
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service: { name: gateway, port: { number: 8080 } }
+    - http:
+        paths:
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service: { name: gateway, port: { number: 8080 } }

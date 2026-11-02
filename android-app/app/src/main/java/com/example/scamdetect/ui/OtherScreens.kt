@@ -319,14 +319,26 @@ fun SettingsScreen(
             label = { Text("Gateway URL") }, singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
+        val encrypted = url.trim().startsWith("https://", ignoreCase = true)
+        Text(
+            if (encrypted) "Encrypted (HTTPS)" else "Not encrypted: transcripts are sent as plain text",
+            color = if (encrypted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.labelMedium
+        )
         Text("Presets", fontWeight = FontWeight.SemiBold)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { url = "http://10.0.2.2:8080/" }) { Text("Emulator") }
-            OutlinedButton(onClick = { url = "http://192.168.1.23:8080/" }) { Text("Phone (laptop IP)") }
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(onClick = { url = "https://10.0.2.2:8443/api/" }) { Text("Emulator (HTTPS)") }
+            OutlinedButton(onClick = { url = "https://192.168.1.23:8443/api/" }) { Text("Phone (HTTPS)") }
+            OutlinedButton(onClick = { url = "http://10.0.2.2:8080/" }) { Text("Emulator (HTTP)") }
         }
         Text(
-            "Emulator: 10.0.2.2 is your laptop. Real phone: use the laptop's Wi-Fi IP. " +
-                "Kubernetes: run kubectl -n scamguard port-forward --address 0.0.0.0 svc/gateway 8080:8080 first.",
+            "Kubernetes: run demo/expose on the laptop; it prints the address to save here " +
+                "(https://<laptop Wi-Fi IP>:8443/api/). It stays the same when the cluster or the gateway restarts. " +
+                "Emulator: 10.0.2.2 is your laptop. First time only: install demo/tls/ca.crt on this device. " +
+                "HTTP: docker compose or demo/port-forward.",
             style = MaterialTheme.typography.bodySmall
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
