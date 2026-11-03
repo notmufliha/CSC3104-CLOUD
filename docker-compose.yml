@@ -68,6 +68,8 @@ services:
       REDIS_URL: "redis://redis:6379"
       # Decision rules (see README "Aggregator timing policy"). These are the defaults; change and
       # `docker compose up -d aggregator` to tune without rebuilding.
+      # fast | bert_only | cascade (Workstream F). Try: AGG_MODE=bert_only docker compose up -d aggregator
+      AGG_MODE: "${AGG_MODE-cascade}"
       AGG_W_URGENCY: "0.3333"
       AGG_W_MONEY: "0.3333"
       AGG_W_IMPERSONATION: "0.3333"
