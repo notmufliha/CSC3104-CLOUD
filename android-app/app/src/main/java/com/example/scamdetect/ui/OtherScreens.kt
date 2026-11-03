@@ -34,6 +34,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.example.scamdetect.data.CallScript
 import com.example.scamdetect.data.HistoryEntry
+import com.example.scamdetect.data.ReportLine
 import com.example.scamdetect.logic.Risk
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -241,9 +243,31 @@ fun PasteTextScreen(onCheck: (String) -> Unit, onBack: () -> Unit) {
 
 /** Uses state.level, the same value as the in-call bar and the saved history row. */
 @Composable
-fun SummaryScreen(state: CallUiState, onDone: () -> Unit) {
+fun SummaryScreen(
+    state: CallUiState,
+    reportPreview: () -> List<ReportLine>,
+    onReport: suspend (kind: String) -> String,
+    onDone: () -> Unit,
+) {
     val context = LocalContext.current
     val level = state.level
+    // H.3: which button opened the consent screen ("scam" / "fine"), and the result once sent.
+    var asking by remember { mutableStateOf<String?>(null) }
+    var reportResult by remember { mutableStateOf<String?>(null) }
+    var sending by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    asking?.let { kind ->
+        ConsentDialog(
+            kind = kind,
+            lines = remember(kind) { reportPreview() },
+            onShare = {
+                asking = null
+                sending = true
+                scope.launch { reportResult = onReport(kind); sending = false }
+            },
+            onCancel = { asking = null; reportResult = "Nothing was shared." },
+        )
+    }
     Page("Call summary") {
         Text(
             levelLabel(level).uppercase(),
@@ -268,8 +292,49 @@ fun SummaryScreen(state: CallUiState, onDone: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = ScamRed, contentColor = Color.White)
         ) { Text("Report to ScamShield") }
+        // H.3: help ScamGuard learn. Disabled once sent, so one call is shared at most once.
+        val sent = reportResult?.startsWith("Thank you") == true
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = { asking = "scam" }, enabled = !sent && !sending, modifier = Modifier.weight(1f)) {
+                Text("This was a scam")
+            }
+            OutlinedButton(onClick = { asking = "fine" }, enabled = !sent && !sending, modifier = Modifier.weight(1f)) {
+                Text("This was fine")
+            }
+        }
+        if (sending) Text("Sending…", style = MaterialTheme.typography.bodySmall)
+        reportResult?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         OutlinedButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text("Done") }
     }
+}
+
+/** Shows exactly what would leave the phone before anything is sent. Nothing is sent on "Don't share". */
+@Composable
+private fun ConsentDialog(kind: String, lines: List<ReportLine>, onShare: () -> Unit, onCancel: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text(if (kind == "scam") "Share this scam call?" else "Share this call as a false alarm?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Helps ScamGuard learn new scams. A team member reads it, labels it, and it may be used to " +
+                        "retrain the detectors.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text("Sent: the caller's ${lines.size} lines below, with numbers, amounts, links and names removed.",
+                    style = MaterialTheme.typography.bodySmall)
+                Text("Not sent: your phone number, the caller's number, anything you said.",
+                    style = MaterialTheme.typography.bodySmall)
+                Text("Deleted after 30 days.", style = MaterialTheme.typography.bodySmall)
+                HorizontalDivider()
+                LazyColumn(Modifier.height(180.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(lines, key = { it.seq }) { Text("“${it.text}”", style = MaterialTheme.typography.bodySmall) }
+                }
+            }
+        },
+        confirmButton = { Button(onClick = onShare, enabled = lines.isNotEmpty()) { Text("Share") } },
+        dismissButton = { TextButton(onClick = onCancel) { Text("Don't share") } },
+    )
 }
 
 // ---------------------------------------------------------------- 4.7 History

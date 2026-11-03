@@ -1,0 +1,15 @@
+# The context is the repo root; send only what the retrain image copies.
+*
+!data/urgency_en/final_cleaned_dataset.csv
+!data/urgency_en/silver_relabel.csv
+!data/urgency_en/augment_review_flips.csv
+!data/urgency_en/augment_urgency_en.csv
+!backend/workers/urgency_en/train.py
+!backend/workers/urgency_en/text_norm.py
+!backend/workers/urgency_en/predict.py
+!backend/workers/urgency_en/eval
+!backend/workers/urgency_en/checks
+!backend/workers/urgency_en/training
+!backend/workers/urgency_en/model/urgency_en_v4.joblib
+!backend/retrain/retrain_job.py
+!backend/retrain/release_check.py

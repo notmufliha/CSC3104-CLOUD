@@ -33,6 +33,8 @@ services:
       AGGREGATOR_TIMEOUT_MS: "550"
       # caller lines per call sent along for BERT (0 = never send text to the aggregator)
       BERT_CONTEXT_LINES: "5"
+      # Workstream H: POST /v1/report goes to the review service (the phone never reaches it directly)
+      REVIEW_URL: "http://review:8090"
     depends_on:
       - aggregator
       - urgency_en
@@ -101,6 +103,10 @@ services:
       dockerfile: workers/urgency_en/Dockerfile
     environment:
       PORT: "50051"
+      # Workstream H.8: set MODEL_VERSION (e.g. "v5") to load a released version from the review service's
+      # model registry instead of the baked v4.
+      MODEL_REGISTRY_URL: "http://review:8090"
+      MODEL_VERSION: "${URGENCY_EN_MODEL_VERSION:-}"
     networks:
       - scamnet
 
@@ -165,3 +171,23 @@ services:
       GRPC_THREADS: "2"
     networks:
       - scamnet
+
+  # Workstream H: review queue + labelling page + model registry (backend/review). Internal only: the labelling
+  # page is published on 127.0.0.1 so only this laptop can open it (http://127.0.0.1:8090/).
+  review:
+    build:
+      context: ./backend
+      dockerfile: review/Dockerfile
+    ports:
+      - "127.0.0.1:8090:8090"
+    environment:
+      # LOCAL DEV ONLY default key, so `docker compose up` works with no setup. Kubernetes uses a random key
+      # made by `learning.py ensure-key` and kept in a Secret. Set REVIEW_KEY in .env to use your own.
+      REVIEW_KEY: "${REVIEW_KEY:-ZGV2LW9ubHkta2V5LW5vdC1mb3ItcmVhbC1kYXRhISE=}"
+    volumes:
+      - review-data:/data
+    networks:
+      - scamnet
+
+volumes:
+  review-data:

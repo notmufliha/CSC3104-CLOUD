@@ -6,6 +6,11 @@ metadata:
   labels: { app: money-zh, signal: money, language: zh }
 spec:
   replicas: 1
+  # H.9 rolling update: start the new pod first, remove an old one only once the new one is ready, so a
+  # version change never drops a line (with 1 replica Kubernetes' defaults round to the same thing).
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
   selector:
     matchLabels: { app: money-zh }
   template:
@@ -22,6 +27,12 @@ spec:
           env:
             - name: PORT
               value: "50051"
+          # Keep serving for a few seconds after Kubernetes decides to stop this pod: Envoy refreshes the pod
+          # list every 2 s, so without this pause it still sends a line or two to a pod that has stopped
+          # (measured: 2 lines without an urgency score during a rolling update; see demo/LEARNING_LOOP.md).
+          lifecycle:
+            preStop:
+              exec: { command: ["sleep", "5"] }
           resources:
             requests:
               cpu: "100m"

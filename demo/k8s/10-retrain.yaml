@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: retrain-urgency-en
+  namespace: scamguard
+spec:
+  schedule: "0 3 * * 0"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels: { app: retrain-urgency-en }
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: retrain
+              image: scam/retrain:demo
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: REVIEW_URL
+                  value: "http://review:8090"
+                - name: MIN_NEW_LABELS
+                  value: "50"
+                - name: TOLERANCE
+                  value: "0.005"
+                # train.py runs parallel jobs per CPU it can see; keep it to the CPU limit.
+                - name: LOKY_MAX_CPU_COUNT
+                  value: "2"
+              resources:
+                requests:
+                  cpu: "500m"
+                  memory: "768Mi"
+                limits:
+                  cpu: "2"
+                  memory: "1536Mi"

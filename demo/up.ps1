@@ -82,7 +82,7 @@ if ($LASTEXITCODE -ne 0) { Die "minikube addons enable ingress failed. Try 'mini
 # in testing on Windows with minikube's default containerd runtime: "SSH_AGENT_START: starting an SSH
 # agent on Windows is not yet supported". `minikube image load` works regardless of driver/runtime and
 # was verified end-to-end, so it's what this script uses -- slightly slower, far more reliable.)
-Say "Building all 9 images on the host Docker, then loading them into minikube"
+Say "Building all 11 images on the host Docker, then loading them into minikube"
 
 function Build-Image($name, $dockerfile) {
     Write-Host "--- building scam/${name}:${ImageTag} ---"
@@ -101,6 +101,13 @@ Build-Image impersonation_en   "workers/impersonation_en/Dockerfile"
 Build-Image urgency_zh         "workers/urgency_zh/Dockerfile"
 Build-Image money_zh           "workers/money_zh/Dockerfile"
 Build-Image impersonation_zh   "workers/impersonation_zh/Dockerfile"
+# Workstream H: review queue + model registry, and the retraining Job (needs data/, so the repo root context).
+Build-Image review             "review/Dockerfile"
+Write-Host "--- building scam/retrain:${ImageTag} ---"
+docker build -t "scam/retrain:${ImageTag}" -f backend/retrain/Dockerfile .
+if ($LASTEXITCODE -ne 0) { Die "build failed for retrain -- see the error above." }
+minikube image load "scam/retrain:${ImageTag}"
+if ($LASTEXITCODE -ne 0) { Die "minikube image load failed for retrain. Is 'minikube status' Running?" }
 
 Say "Building bert (downloads the real model from Hugging Face at build time -- needs internet)"
 docker build -t "scam/bert:${ImageTag}" -f backend/workers/bert/Dockerfile backend
@@ -130,6 +137,9 @@ kubectl rollout status deployment/ingress-nginx-controller -n ingress-nginx --ti
 if ($LASTEXITCODE -ne 0) { Die "ingress-nginx controller did not start. Check: kubectl get pods -n ingress-nginx" }
 python demo/make_tls.py --apply
 if ($LASTEXITCODE -ne 0) { Die "make_tls.py failed -- see the error above." }
+# Workstream H: the review queue's encryption key (made once, kept across re-runs; never in git).
+python demo/tools/learning.py ensure-key
+if ($LASTEXITCODE -ne 0) { Die "could not create the review-key Secret -- see the error above." }
 # A phone that connects by IP address sends no hostname (SNI), so nginx would show its own fake certificate.
 # Make gateway-tls nginx's default certificate. Re-checked on every run: `minikube start` re-applies the
 # addon and drops the extra argument.

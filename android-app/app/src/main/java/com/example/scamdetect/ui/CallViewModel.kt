@@ -16,9 +16,12 @@ import com.example.scamdetect.data.CallScript
 import com.example.scamdetect.data.GatewayApi
 import com.example.scamdetect.data.GatewayClient
 import com.example.scamdetect.data.HistoryEntry
+import com.example.scamdetect.data.ReportLine
+import com.example.scamdetect.data.ReportRequest
 import com.example.scamdetect.data.ScriptLine
 import com.example.scamdetect.data.ScriptRepository
 import com.example.scamdetect.data.UtteranceRequest
+import com.example.scamdetect.logic.Mask
 import com.example.scamdetect.logic.Risk
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -263,6 +266,37 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
             ctx.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         }
         vibrator?.vibrate(VibrationEffect.createOneShot(600, VibrationEffect.DEFAULT_AMPLITUDE))
+    }
+
+    // ---------------------------------------------------------------- H.3 report / "this was fine"
+
+    /** Exactly what a report would send: the caller's lines, masked. Shown on the consent screen first. */
+    fun reportPreview(): List<ReportLine> =
+        _state.value.lines.filter { it.isCaller && it.text.isNotBlank() }.map { ReportLine(it.seq, Mask.mask(it.text)) }
+
+    /** Sends the report after the user agreed. kind = "scam" or "fine". Returns a short message for the screen. */
+    suspend fun sendReport(kind: String): String {
+        val s = _state.value
+        val lines = reportPreview()
+        if (lines.isEmpty()) return "Nothing to report: the caller said nothing."
+        val text = lines.joinToString(" ") { it.text }
+        val chinese = text.count { it in '一'..'鿿' }
+        val language = s.script?.lang ?: if (chinese * 10 > text.length * 3) "zh" else "en" // gateway's 30% rule
+        return try {
+            val resp = GatewayClient.get(prefs.gatewayUrl).report(
+                ReportRequest(callId.ifEmpty { UUID.randomUUID().toString() }, kind, s.verdict ?: "", language, true, lines)
+            )
+            when {
+                resp.isSuccessful -> "Thank you. Shared ${resp.body()?.linesStored ?: lines.size} lines; " +
+                    "they are deleted after 30 days."
+                resp.code() == 503 -> "Reporting is not set up on this server."
+                else -> "Could not send the report (server answered ${resp.code()})."
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            "Could not send the report: ${e.javaClass.simpleName}"
+        }
     }
 
     // ---------------------------------------------------------------- settings + history

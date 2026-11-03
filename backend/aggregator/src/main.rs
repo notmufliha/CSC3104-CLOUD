@@ -4,6 +4,7 @@
 //!
 //!   gRPC  AggregatorService.Aggregate   (AGGREGATOR_GRPC_ADDR, default 0.0.0.0:50052)
 //!   HTTP  GET /health                   (AGGREGATOR_HTTP_ADDR, default 0.0.0.0:8082) - 503 if Redis is down
+//!   HTTP  GET /metrics                  Prometheus counts, never text (metrics.rs, Workstream H.1)
 //!
 //! A request without call_id is a one-shot (the gateway's /submit-transcript): no memory, no Redis.
 //! BERT second opinion (bert.rs): asked only when the fast vote is unsure or alarmed, if BERT_ADDR is set.
@@ -11,6 +12,7 @@
 
 mod bert;
 mod config;
+mod metrics;
 mod policy;
 mod store;
 
@@ -26,6 +28,7 @@ pub mod scam_detect {
 }
 
 use bert::{BertClient, SecondOpinion};
+use metrics::Metrics;
 use config::{Settings, SIGNALS};
 use policy::{Decision, LineScores};
 use scam_detect::aggregator_service_server::{AggregatorService, AggregatorServiceServer};
@@ -39,6 +42,7 @@ struct Aggregator {
     store: Store,
     /// None = BERT off (BERT_ADDR not set).
     bert: Option<BertClient>,
+    metrics: Arc<Metrics>,
 }
 
 /// This line's scores by signal. Unknown signals are ignored (logged); a repeated signal keeps its highest
@@ -135,8 +139,14 @@ impl AggregatorService for Aggregator {
         // 3.8 verdict log: ids, time, verdict and scores, never text.
         tracing::info!(target: "verdict", entry = %store::log_entry(call_id, req.seq, now, &line, &decision,
                        second.status()), bert_ms = second.ms, "verdict");
+        self.metrics.record(call_id, &line, &decision, second.status(), &self.settings);
         Ok(Response::new(to_response(decision, second.status())))
     }
+}
+
+#[get("/metrics")]
+async fn metrics_endpoint(m: web::Data<Arc<Metrics>>) -> HttpResponse {
+    HttpResponse::Ok().content_type("text/plain; version=0.0.4").body(m.render())
 }
 
 #[get("/health")]
@@ -187,7 +197,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let http_addr = settings.http_addr.clone();
     let store = Store::connect(&settings.redis_url, &settings.redis_url_for_log()).await;
     let bert = BertClient::new(&settings.bert_addr, settings.bert_timeout);
-    let aggregator = Aggregator { settings: Arc::new(settings), store: store.clone(), bert };
+    let metrics = Arc::new(Metrics::default());
+    let aggregator = Aggregator { settings: Arc::new(settings), store: store.clone(), bert, metrics: metrics.clone() };
 
     // gRPC server (the Aggregate endpoint the gateway calls) on a background task, a small Actix-web HTTP
     // server (health) on the main task. Either exiting (e.g. a bind failure) brings the process down.
@@ -199,7 +210,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let store_data = web::Data::new(store);
-    let http_server = HttpServer::new(move || App::new().app_data(store_data.clone()).service(health))
+    let metrics_data = web::Data::new(metrics);
+    let http_server = HttpServer::new(move || {
+        App::new()
+            .app_data(store_data.clone())
+            .app_data(metrics_data.clone())
+            .service(health)
+            .service(metrics_endpoint)
+    })
         .bind(&http_addr)?
         .run();
 
@@ -220,7 +238,7 @@ mod tests {
     use super::*;
 
     fn ws(signal: &str, score: f32) -> WorkerScore {
-        WorkerScore { signal: signal.into(), score, language: "en".into() }
+        WorkerScore { signal: signal.into(), score, language: "en".into(), model_version: String::new() }
     }
 
     #[test]

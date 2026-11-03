@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ScamGuard labelling</title>
+<style>
+  :root { --bg:#f7f7f5; --card:#fff; --ink:#1d1d1b; --muted:#6b6b66; --line:#deded9; --yes:#b42318; --no:#1f7a3f; --accent:#2f5bb7; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#161615; --card:#21211f; --ink:#ececea; --muted:#a3a39d; --line:#3a3a37; --yes:#f97066; --no:#4ade80; --accent:#7aa2f7; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.45 system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width: 860px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 20px; margin: 4px 0 2px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .bar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:12px 0; }
+  input, button { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+  button { cursor: pointer; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .tabs button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin: 10px 0; }
+  .text { font-size: 16px; margin: 4px 0 10px; }
+  .row { display:flex; gap:8px; align-items:center; margin: 4px 0; flex-wrap: wrap; }
+  .row .sig { width: 120px; font-weight: 600; }
+  .row button[aria-pressed="true"].y { background: var(--yes); color:#fff; border-color: var(--yes); }
+  .row button[aria-pressed="true"].n { background: var(--no); color:#fff; border-color: var(--no); }
+  details { margin: 8px 0; }
+  .stats span { margin-right: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>ScamGuard labelling</h1>
+  <div class="muted">Caller lines from calls users chose to report. Already masked; deleted 30 days after the report. Internal only.</div>
+  <details>
+    <summary>Labelling rules (same as each worker's LABELING.md)</summary>
+    <ul>
+      <li><b>Urgency = 1</b> only when the caller pushes the listener to act <i>now</i> (deadline, threat, "don't hang up"). Ordinary time talk ("I'll call back tomorrow") is 0.</li>
+      <li><b>Money = 1</b> only when the caller <i>asks for</i> money, card details or a code. "Never share your OTP" is 0.</li>
+      <li><b>Impersonation = 1</b> only when the caller <i>claims to be from</i> an organisation (police, bank, government). Mentioning one is 0.</li>
+      <li>Judge the line on its own. If it still contains a person's name or you can't tell, press <b>Skip</b>.</li>
+    </ul>
+  </details>
+  <div class="bar">
+    <label>Your name <input id="who" size="12" placeholder="e.g. Maryam"></label>
+    <span class="tabs"><button id="t-queue" aria-pressed="true">Label</button> <button id="t-check" aria-pressed="false">Spot check</button></span>
+    <button id="reload">Reload</button>
+  </div>
+  <div class="stats muted" id="stats"></div>
+  <div id="list"></div>
+</main>
+<script>
+const SIGNALS = ["urgency", "money", "impersonation"];
+const who = document.getElementById("who");
+try { who.value = localStorage.getItem("labeller") || ""; } catch (e) {}
+who.addEventListener("change", () => { try { localStorage.setItem("labeller", who.value.trim()); } catch (e) {} });
+let mode = "queue";
+const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); Object.assign(e, attrs); e.append(...kids); return e; };
+async function api(path, body) {
+  const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.status);
+  return r.json();
+}
+async function stats() {
+  const s = await api("/api/stats");
+  document.getElementById("stats").replaceChildren(
+    el("span", { textContent: `Reports: ${s.reports.scam} scam, ${s.reports.fine} fine` }),
+    el("span", { textContent: `Waiting: ${s.unlabelled}` }),
+    el("span", { textContent: `Not yet trained on (urgency): ${s.unused.urgency}` }),
+    el("span", { textContent: `Disputed: ${s.disputed.urgency + s.disputed.money + s.disputed.impersonation}` }));
+}
+function needName() { if (!who.value.trim()) { who.focus(); alert("Type your name first, so labels can be spot-checked by someone else."); return true; } return false; }
+async function loadQueue() {
+  const items = await api("/api/queue?limit=30");
+  const list = document.getElementById("list");
+  if (!items.length) { list.replaceChildren(el("p", { className: "muted", textContent: "Nothing waiting. Report a call from the app to add some." })); return; }
+  list.replaceChildren(...items.map(it => {
+    const chosen = {};
+    const rows = SIGNALS.map(s => {
+      const y = el("button", { className: "y", textContent: "Yes" }), n = el("button", { className: "n", textContent: "No" });
+      for (const [b, v] of [[y, 1], [n, 0]]) { b.setAttribute("aria-pressed", "false"); b.onclick = () => { chosen[s] = v; y.setAttribute("aria-pressed", v === 1); n.setAttribute("aria-pressed", v === 0); }; }
+      return el("div", { className: "row" }, el("span", { className: "sig", textContent: s }), y, n);
+    });
+    const save = el("button", { className: "primary", textContent: "Save" });
+    const skip = el("button", { textContent: "Skip" });
+    const card = el("div", { className: "card" },
+      el("div", { className: "muted", textContent: `Report ${it.report_id} · user said: ${it.kind === "scam" ? "this was a scam" : "this was fine"} · app showed ${it.app_verdict || "?"} · line ${it.seq} · ${it.language}` }),
+      el("div", { className: "text", textContent: it.text }), ...rows, el("div", { className: "row" }, save, skip));
+    save.onclick = async () => {
+      if (needName()) return;
+      if (Object.keys(chosen).length !== 3) { alert("Choose Yes or No for all three signals."); return; }
+      await api("/api/labels", { line_id: it.line_id, labels: chosen, labeller: who.value.trim() });
+      card.remove(); stats();
+    };
+    skip.onclick = async () => { await api("/api/skip", { line_id: it.line_id }); card.remove(); stats(); };
+    return card;
+  }));
+}
+async function loadCheck() {
+  if (needName()) return;
+  const items = await api("/api/spotcheck?limit=20&checker=" + encodeURIComponent(who.value.trim()));
+  const list = document.getElementById("list");
+  if (!items.length) { list.replaceChildren(el("p", { className: "muted", textContent: "No one else's labels left to check." })); return; }
+  list.replaceChildren(...items.map(it => {
+    const agree = el("button", { textContent: "Agree" }), disagree = el("button", { textContent: "Disagree" });
+    const card = el("div", { className: "card" },
+      el("div", { className: "muted", textContent: `${it.labeller} said ${it.signal} = ${it.label ? "Yes" : "No"}` }),
+      el("div", { className: "text", textContent: it.text }), el("div", { className: "row" }, agree, disagree));
+    for (const [b, v] of [[agree, true], [disagree, false]]) b.onclick = async () => {
+      await api("/api/spotcheck", { line_id: it.line_id, signal: it.signal, agrees: v, checker: who.value.trim() });
+      card.remove(); stats();
+    };
+    return card;
+  }));
+}
+function load() { stats(); (mode === "queue" ? loadQueue : loadCheck)().catch(e => alert("Error: " + e.message)); }
+for (const [id, m] of [["t-queue", "queue"], ["t-check", "check"]]) document.getElementById(id).onclick = () => {
+  mode = m; document.getElementById("t-queue").setAttribute("aria-pressed", m === "queue"); document.getElementById("t-check").setAttribute("aria-pressed", m === "check"); load();
+};
+document.getElementById("reload").onclick = load;
+load();
+</script>
+</body>
+</html>
