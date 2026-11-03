@@ -75,7 +75,7 @@ minikube addons enable ingress >/dev/null \
 # containerd runtime: "SSH_AGENT_START: starting an SSH agent on Windows is not yet supported". `minikube
 # image load` works regardless of driver/runtime and was verified end-to-end, so it's what this script
 # uses. It is slightly slower (one extra copy per image) but far more reliable.)
-say "Building all 9 images on the host Docker, then loading them into minikube"
+say "Building all 11 images on the host Docker, then loading them into minikube"
 
 build() {
   local name="$1" dockerfile="$2"
@@ -95,6 +95,13 @@ build impersonation_en   workers/impersonation_en/Dockerfile
 build urgency_zh         workers/urgency_zh/Dockerfile
 build money_zh           workers/money_zh/Dockerfile
 build impersonation_zh   workers/impersonation_zh/Dockerfile
+# Workstream H: review queue + model registry, and the retraining Job (needs data/, so the repo root context).
+build review             review/Dockerfile
+echo "--- building scam/retrain:${IMAGE_TAG} ---"
+docker build -t "scam/retrain:${IMAGE_TAG}" -f backend/retrain/Dockerfile . \
+  || die "build failed for retrain -- see the error above."
+minikube image load "scam/retrain:${IMAGE_TAG}" \
+  || die "minikube image load failed for retrain. Is 'minikube status' Running?"
 say "Building bert (downloads the real model from Hugging Face at build time -- needs internet)"
 if ! docker build -t "scam/bert:${IMAGE_TAG}" -f backend/workers/bert/Dockerfile backend; then
   warn "BERT build failed -- likely the model download (network blocked, or Hugging Face unreachable)."
@@ -120,6 +127,8 @@ say "Ingress controller + HTTPS certificate (demo/tls/, reused if it already exi
 kubectl rollout status deployment/ingress-nginx-controller -n ingress-nginx --timeout="$ROLLOUT_TIMEOUT" \
   || die "ingress-nginx controller did not start. Check: kubectl get pods -n ingress-nginx"
 python3 demo/make_tls.py --apply || die "make_tls.py failed -- see the error above."
+# Workstream H: the review queue's encryption key (made once, kept across re-runs; never in git).
+python3 demo/tools/learning.py ensure-key || die "could not create the review-key Secret -- see the error above."
 # A phone that connects by IP address sends no hostname (SNI), so nginx would show its own fake certificate.
 # Make gateway-tls nginx's default certificate. Re-checked on every run: `minikube start` re-applies the
 # addon and drops the extra argument.

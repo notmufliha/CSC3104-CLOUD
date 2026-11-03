@@ -121,7 +121,33 @@ GATEWAY_ENV = {
     "WORKER_TIMEOUT_MS": "1400",
     "AGGREGATOR_TIMEOUT_MS": "550",
     "BERT_CONTEXT_LINES": "5",
+    # Workstream H: where POST /v1/report goes (the internal review service).
+    "REVIEW_URL": "http://review:8090",
 }
+
+# ---- Workstream H: learning loop (review queue, retraining, monitoring) -----------------------------
+REVIEW_RETENTION_DAYS = "30"        # reported calls are deleted this long after the report
+REVIEW_STORAGE = "1Gi"              # queue database + released model files (each urgency model ~1-2 MB)
+REVIEW_REQUESTS = {"cpu": "50m", "memory": "96Mi"}
+REVIEW_LIMITS = {"cpu": "500m", "memory": "256Mi"}
+RETRAIN_SCHEDULE = "0 3 * * 0"      # Sundays 03:00; or run now: python demo/tools/learning.py retrain --force
+RETRAIN_MIN_NEW_LABELS = "50"       # skip the weekly run unless this many new labelled lines are waiting
+RETRAIN_TOLERANCE = "0.005"         # release check: allowed drop per gold-set metric (rounding-level noise)
+# Measured 2026-11-02: one urgency_en retrain = ~60 s, fits in 1.5 GiB (docker run --memory=1500m).
+RETRAIN_REQUESTS = {"cpu": "500m", "memory": "768Mi"}
+RETRAIN_LIMITS = {"cpu": "2", "memory": "1536Mi"}
+# Workers that load their model version from the registry (MODEL_VERSION, set by learning.py rollout).
+# MODEL_VERSION itself is deliberately NOT written here: `kubectl apply` keeps an env var added by
+# `kubectl set env`, so re-running up.sh/up.ps1 does not silently roll a released version back to v4.
+REGISTRY_WORKERS = {"urgency-en"}
+# Drift alert (H.2): compare the last DRIFT_SHORT with the DRIFT_BASELINE before it. The planning doc's
+# "well above its usual level for a day" = 1h vs 1d. For a live demo, regenerate with e.g. 2m / 30m.
+DRIFT_SHORT = os.environ.get("DRIFT_SHORT", "1h")
+DRIFT_BASELINE = os.environ.get("DRIFT_BASELINE", "1d")
+DRIFT_FACTOR = "1.5"                # "well above" = 1.5x the baseline ...
+DRIFT_MIN_UNSURE_SHARE = "0.15"     # ... and at least 15% of lines UNSURE (ignores tiny baselines)
+PROMETHEUS_IMAGE = "prom/prometheus:v3.1.0"
+GRAFANA_IMAGE = "grafana/grafana:11.4.0"
 
 # The 6 workers: (signal, language) -> matches docker-compose service names signal_language.
 WORKERS = [
@@ -473,6 +499,10 @@ def worker_yaml(signal: str, lang: str) -> str:
     is_zh = lang == "zh"
     requests, limits = (WORKER_ZH_REQUESTS, WORKER_ZH_LIMITS) if is_zh else (WORKER_EN_REQUESTS, WORKER_EN_LIMITS)
     min_replicas = IMPERSONATION_EN_MIN_REPLICAS if name == "impersonation-en" else HPA_MIN
+    registry_env = ("""            # H.8: set MODEL_VERSION (learning.py rollout) to load a released version from the registry.
+            - name: MODEL_REGISTRY_URL
+              value: "http://review:8090"
+""" if name in REGISTRY_WORKERS else "")
     return f"""apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -481,6 +511,11 @@ metadata:
   labels: {{ app: {name}, signal: {signal}, language: {lang} }}
 spec:
   replicas: {min_replicas}
+  # H.9 rolling update: start the new pod first, remove an old one only once the new one is ready, so a
+  # version change never drops a line (with 1 replica Kubernetes' defaults round to the same thing).
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {{ maxSurge: 1, maxUnavailable: 0 }}
   selector:
     matchLabels: {{ app: {name} }}
   template:
@@ -497,6 +532,12 @@ spec:
           env:
             - name: PORT
               value: "50051"
+{registry_env}          # Keep serving for a few seconds after Kubernetes decides to stop this pod: Envoy refreshes the pod
+          # list every 2 s, so without this pause it still sends a line or two to a pod that has stopped
+          # (measured: 2 lines without an urgency score during a rolling update; see demo/LEARNING_LOOP.md).
+          lifecycle:
+            preStop:
+              exec: {{ command: ["sleep", "5"] }}
 {resources_block(requests, limits, "          ")}          readinessProbe:
             grpc: {{ port: 50051 }}
             initialDelaySeconds: 3
@@ -647,6 +688,120 @@ spec:
 """
 
 
+def review_yaml() -> str:
+    # Workstream H.4/H.5/H.8: review queue + labelling page + model registry. ClusterIP only: the phone reaches
+    # it solely through the gateway's POST /v1/report; the labelling page via `learning.py review`.
+    # The encryption key is the review-key Secret, made once by up.sh/up.ps1 (never written to this repo).
+    return f"""apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: review-data
+  namespace: {NAMESPACE}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: {REVIEW_STORAGE}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: review
+  namespace: {NAMESPACE}
+  labels: {{ app: review }}
+spec:
+  replicas: 1          # SQLite = one writer
+  strategy:
+    type: Recreate     # the volume is ReadWriteOnce: the old pod must let go of it first
+  selector:
+    matchLabels: {{ app: review }}
+  template:
+    metadata:
+      labels: {{ app: review }}
+    spec:
+      containers:
+        - name: review
+          image: scam/review:{IMAGE_TAG}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8090
+              name: http
+          env:
+            - name: REVIEW_KEY
+              valueFrom:
+                secretKeyRef: {{ name: review-key, key: key }}
+            - name: REVIEW_RETENTION_DAYS
+              value: "{REVIEW_RETENTION_DAYS}"
+{resources_block(REVIEW_REQUESTS, REVIEW_LIMITS, "          ")}          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            httpGet: {{ path: /health, port: 8090 }}
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {{ path: /health, port: 8090 }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: review-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: review
+  namespace: {NAMESPACE}
+spec:
+  type: ClusterIP
+  selector: {{ app: review }}
+  ports:
+    - name: http
+      port: 8090
+      targetPort: 8090
+"""
+
+
+def retrain_yaml() -> str:
+    # Workstream H.6/H.7: weekly retraining of urgency_en with a release check. A blocked release exits 1 and
+    # is NOT retried (backoffLimit 0): the same data would just be blocked again.
+    return f"""apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: retrain-urgency-en
+  namespace: {NAMESPACE}
+spec:
+  schedule: "{RETRAIN_SCHEDULE}"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels: {{ app: retrain-urgency-en }}
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: retrain
+              image: scam/retrain:{IMAGE_TAG}
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: REVIEW_URL
+                  value: "http://review:8090"
+                - name: MIN_NEW_LABELS
+                  value: "{RETRAIN_MIN_NEW_LABELS}"
+                - name: TOLERANCE
+                  value: "{RETRAIN_TOLERANCE}"
+                # train.py runs parallel jobs per CPU it can see; keep it to the CPU limit.
+                - name: LOKY_MAX_CPU_COUNT
+                  value: "{RETRAIN_LIMITS['cpu']}"
+{resources_block(RETRAIN_REQUESTS, RETRAIN_LIMITS, "              ")}"""
+
+
 def write(name: str, content: str) -> None:
     path = OUT_DIR / name
     path.write_text(content, encoding="utf-8")
@@ -670,7 +825,12 @@ def main() -> int:
         write(f"06{chr(ord('a') + i)}-worker-{signal}-{lang}.yaml", worker_yaml(signal, lang))
     write("07-gateway.yaml", gateway_yaml())
     write("08-ingress.yaml", ingress_yaml())
-    print(f"\n{2 + 1 + 1 + 1 + 1 + len(WORKERS) + 1 + 1} manifest files written to {OUT_DIR}")
+    write("09-review.yaml", review_yaml())
+    write("10-retrain.yaml", retrain_yaml())
+    print(f"\n{2 + 1 + 1 + 1 + 1 + len(WORKERS) + 1 + 1 + 2} manifest files written to {OUT_DIR}")
+    import make_monitoring  # optional Prometheus + Grafana (H.1/H.2), in demo/k8s/monitoring/
+    make_monitoring.main(NAMESPACE, DRIFT_SHORT, DRIFT_BASELINE, DRIFT_FACTOR, DRIFT_MIN_UNSURE_SHARE,
+                         PROMETHEUS_IMAGE, GRAFANA_IMAGE)
     print("NOTE: loadgen (demo/k8s/loadgen/loadgen.yaml) is written separately -- see demo/tools/load_sim.py")
     return 0
 

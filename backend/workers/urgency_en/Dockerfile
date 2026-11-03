@@ -15,6 +15,9 @@ COPY workers/urgency_en/server.py workers/urgency_en/predict.py workers/urgency_
 # The frozen v4 model (model/v4.json has its sha256). It is gitignored, so it must exist locally before
 # building: run train.py, or copy urgency_en_v4.joblib into workers/urgency_en/model/.
 COPY workers/urgency_en/model/urgency_en_v4.joblib model/urgency_en.joblib
+# Workstream H.8: the version the baked model reports. Set MODEL_VERSION to load a newer released version
+# from the model registry instead (see server.py).
+ENV BAKED_MODEL_VERSION=v4
 
 EXPOSE 50051
 CMD ["python", "server.py"]

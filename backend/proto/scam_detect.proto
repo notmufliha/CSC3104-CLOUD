@@ -54,6 +54,9 @@ message WorkerScore {
   // exhibits this signal.
   float score = 2;
   string language = 3;
+  // Workstream H.8: which model version produced this score (e.g. "v5"). Empty = the worker doesn't report
+  // one yet. Additive: older workers and the aggregator simply ignore it.
+  string model_version = 4;
 }
 
 message AggregateRequest {
