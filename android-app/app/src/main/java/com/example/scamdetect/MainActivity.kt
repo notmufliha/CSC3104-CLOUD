@@ -95,7 +95,12 @@ fun ScamGuardApp(vm: CallViewModel = viewModel()) {
                 onDecline = { vm.decline(); screen = Screen.HOME },
             )
             Phase.IN_CALL -> InCallScreen(state, onHangUp = vm::hangUp)
-            Phase.ENDED -> SummaryScreen(state, onDone = { vm.reset(); screen = Screen.HOME })
+            Phase.ENDED -> SummaryScreen(
+                state,
+                reportPreview = { vm.reportPreview() },
+                onReport = { kind -> vm.sendReport(kind) },
+                onDone = { vm.reset(); screen = Screen.HOME },
+            )
             Phase.IDLE -> LaunchedEffect(Unit) { screen = Screen.HOME }
         }
 

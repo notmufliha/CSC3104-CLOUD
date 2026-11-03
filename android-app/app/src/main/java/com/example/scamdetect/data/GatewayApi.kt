@@ -16,6 +16,10 @@ interface GatewayApi {
 
     @GET("healthz")
     suspend fun health(): Response<Map<String, Any>>
+
+    /** Workstream H.3: a consented report of a finished call. */
+    @POST("v1/report")
+    suspend fun report(@Body body: ReportRequest): Response<ReportResponse>
 }
 
 /** Builds one Retrofit client per base URL, so changing the URL in Settings takes effect at once. */

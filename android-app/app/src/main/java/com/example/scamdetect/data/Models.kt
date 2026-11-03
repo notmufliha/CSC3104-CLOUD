@@ -46,6 +46,26 @@ data class UtteranceResponse(
     @SerializedName("latency_ms") val latencyMs: Long?,
 )
 
+/** Workstream H.3: one caller line in a report, already masked on the phone (logic/Mask.kt). */
+data class ReportLine(val seq: Long, val text: String)
+
+/** Body of POST /v1/report: sent only after the user agreed on the consent screen. */
+data class ReportRequest(
+    @SerializedName("call_id") val callId: String,
+    val kind: String,                                       // "scam" (Report this call) | "fine" (This was fine)
+    @SerializedName("app_verdict") val appVerdict: String,
+    val language: String,                                   // "en" | "zh"
+    val consent: Boolean,
+    val lines: List<ReportLine>,
+)
+
+/** Answer from POST /v1/report (from the review service, through the gateway). */
+data class ReportResponse(
+    @SerializedName("report_id") val reportId: Long?,
+    @SerializedName("lines_stored") val linesStored: Int?,
+    @SerializedName("expires_at") val expiresAt: Long?,
+)
+
 /** One row of the History screen. No transcript, no number. */
 data class HistoryEntry(
     val timeMillis: Long,
