@@ -9,8 +9,40 @@ use std::time::Duration;
 /// The three signals every language has.
 pub const SIGNALS: [&str; 3] = ["urgency", "money", "impersonation"];
 
+/// How a line is decided (Workstream F compares the three; AGG_MODE).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Mode {
+    /// Workers only; BERT is never asked, even if BERT_ADDR is set.
+    Fast,
+    /// BERT on every caller line, BERT's score alone decides (same thresholds and streak, no money rule).
+    BertOnly,
+    /// Workers first, BERT only when the answer depends on it. The real system.
+    #[default]
+    Cascade,
+}
+
+impl Mode {
+    fn parse(s: &str) -> Result<Mode, String> {
+        match s {
+            "fast" => Ok(Mode::Fast),
+            "bert_only" => Ok(Mode::BertOnly),
+            "cascade" => Ok(Mode::Cascade),
+            _ => Err(format!("AGG_MODE='{s}' must be fast, bert_only or cascade")),
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Mode::Fast => "fast",
+            Mode::BertOnly => "bert_only",
+            Mode::Cascade => "cascade",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Settings {
+    pub mode: Mode,
     pub grpc_addr: String,
     pub http_addr: String,
     pub redis_url: String,
@@ -61,6 +93,7 @@ impl Settings {
     /// Same as from_env, reading values through `get` (so tests don't touch the real environment).
     pub fn from_lookup(get: impl Fn(&str) -> Option<String>) -> Result<Settings, String> {
         let s = Settings {
+            mode: Mode::parse(&text(&get, "AGG_MODE", "cascade"))?,
             grpc_addr: text(&get, "AGGREGATOR_GRPC_ADDR", "0.0.0.0:50052"),
             http_addr: text(&get, "AGGREGATOR_HTTP_ADDR", "0.0.0.0:8082"),
             redis_url: text(&get, "REDIS_URL", "redis://redis:6379"),
@@ -134,6 +167,9 @@ impl Settings {
         if self.call_ttl.is_zero() {
             return Err("AGG_CALL_TTL_SECS must be at least 1".into());
         }
+        if self.mode == Mode::BertOnly && self.bert_addr.is_empty() {
+            return Err("AGG_MODE=bert_only needs BERT_ADDR".into());
+        }
         if !self.bert_addr.is_empty() && self.bert_timeout.is_zero() {
             return Err("BERT_TIMEOUT_MS must be at least 1 when BERT_ADDR is set".into());
         }
@@ -176,6 +212,7 @@ mod tests {
     #[test]
     fn defaults_are_the_workstream_rules() {
         let s = with(&[]).unwrap();
+        assert_eq!(s.mode, Mode::Cascade);
         assert_eq!(s.weights, [1.0 / 3.0; 3]);
         assert_eq!((s.scam_threshold, s.unsure_threshold), (0.6, 0.45));
         assert_eq!(s.window_lines, 6);
@@ -213,6 +250,15 @@ mod tests {
         assert!(with(&[("AGG_MONEY_RULE_LINES", "0")]).is_err());
         assert!(with(&[("AGG_BERT_WEIGHT", "1.5")]).is_err());
         assert!(with(&[("BERT_ADDR", "http://bert:50051"), ("BERT_TIMEOUT_MS", "0")]).is_err());
+    }
+
+    #[test]
+    fn reads_the_mode() {
+        assert_eq!(with(&[("AGG_MODE", "fast")]).unwrap().mode, Mode::Fast);
+        assert_eq!(with(&[("AGG_MODE", " cascade ")]).unwrap().mode, Mode::Cascade);
+        assert_eq!(with(&[("AGG_MODE", "bert_only"), ("BERT_ADDR", "bert:50051")]).unwrap().mode, Mode::BertOnly);
+        assert!(with(&[("AGG_MODE", "bert_only")]).is_err()); // nothing to decide with
+        assert!(with(&[("AGG_MODE", "turbo")]).is_err());
     }
 
     #[test]

@@ -27,10 +27,15 @@
 //! The cascade (task 7.4): BERT is slow, so it is asked only when the answer WITHOUT it would be decided by
 //! rule 3, 6, 7 or 8 (not enough data, money rule, high, unsure); see `wants_second_opinion`. A call that is
 //! clearly SAFE, still warming up, or already red never costs a BERT call.
+//!
+//! AGG_MODE (Workstream F, "why not just BERT?"): `cascade` is all of the above. `fast` never asks BERT (main.rs
+//! has no client). `bert_only` asks BERT on every caller line, red calls included, and BERT's score alone is
+//! `final`: rules 1, 2, 5, 7, 8 and 9 apply to it, rules 3 and 6 don't (the workers' votes are ignored, only
+//! logged). If BERT doesn't answer -> UNSURE "bert_down": this mode has nothing to fall back on.
 
 use std::time::Duration;
 
-use crate::config::{Settings, SIGNALS};
+use crate::config::{Mode, Settings, SIGNALS};
 
 /// One caller line's scores in SIGNALS order (urgency, money, impersonation); None = that worker didn't answer.
 pub type LineScores = [Option<f32>; 3];
@@ -134,17 +139,23 @@ const SECOND_OPINION_RULES: [&str; 5] = ["quorum", "money_rule", "high_once", "s
 /// Would this line's answer be decided by the quorum, money, high or unsure rule without BERT? Only then is
 /// BERT worth its cost. Same inputs as `decide`; changes nothing.
 pub fn wants_second_opinion(state: &CallState, line: LineScores, now_ms: i64, call_time_ms: i64, cfg: &Settings) -> bool {
+    if cfg.mode == Mode::BertOnly {
+        return true;
+    }
     let (_, d) = decide(state.clone(), line, None, now_ms, call_time_ms, cfg);
     SECOND_OPINION_RULES.contains(&d.rule)
 }
 
 /// Same for a one-shot request (no call memory).
 pub fn one_shot_wants_second_opinion(line: LineScores, cfg: &Settings) -> bool {
-    SECOND_OPINION_RULES.contains(&decide_one_shot(line, None, cfg).rule)
+    cfg.mode == Mode::BertOnly || SECOND_OPINION_RULES.contains(&decide_one_shot(line, None, cfg).rule)
 }
 
 /// fast vote + BERT -> the score the thresholds are applied to. Without a quorum, BERT stands in alone.
 fn blend(fast: f32, bert: Option<f32>, quorum_met: bool, cfg: &Settings) -> f32 {
+    if cfg.mode == Mode::BertOnly {
+        return bert.unwrap_or(0.0);
+    }
     match bert {
         Some(b) if quorum_met => (1.0 - cfg.bert_weight) * fast + cfg.bert_weight * b,
         Some(b) => b,
@@ -179,22 +190,26 @@ pub fn decide(
     let answered = line.iter().filter(|s| s.is_some()).count();
     let quorum_met = answered >= cfg.min_quorum;
     let warming_up = since_start < cfg.warmup;
+    let bert_only = cfg.mode == Mode::BertOnly;
     let combined = blend(fast, bert, quorum_met, cfg);
-    let override_hit =
-        recent.iter().flatten().any(|s| *s >= cfg.warmup_override) || bert.is_some_and(|b| b >= cfg.warmup_override);
+    let override_hit = (!bert_only && recent.iter().flatten().any(|s| *s >= cfg.warmup_override))
+        || bert.is_some_and(|b| b >= cfg.warmup_override);
     let vetoed = bert.is_some_and(|b| b < cfg.bert_veto);
 
     let (verdict, rule) = if state.red {
         // 2.
         (Verdict::Scam, "red")
-    } else if !quorum_met && bert.is_none() {
+    } else if bert_only && bert.is_none() {
+        state.streak = 0;
+        (Verdict::Unsure, "bert_down")
+    } else if !bert_only && !quorum_met && bert.is_none() {
         // 3.
         (Verdict::Unsure, "quorum")
     } else if warming_up && !override_hit {
         // 5.
         state.streak = 0;
         (Verdict::Safe, "warmup")
-    } else if quorum_met && money_rule(&state.window, cfg) && !vetoed {
+    } else if !bert_only && quorum_met && money_rule(&state.window, cfg) && !vetoed {
         // 6.
         (Verdict::Scam, "money_rule")
     } else if combined >= cfg.scam_threshold {
@@ -221,7 +236,7 @@ pub fn decide(
     state.verdict = verdict;
     state.combined = combined;
 
-    let mut reasons = if verdict == Verdict::Safe { vec![] } else { all_reasons(&recent, bert, cfg) };
+    let mut reasons = reasons_for(verdict, rule, &recent, bert, cfg);
     if rule == "quorum" {
         reasons.push(Reason {
             signal: "quorum",
@@ -254,9 +269,12 @@ pub fn decide_one_shot(line: LineScores, bert: Option<f32>, cfg: &Settings) -> D
     let quorum_met = answered >= cfg.min_quorum;
     let combined = blend(fast, bert, quorum_met, cfg);
     let vetoed = bert.is_some_and(|b| b < cfg.bert_veto);
-    let (verdict, rule) = if !quorum_met && bert.is_none() {
+    let bert_only = cfg.mode == Mode::BertOnly;
+    let (verdict, rule) = if bert_only && bert.is_none() {
+        (Verdict::Unsure, "bert_down")
+    } else if !bert_only && !quorum_met && bert.is_none() {
         (Verdict::Unsure, "quorum")
-    } else if quorum_met && money_rule(&[line], cfg) && !vetoed {
+    } else if !bert_only && quorum_met && money_rule(&[line], cfg) && !vetoed {
         (Verdict::Scam, "money_rule")
     } else if combined >= cfg.scam_threshold {
         (Verdict::Scam, "streak")
@@ -265,7 +283,7 @@ pub fn decide_one_shot(line: LineScores, bert: Option<f32>, cfg: &Settings) -> D
     } else {
         (Verdict::Safe, "safe")
     };
-    let reasons = if verdict == Verdict::Safe { vec![] } else { all_reasons(&recent, bert, cfg) };
+    let reasons = reasons_for(verdict, rule, &recent, bert, cfg);
     Decision {
         verdict,
         combined,
@@ -322,6 +340,22 @@ fn money_rule(window: &[LineScores], cfg: &Settings) -> bool {
         .enumerate()
         .any(|(i, s)| i != money && s.is_some_and(|s| s >= cfg.money_rule_other));
     money_high && other_high
+}
+
+/// Why this verdict. bert_only can't say more than BERT's one sentence: that is the point of comparing it (F.6).
+fn reasons_for(verdict: Verdict, rule: &str, recent: &LineScores, bert: Option<f32>, cfg: &Settings) -> Vec<Reason> {
+    if verdict == Verdict::Safe {
+        return vec![];
+    }
+    if cfg.mode != Mode::BertOnly {
+        return all_reasons(recent, bert, cfg);
+    }
+    match rule {
+        "bert_down" => vec![Reason { signal: "bert", score: 0.0, text: "The scam check did not answer".to_string() }],
+        // a red call stays red after BERT drops on a later line: still say why
+        "red" => vec![Reason { signal: "bert", score: bert.unwrap_or(0.0), text: reason_text("bert").to_string() }],
+        _ => all_reasons(&[None; 3], bert, cfg),
+    }
 }
 
 /// Signals (and BERT) at or above the reason threshold, strongest first.
@@ -689,5 +723,94 @@ mod tests {
         for v in [Verdict::Safe, Verdict::Unsure, Verdict::Scam] {
             assert_eq!(Verdict::parse(v.as_str()), Some(v));
         }
+    }
+
+    // ---- AGG_MODE=bert_only ----
+
+    fn bert_only_cfg() -> Settings {
+        cfg_with(&[("AGG_MODE", "bert_only"), ("BERT_ADDR", "bert:50051")])
+    }
+
+    /// Feed (seconds, BERT's score) with loud workers on every line, so anything they influence would show.
+    fn bert_only_replay(cfg: &Settings, lines: &[(i64, Option<f32>)]) -> Vec<Decision> {
+        let mut state = CallState::default();
+        let mut out = vec![];
+        for (secs, bert) in lines {
+            let (s, d) = decide(state, all(1.0, 1.0, 1.0), *bert, START + secs * 1000, secs * 1000, cfg);
+            state = s;
+            out.push(d);
+        }
+        out
+    }
+
+    #[test]
+    fn bert_only_asks_on_every_line_even_safe_warming_or_red() {
+        let cfg = bert_only_cfg();
+        let quiet = all(0.0, 0.0, 0.0);
+        assert!(wants_second_opinion(&CallState::default(), quiet, START, 0, &cfg));
+        let red = CallState { red: true, started_at_ms: START, ..CallState::default() };
+        assert!(wants_second_opinion(&red, quiet, START + 30_000, 30_000, &cfg));
+        assert!(one_shot_wants_second_opinion(quiet, &cfg));
+        // the cascade still skips those
+        assert!(!wants_second_opinion(&CallState::default(), quiet, START, 0, &cfg_with(&[])));
+    }
+
+    #[test]
+    fn bert_only_ignores_workers_and_the_money_rule() {
+        let d = bert_only_replay(&bert_only_cfg(), &[(20, Some(0.1))]);
+        assert_eq!((d[0].verdict, d[0].rule), (Verdict::Safe, "safe"));
+        assert!((d[0].combined - 0.1).abs() < 1e-6); // not blended
+        assert!((d[0].fast - 1.0).abs() < 1e-6); // still logged
+        assert!(d[0].reasons.is_empty());
+    }
+
+    #[test]
+    fn bert_only_uses_the_same_thresholds_and_streak() {
+        let d = bert_only_replay(
+            &bert_only_cfg(),
+            &[(20, Some(0.5)), (25, Some(0.7)), (30, Some(0.2)), (35, Some(0.7)), (40, Some(0.6)), (45, Some(0.0))],
+        );
+        let rules: Vec<_> = d.iter().map(|d| d.rule).collect();
+        assert_eq!(rules, ["unsure", "high_once", "safe", "high_once", "streak", "red"]);
+        assert_eq!(d[4].verdict, Verdict::Scam);
+        assert_eq!(d[5].verdict, Verdict::Scam); // red stays red
+    }
+
+    #[test]
+    fn bert_only_warm_up_only_breaks_on_bert() {
+        let d = bert_only_replay(&bert_only_cfg(), &[(1, Some(0.8)), (2, Some(0.95))]);
+        assert_eq!(d[0].rule, "warmup"); // workers at 1.0 don't break it
+        assert_eq!(d[1].rule, "high_once");
+    }
+
+    #[test]
+    fn bert_only_reasons_are_just_bert() {
+        let d = bert_only_replay(&bert_only_cfg(), &[(20, Some(0.9)), (25, Some(0.9)), (30, Some(0.0))]);
+        for line in &d {
+            assert_eq!(line.reasons.len(), 1);
+            assert_eq!(line.reasons[0].signal, "bert");
+        }
+    }
+
+    #[test]
+    fn bert_only_without_bert_says_so_and_keeps_red() {
+        let cfg = bert_only_cfg();
+        let d = bert_only_replay(&cfg, &[(1, None), (20, Some(0.9)), (25, None), (30, Some(0.9)), (35, Some(0.9)), (40, None)]);
+        assert_eq!((d[0].verdict, d[0].rule), (Verdict::Unsure, "bert_down")); // also during warm-up
+        assert_eq!(d[0].reasons[0].text, "The scam check did not answer");
+        assert_eq!(d[1].rule, "high_once");
+        assert_eq!(d[2].rule, "bert_down"); // resets the streak
+        assert_eq!(d[3].rule, "high_once");
+        assert_eq!(d[4].verdict, Verdict::Scam);
+        assert_eq!((d[5].verdict, d[5].rule), (Verdict::Scam, "red"));
+    }
+
+    #[test]
+    fn bert_only_one_shot() {
+        let cfg = bert_only_cfg();
+        assert_eq!(decide_one_shot(all(1.0, 1.0, 1.0), None, &cfg).rule, "bert_down");
+        assert_eq!(decide_one_shot(all(1.0, 1.0, 1.0), Some(0.1), &cfg).verdict, Verdict::Safe);
+        let d = decide_one_shot(all(0.0, 0.0, 0.0), Some(0.9), &cfg);
+        assert_eq!((d.verdict, d.reasons[0].signal), (Verdict::Scam, "bert"));
     }
 }
