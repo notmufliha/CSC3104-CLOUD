@@ -24,6 +24,9 @@ pub struct Settings {
     pub call_ttl: Duration,
     /// Upper bound on calls kept in memory.
     pub max_calls: usize,
+    /// Workstream H: where POST /v1/report is forwarded (the internal review service). None = reporting off
+    /// (the endpoint answers 503).
+    pub review_url: Option<String>,
 }
 
 impl Settings {
@@ -47,6 +50,11 @@ impl Settings {
             bert_context_lines: env_u64("BERT_CONTEXT_LINES", 5) as usize,
             call_ttl: Duration::from_secs(env_u64("CALL_TTL_SECS", 1800)),
             max_calls: env_u64("MAX_CALLS", 10_000) as usize,
+            review_url: env::var("REVIEW_URL")
+                .ok()
+                .map(|v| v.trim().trim_end_matches('/').to_string())
+                .filter(|v| !v.is_empty())
+                .map(|v| normalize_addr(&v)),
         }
     }
 }

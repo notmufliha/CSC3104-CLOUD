@@ -6,6 +6,8 @@
 //!                              "t_ms": 22000}       (seq, lang and t_ms optional)
 //!   POST /submit-transcript   {"transcript": "...", "language": "en"}   (older one-shot endpoint, no call memory)
 //!   GET  /healthz
+//!   POST /v1/report           Workstream H: a consented report of a finished call, forwarded to the internal
+//!                              review service (the phone never reaches that service directly)
 //!
 //! Logs: one "timing" line per worker call and one per aggregator call (milliseconds, outcome), plus one per
 //! request. Transcript text is never logged.
@@ -33,6 +35,9 @@ use scam_detect::{AggregateRequest, TranscriptRequest, WorkerScore};
 
 const MAX_CALL_ID_LEN: usize = 128;
 const MAX_TEXT_CHARS: usize = 10_000;
+/// A report is the call's caller lines (at most 200 x 2000 characters, checked again by the review service).
+const MAX_REPORT_BYTES: usize = 512 * 1024;
+const REVIEW_TIMEOUT: Duration = Duration::from_secs(5);
 
 struct AppState {
     settings: Settings,
@@ -40,6 +45,7 @@ struct AppState {
     workers: HashMap<(&'static str, &'static str), Channel>,
     aggregator: Channel,
     calls: CallStore,
+    http: hyper::Client<hyper::client::HttpConnector>,
 }
 
 impl AppState {
@@ -103,6 +109,9 @@ struct UtteranceResponse {
     language_source: Option<&'static str>,
     /// This line's score per signal; null = that worker did not answer in time.
     scores: BTreeMap<&'static str, Option<f32>>,
+    /// Workstream H.8: the model version each worker that answered used (e.g. {"urgency": "v5"}). A worker
+    /// that doesn't report a version is left out.
+    model_versions: BTreeMap<&'static str, String>,
     missing: Vec<&'static str>,
     /// Each signal's highest score over the call's recent caller lines: what the verdict is built from.
     recent_scores: BTreeMap<String, f32>,
@@ -134,23 +143,32 @@ async fn call_worker(
     lang: &'static str,
     signal: &'static str,
     text: String,
-) -> (&'static str, Option<f32>) {
+) -> (&'static str, Option<f32>, String) {
     let start = Instant::now();
     let mut client = WorkerServiceClient::new(state.workers[&(lang, signal)].clone());
     let request = TranscriptRequest { transcript: text, language: lang.to_string() };
     let result = tokio::time::timeout(state.settings.worker_timeout, client.classify_transcript(request)).await;
     let ms = start.elapsed().as_millis() as u64;
-    let (score, outcome, code) = match result {
-        Ok(Ok(reply)) => (Some(reply.into_inner().score), "ok", String::new()),
-        Ok(Err(status)) => (None, "error", format!("{:?}", status.code())),
-        Err(_) => (None, "timeout", String::new()),
+    let (score, version, outcome, code) = match result {
+        Ok(Ok(reply)) => {
+            let r = reply.into_inner();
+            (Some(r.score), r.model_version, "ok", String::new())
+        }
+        Ok(Err(status)) => (None, String::new(), "error", format!("{:?}", status.code())),
+        Err(_) => (None, String::new(), "timeout", String::new()),
     };
-    tracing::info!(target: "timing", stage = "worker", call_id, lang, signal, ms, outcome, code = %code);
-    (signal, score)
+    tracing::info!(target: "timing", stage = "worker", call_id, lang, signal, ms, outcome, code = %code,
+                   model_version = %version);
+    (signal, score, version)
 }
 
 /// All three workers for `lang` at the same time; whatever arrives within the timeout is used.
-async fn fan_out(state: &AppState, call_id: &str, lang: &'static str, text: &str) -> Vec<(&'static str, Option<f32>)> {
+async fn fan_out(
+    state: &AppState,
+    call_id: &str,
+    lang: &'static str,
+    text: &str,
+) -> Vec<(&'static str, Option<f32>, String)> {
     let (a, b, c) = tokio::join!(
         call_worker(state, call_id, lang, SIGNALS[0], text.to_string()),
         call_worker(state, call_id, lang, SIGNALS[1], text.to_string()),
@@ -176,7 +194,12 @@ async fn aggregate(
     let request = AggregateRequest {
         scores: scores
             .iter()
-            .map(|(signal, score)| WorkerScore { signal: signal.to_string(), score: *score, language: lang.to_string() })
+            .map(|(signal, score)| WorkerScore {
+                signal: signal.to_string(),
+                score: *score,
+                language: lang.to_string(),
+                model_version: String::new(), // the aggregator does not use it
+            })
             .collect(),
         call_id: call_id.to_string(),
         seq: seq.unwrap_or(0),
@@ -249,6 +272,7 @@ async fn utterance(state: web::Data<AppState>, body: web::Json<UtteranceRequest>
             language: None,
             language_source: None,
             scores: BTreeMap::new(),
+            model_versions: BTreeMap::new(),
             missing: vec![],
             recent_scores: a.recent_scores,
             fast_score: last.as_ref().map(|a| a.fast_score),
@@ -297,8 +321,10 @@ async fn utterance(state: web::Data<AppState>, body: web::Json<UtteranceRequest>
 
     // 2.4 + 2.5 fan-out with a timeout
     let results = fan_out(&state, &call_id, lang, &req.text).await;
-    let arrived: Vec<(&'static str, f32)> = results.iter().filter_map(|(s, p)| p.map(|p| (*s, p))).collect();
-    let missing: Vec<&'static str> = results.iter().filter(|(_, p)| p.is_none()).map(|(s, _)| *s).collect();
+    let arrived: Vec<(&'static str, f32)> = results.iter().filter_map(|(s, p, _)| p.map(|p| (*s, p))).collect();
+    let missing: Vec<&'static str> = results.iter().filter(|(_, p, _)| p.is_none()).map(|(s, _, _)| *s).collect();
+    let model_versions: BTreeMap<&'static str, String> =
+        results.iter().filter(|(_, _, v)| !v.is_empty()).map(|(s, _, v)| (*s, v.clone())).collect();
 
     if arrived.is_empty() {
         tracing::warn!(call_id = %call_id, seq, lang, ?missing, "no worker answered; the aggregator decides (quorum)");
@@ -338,7 +364,8 @@ async fn utterance(state: web::Data<AppState>, body: web::Json<UtteranceRequest>
             language::Source::Phone => "phone",
             language::Source::Detected => "detected",
         }),
-        scores: results.into_iter().collect(),
+        scores: results.into_iter().map(|(s, p, _)| (s, p)).collect(),
+        model_versions,
         missing,
         recent_scores: answer.recent_scores,
         fast_score: Some(answer.fast_score),
@@ -363,7 +390,7 @@ async fn submit_transcript(state: web::Data<AppState>, body: web::Json<SubmitTra
         Err(e) => return bad_request(e),
     };
     let results = fan_out(&state, "-", lang, &body.transcript).await;
-    let arrived: Vec<(&'static str, f32)> = results.iter().filter_map(|(s, p)| p.map(|p| (*s, p))).collect();
+    let arrived: Vec<(&'static str, f32)> = results.iter().filter_map(|(s, p, _)| p.map(|p| (*s, p))).collect();
     // empty call_id = one-shot: the aggregator judges these scores alone, with no call memory
     let context = state.calls_context_one_shot(&body.transcript);
     match aggregate(&state, "", None, None, lang, &arrived, context).await {
@@ -379,6 +406,56 @@ async fn submit_transcript(state: web::Data<AppState>, body: web::Json<SubmitTra
             "signals_expected": 3,
         })),
         Err(e) => HttpResponse::BadGateway().json(ErrorResponse { error: e }),
+    }
+}
+
+/// Workstream H.3/H.4: the user tapped "Report" or "This was fine" after a call and agreed to share its caller
+/// lines. Checked here (consent, size), then forwarded unchanged to the internal review service, which masks
+/// the text again and stores it encrypted. The text is never logged here.
+async fn report(state: web::Data<AppState>, body: web::Json<serde_json::Value>) -> HttpResponse {
+    let Some(base) = state.settings.review_url.as_deref() else {
+        return HttpResponse::ServiceUnavailable().json(ErrorResponse { error: "reporting is not set up".into() });
+    };
+    let v = body.into_inner();
+    if v.get("consent").and_then(|c| c.as_bool()) != Some(true) {
+        return bad_request("consent is required: nothing was sent");
+    }
+    let n_lines = v.get("lines").and_then(|l| l.as_array()).map(|l| l.len()).unwrap_or(0);
+    if n_lines == 0 {
+        return bad_request("a report needs at least one caller line");
+    }
+    let kind = v.get("kind").and_then(|k| k.as_str()).unwrap_or("").to_string();
+    let request = match hyper::Request::post(format!("{base}/reports"))
+        .header("content-type", "application/json")
+        .body(hyper::Body::from(v.to_string()))
+    {
+        Ok(r) => r,
+        Err(e) => return HttpResponse::InternalServerError().json(ErrorResponse { error: e.to_string() }),
+    };
+    let start = Instant::now();
+    let reply = tokio::time::timeout(REVIEW_TIMEOUT, async {
+        let resp = state.http.request(request).await?;
+        let status = resp.status().as_u16();
+        let bytes = hyper::body::to_bytes(resp.into_body()).await?;
+        Ok::<_, hyper::Error>((status, bytes))
+    })
+    .await;
+    let ms = start.elapsed().as_millis() as u64;
+    match reply {
+        Ok(Ok((status, bytes))) => {
+            tracing::info!(target: "timing", stage = "review", ms, status, kind = %kind, lines = n_lines, "report");
+            let code = actix_web::http::StatusCode::from_u16(status)
+                .unwrap_or(actix_web::http::StatusCode::BAD_GATEWAY);
+            HttpResponse::build(code).content_type("application/json").body(bytes)
+        }
+        Ok(Err(e)) => {
+            tracing::warn!(target: "timing", stage = "review", ms, error = %e, "report not delivered");
+            HttpResponse::BadGateway().json(ErrorResponse { error: "review service unavailable".into() })
+        }
+        Err(_) => {
+            tracing::warn!(target: "timing", stage = "review", ms, "report timed out");
+            HttpResponse::GatewayTimeout().json(ErrorResponse { error: "review service timed out".into() })
+        }
     }
 }
 
@@ -416,9 +493,11 @@ async fn main() -> std::io::Result<()> {
     let state = web::Data::new(AppState {
         aggregator: lazy_channel(&settings.aggregator_addr),
         calls: CallStore::new(settings.call_ttl, settings.max_calls),
+        http: hyper::Client::new(),
         workers,
         settings,
     });
+    tracing::info!(review_url = state.settings.review_url.as_deref().unwrap_or("(off)"), "report forwarding");
     tracing::info!(addr = %bind_addr, "starting gateway");
 
     HttpServer::new(move || {
@@ -434,6 +513,18 @@ async fn main() -> std::io::Result<()> {
             .service(utterance)
             .service(submit_transcript)
             .service(healthz)
+            .service(
+                web::resource("/v1/report")
+                    .app_data(web::JsonConfig::default().limit(MAX_REPORT_BYTES).error_handler(|err, _| {
+                        let msg = err.to_string();
+                        error::InternalError::from_response(
+                            err,
+                            HttpResponse::BadRequest().json(ErrorResponse { error: msg }),
+                        )
+                        .into()
+                    }))
+                    .route(web::post().to(report)),
+            )
     })
     .bind(bind_addr)?
     .run()

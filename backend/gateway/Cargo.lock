@@ -643,6 +643,7 @@ name = "gateway"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "hyper",
  "prost",
  "serde",
  "serde_json",

@@ -12,6 +12,11 @@ proxy called Envoy sits in front of every scalable service so load actually spre
 Kubernetes doesn't do that for gRPC on its own). Read `demo/EXPECTED.md` for exactly what was tested and
 measured already, with dates and commands, so you know what's proven and what you should double-check.
 
+Two add-ons have their own guides: [`STABLE_ADDRESS.md`](STABLE_ADDRESS.md) (Workstream E: one HTTPS
+address for the phone) and [`LEARNING_LOOP.md`](LEARNING_LOOP.md) (Workstream H: report a call, label it,
+retrain, release check, rolling update; all through `python demo/tools/learning.py`). `up` also builds the
+review service and the retraining image, so the stack is now 11 images.
+
 ## One-time setup (do this once, whenever)
 
 Install, if you don't have them already:

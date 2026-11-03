@@ -15,10 +15,20 @@ Rules every worker follows:
   - a scoring failure returns a gRPC INTERNAL error (the gateway then leaves this score out),
     never a made-up score
   - transcript text is never logged, only scores
+
+Model versions (Workstream H.8): by default the model baked into the image is used (BAKED_MODEL_VERSION, v4).
+If MODEL_VERSION is set (e.g. "v5"), that version is downloaded at start-up from the model registry
+(MODEL_REGISTRY_URL, the review service) and its sha256 checked. The registry only holds versions that passed
+the release check. If the download or check fails the worker refuses to start, so a rolling update to a bad
+version stalls with the old pods still serving. Every reply carries model_version.
 """
+import hashlib
+import json
 import logging
 import os
 import signal
+import tempfile
+import urllib.request
 from concurrent import futures
 
 import grpc
@@ -32,19 +42,45 @@ SIGNAL = "urgency"
 LANGUAGE = "en"
 SERVICE_NAME = "scam_detect.WorkerService"
 MODEL_PATH = os.environ.get("MODEL_PATH", str(predict.DEFAULT_MODEL))
+MODEL_NAME = f"{SIGNAL}_{LANGUAGE}"
+MODEL_VERSION = os.environ.get("MODEL_VERSION", "").strip()
+MODEL_REGISTRY_URL = os.environ.get("MODEL_REGISTRY_URL", "http://review:8090").rstrip("/")
+BAKED_MODEL_VERSION = os.environ.get("BAKED_MODEL_VERSION", "")
 PORT = os.environ.get("PORT", "50051")
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 logger = logging.getLogger(f"worker.{SIGNAL}.{LANGUAGE}")
 
 
+def download_model(version: str) -> str:
+    """Fetches a released model version from the registry into a temp file; checks its sha256."""
+    base = f"{MODEL_REGISTRY_URL}/models/{MODEL_NAME}/{version}"
+    with urllib.request.urlopen(base, timeout=30) as r:
+        meta = json.load(r)
+    path = os.path.join(tempfile.gettempdir(), f"{MODEL_NAME}_{version}.joblib")
+    digest = hashlib.sha256()
+    with urllib.request.urlopen(base + "/file", timeout=120) as r, open(path, "wb") as f:
+        for chunk in iter(lambda: r.read(1 << 20), b""):
+            digest.update(chunk)
+            f.write(chunk)
+    if digest.hexdigest() != meta["sha256"]:
+        raise ValueError(f"{MODEL_NAME} {version}: sha256 mismatch, refusing to load")
+    return path
+
+
 class WorkerServiceServicer(scam_detect_pb2_grpc.WorkerServiceServicer):
     def __init__(self):
-        if not os.path.exists(MODEL_PATH):
-            raise FileNotFoundError(f"urgency model not found at {MODEL_PATH} - run train.py or mount the model")
-        bundle = predict.load_model(MODEL_PATH)
-        logger.info("loaded %s (version=%s, created_at=%s, threshold=%.4f, call_threshold=%.4f)", MODEL_PATH,
-                    bundle.get("version", "unversioned"), bundle.get("created_at"), bundle["threshold"],
+        if MODEL_VERSION:
+            path = download_model(MODEL_VERSION)
+            logger.info("downloaded %s %s from %s", MODEL_NAME, MODEL_VERSION, MODEL_REGISTRY_URL)
+        else:
+            path = MODEL_PATH
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"urgency model not found at {path} - run train.py or mount the model")
+        bundle = predict.load_model(path)
+        self.version = MODEL_VERSION or bundle.get("version") or BAKED_MODEL_VERSION or "unversioned"
+        logger.info("loaded %s (version=%s, created_at=%s, threshold=%.4f, call_threshold=%.4f)", path,
+                    self.version, bundle.get("created_at"), bundle["threshold"],
                     bundle.get("call_threshold", bundle["threshold"]))
 
     def ClassifyTranscript(self, request, context):
@@ -53,8 +89,9 @@ class WorkerServiceServicer(scam_detect_pb2_grpc.WorkerServiceServicer):
         except Exception as e:  # report the failure; never invent a score
             logger.error("scoring failed: %s", type(e).__name__)
             context.abort(grpc.StatusCode.INTERNAL, "urgency scoring failed")
-        logger.info("score=%.4f", score)
-        return scam_detect_pb2.WorkerScore(signal=SIGNAL, score=score, language=LANGUAGE)
+        logger.info("score=%.4f version=%s", score, self.version)
+        return scam_detect_pb2.WorkerScore(signal=SIGNAL, score=score, language=LANGUAGE,
+                                           model_version=self.version)
 
 
 def serve():

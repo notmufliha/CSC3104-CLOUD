@@ -134,6 +134,13 @@ Answer for a caller line:
 - `GET /healthz` returns `{"status": "ok", "calls_in_memory": N}`. The older one-shot
   `POST /submit-transcript` (`{"transcript", "language"}`, no call memory) still works and now also
   returns `reasons` and `action`.
+- `model_versions` in each answer (Workstream H.8): the model version each worker that answered used, e.g.
+  `{"urgency": "v5"}`. Workers that don't report a version yet are left out.
+- `POST /v1/report` (Workstream H.3): after a call, the user shares it with consent:
+  `{"call_id", "kind": "scam"|"fine", "app_verdict", "language": "en"|"zh", "consent": true, "lines": [{"seq", "text"}]}`
+  (caller lines, masked on the phone). Forwarded to the internal review service, which masks again, stores the
+  lines encrypted and deletes them after 30 days. 400 without `consent: true`; 503 if `REVIEW_URL` isn't set.
+  See [demo/LEARNING_LOOP.md](demo/LEARNING_LOOP.md).
 
 Gateway settings (environment variables; defaults match `docker-compose.yml`):
 
@@ -145,6 +152,7 @@ Gateway settings (environment variables; defaults match `docker-compose.yml`):
 | `BERT_CONTEXT_LINES` | `5` | Caller lines per call kept in the gateway's RAM and sent with each aggregate request for BERT (never logged; forgotten with the call). `0` = never send text. |
 | `CALL_TTL_SECS` / `MAX_CALLS` | `1800` / `10000` | How long and how many calls the gateway remembers (seen `seq`s + last answer). |
 | `LOG_FORMAT` | plain | `json` for one JSON object per log line. |
+| `REVIEW_URL` | (off) | Where `POST /v1/report` is forwarded (`http://review:8090`). Unset = reporting off (503). |
 
 Logs: one `timing` line per worker call (`stage="worker" ... signal="money" ms=6 outcome="ok"`), one per
 aggregator call and one per request. Transcript text is never logged. The decision memory lives in Redis
@@ -371,6 +379,11 @@ multiple replicas, autoscaling (HPA) and Envoy-based gRPC load balancing — the
 this repo's architecture. `docker compose up` above is still the simplest way to run it locally day to
 day; `demo/` is for showing the distributed-systems behaviour live. Start at
 [demo/README.md](demo/README.md).
+
+- [demo/STABLE_ADDRESS.md](demo/STABLE_ADDRESS.md): Workstream E, one HTTPS address for the phone (Ingress).
+- [demo/LEARNING_LOOP.md](demo/LEARNING_LOOP.md): Workstream H, learning new scams: monitoring and drift
+  alert, consented reports, review queue and labelling, retraining CronJob with a release check, model
+  versions, rolling update and rollback (`python demo/tools/learning.py ...`).
 
 ## BERT second opinion
 
