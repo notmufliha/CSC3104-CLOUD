@@ -83,6 +83,9 @@ pub struct Settings {
     /// tunes for recall (F2), so a second opinion may not cancel strong evidence until the evaluation (7.5)
     /// shows it is safe to (try 0.1-0.2 there).
     pub bert_veto: f32,
+    /// Cascade only: also ask BERT on every Nth caller line, even if it looks safe or is in the warm-up, so a
+    /// scam the workers miss still gets checked. 0 = off. Never once the call is red.
+    pub bert_spot_every: u32,
 }
 
 impl Settings {
@@ -118,6 +121,7 @@ impl Settings {
             bert_timeout: Duration::from_millis(number(&get, "BERT_TIMEOUT_MS", 300)?),
             bert_weight: number(&get, "AGG_BERT_WEIGHT", 0.5)?,
             bert_veto: number(&get, "AGG_BERT_VETO", 0.0)?,
+            bert_spot_every: number(&get, "AGG_BERT_SPOT_EVERY", 5)?,
         };
         s.validate()?;
         Ok(s)
@@ -227,6 +231,7 @@ mod tests {
         assert_eq!(s.bert_addr, ""); // BERT off unless BERT_ADDR is set
         assert_eq!(s.bert_timeout, Duration::from_millis(300));
         assert_eq!((s.bert_weight, s.bert_veto), (0.5, 0.0)); // average; veto off
+        assert_eq!(s.bert_spot_every, 5);
     }
 
     #[test]
