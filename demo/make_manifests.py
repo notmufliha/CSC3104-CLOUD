@@ -52,9 +52,9 @@ INGRESS_HOST = "scamguard.test"      # must match HOSTNAME in demo/make_tls.py
 INGRESS_TLS_SECRET = "gateway-tls"   # made by `python demo/make_tls.py --apply` (up.sh/up.ps1 run it)
 ENVOY_REPLICAS = 1
 REDIS_REPLICAS = 1
-BERT_HPA_MIN = 1
-BERT_HPA_MAX = 2          # BERT is only called on the cascade path (unsure/alarmed lines), so it needs far
-                          # fewer replicas than the always-called workers.
+BERT_HPA_MIN = 2          # two, so losing a pod doesn't leave the cascade without BERT (C.9)
+BERT_HPA_MAX = 4          # BERT is only called on the cascade path (unsure/alarmed lines and spot checks), so
+                          # it needs fewer replicas than the always-called workers.
 
 # ---- Resource requests/limits -----------------------------------------------------------------------
 # EN/ZH worker numbers are the DEMO_TASK.md section 4.4 estimates, themselves measured on the OLD code
@@ -86,11 +86,13 @@ ENVOY_LIMITS = {"cpu": "500m", "memory": "256Mi"}
 
 # "Lite" bounds up.sh/up.ps1 switch to automatically on a small host (< 6 CPU or < 10 GB docker memory).
 LITE_HPA_MAX = 2
+LITE_BERT_HPA_MIN = 1
 LITE_BERT_HPA_MAX = 1
 LITE_AGGREGATOR_REPLICAS = 1
 
 if DEMO_LITE:
     HPA_MAX = LITE_HPA_MAX
+    BERT_HPA_MIN = LITE_BERT_HPA_MIN
     BERT_HPA_MAX = LITE_BERT_HPA_MAX
     AGGREGATOR_REPLICAS = LITE_AGGREGATOR_REPLICAS
     print("DEMO_LITE=1: using lite bounds (HPA_MAX=2, BERT_HPA_MAX=1, AGGREGATOR_REPLICAS=1)")
@@ -114,6 +116,7 @@ AGG_ENV = {
     "BERT_TIMEOUT_MS": "300",
     "AGG_BERT_WEIGHT": "0.5",
     "AGG_BERT_VETO": "0",
+    "AGG_BERT_SPOT_EVERY": "5",
 }
 
 # Gateway timing (docker-compose.yml): 2 s promise to the phone = worker budget + aggregator budget.
