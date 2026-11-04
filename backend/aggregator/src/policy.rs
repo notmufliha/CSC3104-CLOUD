@@ -26,7 +26,9 @@
 //!
 //! The cascade (task 7.4): BERT is slow, so it is asked only when the answer WITHOUT it would be decided by
 //! rule 3, 6, 7 or 8 (not enough data, money rule, high, unsure); see `wants_second_opinion`. A call that is
-//! clearly SAFE, still warming up, or already red never costs a BERT call.
+//! clearly SAFE, still warming up, or already red never costs a BERT call. The one exception is the spot check:
+//! every `bert_spot_every`th caller line of a call that isn't red asks BERT anyway, so a scam that keeps the
+//! workers quiet still gets looked at. BERT's answer then counts as usual: blended, and able to break the warm-up.
 //!
 //! AGG_MODE (Workstream F, "why not just BERT?"): `cascade` is all of the above. `fast` never asks BERT (main.rs
 //! has no client). `bert_only` asks BERT on every caller line, red calls included, and BERT's score alone is
@@ -142,8 +144,19 @@ pub fn wants_second_opinion(state: &CallState, line: LineScores, now_ms: i64, ca
     if cfg.mode == Mode::BertOnly {
         return true;
     }
+    if is_spot_check(state, cfg) {
+        return true;
+    }
     let (_, d) = decide(state.clone(), line, None, now_ms, call_time_ms, cfg);
     SECOND_OPINION_RULES.contains(&d.rule)
+}
+
+/// Is this caller line (the one about to be counted) due a spot check?
+fn is_spot_check(state: &CallState, cfg: &Settings) -> bool {
+    cfg.mode == Mode::Cascade
+        && cfg.bert_spot_every > 0
+        && !state.red
+        && (state.caller_lines + 1) % cfg.bert_spot_every == 0
 }
 
 /// Same for a one-shot request (no call memory).
@@ -723,6 +736,53 @@ mod tests {
         for v in [Verdict::Safe, Verdict::Unsure, Verdict::Scam] {
             assert_eq!(Verdict::parse(v.as_str()), Some(v));
         }
+    }
+
+    // ---- spot check ----
+
+    fn at_line(caller_lines: u32) -> CallState {
+        CallState { started_at_ms: START, caller_lines, ..CallState::default() }
+    }
+
+    #[test]
+    fn spot_check_asks_on_every_5th_line_of_a_quiet_call() {
+        let (cfg, quiet) = (cfg(), all(0.0, 0.0, 0.0));
+        let asked: Vec<u32> = (0..12)
+            .filter(|n| wants_second_opinion(&at_line(*n), quiet, START + 30_000, 30_000, &cfg))
+            .map(|n| n + 1)
+            .collect();
+        assert_eq!(asked, [5, 10]);
+    }
+
+    #[test]
+    fn spot_check_runs_during_the_warm_up_and_can_break_it() {
+        let cfg = cfg();
+        let quiet = all(0.0, 0.0, 0.0);
+        assert!(wants_second_opinion(&at_line(4), quiet, START + 5_000, 5_000, &cfg));
+        let (_, d) = decide(at_line(4), quiet, Some(0.95), START + 5_000, 5_000, &cfg);
+        assert!(d.warming_up);
+        assert_ne!(d.rule, "warmup");
+    }
+
+    #[test]
+    fn spot_check_skips_red_calls() {
+        let red = CallState { red: true, ..at_line(4) };
+        assert!(!wants_second_opinion(&red, all(0.0, 0.0, 0.0), START + 30_000, 30_000, &cfg()));
+    }
+
+    #[test]
+    fn spot_check_can_be_switched_off_and_is_cascade_only() {
+        let quiet = all(0.0, 0.0, 0.0);
+        let off = cfg_with(&[("AGG_BERT_SPOT_EVERY", "0")]);
+        assert!(!wants_second_opinion(&at_line(4), quiet, START + 30_000, 30_000, &off));
+        let fast = cfg_with(&[("AGG_MODE", "fast")]);
+        assert!(!wants_second_opinion(&at_line(4), quiet, START + 30_000, 30_000, &fast));
+    }
+
+    #[test]
+    fn low_spot_check_on_a_safe_line_stays_safe() {
+        let (_, d) = decide(at_line(4), all(0.1, 0.1, 0.1), Some(0.02), START + 30_000, 30_000, &cfg());
+        assert_eq!((d.verdict, d.rule), (Verdict::Safe, "safe"));
     }
 
     // ---- AGG_MODE=bert_only ----
