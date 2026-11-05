@@ -5,7 +5,7 @@ import androidx.core.content.edit
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
-/** Gateway URL + call history, stored in SharedPreferences. History keeps at most 100 rows. */
+/** Gateway URL and settings, in SharedPreferences. (Call history moved to the Room database, data/db/.) */
 class AppPrefs(context: Context) {
     private val sp = context.getSharedPreferences("scamguard", Context.MODE_PRIVATE)
     private val gson = Gson()
@@ -15,26 +15,30 @@ class AppPrefs(context: Context) {
         get() = sp.getString(KEY_URL, DEFAULT_URL) ?: DEFAULT_URL
         set(value) = sp.edit { putString(KEY_URL, GatewayClient.normalize(value)) }
 
-    fun history(): List<HistoryEntry> {
-        val json = sp.getString(KEY_HISTORY, null) ?: return emptyList()
+    /** Workstream B.7: "Save the riskiest sentence" on the dashboard. Off by default: no transcript is kept. */
+    var saveRiskiestSentence: Boolean
+        get() = sp.getBoolean(KEY_SAVE_SENTENCE, false)
+        set(value) = sp.edit { putBoolean(KEY_SAVE_SENTENCE, value) }
+
+    /**
+     * The old History (before the Room dashboard), or null if there is none (never had one, or already moved).
+     * Read once by CallHistory.migrateLegacy, which then calls removeLegacyHistory.
+     */
+    fun legacyHistory(): List<HistoryEntry>? {
+        val json = sp.getString(KEY_HISTORY, null) ?: return null
         return try {
             gson.fromJson<List<HistoryEntry>>(json, historyType).orEmpty()
         } catch (e: Exception) {
-            emptyList()
+            emptyList()   // unreadable: nothing to move, and the key is removed all the same
         }
     }
 
-    fun addHistory(entry: HistoryEntry) {
-        val updated = (listOf(entry) + history()).take(MAX_HISTORY) // newest first
-        sp.edit { putString(KEY_HISTORY, gson.toJson(updated)) }
-    }
-
-    fun clearHistory() = sp.edit { remove(KEY_HISTORY) }
+    fun removeLegacyHistory() = sp.edit { remove(KEY_HISTORY) }
 
     companion object {
         const val DEFAULT_URL = "http://10.0.2.2:8080/" // emulator -> laptop's localhost
         private const val KEY_URL = "gateway_url"
         private const val KEY_HISTORY = "history"
-        private const val MAX_HISTORY = 100
+        private const val KEY_SAVE_SENTENCE = "save_riskiest_sentence"
     }
 }

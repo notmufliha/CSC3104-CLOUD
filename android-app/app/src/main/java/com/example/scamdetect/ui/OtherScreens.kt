@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -49,7 +50,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.example.scamdetect.data.CallScript
-import com.example.scamdetect.data.HistoryEntry
 import com.example.scamdetect.data.ReportLine
 import com.example.scamdetect.logic.Risk
 import kotlinx.coroutines.launch
@@ -60,7 +60,7 @@ import java.util.Locale
 const val SCAMSHIELD_URL = "https://www.scamshield.gov.sg/"
 
 @Composable
-private fun Page(title: String, onBack: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
+internal fun Page(title: String, onBack: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
             Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp),
@@ -83,7 +83,7 @@ fun HomeScreen(
     onNormalCall: () -> Unit,
     onPickScript: () -> Unit,
     onPasteText: () -> Unit,
-    onHistory: () -> Unit,
+    onDashboard: () -> Unit,
     onSettings: () -> Unit,
 ) {
     Page("ScamGuard") {
@@ -95,7 +95,7 @@ fun HomeScreen(
         OutlinedButton(onClick = onPasteText, modifier = wide) { Text("Paste text") }
         HorizontalDivider()
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = onHistory) { Text("History") }
+            TextButton(onClick = onDashboard) { Text("Dashboard") }
             TextButton(onClick = onSettings) { Text("Settings") }
         }
     }
@@ -241,7 +241,11 @@ fun PasteTextScreen(onCheck: (String) -> Unit, onBack: () -> Unit) {
 
 // ---------------------------------------------------------------- 4.6 After-call summary
 
-/** Uses state.level, the same value as the in-call bar and the saved history row. */
+/**
+ * B.5: leads with state.summaryLevel (the final verdict, else the live one), the same value as the saved history
+ * row; the live verdict is shown small underneath. While the end-of-call answer is on its way (up to 3 s):
+ * "Final review…".
+ */
 @Composable
 fun SummaryScreen(
     state: CallUiState,
@@ -250,7 +254,6 @@ fun SummaryScreen(
     onDone: () -> Unit,
 ) {
     val context = LocalContext.current
-    val level = state.level
     // H.3: which button opened the consent screen ("scam" / "fine"), and the result once sent.
     var asking by remember { mutableStateOf<String?>(null) }
     var reportResult by remember { mutableStateOf<String?>(null) }
@@ -268,6 +271,19 @@ fun SummaryScreen(
             onCancel = { asking = null; reportResult = "Nothing was shared." },
         )
     }
+    if (state.reviewing) {
+        Page("Call summary") {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                CircularProgressIndicator(Modifier.height(24.dp).width(24.dp), strokeWidth = 3.dp)
+                Text("Final review…", style = MaterialTheme.typography.titleMedium)
+            }
+            Text("Checking the whole call once more.", style = MaterialTheme.typography.bodySmall)
+        }
+        return
+    }
+    val level = state.summaryLevel
+    val review = state.finalReview
+    val risky = review?.topWindowSeqs.orEmpty()
     Page("Call summary") {
         Text(
             levelLabel(level).uppercase(),
@@ -275,12 +291,21 @@ fun SummaryScreen(
             fontWeight = FontWeight.Bold,
             color = levelColor(level)
         )
-        state.banner?.let { InfoBanner(it, levelColor(level)) }
+        Text(
+            "During the call: " + levelLabel(state.level) +
+                if (review?.reviewed == true) "" else " · Final review unavailable",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        val reason = review?.reason?.takeIf { it.isNotBlank() && level in WARNING_LEVELS }
+        val banner = Risk.banner(level, state.lit, state.flaggedTexts)
+        if (reason != null) InfoBanner("$reason. ${Risk.action(state.lit)}", levelColor(level))
+        else banner?.let { InfoBanner(it, levelColor(level)) }
         Text("What triggered it", fontWeight = FontWeight.SemiBold)
-        val flagged = state.lines.filter { it.isCaller && it.flags.isNotEmpty() }
-        if (flagged.isEmpty()) Text("No caller lines were flagged.")
+        val shown = state.lines.filter { it.isCaller && (it.flags.isNotEmpty() || it.seq in risky) }
+        if (shown.isEmpty()) Text("No caller lines were flagged.")
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(flagged, key = { it.seq }) { ChatBubble(it) }
+            items(shown, key = { it.seq }) { ChatBubble(it, riskyHere = it.seq in risky) }
         }
         Button(
             onClick = {
@@ -337,33 +362,9 @@ private fun ConsentDialog(kind: String, lines: List<ReportLine>, onShare: () -> 
     )
 }
 
-// ---------------------------------------------------------------- 4.7 History
+private val WARNING_LEVELS = setOf(Risk.Level.RED, Risk.Level.YELLOW)
 
-@Composable
-fun HistoryScreen(entries: List<HistoryEntry>, onClear: () -> Unit, onBack: () -> Unit) {
-    val fmt = remember { SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault()) }
-    Page("History", onBack) {
-        if (entries.isEmpty()) Text("No calls yet.")
-        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(entries) { e ->   // stored newest first
-                val notChecked = e.verdict == CallViewModel.NOT_CHECKED
-                val color = levelColor(Risk.level(e.verdict, if (notChecked) e.topReason else null))
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp)) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(e.verdict, color = color, fontWeight = FontWeight.Bold)
-                            Text(fmt.format(Date(e.timeMillis)), style = MaterialTheme.typography.labelMedium)
-                        }
-                        Text(e.topReason, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-            }
-        }
-        if (entries.isNotEmpty()) OutlinedButton(onClick = onClear, modifier = Modifier.fillMaxWidth()) {
-            Text("Clear history")
-        }
-    }
-}
+// 4.7 History -> replaced by the Room dashboard (Workstream B.7): DashboardScreens.kt
 
 // ---------------------------------------------------------------- 4.8 Settings
 
