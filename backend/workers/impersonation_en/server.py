@@ -42,8 +42,9 @@ class WorkerServiceServicer(scam_detect_pb2_grpc.WorkerServiceServicer):
         if not os.path.exists(MODEL_PATH):
             raise FileNotFoundError(f"impersonation model not found at {MODEL_PATH} - run train.py or mount it")
         card = predict.load_model(MODEL_PATH)
+        self.version = card.get("model_version", "unversioned")
         logger.info("loaded %s (version=%s, sklearn=%s, reporting threshold=%s)", MODEL_PATH,
-                    card.get("model_version", "unversioned"), card.get("sklearn_version"),
+                    self.version, card.get("sklearn_version"),
                     card.get("threshold_used_for_reporting"))
 
     def ClassifyTranscript(self, request, context):
@@ -52,8 +53,9 @@ class WorkerServiceServicer(scam_detect_pb2_grpc.WorkerServiceServicer):
         except Exception as e:  # report the failure; never invent a score
             logger.error("scoring failed: %s", type(e).__name__)
             context.abort(grpc.StatusCode.INTERNAL, "impersonation scoring failed")
-        logger.info("score=%.4f", score)
-        return scam_detect_pb2.WorkerScore(signal=SIGNAL, score=score, language=LANGUAGE)
+        logger.info("score=%.4f version=%s", score, self.version)
+        return scam_detect_pb2.WorkerScore(signal=SIGNAL, score=score, language=LANGUAGE,
+                                           model_version=self.version)
 
 
 def serve():
