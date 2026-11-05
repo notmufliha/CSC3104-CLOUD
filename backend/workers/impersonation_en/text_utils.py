@@ -18,7 +18,9 @@ SPACE_RE = re.compile(r"\s+")
 # Organisation names are replaced by their TYPE (police, government, bank...), so the model learns "claims to be a bank/police/government body"
 # without memorising individual brands like SPF or DBS.
 ORG_TYPES = {
-    "orgpolice": ["spf", "singapore police force", "interpol"],
+    "orgpolice": ["spf", "singapore police force", "interpol", "commercial affairs department",
+                  "central police division", "bedok police division", "jurong police division",
+                  "woodlands police division"],
     "orggovt": ["ica", "mom", "iras", "mas", "cpf", "singpass", "irs", "immigration and checkpoints authority", "monetary authority of singapore",
                 "ministry of manpower", "inland revenue authority of singapore", "cyber security agency", "cpf board", "state courts",
                 "supreme court", "ministry of home affairs", "ministry of education", "hdb", "lta", "csa", "govtech",
@@ -29,7 +31,9 @@ ORG_TYPES = {
     "orgcourier": ["singpost", "dhl", "fedex", "ninja van"],
     "orgshop": ["lazada", "shopee", "grab", "gojek"],
     "orgutility": ["sp group", "sp services"],
-    "orghealth": ["sgh", "singapore general hospital", "changi general hospital", "ttsh", "tan tock seng hospital", "nuh", "khoo teck puat hospital", "synapxe"],
+    "orghealth": ["sgh", "singapore general hospital", "changi general hospital", "ttsh", "tan tock seng hospital", "nuh", "khoo teck puat hospital",
+                  "synapxe", "national university hospital"],
+    "orginsurance": ["great eastern", "prudential"],
 }
 ORG_NAMES = [n for names in ORG_TYPES.values() for n in names]
 NAME_TO_TYPE = {n: t for t, names in ORG_TYPES.items() for n in names}
