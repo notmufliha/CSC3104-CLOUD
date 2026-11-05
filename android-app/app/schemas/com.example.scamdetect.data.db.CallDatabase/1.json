@@ -1,0 +1,157 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "9ba22089649f56ffe83f296c7cf06e17",
+    "entities": [
+      {
+        "tableName": "CallRecord",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `startedAt` INTEGER NOT NULL, `endedAt` INTEGER NOT NULL, `finalVerdict` TEXT NOT NULL, `liveVerdict` TEXT, `topReason` TEXT NOT NULL, `callScore` REAL, `signalsFired` TEXT NOT NULL, `review` TEXT NOT NULL, `riskiestSentence` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "startedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endedAt",
+            "columnName": "endedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "finalVerdict",
+            "columnName": "finalVerdict",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "liveVerdict",
+            "columnName": "liveVerdict",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "topReason",
+            "columnName": "topReason",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "callScore",
+            "columnName": "callScore",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "signalsFired",
+            "columnName": "signalsFired",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "review",
+            "columnName": "review",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "riskiestSentence",
+            "columnName": "riskiestSentence",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "ScorePoint",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`callId` TEXT NOT NULL, `seq` INTEGER NOT NULL, `secondsIntoCall` REAL NOT NULL, `combined` REAL, `urgency` REAL, `money` REAL, `impersonation` REAL, PRIMARY KEY(`callId`, `seq`), FOREIGN KEY(`callId`) REFERENCES `CallRecord`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "callId",
+            "columnName": "callId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seq",
+            "columnName": "seq",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "secondsIntoCall",
+            "columnName": "secondsIntoCall",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "combined",
+            "columnName": "combined",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "urgency",
+            "columnName": "urgency",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "money",
+            "columnName": "money",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "impersonation",
+            "columnName": "impersonation",
+            "affinity": "REAL"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "callId",
+            "seq"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_ScorePoint_callId",
+            "unique": false,
+            "columnNames": [
+              "callId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ScorePoint_callId` ON `${TABLE_NAME}` (`callId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "CallRecord",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "callId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9ba22089649f56ffe83f296c7cf06e17')"
+    ]
+  }
+}

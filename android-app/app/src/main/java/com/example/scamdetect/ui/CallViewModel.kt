@@ -12,23 +12,38 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.scamdetect.LOCAL_NETWORK_PERMISSION
 import com.example.scamdetect.data.AppPrefs
+import com.example.scamdetect.data.CallHistory
 import com.example.scamdetect.data.CallScript
+import com.example.scamdetect.data.EndCallRequest
+import com.example.scamdetect.data.EndCallResponse
+import com.example.scamdetect.data.EndLine
 import com.example.scamdetect.data.GatewayApi
 import com.example.scamdetect.data.GatewayClient
-import com.example.scamdetect.data.HistoryEntry
+import com.example.scamdetect.data.db.CallRecord
+import com.example.scamdetect.data.db.ScorePoint
 import com.example.scamdetect.data.ReportLine
 import com.example.scamdetect.data.ReportRequest
 import com.example.scamdetect.data.ScriptLine
 import com.example.scamdetect.data.ScriptRepository
 import com.example.scamdetect.data.UtteranceRequest
+import com.example.scamdetect.logic.Dashboard
+import com.example.scamdetect.logic.FinalReview
 import com.example.scamdetect.logic.Mask
 import com.example.scamdetect.logic.Risk
+import com.example.scamdetect.logic.Summary
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
@@ -61,9 +76,15 @@ data class CallUiState(
     val callScores: Map<String, Float> = emptyMap(),
     val gatewayError: String? = null,
     val scamAlert: Boolean = false,
+    /** Workstream B.5: waiting (up to 3 s) for the end-of-call answer; the summary shows "Final review…". */
+    val reviewing: Boolean = false,
+    /** Workstream B.5: the end-of-call answer, once it arrived (or UNAVAILABLE). */
+    val finalReview: FinalReview? = null,
 ) {
-    /** The one level used by the in-call bar, the summary and the saved history row. */
+    /** The live level: the in-call bar. */
     val level get() = Risk.level(verdict, gatewayError)
+    /** What the summary and the saved history row lead with: the final verdict, else the live one. */
+    val summaryLevel get() = Summary.level(finalReview, verdict, gatewayError)
     val lit get() = Risk.litSignals(callScores)
     val flaggedTexts get() = lines.filter { it.flags.isNotEmpty() }.map { it.text }
     val banner get() = Risk.banner(level, lit, flaggedTexts)
@@ -76,17 +97,33 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     private val _state = MutableStateFlow(CallUiState())
     val state: StateFlow<CallUiState> = _state.asStateFlow()
 
-    private val _history = MutableStateFlow(prefs.history())
-    val history: StateFlow<List<HistoryEntry>> = _history.asStateFlow()
+    /** B.7: past calls, on the phone only (Room). Newest first. */
+    private val callHistory = CallHistory(app, prefs)
+    val calls: StateFlow<List<CallRecord>> =
+        callHistory.calls.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val _saveSentence = MutableStateFlow(prefs.saveRiskiestSentence)
+    val saveSentence: StateFlow<Boolean> = _saveSentence.asStateFlow()
+
+    init {
+        viewModelScope.launch { callHistory.migrateLegacy() }   // the old SharedPreferences History, once
+    }
 
     private val _gatewayUrl = MutableStateFlow(prefs.gatewayUrl)
     val gatewayUrl: StateFlow<String> = _gatewayUrl.asStateFlow()
 
     private var playJob: Job? = null
+    /**
+     * Workstream B: end messages are sent here, not in viewModelScope, so leaving the call screen (Back, Done)
+     * never cancels them: the server must hear about every end to clear the call's memory.
+     */
+    private val endScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var callId = ""
     /** Highest seq whose answer (or error) has been applied. Older outcomes only update their own bubble. */
     private var lastOutcomeSeq = 0L
-    private var saved = false
+    /** B.7: this call's chart points (one per answered caller line) and when it started. Main thread only. */
+    private val points = mutableListOf<ScorePoint>()
+    private var callStartedAt = 0L
 
     private var lastRandom: String? = null
 
@@ -110,7 +147,21 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
 
     fun reset() {
         playJob?.cancel()
+        callId = ""               // a late end answer for the old call must not touch the next one
         _state.value = CallUiState()
+    }
+
+    /**
+     * Workstream B.5: Back pressed on the call screen. During a call: tell the server (ended_by
+     * "user_discarded", so it clears the call's memory), show no summary, save nothing. Otherwise just leave.
+     */
+    fun discard() {
+        val s = _state.value
+        if (s.phase == Phase.IN_CALL) {
+            playJob?.cancel()
+            GatewayClientOrNull()?.let { api -> sendEnd(api, callId, "user_discarded", s) }
+        }
+        reset()
     }
 
     /** Paste-text mode: a one-line "call" that skips ringing. */
@@ -126,7 +177,8 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         playJob?.cancel()
         callId = UUID.randomUUID().toString()
         lastOutcomeSeq = 0L
-        saved = false
+        points.clear()
+        callStartedAt = System.currentTimeMillis()
         _state.update { it.copy(phase = Phase.IN_CALL) }
 
         val api: GatewayApi? = try {
@@ -151,38 +203,102 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
             withTimeoutOrNull(5_000) { sends.joinAll() } // let the last answers arrive
             sends.forEach { it.cancel() }                 // nothing may change the call after this point
             delay(1_500)                                  // a moment to read the final state
-            endCall()
+            endCall(ENDED_SCRIPT)
         }
     }
 
-    /** User pressed the red button. */
+    /** User pressed the red button (or "Hang up now" on the red alert). */
     fun hangUp() {
-        playJob?.cancel()
-        endCall()
+        playJob?.cancel()                                 // also cancels lines still waiting for an answer
+        endCall(ENDED_HUNG_UP)
     }
 
-    private fun endCall() {
+    /**
+     * B.5: the call is over. Shows "Final review…", sends POST /v1/call/end with the caller lines and waits up to
+     * 3 s for the final verdict, then shows the summary and saves the history row. If the server can't be reached
+     * the summary uses the live verdict ("Final review unavailable").
+     */
+    private fun endCall(endedBy: String) {
         if (_state.value.phase != Phase.IN_CALL) return
         _state.update { st ->
             st.copy(
                 phase = Phase.ENDED,
+                reviewing = true,
                 lines = st.lines.map { if (it.pending) it.copy(pending = false, failed = true) else it },
             )
         }
+        val id = callId
         val s = _state.value
-        if (!saved && s.script?.kind != "pasted") {
-            saved = true
-            prefs.addHistory(
-                HistoryEntry(
-                    timeMillis = System.currentTimeMillis(),
-                    verdict = historyVerdict(s.level),
-                    topReason = historyReason(s),
-                    combinedScore = s.combinedScore,
-                )
-            )
-            _history.value = prefs.history()
+        val pts = points.toList()
+        val startedAt = callStartedAt
+        val endedAt = System.currentTimeMillis()
+        val api = GatewayClientOrNull()
+        val answer = api?.let { sendEnd(it, id, endedBy, s) }
+        viewModelScope.launch {
+            val resp = answer?.let { withTimeoutOrNull(FINAL_REVIEW_WAIT_MS) { it.await() } }
+            val review = resp?.let { FinalReview.from(it) } ?: FinalReview.UNAVAILABLE
+            if (callId == id) _state.update { it.copy(reviewing = false, finalReview = review) }
+            saveHistory(id, s.copy(reviewing = false, finalReview = review), pts, startedAt, endedAt)
         }
     }
+
+    /** Sends the end message on endScope (survives the screen); the answer is null if it failed. */
+    private fun sendEnd(api: GatewayApi, id: String, endedBy: String, s: CallUiState) = endScope.async {
+        if (id.isEmpty()) return@async null
+        val callerLines = s.lines.filter { it.isCaller && it.text.isNotBlank() }.map { EndLine(it.seq, it.text) }
+        val request = EndCallRequest(
+            callId = id,
+            endedBy = endedBy,
+            lastSeq = s.lines.maxOfOrNull { it.seq } ?: 0L,
+            callerLines = callerLines,
+            lang = s.script?.lang,
+        )
+        try {
+            val resp = api.endCall(request)
+            if (resp.isSuccessful) resp.body() else null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null                                          // the summary falls back to the live verdict
+        }
+    }
+
+    /** The gateway client, or null when the address in Settings is not valid. */
+    @Suppress("FunctionName")
+    private fun GatewayClientOrNull(): GatewayApi? = try {
+        GatewayClient.get(prefs.gatewayUrl)
+    } catch (e: IllegalArgumentException) {
+        null
+    }
+
+    /** B.7: one dashboard row + its chart points, in Room. endCall runs once per call, so this saves once. */
+    private suspend fun saveHistory(id: String, s: CallUiState, pts: List<ScorePoint>, startedAt: Long, endedAt: Long) {
+        if (s.script?.kind == "pasted" || id.isEmpty()) return
+        val verdict = historyVerdict(s.summaryLevel)
+        // Text is kept only if the user allowed it, and only for a call that ended with a warning.
+        val sentence = if (prefs.saveRiskiestSentence && verdict in WARNING_VERDICTS) {
+            Dashboard.riskiestSeq(pts)?.let { seq -> s.lines.firstOrNull { it.seq == seq }?.text }
+        } else null
+        val fired = (s.lit + s.lines.flatMap { it.flags }).toSet()
+        callHistory.save(
+            CallRecord(
+                id = id,
+                startedAt = startedAt,
+                endedAt = endedAt,
+                finalVerdict = verdict,
+                liveVerdict = historyVerdict(s.level),
+                topReason = historyReason(s),
+                callScore = s.combinedScore,
+                signalsFired = Risk.SIGNALS.filter { it in fired },
+                review = s.finalReview?.reviewType ?: "unavailable",
+                riskiestSentence = sentence,
+            ),
+            pts,
+        )
+    }
+
+    fun points(callId: String): Flow<List<ScorePoint>> = callHistory.points(callId)
+    fun call(callId: String): Flow<CallRecord?> = callHistory.call(callId)
 
     /** Same rule as the bar: SCAM / UNSURE stick, SAFE only if the call ended without an error. */
     private fun historyVerdict(level: Risk.Level) = when (level) {
@@ -192,8 +308,9 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         Risk.Level.ERROR, Risk.Level.LISTENING -> NOT_CHECKED
     }
 
-    private fun historyReason(s: CallUiState) = when (s.level) {
-        Risk.Level.RED, Risk.Level.YELLOW -> Risk.reason(s.lit, s.flaggedTexts)
+    private fun historyReason(s: CallUiState) = when (s.summaryLevel) {
+        Risk.Level.RED, Risk.Level.YELLOW ->
+            s.finalReview?.reason?.takeIf { it.isNotBlank() } ?: Risk.reason(s.lit, s.flaggedTexts)
         Risk.Level.GREEN -> "no warning signs"
         Risk.Level.ERROR -> "server not reached"
         Risk.Level.LISTENING -> "ended before any line was checked"
@@ -219,12 +336,27 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
             markError(seq, "Empty answer from server")
             return
         }
+        if (body.ignored == true) {
+            // B.6: the call had already ended on the server. No change: just stop the bubble's "checking…".
+            _state.update { st -> st.copy(lines = st.lines.map { if (it.seq == seq) it.copy(pending = false) else it }) }
+            return
+        }
         if (body.verdict !in KNOWN_VERDICTS) {
             markError(seq, "Server gave no verdict")       // e.g. VERDICT_UNSPECIFIED: not checked, never safe
             return
         }
 
         val flags = Risk.SIGNALS.filter { (body.scores?.get(it) ?: 0f) >= Risk.SIGNAL_ON }
+        // B.7: one chart point per answered caller line (numbers only)
+        points += ScorePoint(
+            callId = callId,
+            seq = seq,
+            secondsIntoCall = (System.currentTimeMillis() - callStartedAt) / 1000f,
+            combined = body.combinedScore,
+            urgency = body.scores?.get("urgency"),
+            money = body.scores?.get("money"),
+            impersonation = body.scores?.get("impersonation"),
+        )
         val isNewest = seq >= lastOutcomeSeq       // answers can arrive out of order; newest wins
         if (isNewest) lastOutcomeSeq = seq
 
@@ -338,14 +470,26 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun clearHistory() {
-        prefs.clearHistory()
-        _history.value = emptyList()
+    /** B.7 "Delete my history": every saved call, its chart points and any saved sentence. */
+    fun deleteHistory() {
+        viewModelScope.launch { callHistory.deleteAll() }
+    }
+
+    /** B.7 "Save the riskiest sentence". Turning it off also forgets the sentences already saved. */
+    fun setSaveSentence(on: Boolean) {
+        prefs.saveRiskiestSentence = on
+        _saveSentence.value = on
+        if (!on) viewModelScope.launch { callHistory.forgetSentences() }
     }
 
     companion object {
         private const val DEFAULT_DELAY_MS = 1_500L
+        /** B.5: how long the summary waits for the end-of-call answer before using the live verdict. */
+        private const val FINAL_REVIEW_WAIT_MS = 3_000L
+        private const val ENDED_SCRIPT = "script_finished"
+        private const val ENDED_HUNG_UP = "user_hung_up"
         const val NOT_CHECKED = "NOT CHECKED"
         private val KNOWN_VERDICTS = setOf("SAFE", "UNSURE", "SCAM")
+        private val WARNING_VERDICTS = setOf("SCAM", "UNSURE")
     }
 }

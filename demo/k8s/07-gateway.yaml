@@ -26,6 +26,8 @@ spec:
               value: "550"
             - name: BERT_CONTEXT_LINES
               value: "5"
+            - name: END_CALL_TIMEOUT_MS
+              value: "2000"
             - name: REVIEW_URL
               value: "http://review:8090"
             - name: GATEWAY_BIND_ADDR
