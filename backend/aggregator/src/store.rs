@@ -1,7 +1,8 @@
 //! Call memory in Redis, so any aggregator copy can handle any line of any call, and restarting the aggregator
 //! mid-call loses nothing.
 //!
-//!   call:<call_id>     hash: started_at_ms, window (JSON, last N lines' scores), streak, red, caller_lines,
+//!   call:<call_id>     hash: started_at_ms, window (JSON, last N lines' scores), streak, red,
+//!                      red_disagreements, caller_lines,
 //!                      verdict, combined, version. Deleted `call_ttl` after its last update.
 //!   calllog:<call_id>  list: one JSON verdict-log entry per caller line {call_id, seq, time_ms, verdict,
 //!                      combined, fast, bert, bert_status, rule, scores, recent}. Never transcript text (the
@@ -81,15 +82,22 @@ impl Store {
     /// Connects to Redis; keeps trying (with a log line each time) until it works, so the aggregator can start
     /// before Redis is ready. Afterwards ConnectionManager reconnects on its own.
     pub async fn connect(url: &str, url_for_log: &str) -> Store {
-        let client = redis::Client::open(url).unwrap_or_else(|e| panic!("invalid REDIS_URL '{url_for_log}': {e}"));
+        let client = redis::Client::open(url)
+            .unwrap_or_else(|e| panic!("invalid REDIS_URL '{url_for_log}': {e}"));
         let config = redis::aio::ConnectionManagerConfig::new()
             .set_connection_timeout(Some(Duration::from_millis(500)))
             .set_response_timeout(Some(Duration::from_millis(250)));
         loop {
-            match client.get_connection_manager_with_config(config.clone()).await {
+            match client
+                .get_connection_manager_with_config(config.clone())
+                .await
+            {
                 Ok(con) => {
                     tracing::info!(redis = %url_for_log, "connected to redis");
-                    return Store { con, save: Script::new(SAVE_LUA) };
+                    return Store {
+                        con,
+                        save: Script::new(SAVE_LUA),
+                    };
                 }
                 Err(e) => {
                     tracing::warn!(redis = %url_for_log, error = %e, "redis not reachable yet, retrying in 1 s");
@@ -124,14 +132,25 @@ impl Store {
             if attempt > 0 {
                 tokio::time::sleep(backoff(attempt)).await;
             }
-            let stored: HashMap<String, String> = redis::cmd("HGETALL").arg(&call_key).query_async(&mut con).await?;
+            let stored: HashMap<String, String> = redis::cmd("HGETALL")
+                .arg(&call_key)
+                .query_async(&mut con)
+                .await?;
             let (state, version) = from_hash(&stored)?;
             let bert = if policy::wants_second_opinion(&state, line, now_ms, call_time_ms, cfg) {
                 second.ask().await
             } else {
                 None
             };
-            let (state, decision) = policy::decide(state, line, bert, now_ms, call_time_ms, cfg);
+            let (state, decision) = policy::decide_with_bert_status(
+                state,
+                line,
+                bert,
+                second.status(),
+                now_ms,
+                call_time_ms,
+                cfg,
+            );
             let entry = log_entry(call_id, seq, now_ms, &line, &decision, second.status());
 
             let mut invocation = self.save.key(&call_key);
@@ -156,7 +175,10 @@ impl Store {
 
 /// Random wait in [0, attempt × 2 ms). The clock's nanoseconds are random enough to spread retries apart.
 fn backoff(attempt: u32) -> Duration {
-    let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.subsec_nanos()).unwrap_or(0);
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.subsec_nanos())
+        .unwrap_or(0);
     Duration::from_micros(u64::from(nanos % (attempt * 2000)))
 }
 
@@ -164,9 +186,13 @@ fn backoff(attempt: u32) -> Duration {
 fn to_hash(s: &CallState) -> Vec<(&'static str, String)> {
     vec![
         ("started_at_ms", s.started_at_ms.to_string()),
-        ("window", serde_json::to_string(&s.window).expect("scores serialize")),
+        (
+            "window",
+            serde_json::to_string(&s.window).expect("scores serialize"),
+        ),
         ("streak", s.streak.to_string()),
         ("red", if s.red { "1" } else { "0" }.to_string()),
+        ("red_disagreements", s.red_disagreements.to_string()),
         ("caller_lines", s.caller_lines.to_string()),
         ("verdict", s.verdict.as_str().to_string()),
         ("combined", s.combined.to_string()),
@@ -178,18 +204,34 @@ fn from_hash(h: &HashMap<String, String>) -> Result<(CallState, String), StoreEr
     if h.is_empty() {
         return Ok((CallState::default(), "0".to_string()));
     }
-    fn field<T: std::str::FromStr>(h: &HashMap<String, String>, name: &str) -> Result<T, StoreError> {
-        let v = h.get(name).ok_or_else(|| StoreError::Corrupt(format!("missing field {name}")))?;
-        v.parse().map_err(|_| StoreError::Corrupt(format!("bad {name}")))
+    fn field<T: std::str::FromStr>(
+        h: &HashMap<String, String>,
+        name: &str,
+    ) -> Result<T, StoreError> {
+        let v = h
+            .get(name)
+            .ok_or_else(|| StoreError::Corrupt(format!("missing field {name}")))?;
+        v.parse()
+            .map_err(|_| StoreError::Corrupt(format!("bad {name}")))
     }
-    let window_json = h.get("window").ok_or_else(|| StoreError::Corrupt("missing field window".into()))?;
+    let window_json = h
+        .get("window")
+        .ok_or_else(|| StoreError::Corrupt("missing field window".into()))?;
     let state = CallState {
         started_at_ms: field(h, "started_at_ms")?,
-        window: serde_json::from_str(window_json).map_err(|e| StoreError::Corrupt(format!("bad window: {e}")))?,
+        window: serde_json::from_str(window_json)
+            .map_err(|e| StoreError::Corrupt(format!("bad window: {e}")))?,
         streak: field(h, "streak")?,
         red: h.get("red").map(|v| v == "1").unwrap_or(false),
+        red_disagreements: h
+            .get("red_disagreements")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0),
         caller_lines: field(h, "caller_lines")?,
-        verdict: h.get("verdict").and_then(|v| Verdict::parse(v)).unwrap_or_default(),
+        verdict: h
+            .get("verdict")
+            .and_then(|v| Verdict::parse(v))
+            .unwrap_or_default(),
         combined: field(h, "combined")?,
     };
     let version = h.get("version").cloned().unwrap_or_else(|| "0".to_string());
@@ -202,9 +244,20 @@ fn clean(v: f32) -> f64 {
 }
 
 /// One verdict-log entry (3.8): ids, time, verdict and scores (BERT's too). Never text.
-pub fn log_entry(call_id: &str, seq: u64, now_ms: i64, line: &LineScores, d: &Decision, bert_status: &str) -> String {
+pub fn log_entry(
+    call_id: &str,
+    seq: u64,
+    now_ms: i64,
+    line: &LineScores,
+    d: &Decision,
+    bert_status: &str,
+) -> String {
     let named = |scores: &LineScores| -> serde_json::Map<String, serde_json::Value> {
-        SIGNALS.iter().zip(scores).map(|(s, v)| (s.to_string(), serde_json::json!(v.map(clean)))).collect()
+        SIGNALS
+            .iter()
+            .zip(scores)
+            .map(|(s, v)| (s.to_string(), serde_json::json!(v.map(clean))))
+            .collect()
     };
     serde_json::json!({
         "call_id": call_id,
@@ -230,14 +283,21 @@ mod tests {
     fn call_state_round_trips_through_the_hash() {
         let state = CallState {
             started_at_ms: 1_700_000_000_000,
-            window: vec![[Some(0.5), None, Some(0.25)], [Some(0.125), Some(1.0), Some(0.0)]],
+            window: vec![
+                [Some(0.5), None, Some(0.25)],
+                [Some(0.125), Some(1.0), Some(0.0)],
+            ],
             streak: 1,
             red: true,
+            red_disagreements: 0,
             caller_lines: 7,
             verdict: Verdict::Scam,
             combined: 0.625,
         };
-        let mut h: HashMap<String, String> = to_hash(&state).into_iter().map(|(k, v)| (k.to_string(), v)).collect();
+        let mut h: HashMap<String, String> = to_hash(&state)
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v))
+            .collect();
         h.insert("version".into(), "3".into());
         let (back, version) = from_hash(&h).unwrap();
         assert_eq!(back, state);
@@ -256,16 +316,29 @@ mod tests {
         let cfg = crate::config::Settings::from_lookup(|_| None).unwrap();
         let line = [Some(0.6), Some(0.95), None];
         let d = crate::policy::decide_one_shot(line, None, &cfg);
-        let entry: serde_json::Value = serde_json::from_str(&log_entry("c1", 3, 42, &line, &d, "skipped")).unwrap();
+        let entry: serde_json::Value =
+            serde_json::from_str(&log_entry("c1", 3, 42, &line, &d, "skipped")).unwrap();
         assert_eq!(entry["scores"]["urgency"], serde_json::json!(0.6));
         assert_eq!(entry["scores"]["impersonation"], serde_json::Value::Null);
-        assert_eq!(entry["verdict"], "SCAM");
+        assert_eq!(entry["verdict"], "UNSURE");
         let keys: Vec<_> = entry.as_object().unwrap().keys().cloned().collect();
         assert_eq!(entry["bert"], serde_json::Value::Null);
         assert_eq!(entry["bert_status"], "skipped");
         assert_eq!(
             keys,
-            ["bert", "bert_status", "call_id", "combined", "fast", "recent", "rule", "scores", "seq", "time_ms", "verdict"]
+            [
+                "bert",
+                "bert_status",
+                "call_id",
+                "combined",
+                "fast",
+                "recent",
+                "rule",
+                "scores",
+                "seq",
+                "time_ms",
+                "verdict"
+            ]
         );
     }
 

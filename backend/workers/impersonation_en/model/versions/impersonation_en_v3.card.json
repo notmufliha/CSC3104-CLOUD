@@ -1,0 +1,36 @@
+{
+  "model_version": "impersonation_en_v2",
+  "task": "English institutional impersonation (probability 0 to 1)",
+  "features": "TF-IDF ngram (1, 2), min_df 2, max_features 30000",
+  "brand_masking": true,
+  "caller_only": true,
+  "threshold_used_for_reporting": 0.47,
+  "C": 30.0,
+  "non_commercial_sources_in_training_data": [],
+  "training_rows_by_source": {
+    "synthetic_advisory_based": 195,
+    "synthetic_train_d": 53,
+    "synthetic_train_e": 53,
+    "synthetic_train_c": 52,
+    "synthetic_train_f": 47,
+    "synthetic_train_g": 39,
+    "synthetic_train_h": 38,
+    "synthetic_train_b": 29,
+    "synthetic_train_a": 4
+  },
+  "n_development_rows": 510,
+  "n_test_rows": 90,
+  "cv_folds": 5,
+  "noisy_copies": 1,
+  "char_ngrams": true,
+  "calibrated": true,
+  "sklearn_version": "1.6.1",
+  "test_metrics": {
+    "precision": 1.0,
+    "recall": 0.9444444444444444,
+    "f1": 0.9714285714285714,
+    "roc_auc": 0.98559670781893,
+    "pr_auc": 0.9878472222222222,
+    "brier": 0.018774287516860035
+  }
+}
