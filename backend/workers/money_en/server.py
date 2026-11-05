@@ -6,8 +6,9 @@ money_norm.py), plus the standard gRPC health service (grpc.health.v1) so Kubern
 worker is ready. Same shape as the urgency_en worker.
 
 The score is predict.score(transcript): the highest calibrated probability, over the transcript's
-sentences, that a sentence involves money, a payment or an OTP. It scores ANY mention of money (a genuine
-"your bill is due" scores high too); telling scams apart is the aggregator's job with the other signals.
+sentences, that the speaker ASKS for money, card/bank details or a code (model money_en_v2c, rule in
+LABELING.md). A money word alone ("never share your OTP") scores low, but a genuine agent asking for a card
+number still scores high; telling scams apart is the aggregator's job with the other signals.
 
 Rules every worker follows:
   - no model, no start: a missing model is a deployment error, not something to paper over with 0.5
@@ -43,7 +44,8 @@ class WorkerServiceServicer(scam_detect_pb2_grpc.WorkerServiceServicer):
         if not os.path.exists(MODEL_PATH):
             raise FileNotFoundError(f"money model not found at {MODEL_PATH} - the model file is committed in model/")
         m = predict.load_model(MODEL_PATH)
-        logger.info("loaded %s (version=%s, created=%s, threshold=%.2f)", MODEL_PATH, m.version,
+        self.version = m.version or "unversioned"  # H.8: sent back with every score (e.g. "money_en_v2c")
+        logger.info("loaded %s (version=%s, created=%s, threshold=%.2f)", MODEL_PATH, self.version,
                     m.info.get("created"), m.threshold)
 
     def ClassifyTranscript(self, request, context):
@@ -52,8 +54,9 @@ class WorkerServiceServicer(scam_detect_pb2_grpc.WorkerServiceServicer):
         except Exception as e:  # report the failure; never invent a score
             logger.error("scoring failed: %s", type(e).__name__)
             context.abort(grpc.StatusCode.INTERNAL, "money scoring failed")
-        logger.info("score=%.4f", score)
-        return scam_detect_pb2.WorkerScore(signal=SIGNAL, score=float(score), language=LANGUAGE)
+        logger.info("score=%.4f version=%s", score, self.version)
+        return scam_detect_pb2.WorkerScore(signal=SIGNAL, score=float(score), language=LANGUAGE,
+                                           model_version=self.version)
 
 
 def serve():

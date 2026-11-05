@@ -1,0 +1,83 @@
+{
+  "version": "money_en_v2c",
+  "created": "2026-11-05T08:28:46+00:00",
+  "definition": "P(the speaker ASKS for money, card/bank details or a code) - see LABELING.md",
+  "label_rule": "money_en_rule_v2 (2026-11-01)",
+  "mask_brands": true,
+  "threshold": 0.5,
+  "config": {
+    "name": "word12_C3",
+    "char": false,
+    "C": 3.0
+  },
+  "placeholders_removed": false,
+  "placeholder_only_roc_auc": 0.6061,
+  "keyword_gate": {
+    "hide_top_n": 20,
+    "hidden_auc_min": 0.75
+  },
+  "train_rows": 3130,
+  "choose_rows": 580,
+  "calibrate_rows": 583,
+  "handwritten_weight": 10.0,
+  "seed": 42,
+  "training_data": {
+    "file": "C_train_pool.csv",
+    "md5": "da5c29a37fd412e6fb47cbbfdb34b20e",
+    "rows": 4293,
+    "label_1": 1431,
+    "label_0": 2862,
+    "by_label_method": {
+      "handwritten": 364,
+      "rule_ask": 1286,
+      "rule_mention": 935,
+      "rule_none": 1708
+    }
+  },
+  "grid": [
+    {
+      "name": "word12_C0.3",
+      "pr_auc": 0.8866,
+      "roc_auc": 0.9471,
+      "roc_auc_top_words_hidden": 0.9033,
+      "precision": 0.755,
+      "recall": 0.886,
+      "f1": 0.815,
+      "top_words": "pay, read, account, send, transfer, number, just, release, numbers, code, digit, sent, banking, need, card, payment, checking, provide, app, settle",
+      "passes_keyword_gate": true
+    },
+    {
+      "name": "word12_C1",
+      "pr_auc": 0.9078,
+      "roc_auc": 0.959,
+      "roc_auc_top_words_hidden": 0.922,
+      "precision": 0.807,
+      "recall": 0.908,
+      "f1": 0.854,
+      "top_words": "pay, read, account, send, transfer, number, just, code, numbers, payment, money, release, request, deposit, funds, banking, details, digit, sent, provide",
+      "passes_keyword_gate": true
+    },
+    {
+      "name": "word12_C3",
+      "pr_auc": 0.9222,
+      "roc_auc": 0.9656,
+      "roc_auc_top_words_hidden": 0.9249,
+      "precision": 0.829,
+      "recall": 0.924,
+      "f1": 0.874,
+      "top_words": "pay, read, transfer, send, account, number, code, request, money, payment, deposit, funds, numbers, confirm, just, release, text, withdraw, required, provide",
+      "passes_keyword_gate": true
+    }
+  ],
+  "val_metrics": {
+    "pr_auc": 0.9222,
+    "roc_auc": 0.9656,
+    "brier": 0.0627,
+    "precision": 0.887,
+    "recall": 0.853,
+    "f1": 0.87
+  },
+  "sklearn_version": "1.6.1",
+  "numpy_version": "2.4.6",
+  "note": "Frozen. Do not overwrite; retrain into a new version."
+}
