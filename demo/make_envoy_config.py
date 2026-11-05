@@ -55,6 +55,10 @@ BERT_UPSTREAM_PORT = 50051
 GATEWAY_WORKER_TIMEOUT_MS = 1400
 AGGREGATOR_TIMEOUT_MS = 550
 BERT_TIMEOUT_MS = 300
+# Workstream B: the gateway's END_CALL_TIMEOUT_MS. EndCall runs the end-of-call review (up to 1.5 s), so it gets
+# its own route on the aggregator listener instead of Aggregate's short timeout.
+END_CALL_TIMEOUT_MS = 2000
+END_CALL_PATH = "/scam_detect.AggregatorService/EndCall"
 ENVOY_TIMEOUT_MARGIN_MS = 200  # how far above the caller's own timeout Envoy's route timeout sits
 
 # Active health checks: how Envoy itself decides a pod is ready to receive traffic (independent of
@@ -122,7 +126,20 @@ def cluster_yaml(name: str, host: str, port: int) -> str:
 """
 
 
-def listener_yaml(name: str, listen_port: int, cluster: str, route_timeout: str) -> str:
+def route_yaml(match: str, cluster: str, route_timeout: str) -> str:
+    return f"""                      - match: {{ {match} }}
+                        route:
+                          cluster: {cluster}
+                          timeout: {route_timeout}
+                          retry_policy:
+                            retry_on: "{RETRY_ON}"
+                            num_retries: {NUM_RETRIES}
+                            per_try_timeout: {route_timeout}
+"""
+
+
+def listener_yaml(name: str, listen_port: int, cluster: str, route_timeout: str, extra_routes: str = "") -> str:
+    """extra_routes: more specific routes, matched before the catch-all "/"."""
     return f"""  - name: listener_{name}
     address:
       socket_address: {{ address: 0.0.0.0, port_value: {listen_port} }}
@@ -140,15 +157,7 @@ def listener_yaml(name: str, listen_port: int, cluster: str, route_timeout: str)
                   - name: {name}_service
                     domains: ["*"]
                     routes:
-                      - match: {{ prefix: "/" }}
-                        route:
-                          cluster: {cluster}
-                          timeout: {route_timeout}
-                          retry_policy:
-                            retry_on: "{RETRY_ON}"
-                            num_retries: {NUM_RETRIES}
-                            per_try_timeout: {route_timeout}
-              http_filters:
+{extra_routes}{route_yaml('prefix: "/"', cluster, route_timeout)}              http_filters:
                 - name: envoy.filters.http.router
                   typed_config:
                     "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
@@ -165,7 +174,9 @@ def build(docker: bool) -> str:
         clusters.append(cluster_yaml(svc, host, WORKER_UPSTREAM_PORT))
 
     agg_host = fqdn("aggregator", docker) if not docker else "aggregator"
-    listeners.append(listener_yaml("aggregator", AGGREGATOR_PORT, "aggregator", route_timeout_s(AGGREGATOR_TIMEOUT_MS)))
+    end_call_route = route_yaml(f'path: "{END_CALL_PATH}"', "aggregator", route_timeout_s(END_CALL_TIMEOUT_MS))
+    listeners.append(listener_yaml("aggregator", AGGREGATOR_PORT, "aggregator", route_timeout_s(AGGREGATOR_TIMEOUT_MS),
+                                   extra_routes=end_call_route))
     clusters.append(cluster_yaml("aggregator", agg_host, AGGREGATOR_UPSTREAM_PORT))
 
     bert_host = fqdn("bert", docker) if not docker else "bert"

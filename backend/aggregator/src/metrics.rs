@@ -10,6 +10,8 @@
 //!                                              direction="bert_safer"; workers calm (fast < unsure threshold)
 //!                                              but BERT scam (>= scam threshold): direction="bert_riskier"
 //!   scamguard_signal_score_sum / _count{signal} average score per worker signal
+//!   scamguard_calls_ended_total{ended_by,review} Workstream B: calls ended (phone or silence), by review type
+//!   scamguard_late_lines_total                 Workstream B.6: caller lines refused because their call had ended
 //!
 //! Counters are per process; Prometheus scrapes every aggregator pod and adds them up.
 
@@ -23,6 +25,7 @@ use crate::policy::{Decision, LineScores, Verdict};
 pub const BERT_SAFE: f32 = 0.3;
 const VERDICTS: [&str; 3] = ["SAFE", "UNSURE", "SCAM"];
 const BERT_STATUSES: [&str; 6] = ["ok", "timeout", "error", "skipped", "off", "no_context"];
+const REVIEWS: [&str; 2] = ["bert", "fallback"];
 
 #[derive(Default)]
 pub struct Metrics {
@@ -36,6 +39,9 @@ pub struct Metrics {
     /// Sum of scores in millionths (atomics have no f64).
     signal_sum: [AtomicU64; 3],
     signal_count: [AtomicU64; 3],
+    /// Workstream B: [ended_by (end::ENDED_BY order)][review (REVIEWS order)].
+    ended: [[AtomicU64; 2]; 4],
+    late_lines: AtomicU64,
 }
 
 impl Metrics {
@@ -69,6 +75,20 @@ impl Metrics {
         }
     }
 
+    /// Workstream B: one call ended (counted once, by whoever ran the end).
+    pub fn record_end(&self, ended_by: &str, review: &str) {
+        let i = crate::end::ENDED_BY.iter().position(|x| *x == ended_by);
+        let j = REVIEWS.iter().position(|x| *x == review);
+        if let (Some(i), Some(j)) = (i, j) {
+            self.ended[i][j].fetch_add(1, Relaxed);
+        }
+    }
+
+    /// Workstream B.6: a caller line arrived after its call ended and was refused.
+    pub fn record_late_line(&self) {
+        self.late_lines.fetch_add(1, Relaxed);
+    }
+
     /// Prometheus text format 0.0.4.
     pub fn render(&self) -> String {
         let mut o = String::new();
@@ -98,6 +118,16 @@ impl Metrics {
             let _ = writeln!(o, "scamguard_signal_score_sum{{signal=\"{sig}\"}} {sum}");
             let _ = writeln!(o, "scamguard_signal_score_count{{signal=\"{sig}\"}} {}", self.signal_count[i].load(Relaxed));
         }
+        let _ = writeln!(o, "# HELP scamguard_calls_ended_total Calls ended, by what ended them and the review used.");
+        let _ = writeln!(o, "# TYPE scamguard_calls_ended_total counter");
+        for (i, by) in crate::end::ENDED_BY.iter().enumerate() {
+            for (j, review) in REVIEWS.iter().enumerate() {
+                let n = self.ended[i][j].load(Relaxed);
+                let _ = writeln!(o, "scamguard_calls_ended_total{{ended_by=\"{by}\",review=\"{review}\"}} {n}");
+            }
+        }
+        let _ = writeln!(o, "# TYPE scamguard_late_lines_total counter");
+        let _ = writeln!(o, "scamguard_late_lines_total {}", self.late_lines.load(Relaxed));
         o
     }
 }
@@ -126,5 +156,20 @@ mod tests {
         assert!(out.contains("scamguard_signal_score_count{signal=\"urgency\"} 2"));
         let total: u64 = m.lines.iter().map(|x| x.load(Relaxed)).sum();
         assert_eq!(total, 2);
+    }
+
+    #[test]
+    fn counts_ended_calls_and_late_lines() {
+        let m = Metrics::default();
+        m.record_end("silence", "fallback");
+        m.record_end("user_hung_up", "fallback");
+        m.record_end("user_hung_up", "fallback");
+        m.record_end("nonsense", "fallback"); // ignored
+        m.record_late_line();
+        let out = m.render();
+        assert!(out.contains("scamguard_calls_ended_total{ended_by=\"silence\",review=\"fallback\"} 1"));
+        assert!(out.contains("scamguard_calls_ended_total{ended_by=\"user_hung_up\",review=\"fallback\"} 2"));
+        assert!(out.contains("scamguard_calls_ended_total{ended_by=\"user_hung_up\",review=\"bert\"} 0"));
+        assert!(out.contains("scamguard_late_lines_total 1"));
     }
 }
