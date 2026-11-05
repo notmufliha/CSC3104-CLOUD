@@ -599,3 +599,31 @@ Caller: MOH calling. Your Medisave claim has been processed. Receiver: Okay. Cal
 "Caller: This is the hospital. Your test results are ready. Receiver: Oh, okay. Caller: Please come down to collect them. Receiver: Alright, thanks.",0,synthetic_train_h,tr_363,health,1,constructed_genuine
 Caller: Town council calling. We are fixing the lift in your block. Receiver: Okay. Caller: It will be done by Friday. Receiver: Thanks for informing.,0,synthetic_train_h,tr_364,govt_generic,1,constructed_genuine
 "Caller: MOH here. We are calling about your appointment. Receiver: Yes? Caller: It has been confirmed for next Monday. Receiver: Alright, thanks.",0,synthetic_train_h,tr_365,health,1,constructed_genuine
+"Caller: Hi, this is Mei from Starhub customer service. Receiver: Yes? Caller: Just calling to let you know your bill this month is slightly higher because of roaming charges last week.",0,ai_mention_neg,mn_001,telco,1,constructed_genuine
+"Never share your OTP with anyone, not even someone claiming to be from the bank.",0,ai_mention_neg,mn_002,bank,1,constructed_genuine
+I'll call the police myself if this happens again.,0,ai_mention_neg,mn_003,police,1,constructed_genuine
+"Caller: Hello, this is SingPost, your parcel will be delivered this afternoon between two and four. Receiver: Okay, thanks. Caller: You're welcome, have a good day.",0,ai_mention_neg,mn_004,courier,1,constructed_genuine
+"Your bank will never ask for your PIN over the phone, so please be careful out there.",0,ai_mention_neg,mn_005,bank,1,constructed_genuine
+"Caller: Hi, this is Raffles Medical confirming your appointment at three tomorrow. Receiver: Got it, thank you. Caller: See you then.",0,ai_mention_neg,mn_006,health,1,constructed_genuine
+"I read online that scammers pretend to be from IRAS, so I always double check before giving any details.",0,ai_mention_neg,mn_007,iras,1,constructed_genuine
+"Caller: Hello, this is SP Group calling about a scheduled power interruption in your block tomorrow morning. Receiver: Oh okay, how long will it last? Caller: About two hours, from nine to eleven.",0,ai_mention_neg,mn_008,utility,1,constructed_genuine
+My cousin works at DBS and she warned me about these impersonation calls going around.,0,ai_mention_neg,mn_009,bank,1,constructed_genuine
+"Caller: Good morning, this is a reminder from ICA that your passport renewal appointment is confirmed for next Tuesday. Receiver: Thank you for the reminder.",0,ai_mention_neg,mn_010,ica,1,constructed_genuine
+The news report said people are impersonating Singapore Police Force officers to scare people into transferring money.,0,ai_mention_neg,mn_011,police,1,constructed_genuine
+"Caller: Hi, this is Singtel, we have a new mobile plan that might save you money. Receiver: Oh really, tell me more. Caller: Sure, it includes more data with no extra cost for the first six months.",0,ai_mention_neg,mn_012,telco,1,constructed_genuine
+This message is from the Singapore Police Force's own website reminding the public to be careful of scams.,0,ai_mention_neg,mn_013,police,1,constructed_genuine
+"Caller: Hello, I'm the delivery driver, I'm outside your block now. Receiver: Okay, I'll come down in two minutes.",0,ai_mention_neg,mn_014,courier,1,constructed_genuine
+"Can you forward me that message? It looks like it's from IRAS, I want to check if it's actually a scam.",0,ai_mention_neg,mn_015,iras,1,constructed_genuine
+"Caller: Hi, I'm calling from Apple Support regarding your appointment for a battery replacement. Receiver: Yes, that's right. Caller: Great, please bring your device and proof of purchase.",0,ai_mention_neg,mn_016,tech,1,constructed_genuine
+Caller: I'm calling from the department that handles cases exactly like yours. Receiver: What case? Caller: Read me the six numbers that just came to your phone so I can verify you.,1,ai_behaviour_pos,bp_001,other,0,unverified_pattern
+"I'm the officer assigned to your file, and I need you to stay on this call until we finish.",1,ai_behaviour_pos,bp_002,other,0,unverified_pattern
+"Caller: This is an official matter, I am from the unit that investigates cases like this. Receiver: Which unit? Caller: I can't say over the phone, just confirm your identification number first.",1,ai_behaviour_pos,bp_003,other,0,unverified_pattern
+"I handle enforcement for cases exactly like this one, so don't hang up, it will look like you are avoiding the investigation.",1,ai_behaviour_pos,bp_004,other,0,unverified_pattern
+Caller: We're the team that reviews accounts flagged for this kind of activity. Receiver: Which account? Caller: Just confirm the six digits you just received and I'll check it against our system.,1,ai_behaviour_pos,bp_005,other,0,unverified_pattern
+"I represent the office that processes these reports, and I need your full details before the deadline today.",1,ai_behaviour_pos,bp_006,other,0,unverified_pattern
+"Caller: I'm from the division that deals with these complaints. Receiver: What complaint? Caller: Give me your identification number now, this is time sensitive.",1,ai_behaviour_pos,bp_007,other,0,unverified_pattern
+"This call is being recorded by our compliance unit, so please answer honestly and confirm the code on your screen.",1,ai_behaviour_pos,bp_008,other,0,unverified_pattern
+Caller: I handle verification for cases flagged like yours. Receiver: Verification of what? Caller: Just read me the numbers on your screen so I can clear your name.,1,ai_behaviour_pos,bp_009,other,0,unverified_pattern
+"I'm the duty officer on this case tonight, and if you don't cooperate now, it escalates immediately.",1,ai_behaviour_pos,bp_010,other,0,unverified_pattern
+"Caller: Our unit handles exactly this type of report. Receiver: Okay... Caller: Good, now confirm the verification code you just got so I can close this on our end.",1,ai_behaviour_pos,bp_011,other,0,unverified_pattern
+"I'm the one processing your file right now, so give me the code before the system logs you as uncooperative.",1,ai_behaviour_pos,bp_012,other,0,unverified_pattern
