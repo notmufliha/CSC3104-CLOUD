@@ -18,8 +18,8 @@ backend/workers/**/.venv/
 backend/workers/**/__pycache__/
 backend/workers/**/*.pkl
 backend/workers/**/*.joblib
-!backend/workers/money_en/model/E_model.joblib
 # Frozen, deployed models are committed on purpose (the Dockerfile bakes them in):
+!backend/workers/money_en/model/money_en_v2c.joblib
 !backend/workers/urgency_en/model/urgency_en_v4.joblib
 backend/workers/**/reports/
 # Generated from backend/proto/scam_detect.proto by each worker's Dockerfile
