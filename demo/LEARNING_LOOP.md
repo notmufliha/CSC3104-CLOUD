@@ -111,8 +111,9 @@ Monitoring (`learning.py monitoring up`, then the 4 `demo_flow.py` calls):
 
 - **Per line, not per call.** "Share of SAFE/UNSURE/SCAM calls" needs a clear end of call (Workstream B).
   Until then the dashboard shows the share of caller lines; the metric names leave room for a per-call count.
-- **Only urgency_en retrains.** It is the only worker with a complete `train.py` and fixed gold test sets. The
-  same Job works for the others once Workstream D gives money_en a real `train.py` (D.7) and gold sets.
+- **Only urgency_en retrains.** It is the only worker wired into the retrain Job. money_en now has a real
+  `train.py` (D.7), its training pool (`data/money_en/`) and test sets (`backend/workers/money_en/eval/`), so the
+  same Job could cover it next; that still needs a money_en entry in `retrain_job.py` / `release_check.py`.
 - **The drift alert needs history.** It compares with the day before, so on a fresh cluster it can't fire for a
   day. For a live demo, regenerate with short windows: `DRIFT_SHORT=2m DRIFT_BASELINE=30m python demo/make_manifests.py`.
 - **A brand-new scam nobody reports can't be learned** (no label). The drift alert only says "look".
