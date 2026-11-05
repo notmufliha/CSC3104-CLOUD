@@ -17,6 +17,10 @@ interface GatewayApi {
     @GET("healthz")
     suspend fun health(): Response<Map<String, Any>>
 
+    /** Workstream B: the call is over -> final verdict; the server clears the call's memory. */
+    @POST("v1/call/end")
+    suspend fun endCall(@Body body: EndCallRequest): Response<EndCallResponse>
+
     /** Workstream H.3: a consented report of a finished call. */
     @POST("v1/report")
     suspend fun report(@Body body: ReportRequest): Response<ReportResponse>
