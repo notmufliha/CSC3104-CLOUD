@@ -282,7 +282,7 @@ pub fn decide_one_shot(line: LineScores, bert: Option<f32>, cfg: &Settings) -> D
 }
 
 /// Each signal's highest score in the window.
-fn recent_highs(window: &[LineScores]) -> LineScores {
+pub(crate) fn recent_highs(window: &[LineScores]) -> LineScores {
     let mut out: LineScores = [None; 3];
     for line in window {
         for (best, score) in out.iter_mut().zip(line) {
@@ -335,7 +335,7 @@ fn all_reasons(recent: &LineScores, bert: Option<f32>, cfg: &Settings) -> Vec<Re
 }
 
 /// Signals at or above the reason threshold, strongest first.
-fn signal_reasons(recent: &LineScores, cfg: &Settings) -> Vec<Reason> {
+pub(crate) fn signal_reasons(recent: &LineScores, cfg: &Settings) -> Vec<Reason> {
     let mut out: Vec<Reason> = SIGNALS
         .iter()
         .zip(recent)

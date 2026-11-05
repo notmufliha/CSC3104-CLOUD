@@ -111,6 +111,11 @@ AGG_ENV = {
     "AGG_REASON_THRESHOLD": "0.5",
     "AGG_MIN_QUORUM": "2",
     "AGG_CALL_TTL_SECS": "3600",
+    # Workstream B: when a call ends (see docker-compose.yml)
+    "AGG_SILENCE_SECS": "30",
+    "AGG_SILENCE_CHECK_SECS": "5",
+    "AGG_END_REVIEW_TIMEOUT_MS": "1500",
+    "AGG_END_TOMBSTONE_SECS": "3600",
     "BERT_TIMEOUT_MS": "300",
     "AGG_BERT_WEIGHT": "0.5",
     "AGG_BERT_VETO": "0",
@@ -121,6 +126,8 @@ GATEWAY_ENV = {
     "WORKER_TIMEOUT_MS": "1400",
     "AGGREGATOR_TIMEOUT_MS": "550",
     "BERT_CONTEXT_LINES": "5",
+    # Workstream B: POST /v1/call/end's wait for the aggregator (must match make_envoy_config.py's END_CALL_TIMEOUT_MS).
+    "END_CALL_TIMEOUT_MS": "2000",
     # Workstream H: where POST /v1/report goes (the internal review service).
     "REVIEW_URL": "http://review:8090",
 }

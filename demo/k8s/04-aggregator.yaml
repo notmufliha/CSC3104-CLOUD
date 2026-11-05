@@ -56,6 +56,14 @@ spec:
               value: "2"
             - name: AGG_CALL_TTL_SECS
               value: "3600"
+            - name: AGG_SILENCE_SECS
+              value: "30"
+            - name: AGG_SILENCE_CHECK_SECS
+              value: "5"
+            - name: AGG_END_REVIEW_TIMEOUT_MS
+              value: "1500"
+            - name: AGG_END_TOMBSTONE_SECS
+              value: "3600"
             - name: BERT_TIMEOUT_MS
               value: "300"
             - name: AGG_BERT_WEIGHT
