@@ -58,7 +58,11 @@ pub struct SecondOpinion<'a> {
 }
 
 impl<'a> SecondOpinion<'a> {
-    pub fn new(client: Option<&'a BertClient>, context: &[String], language: &str) -> SecondOpinion<'a> {
+    pub fn new(
+        client: Option<&'a BertClient>,
+        context: &[String],
+        language: &str,
+    ) -> SecondOpinion<'a> {
         let lines = context
             .iter()
             .rev()
@@ -66,7 +70,9 @@ impl<'a> SecondOpinion<'a> {
             .rev()
             .map(|l| {
                 let n = l.chars().count();
-                l.chars().skip(n.saturating_sub(MAX_CHARS_PER_LINE)).collect::<String>()
+                l.chars()
+                    .skip(n.saturating_sub(MAX_CHARS_PER_LINE))
+                    .collect::<String>()
             })
             .filter(|l| !l.trim().is_empty())
             .collect();
@@ -91,7 +97,10 @@ impl<'a> SecondOpinion<'a> {
             Some(c) => {
                 let start = Instant::now();
                 let mut client = BertServiceClient::new(c.channel.clone());
-                let request = ContextRequest { lines: self.lines.clone(), language: self.language.clone() };
+                let request = ContextRequest {
+                    lines: self.lines.clone(),
+                    language: self.language.clone(),
+                };
                 let result = tokio::time::timeout(c.timeout, client.score_context(request)).await;
                 self.ms = start.elapsed().as_millis() as u64;
                 match result {
@@ -140,7 +149,11 @@ mod tests {
     async fn unreachable_bert_is_an_error_not_a_hang() {
         // nothing listens on port 9: the call fails fast and the line falls back to the fast vote
         let c = BertClient::new("127.0.0.1:9", Duration::from_millis(300)).unwrap();
-        let ctx = ["您好".to_string(), "我是警察".to_string(), "请马上转账".to_string()];
+        let ctx = [
+            "您好".to_string(),
+            "我是警察".to_string(),
+            "请马上转账".to_string(),
+        ];
         let mut s = SecondOpinion::new(Some(&c), &ctx, "zh");
         assert_eq!(s.status(), "skipped");
         assert_eq!(s.ask().await, None);
@@ -160,7 +173,15 @@ mod tests {
     async fn fewer_than_min_lines_is_not_sent() {
         // 1-2 caller lines: BERT never saw a scam that short in training, so it is not asked (no network call)
         let c = BertClient::new("127.0.0.1:9", Duration::from_millis(300)).unwrap();
-        let mut s = SecondOpinion::new(Some(&c), &["我是警察".to_string(), "  ".to_string(), "请转账".to_string()], "zh");
+        let mut s = SecondOpinion::new(
+            Some(&c),
+            &[
+                "我是警察".to_string(),
+                "  ".to_string(),
+                "请转账".to_string(),
+            ],
+            "zh",
+        );
         assert_eq!(s.ask().await, None);
         assert_eq!((s.status(), s.ms), ("no_context", 0));
     }

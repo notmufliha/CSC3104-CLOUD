@@ -8,7 +8,7 @@
 //!   1. Add this line to the window (last `window_lines` caller lines); each signal's recent score is its
 //!      highest in the window, because a scammer says "police", "act now" and "give me the OTP" in different
 //!      sentences.
-//!   2. Already red          -> SCAM (red stays red for the rest of the call).
+//!   2. A red live alert requires BERT confirmation, or two independent strong worker signals when BERT is down.
 //!   3. Fewer than `min_quorum` workers answered this line -> UNSURE "not enough data" (also during warm-up),
 //!      unless BERT answered: then BERT's score stands in for the vote and rules 5-9 apply to it.
 //!   4. fast = weighted average of the recent scores; a signal with no score shares its weight out.
@@ -17,12 +17,11 @@
 //!      -> SAFE (quiet). Rules 6-9 are skipped, the money rule included; the scores stay in the window, so they
 //!      still count on the first line after the warm-up.
 //!   6. Money rule: money >= `money_rule` while another signal >= `money_rule_other`, both within the last
-//!      `money_rule_lines` caller lines (default 6 = the whole window) -> SCAM immediately,
-//!      unless BERT answered below `bert_veto` (then rules 7-9 decide on final). bert_veto is 0 (off) by
-//!      default: BERT can soften the unsure/high path but not cancel the money rule unless switched on.
-//!   7. final >= `scam_threshold` -> one more in the streak; `scam_streak` in a row -> SCAM, else UNSURE.
-//!   8. final >= `unsure_threshold` -> UNSURE (streak back to 0).
-//!   9. otherwise SAFE (streak back to 0).
+//!      `money_rule_lines` caller lines, is an alarm signal and must go through BERT.
+//!   7. An alarmed fast vote (>= `scam_threshold`) can turn red only when BERT confirms it; without BERT,
+//!      two distinct signals at the fallback threshold are required.
+//!   8. An unsure fast vote (>= `unsure_threshold`) is UNSURE and asks BERT.
+//!   9. Otherwise SAFE, except an alarmed vote with a non-confirming BERT response remains UNSURE.
 //!
 //! The cascade (task 7.4): BERT is slow, so it is asked only when the answer WITHOUT it would be decided by
 //! rule 3, 6, 7 or 8 (not enough data, money rule, high, unsure); see `wants_second_opinion`. A call that is
@@ -78,8 +77,10 @@ pub struct CallState {
     pub window: Vec<LineScores>,
     /// Updates in a row with combined >= scam_threshold.
     pub streak: u32,
-    /// Once true, the call is SCAM for good.
+    /// Whether the current live alert is red.
     pub red: bool,
+    /// Consecutive BERT disagreements with a red live alert.
+    pub red_disagreements: u32,
     pub caller_lines: u32,
     pub verdict: Verdict,
     pub combined: f32,
@@ -111,12 +112,14 @@ pub struct Decision {
     pub warming_up: bool,
     pub quorum_met: bool,
     pub caller_lines: u32,
-    /// Which rule decided (for logs and tests): red, quorum, warmup, money_rule, streak, high_once, unsure, safe.
+    /// Which rule decided, for logs and tests.
     pub rule: &'static str,
 }
 
-pub const ACTION_SCAM: &str = "Hang up now. Call the organisation back on its official number, or ScamShield on 1799.";
-pub const ACTION_UNSURE: &str = "Don't share any codes or transfer money. Hang up and check with the official number.";
+pub const ACTION_SCAM: &str =
+    "Hang up now. Call the organisation back on its official number, or ScamShield on 1799.";
+pub const ACTION_UNSURE: &str =
+    "Don't share any codes or transfer money. Hang up and check with the official number.";
 
 fn reason_text(signal: &str) -> &'static str {
     match signal {
@@ -131,20 +134,34 @@ fn reason_text(signal: &str) -> &'static str {
 /// How far into the call this line is. The phone's `call_time_ms` wins when given (> 0); otherwise the
 /// aggregator's clock since the call's first line.
 pub fn elapsed(started_at_ms: i64, now_ms: i64, call_time_ms: i64) -> Duration {
-    let ms = if call_time_ms > 0 { call_time_ms } else { now_ms - started_at_ms };
+    let ms = if call_time_ms > 0 {
+        call_time_ms
+    } else {
+        now_ms - started_at_ms
+    };
     Duration::from_millis(ms.max(0) as u64)
 }
 
 /// Rules whose answer BERT can change; anything else (red, warmup, safe) is decided without it.
-const SECOND_OPINION_RULES: [&str; 5] = ["quorum", "money_rule", "high_once", "streak", "unsure"];
+const SECOND_OPINION_RULES: [&str; 6] = [
+    "quorum",
+    "money_rule",
+    "high_once",
+    "streak",
+    "unsure",
+    "strong_fallback",
+];
 
 /// Would this line's answer be decided by the quorum, money, high or unsure rule without BERT? Only then is
 /// BERT worth its cost. Same inputs as `decide`; changes nothing.
-pub fn wants_second_opinion(state: &CallState, line: LineScores, now_ms: i64, call_time_ms: i64, cfg: &Settings) -> bool {
-    if cfg.mode == Mode::BertOnly {
-        return true;
-    }
-    if is_spot_check(state, cfg) {
+pub fn wants_second_opinion(
+    state: &CallState,
+    line: LineScores,
+    now_ms: i64,
+    call_time_ms: i64,
+    cfg: &Settings,
+) -> bool {
+    if cfg.mode == Mode::BertOnly || state.red || is_spot_check(state, cfg) {
         return true;
     }
     let (_, d) = decide(state.clone(), line, None, now_ms, call_time_ms, cfg);
@@ -179,9 +196,21 @@ fn blend(fast: f32, bert: Option<f32>, quorum_met: bool, cfg: &Settings) -> f32 
 /// Apply one caller line to the call. `state` is the call's memory before this line (Default for a new call).
 /// `bert` = BERT's score for the call's recent lines, if it was asked and answered (None otherwise).
 pub fn decide(
+    state: CallState,
+    line: LineScores,
+    bert: Option<f32>,
+    now_ms: i64,
+    call_time_ms: i64,
+    cfg: &Settings,
+) -> (CallState, Decision) {
+    decide_with_bert_status(state, line, bert, "off", now_ms, call_time_ms, cfg)
+}
+
+pub fn decide_with_bert_status(
     mut state: CallState,
     line: LineScores,
     bert: Option<f32>,
+    bert_status: &str,
     now_ms: i64,
     call_time_ms: i64,
     cfg: &Settings,
@@ -207,14 +236,41 @@ pub fn decide(
     let combined = blend(fast, bert, quorum_met, cfg);
     let override_hit = (!bert_only && recent.iter().flatten().any(|s| *s >= cfg.warmup_override))
         || bert.is_some_and(|b| b >= cfg.warmup_override);
-    let vetoed = bert.is_some_and(|b| b < cfg.bert_veto);
+    let bert_unavailable = matches!(bert_status, "off" | "timeout" | "error");
+    let red_candidate = !bert_only
+    && (!warming_up || override_hit)
+    && (quorum_met || bert.is_some())
+    && (quorum_met && money_rule(&state.window, cfg)
+        || fast >= cfg.scam_threshold
+        || bert.is_some_and(|b| b >= cfg.bert_scam_threshold));
+    let strong_fallback = recent
+        .iter()
+        .flatten()
+        .filter(|score| **score >= cfg.fallback_strong_signal_threshold)
+        .count()
+        >= 2;
 
-    let (verdict, rule) = if state.red {
-        // 2.
-        (Verdict::Scam, "red")
+    let (verdict, rule) = if bert_only && state.red {
+    (Verdict::Scam, "red")
     } else if bert_only && bert.is_none() {
-        state.streak = 0;
-        (Verdict::Unsure, "bert_down")
+    state.streak = 0;
+    (Verdict::Unsure, "bert_down")
+    } else if state.red && bert.is_none() {
+        (Verdict::Scam, "red_bert_unavailable")
+    } else if state.red {
+        if bert.is_some_and(|b| b >= cfg.bert_scam_threshold) {
+            state.red_disagreements = 0;
+            (Verdict::Scam, "red_bert_confirmed")
+        } else {
+            state.red_disagreements += 1;
+            if state.red_disagreements < cfg.red_disagreements_to_clear {
+                (Verdict::Scam, "red_bert_disagrees")
+            } else {
+                state.red = false;
+                state.red_disagreements = 0;
+                (Verdict::Unsure, "red_cleared")
+            }
+        }
     } else if !bert_only && !quorum_met && bert.is_none() {
         // 3.
         (Verdict::Unsure, "quorum")
@@ -222,19 +278,18 @@ pub fn decide(
         // 5.
         state.streak = 0;
         (Verdict::Safe, "warmup")
-    } else if !bert_only && quorum_met && money_rule(&state.window, cfg) && !vetoed {
-        // 6.
-        (Verdict::Scam, "money_rule")
-    } else if combined >= cfg.scam_threshold {
-        // 7.
+    } else if bert_only && combined >= cfg.scam_threshold {
         state.streak += 1;
         if state.streak >= cfg.scam_streak {
             (Verdict::Scam, "streak")
         } else {
             (Verdict::Unsure, "high_once")
         }
-    } else if combined >= cfg.unsure_threshold {
-        // 8.
+    } else if red_candidate && bert.is_some_and(|b| b >= cfg.bert_scam_threshold) {
+        (Verdict::Scam, "bert_confirmed")
+    } else if red_candidate && bert.is_none() && bert_unavailable && strong_fallback {
+        (Verdict::Scam, "strong_fallback")
+    } else if combined >= cfg.unsure_threshold || red_candidate {
         state.streak = 0;
         (Verdict::Unsure, "unsure")
     } else {
@@ -245,6 +300,9 @@ pub fn decide(
 
     if verdict == Verdict::Scam {
         state.red = true;
+    } else {
+        state.red = false;
+        state.red_disagreements = 0;
     }
     state.verdict = verdict;
     state.combined = combined;
@@ -254,7 +312,10 @@ pub fn decide(
         reasons.push(Reason {
             signal: "quorum",
             score: answered as f32,
-            text: format!("Not enough data: only {answered} of {} checks answered", SIGNALS.len()),
+            text: format!(
+                "Not enough data: only {answered} of {} checks answered",
+                SIGNALS.len()
+            ),
         });
     }
     let decision = Decision {
@@ -276,20 +337,46 @@ pub fn decide(
 /// A request with no call_id (the gateway's one-shot /submit-transcript): no memory, so no warm-up and no
 /// streak; quorum (or BERT standing in), money rule (with the BERT veto) and the thresholds still apply.
 pub fn decide_one_shot(line: LineScores, bert: Option<f32>, cfg: &Settings) -> Decision {
+    decide_one_shot_with_bert_status(line, bert, "off", cfg)
+}
+
+pub fn decide_one_shot_with_bert_status(
+    line: LineScores,
+    bert: Option<f32>,
+    bert_status: &str,
+    cfg: &Settings,
+) -> Decision {
     let recent = line;
     let fast = combined_score(&recent, cfg);
     let answered = line.iter().filter(|s| s.is_some()).count();
     let quorum_met = answered >= cfg.min_quorum;
     let combined = blend(fast, bert, quorum_met, cfg);
-    let vetoed = bert.is_some_and(|b| b < cfg.bert_veto);
     let bert_only = cfg.mode == Mode::BertOnly;
+    let bert_unavailable = matches!(bert_status, "off" | "timeout" | "error");
     let (verdict, rule) = if bert_only && bert.is_none() {
         (Verdict::Unsure, "bert_down")
     } else if !bert_only && !quorum_met && bert.is_none() {
         (Verdict::Unsure, "quorum")
-    } else if !bert_only && quorum_met && money_rule(&[line], cfg) && !vetoed {
-        (Verdict::Scam, "money_rule")
-    } else if combined >= cfg.scam_threshold {
+    } else if !bert_only
+        && (quorum_met && (money_rule(&[line], cfg) || combined >= cfg.scam_threshold)
+            || bert.is_some_and(|b| b >= cfg.bert_scam_threshold))
+        && bert.is_some_and(|b| b >= cfg.bert_scam_threshold)
+    {
+        (Verdict::Scam, "bert_confirmed")
+    } else if !bert_only
+        && quorum_met
+        && (money_rule(&[line], cfg) || combined >= cfg.scam_threshold)
+        && bert.is_none()
+        && bert_unavailable
+        && line
+            .iter()
+            .flatten()
+            .filter(|score| **score >= cfg.fallback_strong_signal_threshold)
+            .count()
+            >= 2
+    {
+        (Verdict::Scam, "strong_fallback")
+    } else if bert_only && combined >= cfg.scam_threshold {
         (Verdict::Scam, "streak")
     } else if combined >= cfg.unsure_threshold {
         (Verdict::Unsure, "unsure")
@@ -346,7 +433,10 @@ fn combined_score(recent: &LineScores, cfg: &Settings) -> f32 {
 /// and later "call the number on your card", from adding up to one scam request.
 fn money_rule(window: &[LineScores], cfg: &Settings) -> bool {
     let recent = recent_highs(&window[window.len().saturating_sub(cfg.money_rule_lines)..]);
-    let money = SIGNALS.iter().position(|s| *s == "money").expect("money is a signal");
+    let money = SIGNALS
+        .iter()
+        .position(|s| *s == "money")
+        .expect("money is a signal");
     let money_high = recent[money].is_some_and(|m| m >= cfg.money_rule);
     let other_high = recent
         .iter()
@@ -375,7 +465,11 @@ fn reasons_for(verdict: Verdict, rule: &str, recent: &LineScores, bert: Option<f
 fn all_reasons(recent: &LineScores, bert: Option<f32>, cfg: &Settings) -> Vec<Reason> {
     let mut out = signal_reasons(recent, cfg);
     if let Some(b) = bert.filter(|b| *b >= cfg.reason_threshold) {
-        out.push(Reason { signal: "bert", score: b, text: reason_text("bert").to_string() });
+        out.push(Reason {
+            signal: "bert",
+            score: b,
+            text: reason_text("bert").to_string(),
+        });
         out.sort_by(|a, b| b.score.total_cmp(&a.score));
     }
     out
@@ -386,8 +480,16 @@ fn signal_reasons(recent: &LineScores, cfg: &Settings) -> Vec<Reason> {
     let mut out: Vec<Reason> = SIGNALS
         .iter()
         .zip(recent)
-        .filter_map(|(signal, score)| score.filter(|s| *s >= cfg.reason_threshold).map(|s| (*signal, s)))
-        .map(|(signal, score)| Reason { signal, score, text: reason_text(signal).to_string() })
+        .filter_map(|(signal, score)| {
+            score
+                .filter(|s| *s >= cfg.reason_threshold)
+                .map(|s| (*signal, s))
+        })
+        .map(|(signal, score)| Reason {
+            signal,
+            score,
+            text: reason_text(signal).to_string(),
+        })
         .collect();
     out.sort_by(|a, b| b.score.total_cmp(&a.score));
     out
@@ -412,8 +514,16 @@ mod tests {
     }
 
     fn cfg_with(vars: &[(&str, &str)]) -> Settings {
-        let vars: Vec<(String, String)> = vars.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
-        Settings::from_lookup(|k| vars.iter().find(|(key, _)| key == k).map(|(_, v)| v.clone())).unwrap()
+        let vars: Vec<(String, String)> = vars
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        Settings::from_lookup(|k| {
+            vars.iter()
+                .find(|(key, _)| key == k)
+                .map(|(_, v)| v.clone())
+        })
+        .unwrap()
     }
 
     /// Feed lines (seconds into the call, scores) through decide with the phone's call time, as a scripted
@@ -457,14 +567,14 @@ mod tests {
         assert_eq!((d[0].verdict, d[0].rule), (Verdict::Safe, "warmup"));
         assert!(d[0].warming_up && d[0].reasons.is_empty() && d[0].action.is_empty());
         // first line after the warm-up: the window still remembers 0.8 / 0.6 -> money rule fires
-        assert_eq!((d[1].verdict, d[1].rule), (Verdict::Scam, "money_rule"));
+        assert_eq!((d[1].verdict, d[1].rule), (Verdict::Unsure, "unsure"));
         assert!(!d[1].warming_up);
     }
 
     #[test]
     fn a_very_high_score_breaks_the_warmup() {
         let (_, d) = replay(&cfg(), &[(5, all(0.2, 0.95, 0.6))]);
-        assert_eq!((d[0].verdict, d[0].rule), (Verdict::Scam, "money_rule"));
+        assert_eq!((d[0].verdict, d[0].rule), (Verdict::Unsure, "unsure"));
         assert!(d[0].warming_up);
     }
 
@@ -479,18 +589,33 @@ mod tests {
     fn money_rule_default_span_is_the_whole_window() {
         // default (6 lines) = the behaviour before AGG_MONEY_RULE_LINES existed: money 3 caller lines before
         // the urgency still fires (android script normal_en_10_bank_reminder, 2026-10-26)
-        let lines = [(20, all(0.4, 1.0, 0.0)), (25, all(0.4, 1.0, 0.0)), (30, all(0.3, 0.3, 0.0)), (35, all(0.5, 0.3, 0.0))];
+        let lines = [
+            (20, all(0.4, 1.0, 0.0)),
+            (25, all(0.4, 1.0, 0.0)),
+            (30, all(0.3, 0.3, 0.0)),
+            (35, all(0.5, 0.3, 0.0)),
+        ];
         let (_, d) = replay(&cfg(), &lines);
-        assert_eq!((d[3].verdict, d[3].rule), (Verdict::Scam, "money_rule"));
+        assert_eq!((d[3].verdict, d[3].rule), (Verdict::Unsure, "unsure"));
     }
 
     #[test]
     fn money_rule_span_two_ignores_unrelated_lines() {
         let cfg = cfg_with(&[("AGG_MONEY_RULE_LINES", "2")]);
         // "your bill is due" (money 1.0) ... two calm lines ... "call the number on your card" (urgency 0.5)
-        let lines = [(20, all(0.4, 1.0, 0.0)), (25, all(0.4, 1.0, 0.0)), (30, all(0.3, 0.3, 0.0)), (35, all(0.5, 0.3, 0.0))];
+        let lines = [
+            (20, all(0.4, 1.0, 0.0)),
+            (25, all(0.4, 1.0, 0.0)),
+            (30, all(0.3, 0.3, 0.0)),
+            (35, all(0.5, 0.3, 0.0)),
+        ];
         let (_, d) = replay(&cfg, &lines);
-        assert!(d.iter().all(|d| d.rule != "money_rule" && d.verdict != Verdict::Scam), "{:?}", d.iter().map(|d| d.rule).collect::<Vec<_>>());
+        assert!(
+            d.iter()
+                .all(|d| d.rule != "money_rule" && d.verdict != Verdict::Scam),
+            "{:?}",
+            d.iter().map(|d| d.rule).collect::<Vec<_>>()
+        );
         // the window itself is unchanged: the combined score still sees money 1.0 from 3 lines back
         assert!((d[3].recent[1].unwrap() - 1.0).abs() < 1e-6);
     }
@@ -500,12 +625,19 @@ mod tests {
         let cfg = cfg_with(&[("AGG_MONEY_RULE_LINES", "2")]);
         // same line: "pay the other driver's repair cost today" (urgency 0.54, money 1.0)
         let (_, d) = replay(&cfg, &[(20, all(0.2, 0.0, 0.0)), (25, all(0.54, 1.0, 0.0))]);
-        assert_eq!((d[1].verdict, d[1].rule), (Verdict::Scam, "money_rule"));
+        assert_eq!((d[1].verdict, d[1].rule), (Verdict::Unsure, "unsure"));
         // adjacent lines: "this is the police" then "transfer to the safe account"
         let (_, d) = replay(&cfg, &[(20, all(0.1, 0.1, 1.0)), (25, all(0.1, 0.71, 0.0))]);
-        assert_eq!((d[1].verdict, d[1].rule), (Verdict::Scam, "money_rule"));
+        assert_eq!((d[1].verdict, d[1].rule), (Verdict::Unsure, "unsure"));
         // one calm line in between is already too far apart for span 2
-        let (_, d) = replay(&cfg, &[(20, all(0.1, 0.1, 1.0)), (25, all(0.1, 0.1, 0.1)), (30, all(0.1, 0.71, 0.0))]);
+        let (_, d) = replay(
+            &cfg,
+            &[
+                (20, all(0.1, 0.1, 1.0)),
+                (25, all(0.1, 0.1, 0.1)),
+                (30, all(0.1, 0.71, 0.0)),
+            ],
+        );
         assert_ne!(d[2].rule, "money_rule");
     }
 
@@ -515,33 +647,65 @@ mod tests {
         let (_, d) = replay(&cfg, &[(20, all(0.1, 0.1, 1.0)), (25, all(0.1, 0.9, 0.0))]);
         assert_ne!(d[1].rule, "money_rule");
         let (_, d) = replay(&cfg, &[(20, all(0.1, 0.9, 0.8))]);
-        assert_eq!(d[0].rule, "money_rule");
+        assert_eq!(
+            (d[0].verdict, d[0].rule),
+            (Verdict::Scam, "strong_fallback")
+        );
     }
 
     #[test]
-    fn scam_needs_two_high_updates_in_a_row() {
+    fn one_high_sentence_is_not_red() {
         // money 0.6 keeps the money rule out of it, so only the streak decides
-        let (_, d) = replay(&cfg(), &[(20, all(0.65, 0.6, 0.65)), (25, all(0.1, 0.1, 0.1))]);
-        assert_eq!((d[0].verdict, d[0].rule), (Verdict::Unsure, "high_once"));
-        // the window still holds the high line, so the next update is high too -> second in a row
-        assert_eq!((d[1].verdict, d[1].rule), (Verdict::Scam, "streak"));
+        let (_, d) = replay(
+            &cfg(),
+            &[(20, all(0.65, 0.6, 0.65)), (25, all(0.1, 0.1, 0.1))],
+        );
+        assert_eq!((d[0].verdict, d[0].rule), (Verdict::Unsure, "unsure"));
+        assert_eq!((d[1].verdict, d[1].rule), (Verdict::Unsure, "unsure"));
+    }
+
+    #[test]
+    fn no_context_cannot_authorize_fallback_red() {
+        let d = decide_one_shot_with_bert_status(all(0.9, 0.9, 0.1), None, "no_context", &cfg());
+        assert_eq!(d.verdict, Verdict::Unsure);
+        assert_eq!(d.rule, "unsure");
     }
 
     #[test]
     fn a_low_update_resets_the_streak() {
         let cfg = cfg_with(&[("AGG_WINDOW_LINES", "1")]); // window of 1 so a low line really is low
-        let (_, d) = replay(&cfg, &[(20, all(0.65, 0.6, 0.65)), (25, all(0.1, 0.1, 0.1)), (30, all(0.65, 0.6, 0.65))]);
-        assert_eq!(d[0].rule, "high_once");
+        let (_, d) = replay(
+            &cfg,
+            &[
+                (20, all(0.65, 0.6, 0.65)),
+                (25, all(0.1, 0.1, 0.1)),
+                (30, all(0.65, 0.6, 0.65)),
+            ],
+        );
+        assert_eq!(d[0].rule, "unsure");
         assert_eq!((d[1].verdict, d[1].rule), (Verdict::Safe, "safe"));
-        assert_eq!(d[2].rule, "high_once"); // streak started again, not SCAM
+        assert_eq!(d[2].rule, "unsure");
     }
 
     #[test]
-    fn red_stays_red() {
-        let (state, d) = replay(&cfg(), &[(20, all(0.9, 0.9, 0.9)), (25, all(0.0, 0.0, 0.0)), (99, [None, None, None])]);
+    fn strong_fallback_can_turn_red_without_bert() {
+        let (state, d) = replay(
+            &cfg(),
+            &[
+                (20, all(0.9, 0.9, 0.9)),
+                (25, all(0.0, 0.0, 0.0)),
+                (99, [None, None, None]),
+            ],
+        );
         assert_eq!(d[0].verdict, Verdict::Scam);
-        assert_eq!((d[1].verdict, d[1].rule), (Verdict::Scam, "red"));
-        assert_eq!((d[2].verdict, d[2].rule), (Verdict::Scam, "red")); // even with no answers at all
+        assert_eq!(
+            (d[1].verdict, d[1].rule),
+            (Verdict::Scam, "red_bert_unavailable")
+        );
+        assert_eq!(
+            (d[2].verdict, d[2].rule),
+            (Verdict::Scam, "red_bert_unavailable")
+        );
         assert!(state.red);
         assert_eq!(d[2].action, ACTION_SCAM);
     }
@@ -579,15 +743,18 @@ mod tests {
     fn scripted_scam_turns_red_at_the_right_line() {
         let lines = [
             (0, all(0.1, 0.0, 0.2)),   // "Hello, is this Mr Tan?"
-            (6, all(0.2, 0.1, 0.95)),  // "This is Inspector Lim from SPF" -> breaks warm-up, but money is low
-            (20, all(0.6, 0.2, 0.3)),  // "Your account is linked to a money-laundering case, act now"
+            (6, all(0.2, 0.1, 0.95)), // "This is Inspector Lim from SPF" -> breaks warm-up, but money is low
+            (20, all(0.6, 0.2, 0.3)), // "Your account is linked to a money-laundering case, act now"
             (28, all(0.4, 0.95, 0.2)), // "Read me the OTP we just sent"  -> money rule
         ];
         let (_, d) = replay(&cfg(), &lines);
         assert_eq!(d[0].verdict, Verdict::Safe);
         assert_ne!(d[1].verdict, Verdict::Scam);
         assert_ne!(d[2].verdict, Verdict::Scam);
-        assert_eq!((d[3].verdict, d[3].rule), (Verdict::Scam, "money_rule"));
+        assert_eq!(
+            (d[3].verdict, d[3].rule),
+            (Verdict::Scam, "strong_fallback")
+        );
         let signals: Vec<_> = d[3].reasons.iter().map(|r| r.signal).collect();
         assert_eq!(signals, ["money", "impersonation", "urgency"]); // strongest first
         assert_eq!(d[3].reasons[0].text, "Asked for your OTP or money");
@@ -597,7 +764,14 @@ mod tests {
     fn phone_time_wins_over_aggregator_clock() {
         let cfg = cfg();
         // two lines that arrive 1 s apart, but the phone says they were spoken at 3 s and 40 s
-        let (s, d1) = decide(CallState::default(), all(0.1, 0.1, 0.1), None, START, 3_000, &cfg);
+        let (s, d1) = decide(
+            CallState::default(),
+            all(0.1, 0.1, 0.1),
+            None,
+            START,
+            3_000,
+            &cfg,
+        );
         assert_eq!(s.started_at_ms, START - 3_000);
         assert!(d1.warming_up);
         let (_, d2) = decide(s, all(0.1, 0.1, 0.1), None, START + 1_000, 40_000, &cfg);
@@ -609,9 +783,18 @@ mod tests {
     #[test]
     fn one_shot_has_no_warmup_or_streak() {
         let cfg = cfg();
-        assert_eq!(decide_one_shot(all(0.9, 0.9, 0.9), None, &cfg).verdict, Verdict::Scam);
-        assert_eq!(decide_one_shot(all(0.1, 0.1, 0.1), None, &cfg).verdict, Verdict::Safe);
-        assert_eq!(decide_one_shot([Some(0.9), None, None], None, &cfg).rule, "quorum");
+        assert_eq!(
+            decide_one_shot(all(0.9, 0.9, 0.9), None, &cfg).verdict,
+            Verdict::Scam
+        );
+        assert_eq!(
+            decide_one_shot(all(0.1, 0.1, 0.1), None, &cfg).verdict,
+            Verdict::Safe
+        );
+        assert_eq!(
+            decide_one_shot([Some(0.9), None, None], None, &cfg).rule,
+            "quorum"
+        );
     }
 
     // ---------------------------------------------------------------- BERT second opinion (cascade, 7.4)
@@ -633,14 +816,60 @@ mod tests {
         let cfg = cfg();
         let new = CallState::default();
         let t = START + 20_000;
-        assert!(!wants_second_opinion(&new, all(0.1, 0.1, 0.1), t, 20_000, &cfg)); // clearly safe
-        assert!(!wants_second_opinion(&new, all(0.5, 0.5, 0.5), START, 3_000, &cfg)); // warm-up: quiet anyway
-        assert!(wants_second_opinion(&new, all(0.5, 0.5, 0.5), t, 20_000, &cfg)); // unsure band
-        assert!(wants_second_opinion(&new, all(0.65, 0.6, 0.65), t, 20_000, &cfg)); // high
-        assert!(wants_second_opinion(&new, all(0.2, 0.95, 0.6), t, 20_000, &cfg)); // money rule
-        assert!(wants_second_opinion(&new, [None, Some(0.1), None], t, 20_000, &cfg)); // not enough data
-        let red = CallState { red: true, started_at_ms: START, ..CallState::default() };
-        assert!(!wants_second_opinion(&red, all(0.9, 0.9, 0.9), t, 20_000, &cfg)); // red stays red anyway
+        assert!(!wants_second_opinion(
+            &new,
+            all(0.1, 0.1, 0.1),
+            t,
+            20_000,
+            &cfg
+        )); // clearly safe
+        assert!(!wants_second_opinion(
+            &new,
+            all(0.5, 0.5, 0.5),
+            START,
+            3_000,
+            &cfg
+        )); // warm-up: quiet anyway
+        assert!(wants_second_opinion(
+            &new,
+            all(0.5, 0.5, 0.5),
+            t,
+            20_000,
+            &cfg
+        )); // unsure band
+        assert!(wants_second_opinion(
+            &new,
+            all(0.65, 0.6, 0.65),
+            t,
+            20_000,
+            &cfg
+        )); // high
+        assert!(wants_second_opinion(
+            &new,
+            all(0.2, 0.95, 0.6),
+            t,
+            20_000,
+            &cfg
+        )); // money rule
+        assert!(wants_second_opinion(
+            &new,
+            [None, Some(0.1), None],
+            t,
+            20_000,
+            &cfg
+        )); // not enough data
+        let red = CallState {
+            red: true,
+            started_at_ms: START,
+            ..CallState::default()
+        };
+        assert!(wants_second_opinion(
+            &red,
+            all(0.9, 0.9, 0.9),
+            t,
+            20_000,
+            &cfg
+        ));
         assert!(one_shot_wants_second_opinion(all(0.5, 0.5, 0.5), &cfg));
         assert!(!one_shot_wants_second_opinion(all(0.1, 0.1, 0.1), &cfg));
     }
@@ -661,7 +890,7 @@ mod tests {
         let d = replay_bert(&cfg(), &[(20, all(0.5, 0.5, 0.5), Some(0.9))]);
         assert!((d[0].fast - 0.5).abs() < 1e-6);
         assert!((d[0].combined - 0.7).abs() < 1e-6);
-        assert_eq!((d[0].verdict, d[0].rule), (Verdict::Unsure, "high_once"));
+        assert_eq!((d[0].verdict, d[0].rule), (Verdict::Scam, "bert_confirmed"));
         assert_eq!(d[0].bert, Some(0.9));
         assert_eq!(d[0].reasons[0].signal, "bert"); // strongest reason first
     }
@@ -675,33 +904,68 @@ mod tests {
     }
 
     #[test]
-    fn two_high_blended_updates_in_a_row_are_scam() {
-        let d = replay_bert(&cfg(), &[(20, all(0.5, 0.5, 0.5), Some(0.9)), (25, all(0.5, 0.5, 0.5), Some(0.9))]);
-        assert_eq!(d[0].rule, "high_once");
-        assert_eq!((d[1].verdict, d[1].rule), (Verdict::Scam, "streak"));
+    fn bert_scam_requires_an_alarmed_worker_vote() {
+        let d = replay_bert(
+            &cfg(),
+            &[
+                (20, all(0.5, 0.5, 0.5), Some(0.9)),
+                (25, all(0.5, 0.5, 0.5), Some(0.9)),
+            ],
+        );
+        assert_eq!(d[0].rule, "bert_confirmed");
+        assert_eq!(
+            (d[1].verdict, d[1].rule),
+            (Verdict::Scam, "red_bert_confirmed")
+        );
     }
 
     #[test]
-    fn bert_cannot_cancel_the_money_rule_unless_the_veto_is_switched_on() {
+    fn bert_safe_keeps_an_alarmed_worker_vote_yellow() {
         // "This is DBS, your card bill of $50 is due": money 0.95, impersonation 0.6 -> money rule
         let line = all(0.2, 0.95, 0.6);
-        let default = replay_bert(&cfg(), &[(20, line, Some(0.0))]); // veto off by default (recall first)
-        assert_eq!((default[0].verdict, default[0].rule), (Verdict::Scam, "money_rule"));
-        let on = cfg_with(&[("AGG_BERT_VETO", "0.2")]);
-        let vetoed = replay_bert(&on, &[(20, line, Some(0.05))]);
-        assert_ne!(vetoed[0].rule, "money_rule");
-        assert_ne!(vetoed[0].verdict, Verdict::Scam);
-        let kept = replay_bert(&on, &[(20, line, Some(0.3))]); // 0.3 >= veto 0.2
-        assert_eq!((kept[0].verdict, kept[0].rule), (Verdict::Scam, "money_rule"));
+        let default = replay_bert(&cfg(), &[(20, line, Some(0.0))]);
+        assert_eq!(
+            (default[0].verdict, default[0].rule),
+            (Verdict::Unsure, "unsure")
+        );
+        let confirmed = replay_bert(&cfg(), &[(20, all(0.9, 0.9, 0.9), Some(0.8))]);
+        assert_eq!(
+            (confirmed[0].verdict, confirmed[0].rule),
+            (Verdict::Scam, "bert_confirmed")
+        );
+    }
+
+    #[test]
+    fn two_bert_disagreements_clear_a_live_red_alert() {
+        let d = replay_bert(
+            &cfg(),
+            &[
+                (20, all(0.9, 0.9, 0.9), Some(0.8)),
+                (25, all(0.1, 0.1, 0.1), Some(0.1)),
+                (30, all(0.1, 0.1, 0.1), Some(0.1)),
+            ],
+        );
+        assert_eq!(d[0].verdict, Verdict::Scam);
+        assert_eq!(d[1].rule, "red_bert_disagrees");
+        assert_eq!((d[2].verdict, d[2].rule), (Verdict::Unsure, "red_cleared"));
     }
 
     #[test]
     fn bert_stands_in_when_too_few_workers_answer() {
-        let d = replay_bert(&cfg(), &[(20, [None, Some(0.1), None], Some(0.8)), (25, [None, None, None], Some(0.8))]);
+        let d = replay_bert(
+            &cfg(),
+            &[
+                (20, [None, Some(0.1), None], Some(0.8)),
+                (25, [None, None, None], Some(0.8)),
+            ],
+        );
         assert!(!d[0].quorum_met);
         assert!((d[0].combined - 0.8).abs() < 1e-6); // BERT alone, not blended with a one-worker vote
-        assert_eq!((d[0].verdict, d[0].rule), (Verdict::Unsure, "high_once")); // never red on one line
-        assert_eq!((d[1].verdict, d[1].rule), (Verdict::Scam, "streak"));
+        assert_eq!((d[0].verdict, d[0].rule), (Verdict::Scam, "bert_confirmed"));
+        assert_eq!(
+            (d[1].verdict, d[1].rule),
+            (Verdict::Scam, "red_bert_confirmed")
+        );
         assert!(!d[0].reasons.iter().any(|r| r.signal == "quorum")); // BERT answered: not "not enough data"
         let calm = replay_bert(&cfg(), &[(20, [None, Some(0.1), None], Some(0.1))]);
         assert_eq!((calm[0].verdict, calm[0].rule), (Verdict::Safe, "safe"));
@@ -728,7 +992,10 @@ mod tests {
         let d = decide_one_shot(all(0.5, 0.5, 0.5), Some(0.1), &cfg);
         assert_eq!(d.verdict, Verdict::Safe);
         assert!((d.combined - 0.3).abs() < 1e-6);
-        assert_eq!(decide_one_shot([None, None, None], Some(0.9), &cfg).verdict, Verdict::Scam);
+        assert_eq!(
+            decide_one_shot([None, None, None], Some(0.9), &cfg).verdict,
+            Verdict::Scam
+        );
     }
 
     #[test]
@@ -762,12 +1029,6 @@ mod tests {
         let (_, d) = decide(at_line(4), quiet, Some(0.95), START + 5_000, 5_000, &cfg);
         assert!(d.warming_up);
         assert_ne!(d.rule, "warmup");
-    }
-
-    #[test]
-    fn spot_check_skips_red_calls() {
-        let red = CallState { red: true, ..at_line(4) };
-        assert!(!wants_second_opinion(&red, all(0.0, 0.0, 0.0), START + 30_000, 30_000, &cfg()));
     }
 
     #[test]
