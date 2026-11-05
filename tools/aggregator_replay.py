@@ -66,6 +66,9 @@ def post(body, retries=20):
                 time.sleep(0.5)
                 continue
             raise
+
+
+
         except urllib.error.URLError:
             if attempt < retries - 1:
                 time.sleep(0.5)
