@@ -51,6 +51,16 @@ pub struct Settings {
     /// tunes for recall (F2), so a second opinion may not cancel strong evidence until the evaluation (7.5)
     /// shows it is safe to (try 0.1-0.2 there).
     pub bert_veto: f32,
+    // ---- Workstream B: knowing when a call ends (docs/workstream-b-contract.md) ----
+    /// No caller line for this long -> the aggregator ends the call itself (ended_by "silence"). 0 = off (calls
+    /// are then only swept once their memory expired, after `call_ttl`).
+    pub silence: Duration,
+    /// How often each aggregator copy looks for silent calls.
+    pub silence_check: Duration,
+    /// Time limit for the end-of-call review hook; on timeout the live verdict is the final one.
+    pub end_review_timeout: Duration,
+    /// How long the "call ended" tombstone (and the stored end result) is kept; late lines are ignored this long.
+    pub end_tombstone_ttl: Duration,
 }
 
 impl Settings {
@@ -85,6 +95,10 @@ impl Settings {
             bert_timeout: Duration::from_millis(number(&get, "BERT_TIMEOUT_MS", 300)?),
             bert_weight: number(&get, "AGG_BERT_WEIGHT", 0.5)?,
             bert_veto: number(&get, "AGG_BERT_VETO", 0.0)?,
+            silence: Duration::from_secs(number(&get, "AGG_SILENCE_SECS", 30)?),
+            silence_check: Duration::from_secs(number(&get, "AGG_SILENCE_CHECK_SECS", 5)?),
+            end_review_timeout: Duration::from_millis(number(&get, "AGG_END_REVIEW_TIMEOUT_MS", 1500)?),
+            end_tombstone_ttl: Duration::from_secs(number(&get, "AGG_END_TOMBSTONE_SECS", 3600)?),
         };
         s.validate()?;
         Ok(s)
@@ -133,6 +147,15 @@ impl Settings {
         }
         if self.call_ttl.is_zero() {
             return Err("AGG_CALL_TTL_SECS must be at least 1".into());
+        }
+        if self.silence_check.is_zero() {
+            return Err("AGG_SILENCE_CHECK_SECS must be at least 1".into());
+        }
+        if self.end_review_timeout.is_zero() {
+            return Err("AGG_END_REVIEW_TIMEOUT_MS must be at least 1".into());
+        }
+        if self.end_tombstone_ttl.is_zero() {
+            return Err("AGG_END_TOMBSTONE_SECS must be at least 1".into());
         }
         if !self.bert_addr.is_empty() && self.bert_timeout.is_zero() {
             return Err("BERT_TIMEOUT_MS must be at least 1 when BERT_ADDR is set".into());
@@ -190,6 +213,21 @@ mod tests {
         assert_eq!(s.bert_addr, ""); // BERT off unless BERT_ADDR is set
         assert_eq!(s.bert_timeout, Duration::from_millis(300));
         assert_eq!((s.bert_weight, s.bert_veto), (0.5, 0.0)); // average; veto off
+        assert_eq!(s.silence, Duration::from_secs(30));
+        assert_eq!(s.silence_check, Duration::from_secs(5));
+        assert_eq!(s.end_review_timeout, Duration::from_millis(1500));
+        assert_eq!(s.end_tombstone_ttl, Duration::from_secs(3600));
+    }
+
+    #[test]
+    fn reads_the_end_of_call_settings() {
+        let s = with(&[("AGG_SILENCE_SECS", "0"), ("AGG_END_REVIEW_TIMEOUT_MS", "800")]).unwrap();
+        assert!(s.silence.is_zero()); // 0 = silence timeout off
+        assert_eq!(s.end_review_timeout, Duration::from_millis(800));
+        assert!(with(&[("AGG_SILENCE_CHECK_SECS", "0")]).is_err());
+        assert!(with(&[("AGG_END_REVIEW_TIMEOUT_MS", "0")]).is_err());
+        assert!(with(&[("AGG_END_TOMBSTONE_SECS", "0")]).is_err());
+        assert!(with(&[("AGG_SILENCE_SECS", "-1")]).is_err());
     }
 
     #[test]

@@ -14,11 +14,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.scamdetect.ui.CallViewModel
-import com.example.scamdetect.ui.HistoryScreen
+import com.example.scamdetect.ui.CallDetailScreen
+import com.example.scamdetect.ui.DashboardScreen
 import com.example.scamdetect.ui.HomeScreen
 import com.example.scamdetect.ui.InCallScreen
 import com.example.scamdetect.ui.IncomingCallScreen
@@ -29,7 +31,7 @@ import com.example.scamdetect.ui.SettingsScreen
 import com.example.scamdetect.ui.SummaryScreen
 import com.example.scamdetect.ui.theme.ScamDetectTheme
 
-enum class Screen { HOME, PICK, CALL, PASTE, HISTORY, SETTINGS }
+enum class Screen { HOME, PICK, CALL, PASTE, DASHBOARD, CALL_DETAIL, SETTINGS }
 
 /** Runtime permission from Android 17 (API 37) to reach private addresses such as the demo gateway. */
 const val LOCAL_NETWORK_PERMISSION = "android.permission.ACCESS_LOCAL_NETWORK"
@@ -54,12 +56,14 @@ class MainActivity : ComponentActivity() {
 fun ScamGuardApp(vm: CallViewModel = viewModel()) {
     var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
     val state by vm.state.collectAsState()
-    val history by vm.history.collectAsState()
+    val calls by vm.calls.collectAsState()
+    val saveSentence by vm.saveSentence.collectAsState()
+    var openCallId by rememberSaveable { mutableStateOf<String?>(null) }
     val gatewayUrl by vm.gatewayUrl.collectAsState()
 
     BackHandler(enabled = screen != Screen.HOME) {
-        if (screen == Screen.CALL) vm.reset()
-        screen = Screen.HOME
+        if (screen == Screen.CALL) vm.discard()   // B.5: during a call, tells the server; no summary, nothing saved
+        screen = if (screen == Screen.CALL_DETAIL) Screen.DASHBOARD else Screen.HOME
     }
 
     fun ringKind(kind: String) {
@@ -72,7 +76,7 @@ fun ScamGuardApp(vm: CallViewModel = viewModel()) {
             onNormalCall = { ringKind("normal") },
             onPickScript = { screen = Screen.PICK },
             onPasteText = { screen = Screen.PASTE },
-            onHistory = { screen = Screen.HISTORY },
+            onDashboard = { screen = Screen.DASHBOARD },
             onSettings = { screen = Screen.SETTINGS },
         )
 
@@ -104,11 +108,21 @@ fun ScamGuardApp(vm: CallViewModel = viewModel()) {
             Phase.IDLE -> LaunchedEffect(Unit) { screen = Screen.HOME }
         }
 
-        Screen.HISTORY -> HistoryScreen(
-            entries = history,
-            onClear = vm::clearHistory,
+        Screen.DASHBOARD -> DashboardScreen(
+            calls = calls,
+            saveSentence = saveSentence,
+            onSaveSentence = vm::setSaveSentence,
+            onDeleteHistory = vm::deleteHistory,
+            onOpen = { openCallId = it; screen = Screen.CALL_DETAIL },
             onBack = { screen = Screen.HOME },
         )
+
+        Screen.CALL_DETAIL -> {
+            val id = openCallId.orEmpty()
+            val call by remember(id) { vm.call(id) }.collectAsState(initial = null)
+            val points by remember(id) { vm.points(id) }.collectAsState(initial = emptyList())
+            CallDetailScreen(call, points, onBack = { screen = Screen.DASHBOARD })
+        }
 
         Screen.SETTINGS -> SettingsScreen(
             currentUrl = gatewayUrl,

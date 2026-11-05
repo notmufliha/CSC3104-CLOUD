@@ -41,9 +41,43 @@ data class UtteranceResponse(
     val language: String?,
     val scores: Map<String, Float?>?,                       // this line only
     val missing: List<String>?,
-    @SerializedName("call_scores") val callScores: Map<String, Float>?, // best per signal, whole call
+    // Best per signal over the call's recent caller lines. The gateway sends "recent_scores"; the old name
+    // "call_scores" (in the first app guide) is still read, so chips light up with either.
+    @SerializedName(value = "recent_scores", alternate = ["call_scores"]) val callScores: Map<String, Float>?,
     @SerializedName("caller_lines") val callerLines: Int?,
     @SerializedName("latency_ms") val latencyMs: Long?,
+    /** Workstream B.6: true = the call had already ended, the line was not scored. Treat as "no change". */
+    val ignored: Boolean? = null,
+    /** Why it was ignored ("call_ended"); null otherwise. */
+    val reason: String? = null,
+)
+
+/** Workstream B: one caller line in the end message, for the end-of-call review (not stored by the server). */
+data class EndLine(val seq: Long, val text: String)
+
+/** Body of POST /v1/call/end. */
+data class EndCallRequest(
+    @SerializedName("call_id") val callId: String,
+    @SerializedName("ended_by") val endedBy: String,       // script_finished | user_hung_up | user_discarded
+    @SerializedName("last_seq") val lastSeq: Long,
+    @SerializedName("caller_lines") val callerLines: List<EndLine>,
+    val lang: String? = null,                               // null = the gateway detects it from the lines
+    val event: String = "end",
+)
+
+/** Answer from POST /v1/call/end. Everything nullable: Gson does not respect Kotlin defaults. */
+data class EndCallResponse(
+    @SerializedName("call_id") val callId: String?,
+    @SerializedName("final_verdict") val finalVerdict: String?,   // SAFE | UNSURE | SCAM | UNKNOWN
+    @SerializedName("call_score") val callScore: Float?,
+    @SerializedName("live_verdict") val liveVerdict: String?,
+    val review: String?,                                          // "bert" | "fallback"
+    @SerializedName("top_window_seqs") val topWindowSeqs: List<Long>?,
+    val reason: String?,
+    @SerializedName("ended_by") val endedBy: String?,
+    @SerializedName("already_ended") val alreadyEnded: Boolean?,
+    @SerializedName("latency_ms") val latencyMs: Long?,
+    val error: String?,                                           // set when the server fell back (aggregator down)
 )
 
 /** Workstream H.3: one caller line in a report, already masked on the phone (logic/Mask.kt). */
@@ -66,7 +100,7 @@ data class ReportResponse(
     @SerializedName("expires_at") val expiresAt: Long?,
 )
 
-/** One row of the History screen. No transcript, no number. */
+/** One row of the OLD History (SharedPreferences). Only read to move it into Room once (CallHistory.migrateLegacy). */
 data class HistoryEntry(
     val timeMillis: Long,
     val verdict: String,

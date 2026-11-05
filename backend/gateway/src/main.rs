@@ -8,6 +8,10 @@
 //!   GET  /healthz
 //!   POST /v1/report           Workstream H: a consented report of a finished call, forwarded to the internal
 //!                              review service (the phone never reaches that service directly)
+//!   POST /v1/call/end         Workstream B: the call is over. Forwarded to the aggregator's EndCall, which
+//!                              returns the final verdict and clears the call's memory. Lines sent after the end
+//!                              are answered {"ignored": true, "reason": "call_ended"} and never scored.
+//!                              Contract: docs/workstream-b-contract.md
 //!
 //! Logs: one "timing" line per worker call and one per aggregator call (milliseconds, outcome), plus one per
 //! request. Transcript text is never logged.
@@ -27,17 +31,25 @@ pub mod scam_detect {
     tonic::include_proto!("scam_detect");
 }
 
-use calls::{Answer, CallStore, Reason};
+use calls::{Answer, CallStore, Ended, Reason};
 use config::{Settings, SIGNALS};
 use scam_detect::aggregator_service_client::AggregatorServiceClient;
 use scam_detect::worker_service_client::WorkerServiceClient;
-use scam_detect::{AggregateRequest, TranscriptRequest, WorkerScore};
+use scam_detect::{AggregateRequest, CallerLine, EndCallRequest, TranscriptRequest, WorkerScore};
 
 const MAX_CALL_ID_LEN: usize = 128;
 const MAX_TEXT_CHARS: usize = 10_000;
 /// A report is the call's caller lines (at most 200 x 2000 characters, checked again by the review service).
 const MAX_REPORT_BYTES: usize = 512 * 1024;
 const REVIEW_TIMEOUT: Duration = Duration::from_secs(5);
+/// Workstream B: an end message carries the call's caller lines, same caps as a report.
+const MAX_END_LINES: usize = 200;
+const MAX_END_LINE_CHARS: usize = 2000;
+const MAX_END_BYTES: usize = 512 * 1024;
+/// What the phone may say ended the call. "silence" is the aggregator's own timeout, never sent by the phone.
+const ENDED_BY_PHONE: [&str; 3] = ["script_finished", "user_hung_up", "user_discarded"];
+/// Answer to a line that arrives after its call ended (B.6).
+const IGNORED_CALL_ENDED: &str = "call_ended";
 
 struct AppState {
     settings: Settings,
@@ -123,6 +135,12 @@ struct UtteranceResponse {
     bert_status: Option<String>,
     caller_lines: u32,
     latency_ms: u64,
+    /// Workstream B.6: true when the call had already ended. The line was not scored; the phone treats it as
+    /// "no change".
+    ignored: bool,
+    /// Why the line was ignored ("call_ended"); absent when it was not.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reason: Option<&'static str>,
 }
 
 #[derive(Serialize)]
@@ -230,6 +248,7 @@ async fn aggregate(
                 fast_score: r.fast_score,
                 bert_score: r.bert_score,
                 bert_status: r.bert_status,
+                call_ended: r.call_ended,
             })
         }
         Ok(Err(status)) => Err(format!("aggregator error: {:?}", status.code())),
@@ -253,9 +272,9 @@ async fn utterance(state: web::Data<AppState>, body: web::Json<UtteranceRequest>
     }
 
     let seq = req.seq;
-    // A line that is not scored (receiver line, or a caller line resent with a seq already scored):
-    // answer with the call's current state (the aggregator's last answer), no worker call.
-    let unscored = |duplicate: bool| {
+    // A line that is not scored (receiver line, a caller line resent with a seq already scored, or any line
+    // after the call ended): answer with the call's current state (the aggregator's last answer), no worker call.
+    let unscored = |duplicate: bool, ignored: bool| {
         let last = state.calls.last_answer(&call_id);
         let a = last.clone().unwrap_or_default();
         HttpResponse::Ok().json(UtteranceResponse {
@@ -280,8 +299,16 @@ async fn utterance(state: web::Data<AppState>, body: web::Json<UtteranceRequest>
             bert_status: last.as_ref().map(|a| a.bert_status.clone()),
             caller_lines: a.caller_lines,
             latency_ms: start.elapsed().as_millis() as u64,
+            ignored,
+            reason: ignored.then_some(IGNORED_CALL_ENDED),
         })
     };
+
+    // B.6 a line after the call ended (POST /v1/call/end already came): ignored, no worker call.
+    if state.calls.is_ended(&call_id) {
+        tracing::warn!(call_id = %call_id, seq, "late line after call ended: ignored, not scored");
+        return unscored(false, true);
+    }
 
     // 2.2 receiver lines: no worker call, just the call's last verdict
     if !req.speaker.trim().eq_ignore_ascii_case("caller") {
@@ -289,7 +316,7 @@ async fn utterance(state: web::Data<AppState>, body: web::Json<UtteranceRequest>
             state.calls.mark_seq(&call_id, s);
         }
         tracing::info!(call_id = %call_id, seq, speaker = "receiver", "receiver line: no workers called");
-        return unscored(false);
+        return unscored(false, false);
     }
 
     if req.text.trim().is_empty() {
@@ -309,7 +336,7 @@ async fn utterance(state: web::Data<AppState>, body: web::Json<UtteranceRequest>
     if let Some(s) = seq {
         if !state.calls.mark_seq(&call_id, s) {
             tracing::info!(call_id = %call_id, seq = s, "resent line (seq already scored): no workers called");
-            return unscored(true);
+            return unscored(true, false);
         }
     }
     // If scoring this line fails, forget its seq so the phone's retry is scored.
@@ -342,6 +369,13 @@ async fn utterance(state: web::Data<AppState>, body: web::Json<UtteranceRequest>
             return HttpResponse::BadGateway().json(ErrorResponse { error: e });
         }
     };
+    // B.6 backstop: the aggregator's tombstone says the call ended (its silence timeout, or a line that was
+    // already on its way when the end came). The line was not stored; remember the end here too.
+    if answer.call_ended {
+        state.calls.mark_ended(&call_id, None);
+        tracing::warn!(call_id = %call_id, seq, "late line after call ended (aggregator): ignored, not scored");
+        return unscored(false, true);
+    }
     state.calls.push_context(&call_id, &req.text, n);
     state.calls.set_answer(&call_id, answer.clone());
 
@@ -373,7 +407,189 @@ async fn utterance(state: web::Data<AppState>, body: web::Json<UtteranceRequest>
         bert_status: Some(answer.bert_status),
         caller_lines: answer.caller_lines,
         latency_ms,
+        ignored: false,
+        reason: None,
     })
+}
+
+// ------------------------------------------------------------------------------------------- B: call end
+
+#[derive(Deserialize)]
+struct EndLine {
+    seq: i64,
+    text: String,
+}
+
+#[derive(Deserialize)]
+struct EndRequest {
+    call_id: String,
+    /// Optional; "end" if given.
+    #[serde(default)]
+    event: Option<String>,
+    ended_by: String,
+    #[serde(default)]
+    last_seq: Option<i64>,
+    /// The call's caller lines, for the end-of-call review. Passed on, never stored or logged here.
+    #[serde(default)]
+    caller_lines: Vec<EndLine>,
+    /// Same as /v1/utterance's lang; without it the language is detected from the lines.
+    #[serde(default)]
+    lang: Option<String>,
+}
+
+#[derive(Serialize)]
+struct EndResponse {
+    call_id: String,
+    /// SAFE | UNSURE | SCAM, or UNKNOWN when no caller line of this call was ever scored.
+    final_verdict: String,
+    call_score: f32,
+    live_verdict: String,
+    /// "bert" | "fallback"
+    review: String,
+    top_window_seqs: Vec<i64>,
+    reason: String,
+    ended_by: String,
+    /// True when the call had already ended: this is the first end's result, nothing was run again.
+    already_ended: bool,
+    latency_ms: u64,
+    /// Set when the aggregator could not be reached: the fields are the gateway's last known verdict.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+}
+
+/// Proto Verdict -> the name the phone sees. VERDICT_UNSPECIFIED (call never seen) -> "UNKNOWN".
+fn end_verdict_name(v: i32) -> String {
+    match scam_detect::Verdict::try_from(v) {
+        Ok(scam_detect::Verdict::Safe) => "SAFE",
+        Ok(scam_detect::Verdict::Unsure) => "UNSURE",
+        Ok(scam_detect::Verdict::Scam) => "SCAM",
+        _ => "UNKNOWN",
+    }
+    .to_string()
+}
+
+/// Checks an end message. Returns the language for the review ("" = no lines, nothing to detect).
+fn validate_end(req: &EndRequest) -> Result<&'static str, String> {
+    let call_id = req.call_id.trim();
+    if call_id.is_empty() || call_id.len() > MAX_CALL_ID_LEN {
+        return Err(format!("call_id must be 1-{MAX_CALL_ID_LEN} characters"));
+    }
+    if let Some(e) = &req.event {
+        if e.trim() != "end" {
+            return Err(format!("event must be \"end\", got \"{e}\""));
+        }
+    }
+    if !ENDED_BY_PHONE.contains(&req.ended_by.trim()) {
+        return Err(format!("ended_by must be one of {ENDED_BY_PHONE:?}"));
+    }
+    if req.caller_lines.len() > MAX_END_LINES {
+        return Err(format!("at most {MAX_END_LINES} caller lines"));
+    }
+    if req.caller_lines.iter().any(|l| l.text.chars().count() > MAX_END_LINE_CHARS) {
+        return Err(format!("each caller line must be at most {MAX_END_LINE_CHARS} characters"));
+    }
+    let has_text = req.caller_lines.iter().any(|l| !l.text.trim().is_empty());
+    if req.lang.as_deref().is_some_and(|l| !l.trim().is_empty()) || has_text {
+        let joined: String = req.caller_lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>().join(" ");
+        return language::choose(req.lang.as_deref(), &joined).map(|(l, _)| l);
+    }
+    Ok("")
+}
+
+/// B.1/B.2: the phone says the call is over. The aggregator runs the end-of-call review (or falls back to the
+/// live verdict), clears the call's memory and returns the final verdict. Always 200 for a well-formed request:
+/// if the aggregator can't be reached the answer is the gateway's last known verdict, review "fallback".
+async fn call_end(state: web::Data<AppState>, body: web::Json<EndRequest>) -> HttpResponse {
+    let start = Instant::now();
+    let req = body.into_inner();
+    let language = match validate_end(&req) {
+        Ok(l) => l,
+        Err(e) => return bad_request(e),
+    };
+    let call_id = req.call_id.trim().to_string();
+    let ended_by = req.ended_by.trim().to_string();
+    let n_lines = req.caller_lines.len();
+    let respond = |e: Ended, already_ended: bool, error: Option<String>| {
+        HttpResponse::Ok().json(EndResponse {
+            call_id: call_id.clone(),
+            final_verdict: e.final_verdict,
+            call_score: e.call_score,
+            live_verdict: e.live_verdict,
+            review: e.review,
+            top_window_seqs: e.top_window_seqs,
+            reason: e.reason,
+            ended_by: e.ended_by,
+            already_ended,
+            latency_ms: start.elapsed().as_millis() as u64,
+            error,
+        })
+    };
+
+    // Idempotent: this gateway already has the result, so no aggregator call is needed.
+    if let Some(done) = state.calls.end_result(&call_id) {
+        tracing::info!(target: "timing", stage = "end", call_id = %call_id, ms = start.elapsed().as_millis() as u64,
+                       outcome = "already_ended", ended_by = %ended_by);
+        return respond(done, true, None);
+    }
+    // From here on the call is over for this gateway: lines still in flight get "ignored".
+    state.calls.mark_ended(&call_id, None);
+
+    let request = EndCallRequest {
+        call_id: call_id.clone(),
+        ended_by: ended_by.clone(),
+        last_seq: req.last_seq.unwrap_or(0),
+        caller_lines: req.caller_lines.into_iter().map(|l| CallerLine { seq: l.seq, text: l.text }).collect(),
+        language: language.to_string(),
+    };
+    let mut client = AggregatorServiceClient::new(state.aggregator.clone());
+    let result = tokio::time::timeout(state.settings.end_call_timeout, client.end_call(request)).await;
+    let ms = start.elapsed().as_millis() as u64;
+    match result {
+        Ok(Ok(reply)) => {
+            let r = reply.into_inner();
+            let ended = Ended {
+                final_verdict: end_verdict_name(r.final_verdict),
+                call_score: r.call_score,
+                live_verdict: end_verdict_name(r.live_verdict),
+                review: r.review,
+                top_window_seqs: r.top_window_seqs,
+                reason: r.reason,
+                ended_by: r.ended_by,
+            };
+            tracing::info!(target: "timing", stage = "end", call_id = %call_id, ms, outcome = "ok",
+                           ended_by = %ended_by, final_verdict = %ended.final_verdict, review = %ended.review,
+                           already_ended = r.already_ended, lines = n_lines);
+            state.calls.mark_ended(&call_id, Some(ended.clone()));
+            respond(ended, r.already_ended, None)
+        }
+        failed => {
+            let (outcome, code) = match &failed {
+                Ok(Err(status)) => ("error", format!("{:?}", status.code())),
+                _ => ("timeout", String::new()),
+            };
+            tracing::warn!(target: "timing", stage = "end", call_id = %call_id, ms, outcome, code = %code,
+                           ended_by = %ended_by, "aggregator EndCall failed: answering with the last known verdict");
+            // Fallback = what the gateway last heard from the aggregator for this call.
+            let last = state.calls.last_answer(&call_id);
+            let live = last.as_ref().map(|a| a.verdict.clone()).unwrap_or_else(|| "UNKNOWN".to_string());
+            let reason = last
+                .as_ref()
+                .filter(|a| a.verdict != "SAFE")
+                .and_then(|a| a.reasons.first())
+                .map(|r| r.text.clone())
+                .unwrap_or_default();
+            let fallback = Ended {
+                final_verdict: live.clone(),
+                call_score: last.as_ref().map(|a| a.combined_score).unwrap_or(0.0),
+                live_verdict: live,
+                review: "fallback".to_string(),
+                top_window_seqs: vec![],
+                reason,
+                ended_by,
+            };
+            respond(fallback, false, Some("aggregator unavailable".to_string()))
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -488,6 +704,7 @@ async fn main() -> std::io::Result<()> {
     }
     tracing::info!(addr = %settings.aggregator_addr, worker_timeout_ms = settings.worker_timeout.as_millis() as u64,
                    aggregator_timeout_ms = settings.aggregator_timeout.as_millis() as u64,
+                   end_call_timeout_ms = settings.end_call_timeout.as_millis() as u64,
                    bert_context_lines = settings.bert_context_lines, "aggregator address");
     let bind_addr = settings.bind_addr.clone();
     let state = web::Data::new(AppState {
@@ -500,33 +717,218 @@ async fn main() -> std::io::Result<()> {
     tracing::info!(review_url = state.settings.review_url.as_deref().unwrap_or("(off)"), "report forwarding");
     tracing::info!(addr = %bind_addr, "starting gateway");
 
-    HttpServer::new(move || {
-        // malformed JSON -> 400 with a JSON body (the default is plain text)
-        let json_cfg = web::JsonConfig::default().limit(64 * 1024).error_handler(|err, _| {
-            let msg = err.to_string();
-            error::InternalError::from_response(err, HttpResponse::BadRequest().json(ErrorResponse { error: msg }))
-                .into()
-        });
-        App::new()
-            .app_data(state.clone())
-            .app_data(json_cfg)
-            .service(utterance)
-            .service(submit_transcript)
-            .service(healthz)
-            .service(
-                web::resource("/v1/report")
-                    .app_data(web::JsonConfig::default().limit(MAX_REPORT_BYTES).error_handler(|err, _| {
-                        let msg = err.to_string();
-                        error::InternalError::from_response(
-                            err,
-                            HttpResponse::BadRequest().json(ErrorResponse { error: msg }),
-                        )
-                        .into()
-                    }))
-                    .route(web::post().to(report)),
-            )
+    HttpServer::new(move || App::new().app_data(state.clone()).configure(routes))
+        .bind(bind_addr)?
+        .run()
+        .await
+}
+
+/// Malformed or too large JSON -> 400 with a JSON body (the default is plain text).
+fn json_config(limit: usize) -> web::JsonConfig {
+    web::JsonConfig::default().limit(limit).error_handler(|err, _| {
+        let msg = err.to_string();
+        error::InternalError::from_response(err, HttpResponse::BadRequest().json(ErrorResponse { error: msg })).into()
     })
-    .bind(bind_addr)?
-    .run()
-    .await
+}
+
+/// Every route, shared by main and the tests.
+fn routes(cfg: &mut web::ServiceConfig) {
+    cfg.app_data(json_config(64 * 1024))
+        .service(utterance)
+        .service(submit_transcript)
+        .service(healthz)
+        .service(web::resource("/v1/report").app_data(json_config(MAX_REPORT_BYTES)).route(web::post().to(report)))
+        .service(web::resource("/v1/call/end").app_data(json_config(MAX_END_BYTES)).route(web::post().to(call_end)));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::test as atest;
+
+    /// Nothing listens on port 1: every worker or aggregator call fails at once ("connection refused"). So a
+    /// 200 below that needed no worker / aggregator call proves that none was made.
+    const NOWHERE: &str = "http://127.0.0.1:1";
+
+    fn state() -> web::Data<AppState> {
+        let mut workers = HashMap::new();
+        for lang in language::SUPPORTED {
+            for signal in SIGNALS {
+                workers.insert((lang, signal), lazy_channel(NOWHERE));
+            }
+        }
+        web::Data::new(AppState {
+            settings: Settings {
+                bind_addr: String::new(),
+                aggregator_addr: NOWHERE.into(),
+                workers: vec![],
+                worker_timeout: Duration::from_millis(300),
+                aggregator_timeout: Duration::from_millis(300),
+                end_call_timeout: Duration::from_millis(300),
+                bert_context_lines: 5,
+                call_ttl: Duration::from_secs(60),
+                max_calls: 100,
+                review_url: None,
+            },
+            workers,
+            aggregator: lazy_channel(NOWHERE),
+            calls: CallStore::new(Duration::from_secs(60), 100),
+            http: hyper::Client::new(),
+        })
+    }
+
+    async fn post(state: &web::Data<AppState>, path: &str, body: serde_json::Value) -> (u16, serde_json::Value) {
+        let app = atest::init_service(App::new().app_data(state.clone()).configure(routes)).await;
+        let req = atest::TestRequest::post().uri(path).set_json(body).to_request();
+        let resp = atest::call_service(&app, req).await;
+        let status = resp.status().as_u16();
+        let bytes = atest::read_body(resp).await;
+        (status, serde_json::from_slice(&bytes).unwrap_or(serde_json::Value::Null))
+    }
+
+    fn end(call_id: &str, ended_by: &str) -> serde_json::Value {
+        serde_json::json!({"call_id": call_id, "event": "end", "ended_by": ended_by, "last_seq": 4,
+                           "caller_lines": [{"seq": 1, "text": "This is the police"}, {"seq": 3, "text": "Give me the OTP"}]})
+    }
+
+    #[actix_web::test]
+    async fn end_rejects_malformed_requests() {
+        let s = state();
+        for body in [
+            serde_json::json!({"call_id": "", "ended_by": "user_hung_up"}),
+            serde_json::json!({"call_id": "x".repeat(129), "ended_by": "user_hung_up"}),
+            serde_json::json!({"call_id": "c1", "ended_by": "silence"}), // aggregator-only
+            serde_json::json!({"call_id": "c1", "ended_by": "bored"}),
+            serde_json::json!({"call_id": "c1", "event": "start", "ended_by": "user_hung_up"}),
+            serde_json::json!({"call_id": "c1"}), // ended_by missing
+            serde_json::json!({"call_id": "c1", "ended_by": "user_hung_up", "lang": "fr"}),
+            serde_json::json!({"call_id": "c1", "ended_by": "user_hung_up",
+                               "caller_lines": [{"seq": 1, "text": "x".repeat(2001)}]}),
+        ] {
+            let (status, json) = post(&s, "/v1/call/end", body).await;
+            assert_eq!(status, 400, "{json}");
+            assert!(json["error"].is_string());
+        }
+        let too_many: Vec<_> = (0..201).map(|i| serde_json::json!({"seq": i, "text": "hi"})).collect();
+        let (status, _) =
+            post(&s, "/v1/call/end", serde_json::json!({"call_id": "c1", "ended_by": "user_hung_up", "caller_lines": too_many})).await;
+        assert_eq!(status, 400);
+        assert!(!s.calls.is_ended("c1")); // a rejected end ends nothing
+    }
+
+    #[actix_web::test]
+    async fn end_of_an_unknown_call_is_200_unknown_fallback() {
+        let s = state();
+        let (status, json) = post(&s, "/v1/call/end", end("never-seen", "script_finished")).await;
+        assert_eq!(status, 200, "{json}");
+        assert_eq!(json["final_verdict"], "UNKNOWN");
+        assert_eq!(json["live_verdict"], "UNKNOWN");
+        assert_eq!(json["review"], "fallback");
+        assert_eq!(json["ended_by"], "script_finished");
+        assert_eq!(json["top_window_seqs"], serde_json::json!([]));
+        assert_eq!(json["already_ended"], false);
+        assert_eq!(json["error"], "aggregator unavailable");
+    }
+
+    #[actix_web::test]
+    async fn end_falls_back_to_the_last_verdict_when_the_aggregator_is_down() {
+        let s = state();
+        s.calls.set_answer("c1", Answer {
+            verdict: "SCAM".into(),
+            combined_score: 0.8,
+            reasons: vec![Reason { signal: "money".into(), score: 0.95, text: "Asked for your OTP or money".into() }],
+            ..Default::default()
+        });
+        let (status, json) = post(&s, "/v1/call/end", end("c1", "user_hung_up")).await;
+        assert_eq!(status, 200);
+        assert_eq!((json["final_verdict"].as_str(), json["live_verdict"].as_str()), (Some("SCAM"), Some("SCAM")));
+        assert_eq!(json["reason"], "Asked for your OTP or money");
+        assert!((json["call_score"].as_f64().unwrap() - 0.8).abs() < 1e-6);
+        assert_eq!(json["review"], "fallback");
+        assert!(s.calls.is_ended("c1"));
+    }
+
+    #[actix_web::test]
+    async fn a_repeated_end_returns_the_stored_result() {
+        let s = state();
+        let first = Ended {
+            final_verdict: "SCAM".into(),
+            call_score: 0.91,
+            live_verdict: "UNSURE".into(),
+            review: "bert".into(),
+            top_window_seqs: vec![9, 11, 13],
+            reason: "Asked for your OTP or money".into(),
+            ended_by: "script_finished".into(),
+        };
+        s.calls.mark_ended("c1", Some(first)); // as if the aggregator answered the first end
+        let (status, json) = post(&s, "/v1/call/end", end("c1", "user_hung_up")).await;
+        assert_eq!(status, 200);
+        assert_eq!(json["already_ended"], true);
+        assert_eq!(json["ended_by"], "script_finished"); // the first end's value
+        assert_eq!(json["final_verdict"], "SCAM");
+        assert_eq!(json["top_window_seqs"], serde_json::json!([9, 11, 13]));
+        assert!(json.get("error").is_none()); // the aggregator (down here) was not asked
+    }
+
+    #[actix_web::test]
+    async fn a_line_after_the_end_is_ignored_without_scoring() {
+        let s = state();
+        s.calls.set_answer("c1", Answer { verdict: "UNSURE".into(), caller_lines: 2, ..Default::default() });
+        let (status, _) = post(&s, "/v1/call/end", end("c1", "script_finished")).await;
+        assert_eq!(status, 200);
+        for speaker in ["caller", "receiver"] {
+            let (status, json) = post(&s, "/v1/utterance",
+                serde_json::json!({"call_id": "c1", "seq": 9, "speaker": speaker, "text": "late line", "lang": "en"})).await;
+            // workers and aggregator are unreachable: a scored line would be 502, so 200 means none was called
+            assert_eq!(status, 200, "{json}");
+            assert_eq!(json["ignored"], true);
+            assert_eq!(json["reason"], "call_ended");
+            assert_eq!(json["scored"], false);
+            assert_eq!(json["verdict"], "UNSURE"); // the call's last verdict, unchanged
+            assert_eq!(json["seq"], 9);
+        }
+    }
+
+    #[actix_web::test]
+    async fn normal_lines_say_not_ignored_and_have_no_reason_field() {
+        let s = state();
+        let (status, json) = post(&s, "/v1/utterance",
+            serde_json::json!({"call_id": "c2", "seq": 2, "speaker": "receiver", "text": "hello?"})).await;
+        assert_eq!(status, 200);
+        assert_eq!(json["ignored"], false);
+        assert!(json.get("reason").is_none());
+        // every existing field is still there
+        for field in ["call_id", "seq", "scored", "duplicate", "verdict", "combined_score", "reasons", "action",
+                      "warming_up", "quorum_met", "language", "language_source", "scores", "model_versions",
+                      "missing", "recent_scores", "fast_score", "bert_score", "bert_status", "caller_lines", "latency_ms"] {
+            assert!(json.get(field).is_some(), "missing {field}");
+        }
+        // other calls are not affected by c1 ending
+        assert!(!s.calls.is_ended("c2"));
+    }
+
+    #[test]
+    fn verdict_names_for_the_phone() {
+        assert_eq!(end_verdict_name(scam_detect::Verdict::Scam as i32), "SCAM");
+        assert_eq!(end_verdict_name(scam_detect::Verdict::Safe as i32), "SAFE");
+        assert_eq!(end_verdict_name(scam_detect::Verdict::Unsure as i32), "UNSURE");
+        assert_eq!(end_verdict_name(scam_detect::Verdict::Unspecified as i32), "UNKNOWN");
+        assert_eq!(end_verdict_name(42), "UNKNOWN");
+    }
+
+    #[test]
+    fn end_language_comes_from_lang_or_the_lines() {
+        let req = |lang: Option<&str>, texts: &[&str]| EndRequest {
+            call_id: "c".into(),
+            event: None,
+            ended_by: "user_hung_up".into(),
+            last_seq: None,
+            caller_lines: texts.iter().enumerate().map(|(i, t)| EndLine { seq: i as i64, text: t.to_string() }).collect(),
+            lang: lang.map(String::from),
+        };
+        assert_eq!(validate_end(&req(None, &[])).unwrap(), "");
+        assert_eq!(validate_end(&req(None, &["我是警察", "你必须马上转账"])).unwrap(), "zh");
+        assert_eq!(validate_end(&req(None, &["This is the police"])).unwrap(), "en");
+        assert_eq!(validate_end(&req(Some("zh-SG"), &["hello"])).unwrap(), "zh");
+    }
 }
