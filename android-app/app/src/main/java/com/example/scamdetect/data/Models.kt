@@ -57,6 +57,8 @@ data class ReportRequest(
     val language: String,                                   // "en" | "zh"
     val consent: Boolean,
     val lines: List<ReportLine>,
+    // Which consent wording the user saw. 2 = lines a reviewer approves may be kept after 30 days.
+    @SerializedName("consent_version") val consentVersion: Int = 2,
 )
 
 /** Answer from POST /v1/report (from the review service, through the gateway). */

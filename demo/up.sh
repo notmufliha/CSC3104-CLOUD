@@ -141,6 +141,8 @@ fi
 
 # ------------------------------------------------------------------------------------------ 7. apply
 say "Applying manifests to the '${NAMESPACE}' namespace"
+# Workstream H: this CronJob was renamed retrain-models when it grew to cover all six workers.
+kubectl delete cronjob retrain-urgency-en -n "$NAMESPACE" --ignore-not-found
 kubectl apply -f demo/k8s/
 
 say "Waiting for every Deployment to roll out (timeout ${ROLLOUT_TIMEOUT} each)"

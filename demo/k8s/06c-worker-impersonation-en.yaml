@@ -27,6 +27,9 @@ spec:
           env:
             - name: PORT
               value: "50051"
+            # H.8: set MODEL_VERSION (learning.py rollout) to load a released version from the registry.
+            - name: MODEL_REGISTRY_URL
+              value: "http://review:8090"
           # Keep serving for a few seconds after Kubernetes decides to stop this pod: Envoy refreshes the pod
           # list every 2 s, so without this pause it still sends a line or two to a pod that has stopped
           # (measured: 2 lines without an urgency score during a rolling update; see demo/LEARNING_LOOP.md).
