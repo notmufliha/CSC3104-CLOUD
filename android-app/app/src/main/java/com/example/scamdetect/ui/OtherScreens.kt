@@ -321,11 +321,15 @@ private fun ConsentDialog(kind: String, lines: List<ReportLine>, onShare: () -> 
                         "retrain the detectors.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
-                Text("Sent: the caller's ${lines.size} lines below, with numbers, amounts, links and names removed.",
+                Text("Sent: the caller's ${lines.size} lines below. We try to remove numbers, amounts, links and " +
+                    "names, but some can slip through, such as a name said in passing or digits read out as words. " +
+                    "Check the text; if you see anything private, tap Don't share.",
                     style = MaterialTheme.typography.bodySmall)
                 Text("Not sent: your phone number, the caller's number, anything you said.",
                     style = MaterialTheme.typography.bodySmall)
-                Text("Deleted after 30 days.", style = MaterialTheme.typography.bodySmall)
+                Text("Kept: deleted after 30 days, except lines a reviewer approves as training examples. Those " +
+                    "stay encrypted with no link to you, so they can't be withdrawn later.",
+                    style = MaterialTheme.typography.bodySmall)
                 HorizontalDivider()
                 LazyColumn(Modifier.height(180.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(lines, key = { it.seq }) { Text("“${it.text}”", style = MaterialTheme.typography.bodySmall) }

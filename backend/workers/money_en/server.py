@@ -16,18 +16,25 @@ Rules every worker follows:
   - a scoring failure returns a gRPC INTERNAL error (the gateway then leaves this score out),
     never a made-up score
   - transcript text is never logged, only scores
+
+MODEL_VERSION selects a released version from the model registry instead of the baked model
+(common/model_registry.py).
 """
 import logging
 import os
 import signal
+import sys
 from concurrent import futures
 
 import grpc
 from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 
-import predict
-import scam_detect_pb2
-import scam_detect_pb2_grpc
+# Local runs: the shared file lives in ../common (in the image it sits next to this file).
+sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "common"))
+import model_registry  # noqa: E402
+import predict  # noqa: E402
+import scam_detect_pb2  # noqa: E402
+import scam_detect_pb2_grpc  # noqa: E402
 
 SIGNAL = "money"
 LANGUAGE = "en"
@@ -41,11 +48,13 @@ logger = logging.getLogger(f"worker.{SIGNAL}.{LANGUAGE}")
 
 class WorkerServiceServicer(scam_detect_pb2_grpc.WorkerServiceServicer):
     def __init__(self):
-        if not os.path.exists(MODEL_PATH):
-            raise FileNotFoundError(f"money model not found at {MODEL_PATH} - the model file is committed in model/")
-        m = predict.load_model(MODEL_PATH)
-        self.version = m.version or "unversioned"  # H.8: sent back with every score (e.g. "money_en_v2c")
-        logger.info("loaded %s (version=%s, created=%s, threshold=%.2f)", MODEL_PATH, self.version,
+        path, registry_version = model_registry.resolve(f"{SIGNAL}_{LANGUAGE}", MODEL_PATH)
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"money model not found at {path} - the model file is committed in model/")
+        m = predict.load_model(path)
+        # H.8: sent back with every score (e.g. "money_en_v2c", or "v3" once a released version is rolled out)
+        self.version = registry_version or m.version or "unversioned"
+        logger.info("loaded %s (version=%s, created=%s, threshold=%.2f)", path, self.version,
                     m.info.get("created"), m.threshold)
 
     def ClassifyTranscript(self, request, context):
