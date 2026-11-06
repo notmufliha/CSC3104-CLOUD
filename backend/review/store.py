@@ -2,9 +2,9 @@
 
 Tables
   reports  one row per consented report: kind (scam = "Report", fine = "This was fine"), what the app showed,
-           language, when it expires. No phone number, no user id.
+           language, when it expires, which consent wording the user agreed to. No phone number, no user id.
   lines    the report's caller lines, masked (mask.py) and ENCRYPTED (Fernet, key from the REVIEW_KEY Secret,
-           which is not stored on the same volume). Deleted with their report after RETENTION_DAYS.
+           which is not stored on the same volume). See purge_expired for what happens after RETENTION_DAYS.
   labels   one row per (line, signal): 0/1 label, who labelled it, an optional second-person spot check, and
            which model version first trained on it (used_in).
   models   released model versions: name, version, sha256, metadata JSON; the file sits next to the DB.
@@ -20,6 +20,8 @@ from pathlib import Path
 from cryptography.fernet import Fernet
 
 SIGNALS = ("urgency", "money", "impersonation")
+LANGUAGES = ("en", "zh")
+CONSENT_KEEP_LABELLED = 2   # consent wording from this version on covers keeping approved lines after 30 days
 DAY = 86400
 
 SCHEMA = """
@@ -29,7 +31,9 @@ CREATE TABLE IF NOT EXISTS reports (
     expires_at INTEGER NOT NULL,
     kind TEXT NOT NULL CHECK (kind IN ('scam', 'fine')),
     app_verdict TEXT,
-    language TEXT NOT NULL
+    language TEXT NOT NULL,
+    consent_version INTEGER NOT NULL DEFAULT 1,
+    kept INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS lines (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,14 +78,19 @@ class Store:
         self.db.execute("PRAGMA foreign_keys = ON")
         self.db.execute("PRAGMA journal_mode = WAL")
         self.db.executescript(SCHEMA)
+        # A volume made before consent versions existed: its reports stay consent 1 (deleted in full at expiry).
+        have = {r["name"] for r in self.db.execute("PRAGMA table_info(reports)")}
+        for col in ("consent_version INTEGER NOT NULL DEFAULT 1", "kept INTEGER NOT NULL DEFAULT 0"):
+            if col.split()[0] not in have:
+                self.db.execute(f"ALTER TABLE reports ADD COLUMN {col}")
 
     # ------------------------------------------------------------------------------------------ reports
-    def add_report(self, kind: str, app_verdict: str, language: str, lines: list) -> dict:
+    def add_report(self, kind: str, app_verdict: str, language: str, lines: list, consent_version: int = 1) -> dict:
         now = int(time.time())
         with self.lock, self.db:
             cur = self.db.execute(
-                "INSERT INTO reports (created_at, expires_at, kind, app_verdict, language) VALUES (?,?,?,?,?)",
-                (now, now + self.retention, kind, app_verdict, language))
+                "INSERT INTO reports (created_at, expires_at, kind, app_verdict, language, consent_version) "
+                "VALUES (?,?,?,?,?,?)", (now, now + self.retention, kind, app_verdict, language, consent_version))
             rid = cur.lastrowid
             self.db.executemany(
                 "INSERT INTO lines (report_id, seq, text_enc) VALUES (?,?,?)",
@@ -89,8 +98,30 @@ class Store:
         return {"report_id": rid, "lines_stored": len(lines), "expires_at": now + self.retention}
 
     def purge_expired(self) -> int:
+        """Reports past their retention. Returns how many were processed.
+
+        Consent 1 (older app, "deleted after 30 days"): everything is deleted, as promised.
+        Consent >= 2 (the user agreed that approved lines may be kept): lines a person labelled, and nobody
+        disputed or skipped, stay as training examples, so a later model doesn't forget a scam an earlier one
+        learned. Everything else goes. A kept row has no link to a user and loses the app's verdict.
+        """
+        now = int(time.time())
         with self.lock, self.db:
-            return self.db.execute("DELETE FROM reports WHERE expires_at <= ?", (int(time.time()),)).rowcount
+            due = self.db.execute("SELECT id, consent_version FROM reports WHERE kept = 0 AND expires_at <= ?",
+                                  (now,)).fetchall()
+            for r in due:
+                keep = 0
+                if r["consent_version"] >= CONSENT_KEEP_LABELLED:
+                    self.db.execute("DELETE FROM labels WHERE check_agrees = 0 AND line_id IN "
+                                    "(SELECT id FROM lines WHERE report_id = ?)", (r["id"],))
+                    self.db.execute("DELETE FROM lines WHERE report_id = ? AND (skipped = 1 OR NOT EXISTS "
+                                    "(SELECT 1 FROM labels b WHERE b.line_id = lines.id))", (r["id"],))
+                    keep = self.db.execute("SELECT COUNT(*) FROM lines WHERE report_id = ?", (r["id"],)).fetchone()[0]
+                if keep:
+                    self.db.execute("UPDATE reports SET kept = 1, app_verdict = '' WHERE id = ?", (r["id"],))
+                else:
+                    self.db.execute("DELETE FROM reports WHERE id = ?", (r["id"],))
+            return len(due)
 
     def _text(self, row) -> str:
         return self.fernet.decrypt(row["text_enc"]).decode("utf-8")
@@ -147,13 +178,13 @@ class Store:
     def labelled(self, signal: str, language: str, only_unused: bool) -> list:
         """Training rows for one signal. A label a spot-checker disagreed with is left out until relabelled."""
         rows = self.db.execute(
-            f"""SELECT b.line_id, b.label, b.labeller, l.text_enc, r.id AS report_id FROM labels b
+            f"""SELECT b.line_id, b.label, b.labeller, b.used_in, l.text_enc, r.id AS report_id FROM labels b
                 JOIN lines l ON l.id = b.line_id JOIN reports r ON r.id = l.report_id
-                WHERE b.signal = ? AND r.language = ? AND COALESCE(b.check_agrees, 1) = 1
+                WHERE b.signal = ? AND r.language = ? AND COALESCE(b.check_agrees, 1) = 1 AND l.skipped = 0
                 {"AND b.used_in IS NULL" if only_unused else ""} ORDER BY b.line_id""",
             (signal, language)).fetchall()
         return [{"line_id": r["line_id"], "label": r["label"], "text": self._text(r),
-                 "report_id": r["report_id"], "labeller": r["labeller"]} for r in rows]
+                 "report_id": r["report_id"], "labeller": r["labeller"], "used_in": r["used_in"]} for r in rows]
 
     def mark_used(self, signal: str, line_ids: list, version: str) -> int:
         with self.lock, self.db:
@@ -164,17 +195,24 @@ class Store:
     def stats(self) -> dict:
         q = lambda sql, *a: self.db.execute(sql, a).fetchone()[0]
         out = {
-            "reports": {k: q("SELECT COUNT(*) FROM reports WHERE kind = ?", k) for k in ("scam", "fine")},
+            "reports": {k: q("SELECT COUNT(*) FROM reports WHERE kind = ? AND kept = 0", k) for k in ("scam", "fine")},
             "lines": q("SELECT COUNT(*) FROM lines"),
+            "kept_lines": q("SELECT COUNT(*) FROM lines l JOIN reports r ON r.id = l.report_id WHERE r.kept = 1"),
             "unlabelled": q("SELECT COUNT(*) FROM lines l WHERE skipped = 0 AND NOT EXISTS "
                             "(SELECT 1 FROM labels b WHERE b.line_id = l.id)"),
             "skipped": q("SELECT COUNT(*) FROM lines WHERE skipped = 1"),
             "labelled": {}, "unused": {}, "spot_checked": {}, "disputed": {},
+            # What the retraining Job decides on. Per language: Chinese labels can't teach an English model.
+            "new_lines": {}, "unused_by_language": {},
         }
+        new = ("FROM labels b JOIN lines l ON l.id = b.line_id JOIN reports r ON r.id = l.report_id WHERE "
+               "b.used_in IS NULL AND COALESCE(b.check_agrees, 1) = 1 AND l.skipped = 0 AND r.language = ?")
+        for lang in LANGUAGES:
+            out["new_lines"][lang] = q(f"SELECT COUNT(DISTINCT b.line_id) {new}", lang)
+            out["unused_by_language"][lang] = {s: q(f"SELECT COUNT(*) {new} AND b.signal = ?", lang, s) for s in SIGNALS}
         for s in SIGNALS:
             out["labelled"][s] = q("SELECT COUNT(*) FROM labels WHERE signal = ?", s)
-            out["unused"][s] = q("SELECT COUNT(*) FROM labels WHERE signal = ? AND used_in IS NULL "
-                                 "AND COALESCE(check_agrees, 1) = 1", s)
+            out["unused"][s] = sum(out["unused_by_language"][lang][s] for lang in LANGUAGES)
             out["spot_checked"][s] = q("SELECT COUNT(*) FROM labels WHERE signal = ? AND checked_by IS NOT NULL", s)
             out["disputed"][s] = q("SELECT COUNT(*) FROM labels WHERE signal = ? AND check_agrees = 0", s)
         return out

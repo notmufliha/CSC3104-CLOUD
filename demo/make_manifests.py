@@ -127,19 +127,20 @@ GATEWAY_ENV = {
 
 # ---- Workstream H: learning loop (review queue, retraining, monitoring) -----------------------------
 REVIEW_RETENTION_DAYS = "30"        # reported calls are deleted this long after the report
-REVIEW_STORAGE = "1Gi"              # queue database + released model files (each urgency model ~1-2 MB)
+REVIEW_STORAGE = "1Gi"              # queue database + released model files, all six workers
 REVIEW_REQUESTS = {"cpu": "50m", "memory": "96Mi"}
 REVIEW_LIMITS = {"cpu": "500m", "memory": "256Mi"}
 RETRAIN_SCHEDULE = "0 3 * * 0"      # Sundays 03:00; or run now: python demo/tools/learning.py retrain --force
-RETRAIN_MIN_NEW_LABELS = "50"       # skip the weekly run unless this many new labelled lines are waiting
+RETRAIN_MIN_NEW_LABELS = "50"       # per language: skip it unless this many new labelled lines are waiting
 RETRAIN_TOLERANCE = "0.005"         # release check: allowed drop per gold-set metric (rounding-level noise)
-# Measured 2026-11-02: one urgency_en retrain = ~60 s, fits in 1.5 GiB (docker run --memory=1500m).
+# Measured 2026-11-06, one after the other in this limit: urgency_en ~80 s, money_en ~10 s, impersonation_en ~310 s,
+# urgency_zh ~100 s, money_zh ~90 s, impersonation_zh ~30 s.
 RETRAIN_REQUESTS = {"cpu": "500m", "memory": "768Mi"}
 RETRAIN_LIMITS = {"cpu": "2", "memory": "1536Mi"}
 # Workers that load their model version from the registry (MODEL_VERSION, set by learning.py rollout).
 # MODEL_VERSION itself is deliberately NOT written here: `kubectl apply` keeps an env var added by
 # `kubectl set env`, so re-running up.sh/up.ps1 does not silently roll a released version back to v4.
-REGISTRY_WORKERS = {"urgency-en"}
+REGISTRY_WORKERS = {"urgency-en", "money-en", "impersonation-en", "urgency-zh", "money-zh", "impersonation-zh"}
 # Drift alert (H.2): compare the last DRIFT_SHORT with the DRIFT_BASELINE before it. The planning doc's
 # "well above its usual level for a day" = 1h vs 1d. For a live demo, regenerate with e.g. 2m / 30m.
 DRIFT_SHORT = os.environ.get("DRIFT_SHORT", "1h")
@@ -764,12 +765,12 @@ spec:
 
 
 def retrain_yaml() -> str:
-    # Workstream H.6/H.7: weekly retraining of urgency_en with a release check. A blocked release exits 1 and
-    # is NOT retried (backoffLimit 0): the same data would just be blocked again.
+    # Workstream H.6/H.7: weekly retraining of the six fast workers with a release check. A blocked release exits
+    # 1 and is NOT retried (backoffLimit 0): the same data would just be blocked again.
     return f"""apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: retrain-urgency-en
+  name: retrain-models
   namespace: {NAMESPACE}
 spec:
   schedule: "{RETRAIN_SCHEDULE}"
@@ -782,7 +783,7 @@ spec:
       ttlSecondsAfterFinished: 86400
       template:
         metadata:
-          labels: {{ app: retrain-urgency-en }}
+          labels: {{ app: retrain-models }}
         spec:
           restartPolicy: Never
           containers:

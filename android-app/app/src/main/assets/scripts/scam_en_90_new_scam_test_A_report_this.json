@@ -1,0 +1,10 @@
+[
+  {"speaker": "caller", "text": "Good evening, our recruiter saw your profile and has a work from home role for you.", "delay_ms": 1500},
+  {"speaker": "receiver", "text": "Oh, what kind of work is it?", "delay_ms": 4000},
+  {"speaker": "caller", "text": "You just rate products on our platform and earn commission each day.", "delay_ms": 2500},
+  {"speaker": "caller", "text": "The first task needs a small top up in USDT which comes back with your commission.", "delay_ms": 5000},
+  {"speaker": "receiver", "text": "I see. How do I start?", "delay_ms": 4000},
+  {"speaker": "caller", "text": "I will add you to the Telegram group where the mentor shows you the steps.", "delay_ms": 2500},
+  {"speaker": "caller", "text": "Top up again today to unlock the next task or your commission stays frozen.", "delay_ms": 5000},
+  {"speaker": "caller", "text": "Slots fill up fast so please decide tonight.", "delay_ms": 5000}
+]
