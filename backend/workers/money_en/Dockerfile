@@ -16,5 +16,8 @@ COPY workers/money_en/server.py workers/money_en/predict.py workers/money_en/tex
      workers/money_en/money_model.py workers/money_en/money_norm.py ./
 COPY workers/money_en/model/money_en_v2c.joblib model/money_en_v2c.joblib
 
+# H.8: loads a released version from the model registry when MODEL_VERSION is set.
+COPY workers/common/model_registry.py ./
+
 EXPOSE 50051
 CMD ["python", "server.py"]

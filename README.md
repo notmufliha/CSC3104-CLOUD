@@ -137,9 +137,10 @@ Answer for a caller line:
 - `model_versions` in each answer (Workstream H.8): the model version each worker that answered used, e.g.
   `{"urgency": "v5"}`. Workers that don't report a version yet are left out.
 - `POST /v1/report` (Workstream H.3): after a call, the user shares it with consent:
-  `{"call_id", "kind": "scam"|"fine", "app_verdict", "language": "en"|"zh", "consent": true, "lines": [{"seq", "text"}]}`
-  (caller lines, masked on the phone). Forwarded to the internal review service, which masks again, stores the
-  lines encrypted and deletes them after 30 days. 400 without `consent: true`; 503 if `REVIEW_URL` isn't set.
+  `{"call_id", "kind": "scam"|"fine", "app_verdict", "language": "en"|"zh", "consent": true, "consent_version": 2,
+  "lines": [{"seq", "text"}]}` (caller lines, masked on the phone). Forwarded to the internal review service, which
+  masks again and stores the lines encrypted. After 30 days it deletes them, except lines a reviewer approved when
+  the user agreed to that (`consent_version` 2). 400 without `consent: true`; 503 if `REVIEW_URL` isn't set.
   See [demo/LEARNING_LOOP.md](demo/LEARNING_LOOP.md).
 
 Gateway settings (environment variables; defaults match `docker-compose.yml`):

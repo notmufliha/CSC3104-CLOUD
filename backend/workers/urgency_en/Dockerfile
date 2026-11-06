@@ -19,5 +19,8 @@ COPY workers/urgency_en/model/urgency_en_v4.joblib model/urgency_en.joblib
 # from the model registry instead (see server.py).
 ENV BAKED_MODEL_VERSION=v4
 
+# H.8: loads a released version from the model registry when MODEL_VERSION is set.
+COPY workers/common/model_registry.py ./
+
 EXPOSE 50051
 CMD ["python", "server.py"]
