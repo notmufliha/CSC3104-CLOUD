@@ -28,8 +28,8 @@ pub mod scam_detect {
 }
 
 use bert::{BertClient, SecondOpinion};
-use config::{Settings, SIGNALS};
 use metrics::Metrics;
+use config::{Mode, Settings, SIGNALS};
 use policy::{Decision, LineScores};
 use scam_detect::aggregator_service_server::{AggregatorService, AggregatorServiceServer};
 use scam_detect::{AggregateRequest, AggregateResponse, Reason, WorkerScore};
@@ -122,12 +122,9 @@ impl AggregatorService for Aggregator {
         let line = line_scores(&req.scores)?;
         let call_id = req.call_id.trim();
         let now = now_ms();
-        let language = req
-            .scores
-            .first()
-            .map(|s| s.language.as_str())
-            .unwrap_or("");
-        let mut second = SecondOpinion::new(self.bert.as_ref(), &req.context, language);
+        let language = req.scores.first().map(|s| s.language.as_str()).unwrap_or("");
+        let min_bert_lines = if self.settings.mode == Mode::BertOnly { 1 } else { bert::MIN_LINES };
+        let mut second = SecondOpinion::new(self.bert.as_ref(), &req.context, language).with_min_lines(min_bert_lines);
 
         // An empty line (no worker answered) is allowed: the quorum rule turns it into UNSURE (or BERT stands
         // in), or SCAM if the call is already red.
@@ -240,12 +237,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                    call_ttl_secs = settings.call_ttl.as_secs(),
                    bert_addr = if settings.bert_addr.is_empty() { "(off)" } else { settings.bert_addr.as_str() },
                    bert_timeout_ms = settings.bert_timeout.as_millis() as u64, bert_weight = %settings.bert_weight,
-                   bert_veto = %settings.bert_veto, "starting aggregator");
+                   bert_veto = %settings.bert_veto, mode = settings.mode.as_str(), "starting aggregator");
 
     let grpc_addr = settings.grpc_addr.parse()?;
     let http_addr = settings.http_addr.clone();
     let store = Store::connect(&settings.redis_url, &settings.redis_url_for_log()).await;
-    let bert = BertClient::new(&settings.bert_addr, settings.bert_timeout);
+    // AGG_MODE=fast is the same as an empty BERT_ADDR: no client, every line's bert_status is "off".
+    let bert = match settings.mode {
+        Mode::Fast => None,
+        _ => BertClient::new(&settings.bert_addr, settings.bert_timeout),
+    };
     let metrics = Arc::new(Metrics::default());
     let aggregator = Aggregator {
         settings: Arc::new(settings),

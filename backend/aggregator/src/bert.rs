@@ -19,7 +19,7 @@ const MAX_CHARS_PER_LINE: usize = 1000;
 /// (FIRST_SCAM_LINE: openings are not scam evidence), so every 1-2 line training window is legit and BERT
 /// learned "short = safe" (single sentences score ~0.00). Below this it abstains ("no_context") and the line
 /// is decided by the fast vote, instead of BERT dragging the blend down. Keep = bert_config.json first_scam_line.
-const MIN_LINES: usize = 3;
+pub const MIN_LINES: usize = 3;
 
 #[derive(Clone)]
 pub struct BertClient {
@@ -52,6 +52,7 @@ pub struct SecondOpinion<'a> {
     client: Option<&'a BertClient>,
     lines: Vec<String>,
     language: String,
+    min_lines: usize,
     answer: Option<(Option<f32>, &'static str)>,
     pub ms: u64,
 }
@@ -75,13 +76,14 @@ impl<'a> SecondOpinion<'a> {
             })
             .filter(|l| !l.trim().is_empty())
             .collect();
-        SecondOpinion {
-            client,
-            lines,
-            language: language.to_string(),
-            answer: None,
-            ms: 0,
-        }
+        SecondOpinion { client, lines, language: language.to_string(), min_lines: MIN_LINES, answer: None, ms: 0 }
+    }
+
+    /// Fewest lines BERT is asked about. Only AGG_MODE=bert_only lowers it (to 1): with no workers to fall back
+    /// on, BERT has to answer lines 1-2 too, weak as it is there.
+    pub fn with_min_lines(mut self, min_lines: usize) -> SecondOpinion<'a> {
+        self.min_lines = min_lines;
+        self
     }
 
     /// BERT's score, or None if it is off, has nothing to read, or did not answer in time.
@@ -91,7 +93,7 @@ impl<'a> SecondOpinion<'a> {
         }
         let (score, status) = match self.client {
             None => (None, "off"),
-            Some(_) if self.lines.len() < MIN_LINES => (None, "no_context"),
+            Some(_) if self.lines.len() < self.min_lines => (None, "no_context"),
             Some(c) => {
                 let start = Instant::now();
                 let mut client = BertServiceClient::new(c.channel.clone());
@@ -182,6 +184,17 @@ mod tests {
         );
         assert_eq!(s.ask().await, None);
         assert_eq!((s.status(), s.ms), ("no_context", 0));
+    }
+
+    #[tokio::test]
+    async fn bert_only_asks_from_the_first_line() {
+        let c = BertClient::new("127.0.0.1:9", Duration::from_millis(300)).unwrap();
+        let mut s = SecondOpinion::new(Some(&c), &["我是警察".to_string()], "zh").with_min_lines(1);
+        assert_eq!(s.ask().await, None);
+        assert!(matches!(s.status(), "error" | "timeout")); // it did try, unlike "no_context"
+        let mut s = SecondOpinion::new(Some(&c), &["  ".to_string()], "zh").with_min_lines(1);
+        s.ask().await;
+        assert_eq!(s.status(), "no_context"); // nothing to read is still nothing to read
     }
 
     #[test]
