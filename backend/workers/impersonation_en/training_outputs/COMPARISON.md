@@ -119,20 +119,66 @@ lines moved by 0.05 or more. The shifts are mostly on later, money-ask lines
 (e.g. `scam_en_13` line 7: 0.36 -> 0.90), not on the early opener lines that
 cause TOO EARLY. No normal-call line crossed 0.45 that wasn't already close.
 
+## 8. External, independently-written test lines (`gold_human.csv`), added 2026-11-10
+
+Run on 2026-11-10. `data/impersonation_en/gold_human.csv` holds 96 lines (48
+label 1, 48 label 0) written by four different outside AI chat models (not
+used anywhere else in this project), each given only the abstract labelling
+rule and no examples from our actual data, specifically so the phrasing would
+not echo our training/gold style. `source=external_test` for all of them -
+see the note at the top of this section's commit for why it isn't labelled
+"human" even though the file is still named `gold_human.csv`. None of these
+96 rows overlap (exact-text) with `impersonation_data.csv` or `gold_test.csv`.
+
+| model | precision | recall | f1 | roc_auc | false positives | false negatives |
+|---|---|---|---|---|---|---|
+| v3 (threshold 0.47) | 0.906 | 1.000 | 0.950 | 0.993 | 5 / 48 | 0 / 48 |
+| v4 (threshold 0.30) | 0.870 | 0.979 | 0.922 | 0.988 | 7 / 48 | 1 / 48 |
+
+**This independently confirms section 1-3 above: v3 beats v4 on this
+differently-written set too**, on every metric (ROC-AUC, F1, precision,
+fewer false positives), though neither model catches every label-0 row.
+
+The false positives are informative and point at the same blind spot for
+both models, not something retraining v3 into v4 fixed or worsened much:
+- Person-impersonation money scams with no institutional claim (a "cousin"/
+  "uncle"/"grandson" asking for urgent PayNow transfers, a fake Carousell
+  buyer asking for banking login) score high (0.6-0.97) even though the
+  correct label is 0 under our rule (no organisation is claimed). The model
+  appears to be keying on generic urgency/secrecy/money language rather than
+  the institutional claim specifically.
+- One mention-only row (two people discussing a suspicious IRAS SMS, neither
+  of them is IRAS) scored very high on both models (v3: 0.62, v4: 0.96) -
+  exactly the "mention, not behaviour" confusion D.3 was meant to fix, but 2
+  training examples of that pattern were evidently not enough.
+- One genuine bank call (Maybank, truthfully named, no codes asked) scored
+  high on both (v3: 0.59, v4: 0.95).
+
+This suggests a concrete next step - more hard-negative training rows
+specifically for (a) urgent money requests that impersonate a *person*, not
+an institution, and (b) casual mention/discussion of a scam rather than a
+real scam call - rather than anything that would be fixed by threshold
+tuning alone. Not done yet in this pass; flagging for a possible v5.
+
 ## Recommendation
 
-v4 is a mixed result, not a clear upgrade:
+v4 is a mixed result, not a clear upgrade, and this holds up on a second,
+independently-written test set (section 8), not just the original gold set:
 - Better: slightly fewer courier/tech mistakes, slightly less keyword-reliant.
 - Worse: lower ROC-AUC, lower F1 at either threshold, **more than double the
-  false alarms on the gold set**, slightly worse single-sentence false-trigger
-  rate.
+  false alarms on both gold sets**, slightly worse single-sentence
+  false-trigger rate, misses a scam `gold_human.csv` catches with v3.
 
 The false-alarm regression is the one I would not ship without a decision
 from the team. It is mainly a consequence of the automatic threshold dropping
 from 0.47 to 0.30 on the bigger dev set, which the training script - not me -
-picked by cross-validated F1. **I have left v4 live in the running Docker
-stack for testing (see below), but I recommend keeping `model/versions/
-impersonation_en_v3.pkl` as the fallback and deciding with the team (Mridula
-especially, since she owns the aggregator thresholds) whether v4 ships as is,
-needs a manually-raised threshold, or needs more genuine-call training data
-before the deadline.**
+picked by cross-validated F1. Both versions also share a real blind spot
+(section 8) that neither fixes: person-impersonation money scams and
+mention-only scam discussions both score too high. **I have left v4 live in
+the running Docker stack for testing, but on the current evidence v3 is the
+safer model to ship as-is. I recommend keeping `model/versions/
+impersonation_en_v3.pkl` as the default and deciding with the team (Mridula
+especially, since she owns the aggregator thresholds) whether to: (a) revert
+the baked model to v3 for now, (b) manually raise v4's threshold back toward
+0.45-0.47, or (c) hold for a v5 retrain with more hard negatives targeting
+the section 8 blind spot before the deadline.**

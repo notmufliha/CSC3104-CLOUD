@@ -72,5 +72,15 @@
       "roc_auc": 0.974
     },
     "full_report": "training_outputs/keyword_test_impersonation_en_v4.json"
+  },
+  "gold_human_metrics": {
+    "note": "data/impersonation_en/gold_human.csv, 96 rows written by 4 external AI models, added 2026-11-10",
+    "precision": 0.87,
+    "recall": 0.979,
+    "f1": 0.922,
+    "roc_auc": 0.988,
+    "false_positives": 7,
+    "false_negatives": 1,
+    "n_rows": 96
   }
 }
