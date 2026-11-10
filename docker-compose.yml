@@ -123,6 +123,8 @@ services:
       dockerfile: workers/urgency_zh/Dockerfile
     environment:
       PORT: "50051"
+      MODEL_REGISTRY_URL: "http://review:8090"
+      MODEL_VERSION: "${URGENCY_ZH_MODEL_VERSION:-}"
     networks:
       - scamnet
 
@@ -132,6 +134,8 @@ services:
       dockerfile: workers/money_en/Dockerfile
     environment:
       PORT: "50051"
+      MODEL_REGISTRY_URL: "http://review:8090"
+      MODEL_VERSION: "${MONEY_EN_MODEL_VERSION:-}"
     networks:
       - scamnet
 
@@ -141,6 +145,8 @@ services:
       dockerfile: workers/money_zh/Dockerfile
     environment:
       PORT: "50051"
+      MODEL_REGISTRY_URL: "http://review:8090"
+      MODEL_VERSION: "${MONEY_ZH_MODEL_VERSION:-}"
     networks:
       - scamnet
 
@@ -150,6 +156,8 @@ services:
       dockerfile: workers/impersonation_en/Dockerfile
     environment:
       PORT: "50051"
+      MODEL_REGISTRY_URL: "http://review:8090"
+      MODEL_VERSION: "${IMPERSONATION_EN_MODEL_VERSION:-}"
     networks:
       - scamnet
 
@@ -159,6 +167,8 @@ services:
       dockerfile: workers/impersonation_zh/Dockerfile
     environment:
       PORT: "50051"
+      MODEL_REGISTRY_URL: "http://review:8090"
+      MODEL_VERSION: "${IMPERSONATION_ZH_MODEL_VERSION:-}"
     networks:
       - scamnet
 

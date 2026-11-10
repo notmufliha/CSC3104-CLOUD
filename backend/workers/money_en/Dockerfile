@@ -14,7 +14,10 @@ RUN python -m grpc_tools.protoc -I proto --python_out=. --grpc_python_out=. scam
 # the pickled model references money_model.MoneyModel, which imports money_norm.
 COPY workers/money_en/server.py workers/money_en/predict.py workers/money_en/text_norm.py \
      workers/money_en/money_model.py workers/money_en/money_norm.py ./
-COPY workers/money_en/model/E_model.joblib model/E_model.joblib
+COPY workers/money_en/model/money_en_v2c.joblib model/money_en_v2c.joblib
+
+# H.8: loads a released version from the model registry when MODEL_VERSION is set.
+COPY workers/common/model_registry.py ./
 
 EXPOSE 50051
 CMD ["python", "server.py"]
