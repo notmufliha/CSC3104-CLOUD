@@ -1,16 +1,16 @@
 {
-  "model_version": "impersonation_en_v4",
-  "previous_version": "impersonation_en_v3",
-  "trained_on": "2026-11-05",
+  "model_version": "impersonation_en_v5",
+  "previous_version": "impersonation_en_v4",
+  "trained_on": "2026-11-10",
   "task": "English institutional impersonation (probability 0 to 1)",
   "features": "TF-IDF ngram (1, 2), min_df 2, max_features 30000",
   "brand_masking": true,
   "caller_only": true,
-  "threshold_used_for_reporting": 0.3,
-  "C": 10.0,
-  "char_ngrams": false,
-  "n_development_rows": 533,
-  "n_test_rows": 95,
+  "threshold_used_for_reporting": 0.67,
+  "C": 30.0,
+  "char_ngrams": true,
+  "n_development_rows": 552,
+  "n_test_rows": 98,
   "cv_folds": 5,
   "noisy_copies": 1,
   "calibrated": true,
@@ -26,13 +26,16 @@
     "synthetic_train_b": 32,
     "ai_mention_neg": 16,
     "ai_behaviour_pos": 12,
-    "synthetic_train_a": 5
+    "v5_person_impersonation": 10,
+    "v5_mention_only": 8,
+    "synthetic_train_a": 5,
+    "v5_urgent_genuine": 4
   },
   "data_files": {
     "train": {
       "path": "data/impersonation_en/impersonation_data.csv",
-      "rows": 628,
-      "sha256": "325b3d143dffbd69587279a5bb425493ab05c1ebd32db138557ce0ab84e40e9c"
+      "rows": 650,
+      "sha256": "f0e2c0ef412498670fea9a97bf8bb0314ddb48fa9a979a2fb38e395ab1e0c6c9"
     },
     "gold": {
       "path": "data/impersonation_en/gold_test.csv",
@@ -41,46 +44,29 @@
     }
   },
   "test_metrics": {
-    "precision": 0.8974358974358975,
-    "recall": 0.9459459459459459,
-    "f1": 0.9210526315789473,
-    "roc_auc": 0.9715750232991612,
-    "pr_auc": 0.9498792835945014,
-    "brier": 0.046037059220231574
+    "precision": 0.9655172413793104,
+    "recall": 1.0,
+    "f1": 0.9824561403508771,
+    "roc_auc": 0.9964285714285714,
+    "pr_auc": 0.990327123308222,
+    "brier": 0.01898176463767763
   },
   "gold_metrics": {
-    "precision": 0.9186440677966101,
-    "recall": 0.9217687074829932,
-    "f1": 0.9202037351443124,
-    "roc_auc": 0.9805355068856811,
-    "pr_auc": 0.9757532609622777,
-    "brier": 0.05673067248249537
-  },
-  "keyword_test": {
-    "roc_auc_relative_drop": 0.0066,
-    "verdict": "not primarily a keyword detector (ROC-AUC held up after masking top words)",
-    "metrics_before": {
-      "precision": 0.9186,
-      "recall": 0.9218,
-      "f1": 0.9202,
-      "roc_auc": 0.9805
-    },
-    "metrics_after_masking": {
-      "precision": 0.9739,
-      "recall": 0.7619,
-      "f1": 0.855,
-      "roc_auc": 0.974
-    },
-    "full_report": "training_outputs/keyword_test_impersonation_en_v4.json"
+    "precision": 0.9702602230483272,
+    "recall": 0.8877551020408163,
+    "f1": 0.9271758436944938,
+    "roc_auc": 0.9878463580554172,
+    "pr_auc": 0.9839587637073345,
+    "brier": 0.04120719487063614
   },
   "gold_human_metrics": {
-    "note": "data/impersonation_en/gold_human.csv, 96 rows written by 4 external AI models, added 2026-11-10",
-    "precision": 0.87,
-    "recall": 0.979,
-    "f1": 0.922,
-    "roc_auc": 0.988,
-    "false_positives": 7,
-    "false_negatives": 1,
+    "note": "data/impersonation_en/gold_human.csv, 96 rows written by 4 external AI models, scored 2026-11-10",
+    "precision": 0.958,
+    "recall": 0.958,
+    "f1": 0.958,
+    "roc_auc": 0.993,
+    "false_positives": 2,
+    "false_negatives": 2,
     "n_rows": 96
   }
 }

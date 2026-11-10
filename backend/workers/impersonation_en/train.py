@@ -79,8 +79,8 @@ TRY_CHAR_NGRAMS = True
 CALLER_ONLY = True
 MASK_BRANDS = True
 NOISE_COPIES = 1
-MODEL_VERSION = "impersonation_en_v4"
-PREVIOUS_VERSION = "impersonation_en_v3"
+MODEL_VERSION = "impersonation_en_v5"
+PREVIOUS_VERSION = "impersonation_en_v4"
 SYNTHETIC_PATTERN = "synthetic|ai_written|llm"
 
 
