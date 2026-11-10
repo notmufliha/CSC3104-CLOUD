@@ -70,6 +70,8 @@ spec:
               value: "0.5"
             - name: AGG_BERT_VETO
               value: "0"
+            - name: AGG_BERT_SPOT_EVERY
+              value: "5"
             - name: BERT_ADDR
               value: "envoy-lb:50068"
           resources:

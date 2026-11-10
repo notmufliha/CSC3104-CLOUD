@@ -5,7 +5,7 @@ metadata:
   namespace: scamguard
   labels: { app: bert }
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels: { app: bert }
   template:
@@ -65,8 +65,8 @@ metadata:
   namespace: scamguard
 spec:
   scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: bert }
-  minReplicas: 1
-  maxReplicas: 2
+  minReplicas: 2
+  maxReplicas: 4
   behavior:
     scaleDown:
       stabilizationWindowSeconds: 30
