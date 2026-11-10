@@ -1,0 +1,366 @@
+conversation_id,text_raw,label,call_type,topic,label_v1,label_method,reason
+hw_001,Please key in the OTP sent to your registered mobile number to complete the transaction.,1,legit,otp,1,handwritten,"legit, but asks the listener to key in a code: an ask (the aggregator decides scam or not)"
+hw_002,DBS will never ask you for your OTP or banking password over the phone.,0,legit,otp,1,relabelled_v2,warning: bank will never ask
+hw_003,"Never share your OTP with anyone, including bank staff.",0,legit,otp,1,relabelled_v2,warning: never share
+hw_004,Your Singpass verification code has been sent by SMS.,0,legit,otp,1,relabelled_v2,"fact: code has been sent, nothing asked"
+hw_005,Can you read out the OTP you just received so I can verify your account?,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_006,Please tell me the six-digit code from the SMS.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_007,I need the verification code that was sent to your phone to stop the transaction.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_008,Approve the request on your digital token for me.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_009,Your PayNow transfer of S$50 to Tan Wei Ming was successful.,0,legit,transfer,1,relabelled_v2,receipt
+hw_010,The money has been transferred to your POSB savings account.,0,legit,transfer,1,relabelled_v2,receipt
+hw_011,Please transfer the funds to this safe account to protect your savings.,1,scam,transfer,1,handwritten,"ask for money, card/bank details or a code"
+hw_012,PayNow the deposit to my number and I will post the item to you.,1,scam,payment,1,handwritten,"ask for money, card/bank details or a code"
+hw_013,Send the money through PayLah before the seller changes his mind.,1,scam,payment,1,handwritten,"ask for money, card/bank details or a code"
+hw_014,Your Singtel bill for this month is S$68.40.,0,legit,bill,1,relabelled_v2,bill stated as a fact
+hw_015,Your GIRO deduction for the SP Group bill will be made on the 15th.,0,legit,bill,1,relabelled_v2,bill stated as a fact
+hw_016,You can pay your property tax through the IRAS website or app.,0,legit,payment,1,relabelled_v2,"option through an official channel ('you can pay'), no pressure"
+hw_017,There is an outstanding fine of S$300 that you need to settle.,1,scam,bill,1,handwritten,'you need to settle': an ask
+hw_018,Pay the customs clearance fee so we can release your parcel.,1,scam,payment,1,handwritten,"ask for money, card/bank details or a code"
+hw_019,You need to pay a processing fee of S$500 before the loan is approved.,1,scam,loan,1,handwritten,"ask for money, card/bank details or a code"
+hw_020,Your refund of S$29.90 has been credited back to your card.,0,legit,refund,1,relabelled_v2,receipt
+hw_021,We will process your refund within seven working days.,0,legit,refund,1,relabelled_v2,"fact about a refund, nothing asked"
+hw_022,"To get your refund, please give me your card number and CVV.",1,scam,card,1,handwritten,"ask for money, card/bank details or a code"
+hw_023,Your credit card ending in 4417 has been charged S$120.,0,legit,card,1,relabelled_v2,charge stated as a fact
+hw_024,Your new debit card has been mailed to your home address.,0,legit,card,1,relabelled_v2,fact
+hw_025,Interest will be credited to your savings account at the end of the month.,0,legit,bank_info,1,relabelled_v2,fact
+hw_026,"Your account balance is S$2,340.",0,legit,bank_info,1,relabelled_v2,balance stated as a fact
+hw_027,Your CPF contribution for September has been received.,0,legit,bank_info,1,relabelled_v2,receipt
+hw_028,"Invest S$1,000 now and you will earn 30 percent returns in one week.",1,scam,investment,1,handwritten,"'invest $1,000 now': asks to pay"
+hw_029,Our crypto trading platform guarantees daily profits.,0,scam,investment,1,relabelled_v2,"claim about profits, nothing asked"
+hw_030,Withdraw your profits by paying the release fee first.,1,scam,investment,1,handwritten,"ask for money, card/bank details or a code"
+hw_031,Buy five Apple gift cards and send me the codes on the back.,1,scam,gift_card,1,handwritten,"ask for money, card/bank details or a code"
+hw_032,Go to the nearest 7-Eleven and get Google Play cards worth S$500.,1,scam,gift_card,1,handwritten,"ask for money, card/bank details or a code"
+hw_033,"You have won S$10,000, but you must pay a small admin fee to claim it.",1,scam,prize,1,handwritten,"ask for money, card/bank details or a code"
+hw_034,"Your EZ-Link card balance is low, please top up at any MRT station.",0,legit,payment,1,relabelled_v2,payment later through an official channel
+hw_035,Scan the QR code at the counter to pay.,1,legit,payment,1,handwritten,asks to pay now
+hw_036,Can you lend me S$200 until next week?,1,legit,everyday_money,1,handwritten,asks for money (friend)
+hw_037,"I already paid for the movie tickets, you can pay me back later.",0,legit,everyday_money,1,relabelled_v2,"'you can pay me back later': option, no pressure"
+hw_038,How much was the chicken rice at that hawker centre?,0,legit,everyday_money,1,relabelled_v2,question about a price
+hw_039,The ang bao from my grandmother had fifty dollars inside.,0,legit,everyday_money,1,relabelled_v2,story
+hw_040,Your insurance premium of S$85 is due this month.,0,legit,bill,1,relabelled_v2,bill stated as a fact
+hw_041,Please send a cheque or make a bank transfer to settle the invoice.,1,legit,payment,1,handwritten,"legit, but asks to pay the invoice"
+hw_042,Your Shopee order has been paid in full.,0,legit,payment,1,relabelled_v2,receipt
+hw_043,"Your bank account has been used for money laundering, so transfer your savings to us for checking.",1,scam,transfer,1,handwritten,"ask for money, card/bank details or a code"
+hw_044,Give me your internet banking username and password so I can secure your account.,1,scam,credential,1,handwritten,"ask for money, card/bank details or a code"
+hw_045,The deposit for the HDB flat is due next Friday.,0,legit,payment,1,relabelled_v2,due date stated as a fact
+hw_046,Please pay attention to the safety briefing before we start.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_047,"That project was a team effort, so the credit goes to everyone.",0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_048,Remember to follow the dress code for the dinner.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_049,Pin the meeting location in the group chat.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_050,Take the weather into account when you plan the trip.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_051,I have no interest in watching horror movies.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_052,We cycled along the river bank at Punggol Waterway.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_053,Transfer to the Circle Line at Dhoby Ghaut.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_054,My phone needs to charge before we leave.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_055,The person in charge will be back after lunch.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_056,It is hard to balance work and school.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_057,Bill is coming to the gathering on Saturday.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_058,Save the file before you close the laptop.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_059,Write the code for the login page tonight.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_060,That chilli crab was worth the wait.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_061,Let's pay my grandparents a visit this weekend.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_062,The class gave our form teacher a thank-you card.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_063,Can you change the channel?,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_064,I will check my account on Instagram later.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_065,Are you free on Saturday afternoon?,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_066,My password for the school portal has expired.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_067,Can we meet at Tampines Mall at 7pm?,0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_068,The MRT was delayed again this morning.,0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_069,Did you finish the assignment for tomorrow's class?,0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_070,My mum is cooking laksa for dinner tonight.,0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_071,The weather at East Coast Park is great today.,0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_072,"Hello, may I speak to Mr Lee please?",0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_073,"Sorry, I think you have the wrong number.",0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_074,Your parcel will be delivered between 2pm and 6pm today.,0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_075,Your appointment at the polyclinic is confirmed for Monday at 10am.,0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_076,"Thank you for calling, have a nice day.",0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_077,Could you repeat that? The line is not very clear.,0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_078,I will call you back after my meeting.,0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_079,The library closes at 9pm on weekdays.,0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_080,Please hold while I transfer your call to the next available officer.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_081,Your package has arrived at the SingPost collection point.,0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_082,You must respond within 24 hours or the case will be escalated.,0,scam,urgency_only,0,handwritten,no ask (unchanged)
+hw_083,"This is your final reminder, please call us back immediately.",0,scam,urgency_only,0,handwritten,no ask (unchanged)
+hw_084,"Do not hang up, this is very urgent.",0,scam,urgency_only,0,handwritten,no ask (unchanged)
+hw_085,You need to act now before it is too late.,0,scam,urgency_only,0,handwritten,no ask (unchanged)
+hw_086,"If you do not cooperate today, a warrant will be issued for your arrest.",0,scam,urgency_only,0,handwritten,no ask (unchanged)
+hw_087,Do not tell your family about this call.,0,scam,urgency_only,0,handwritten,no ask (unchanged)
+hw_088,Your mobile line will be suspended in two hours.,0,scam,urgency_only,0,handwritten,no ask (unchanged)
+hw_089,Press 1 now to speak to an officer.,0,scam,urgency_only,0,handwritten,no ask (unchanged)
+hw_090,This is Sergeant Lim from the Singapore Police Force.,0,scam,impersonation_only,0,handwritten,no ask (unchanged)
+hw_091,I am calling from the Ministry of Health about your records.,0,scam,impersonation_only,0,handwritten,no ask (unchanged)
+hw_092,"Good afternoon, I am an officer from the Immigration and Checkpoints Authority.",0,scam,impersonation_only,0,handwritten,no ask (unchanged)
+hw_093,This is the customer service team from Singtel.,0,scam,impersonation_only,0,handwritten,no ask (unchanged)
+hw_094,I am from the Ministry of Manpower regarding your work pass.,0,scam,impersonation_only,0,handwritten,no ask (unchanged)
+hw_095,My name is Inspector Tan and I am handling your case.,0,scam,impersonation_only,0,handwritten,no ask (unchanged)
+hw_096,"Hello, I am calling from SingPost about your parcel.",0,scam,impersonation_only,0,handwritten,no ask (unchanged)
+hw_097,Your name has been linked to a criminal investigation in China.,0,scam,impersonation_only,0,handwritten,no ask (unchanged)
+hw_098,Please verify your full name and date of birth.,0,scam,impersonation_only,0,handwritten,no ask (unchanged)
+hw_099,Can you confirm your NRIC number for me?,0,scam,impersonation_only,0,handwritten,no ask (unchanged)
+hw_100,Let me connect you to the officer in charge of your case.,0,scam,impersonation_only,0,handwritten,no ask (unchanged)
+hw_101,Please give me the code from the text message we sent.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_102,What are the six numbers on the SMS from your bank?,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_103,Read me the verification number so I can confirm it is you.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_104,Key in the one-time password before it expires.,1,legit,otp,1,handwritten,"legit, but asks to key in a code"
+hw_105,Can you share the TAC that just came to your phone?,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_106,I need the 6-digit PIN that was sent to your mobile.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_107,Tell me the security code we just messaged you.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_108,"Your OTP is valid for five minutes, do not share it.",0,legit,otp,1,relabelled_v2,warning: do not share
+hw_109,Kindly provide the passcode you received from DBS.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_110,"Read out the numbers in the SMS, it starts with 4.",1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_111,Forward me the code from your phone so I can stop the transaction.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_112,Please confirm the authentication code sent to your email.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_113,We have sent a one-time PIN to your registered number.,0,legit,otp,1,relabelled_v2,fact: code has been sent
+hw_114,Enter the SMS code on the payment page to complete your purchase.,1,legit,otp,1,handwritten,"legit, but asks to enter a code to approve a payment"
+hw_115,What is the code that OCBC sent to you just now?,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_116,Just tell me the digits and I will cancel the charge for you.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_117,Approve the transaction in your banking app when it pops up.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_118,Press approve on your digital token so we can verify the refund.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_119,"You will receive a TAC, please read it to me.",1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_120,Give me the 4-digit code from the message.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_121,The code in your SMS is needed to unlock your account.,1,scam,otp,1,handwritten,need statement: 'the code is needed' = asking for it
+hw_122,"Please tell me the one time password, it is for your security.",1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_123,"I will send you a code, read it back to me.",1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_124,"Do not share your TAC with anyone, even bank officers.",0,legit,otp,1,relabelled_v2,warning: do not share
+hw_125,UOB will never ask for your one-time password over the phone.,0,legit,otp,1,relabelled_v2,warning: bank will never ask
+hw_126,Use the OTP to log in to internet banking.,1,legit,otp,1,handwritten,instruction to use a code to log in (approve a login)
+hw_127,Your Singpass OTP has been sent to your phone.,0,legit,otp,1,relabelled_v2,fact: code has been sent
+hw_128,Please read me the code on the screen of your token.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_129,Can you see the message with the numbers? Read them to me.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_130,"The verification code expires in two minutes, quickly tell me.",1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_131,Share the code you received and we will release your parcel.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_132,I need the six-digit number from your SMS to process your refund.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_133,Read me the security number at the back of your card.,1,scam,card,1,handwritten,"ask for money, card/bank details or a code"
+hw_134,Tell me your CVV so I can verify the card.,1,scam,card,1,handwritten,"ask for money, card/bank details or a code"
+hw_135,What is your ATM PIN? I need it to unlock the account.,1,scam,credential,1,handwritten,"ask for money, card/bank details or a code"
+hw_136,Provide your internet banking password to our officer.,1,scam,credential,1,handwritten,"ask for money, card/bank details or a code"
+hw_137,Enter your card number and the OTP on this website.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_138,Your login code for the banking app is in the SMS.,0,legit,otp,1,relabelled_v2,"fact: where the code is, nothing asked"
+hw_139,Type the PIN you received into the link I sent.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_140,Please send me a screenshot of the OTP message.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_141,Can you forward the bank SMS to my number?,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_142,We need the TAC to reverse the unauthorised payment.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_143,"The OTP is for the transfer, just read it to me.",1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_144,Kindly read the authorisation code to complete verification.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_145,Repeat the numbers you just got by text message.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_146,Your one-time passcode is required to activate the new card.,1,legit,otp,1,handwritten,need statement: 'passcode is required' = asking for it
+hw_147,Please key in the 6-digit code shown in your SMS.,1,legit,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_148,"Before I can help you, read me the code we sent.",1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_149,What numbers did the bank just text you?,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_150,Give me the PIN you got from the SMS.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_151,Please confirm the passcode so that the refund can go through.,1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_152,"Read the OTP slowly, digit by digit.",1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_153,"You should have received a code from Grab, what is it?",1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_154,"To recover your account, tell me the code WhatsApp sent you.",1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_155,"A verification code was sent to you by mistake, please forward it to me.",1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_156,"Don't worry, just read the code and the problem will be solved.",1,scam,otp,1,handwritten,"ask for money, card/bank details or a code"
+hw_157,Kindly settle the balance owing on your account.,0,legit,bill,1,relabelled_v2,"routine reminder to settle a bill through the usual channel, no pressure"
+hw_158,Please clear the arrears on your utilities account.,0,legit,bill,1,relabelled_v2,"routine reminder to clear arrears through the usual channel, no pressure"
+hw_159,The outstanding sum must be paid by the end of the month.,0,legit,bill,1,relabelled_v2,due date stated as a fact (same as 'payment is due on the 25th')
+hw_160,You owe us fifty dollars for the missed delivery.,0,scam,bill,1,relabelled_v2,"claim of a debt, no ask (scam set-up)"
+hw_161,Remit the amount to the account number I give you.,1,scam,transfer,1,handwritten,"ask for money, card/bank details or a code"
+hw_162,Make a bank transfer of the full amount today.,1,scam,transfer,1,handwritten,"ask for money, card/bank details or a code"
+hw_163,"Send me a few hundred, I will return it next week.",1,scam,transfer,1,handwritten,"ask for money, card/bank details or a code"
+hw_164,Top up your e-wallet before the promotion ends.,1,legit,payment,1,handwritten,asks to top up now (promotion pressure)
+hw_165,Get iTunes vouchers from the convenience store and send me the numbers.,1,scam,gift_card,1,handwritten,"ask for money, card/bank details or a code"
+hw_166,Purchase Razer Gold cards and read me the PINs.,1,scam,gift_card,1,handwritten,"ask for money, card/bank details or a code"
+hw_167,The service charge and GST will be added to the bill.,0,legit,bill,1,relabelled_v2,fact
+hw_168,Your season parking charges are due.,0,legit,bill,1,relabelled_v2,due date stated as a fact
+hw_169,Your HDB loan instalment has been deducted.,0,legit,loan,1,relabelled_v2,receipt
+hw_170,The administrative charge is non-refundable.,0,legit,bill,1,relabelled_v2,fact
+hw_171,We will waive the late charge this time.,0,legit,bill,1,relabelled_v2,fact
+hw_172,The stamp duty must be paid within fourteen days.,0,legit,bill,1,relabelled_v2,due date stated as a fact
+hw_173,The deposit will be returned when you move out.,0,legit,payment,1,relabelled_v2,fact
+hw_174,Your MediSave was used for the hospital bill.,0,legit,bill,1,relabelled_v2,receipt
+hw_175,Please reimburse me for the taxi fare.,1,legit,everyday_money,1,handwritten,asks for money
+hw_176,The taxi fare came to twelve dollars.,0,legit,everyday_money,1,relabelled_v2,story
+hw_177,Can you lend me some cash for lunch?,1,legit,everyday_money,1,handwritten,asks for money
+hw_178,"Your SIM card has been activated, you can make calls now.",0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_179,Please bring your identity card to the counter.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_180,Show your student card at the library entrance.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_181,My library card has expired.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_182,Insert the memory card into the camera.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_183,The birthday card is on the table.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_184,Scan the QR code to join the group chat.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_185,Enter the room code to join the Zoom meeting.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_186,The postal code for my block is 520123.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_187,I forgot the code to my locker.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_188,The wifi password is written on the router.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_189,Change your Instagram password regularly.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_190,Log in to your school account to check the timetable.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_191,My Netflix account keeps logging me out.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_192,Create an account on the clinic website to book an appointment.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_193,His game account was banned for cheating.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_194,Charge the power bank overnight.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_195,"My laptop is charging, I will call you later.",0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_196,Who is in charge of the event tomorrow?,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_197,Can I borrow your charger? My phone is dying.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_198,Everyone pay attention to the teacher now.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_199,"Please pay attention, this part is important.",0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_200,We should pay a visit to the new hawker centre.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_201,Let us pay our respects at the wake tonight.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_202,She paid no attention to the warning signs.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_203,We sat on the bank of the canal and watched the boats.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_204,The river bank was flooded after the storm.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_205,Transfer to the North-South Line at Jurong East.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_206,I will transfer you to the nurse now.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_207,He transferred to another school last year.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_208,Please transfer the photos to my laptop.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_209,Transfer the files to the shared folder before the meeting.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_210,Keep your balance on the slippery floor.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_211,It is hard to find a good work-life balance.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_212,I have a strong interest in robotics.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_213,That movie did not interest me at all.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_214,Give the team credit for all the hard work.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_215,The photo credit goes to my sister.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_216,Bill will drive us to the airport.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_217,Parliament passed a new bill on road safety.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_218,Pin this message so everyone can see it.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_219,Drop a pin at the meeting point.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_220,Your account of what happened was very clear.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_221,Reset your password using the link in the email.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_222,Show me your boarding pass and ID card.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_223,Your vaccination record is linked to your HealthHub account.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_224,The teacher in charge of CCA will call you.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_225,Thank you for the token of appreciation.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_226,"Please hold the line, I will check with my supervisor.",0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_227,What is your full name as shown on your NRIC?,0,scam,impersonation_only,0,handwritten,no ask (unchanged)
+hw_228,Your phone line will be cut off today.,0,scam,urgency_only,0,handwritten,no ask (unchanged)
+hw_229,"This is your last warning, call us back now.",0,scam,urgency_only,0,handwritten,no ask (unchanged)
+hw_230,"My phone screen is cracked, can you fix it?",0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_231,The meeting has been moved to Friday.,0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_232,I am calling to confirm your dental appointment.,0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_233,Your test results are ready for collection.,0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_234,Please update your mailing address with us.,0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_235,Your registration for the marathon is confirmed.,0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_236,Our technician will visit between 9am and noon.,0,legit,everyday,0,handwritten,no ask (unchanged)
+hw_237,The code of practice for food stalls has changed.,0,legit,word_sense,0,handwritten,no ask (unchanged)
+hw_238,This is an officer from the Ministry of Home Affairs.,0,scam,impersonation_only,0,handwritten,no ask (unchanged)
+hw_239,Your passport has been flagged at the airport.,0,scam,impersonation_only,0,handwritten,no ask (unchanged)
+hw_240,We are investigating a case linked to your phone number.,0,scam,impersonation_only,0,handwritten,no ask (unchanged)
+hw_241,OCBC will never call you to ask for your one-time password.,0,legit,otp,,ai_written,"D.3 mention, not ask: warning"
+hw_242,"Remember, no government officer will ask you to transfer money over the phone.",0,legit,otp,,ai_written,"D.3 mention, not ask: warning"
+hw_243,Do not key in your banking password on any link sent by SMS.,0,legit,otp,,ai_written,"D.3 mention, not ask: warning"
+hw_244,"If a caller asks you to buy gift cards, it is a scam, just hang up.",0,legit,otp,,ai_written,"D.3 mention, not ask: warning"
+hw_245,We will never ask you to move your savings to a safe account.,0,legit,otp,,ai_written,"D.3 mention, not ask: warning"
+hw_246,"Please do not share your card's CVV with anyone, even our staff.",0,legit,otp,,ai_written,"D.3 mention, not ask: warning"
+hw_247,Our officers do not collect payment through PayNow or bank transfer.,0,legit,otp,,ai_written,"D.3 mention, not ask: warning"
+hw_248,Never approve a Singpass login request that you did not start yourself.,0,legit,otp,,ai_written,"D.3 mention, not ask: warning"
+hw_249,"Banks will not ask for your PIN, so keep it to yourself.",0,legit,otp,,ai_written,"D.3 mention, not ask: warning"
+hw_250,"If anyone asks for the code sent to your phone, that is a scammer.",0,legit,otp,,ai_written,"D.3 mention, not ask: warning"
+hw_251,Your top-up of fifty dollars has gone through successfully.,0,legit,payment,,ai_written,"D.3 mention, not ask: receipt"
+hw_252,"We have received your payment for the October bill, thank you.",0,legit,payment,,ai_written,"D.3 mention, not ask: receipt"
+hw_253,The refund of twelve dollars has been credited back to your card.,0,legit,payment,,ai_written,"D.3 mention, not ask: receipt"
+hw_254,Your GIRO deduction for this month was successful.,0,legit,payment,,ai_written,"D.3 mention, not ask: receipt"
+hw_255,The transfer you made yesterday shows as completed on our side.,0,legit,payment,,ai_written,"D.3 mention, not ask: receipt"
+hw_256,Your next premium of eighty dollars will be deducted on the first of the month.,0,legit,bill,,ai_written,"D.3 mention, not ask: fact"
+hw_257,The annual fee for this card is waived for the first year.,0,legit,bill,,ai_written,"D.3 mention, not ask: fact"
+hw_258,The lunch set costs nine ninety and comes with a drink.,0,legit,bill,,ai_written,"D.3 mention, not ask: fact"
+hw_259,Your current balance is about two thousand dollars.,0,legit,bill,,ai_written,"D.3 mention, not ask: fact"
+hw_260,The interest rate on this account is two percent a year.,0,legit,bill,,ai_written,"D.3 mention, not ask: fact"
+hw_261,Delivery is free for orders above forty dollars.,0,legit,bill,,ai_written,"D.3 mention, not ask: fact"
+hw_262,Your phone bill this month came to sixty-three dollars.,0,legit,bill,,ai_written,"D.3 mention, not ask: fact"
+hw_263,"The consultation is covered by your company insurance, so there is nothing to pay at the clinic.",0,legit,bill,,ai_written,"D.3 mention, not ask: fact"
+hw_264,Payment for the course can be made at the school's general office next week.,0,legit,bill,,ai_written,"D.3 mention, not ask: fact"
+hw_265,I already paid my mum back the hundred dollars I owed her.,0,legit,everyday_money,,ai_written,"D.3 mention, not ask: story"
+hw_266,We spent quite a lot on the wedding dinner last year.,0,legit,everyday_money,,ai_written,"D.3 mention, not ask: story"
+hw_267,"My brother lost money on crypto last year, so I stay away from it.",0,legit,everyday_money,,ai_written,"D.3 mention, not ask: story"
+hw_268,I withdrew some cash before the trip to Johor.,0,legit,everyday_money,,ai_written,"D.3 mention, not ask: story"
+hw_269,Last month my credit card was charged twice by the same shop.,0,legit,everyday_money,,ai_written,"D.3 mention, not ask: story"
+hw_270,Why do you need the six digits from my SMS?,0,scam,otp,,ai_written,"D.3 mention, not ask: victim"
+hw_271,I don't think I should give you my bank login.,0,scam,otp,,ai_written,"D.3 mention, not ask: victim"
+hw_272,"Sorry, I'm not comfortable transferring any money over the phone.",0,scam,otp,,ai_written,"D.3 mention, not ask: victim"
+hw_273,Let me call my bank first before I pay anything.,0,scam,otp,,ai_written,"D.3 mention, not ask: victim"
+hw_274,How do I know this is not a scam asking for my card details?,0,scam,otp,,ai_written,"D.3 mention, not ask: victim"
+hw_275,Our records show a payment of four thousand dollars from your account to an overseas merchant.,0,scam,bank_info,,ai_written,"D.3 mention, not ask: setup"
+hw_276,There are two suspicious transactions on your credit card this morning.,0,scam,bank_info,,ai_written,"D.3 mention, not ask: setup"
+hw_277,Your parcel is being held because the shipping fee was not paid.,0,scam,bank_info,,ai_written,"D.3 mention, not ask: setup"
+hw_278,Your bank account has been linked to a money laundering case.,0,scam,bank_info,,ai_written,"D.3 mention, not ask: setup"
+hw_279,You will pay the price if you skip the revision this week.,0,legit,word_sense,,ai_written,"D.3 mention, not ask: idiom"
+hw_280,Her patience really paid off in the end.,0,legit,word_sense,,ai_written,"D.3 mention, not ask: idiom"
+hw_281,He paid us a visit over the weekend.,0,legit,word_sense,,ai_written,"D.3 mention, not ask: idiom"
+hw_282,The minister paid tribute to the frontline workers.,0,legit,word_sense,,ai_written,"D.3 mention, not ask: idiom"
+hw_283,My grandmother's ring is priceless to me.,0,legit,word_sense,,ai_written,"D.3 mention, not ask: idiom"
+hw_284,I'm going to invest more time in my studies this semester.,0,legit,word_sense,,ai_written,"D.3 mention, not ask: idiom"
+hw_285,Let me transfer you to my colleague in the billing team.,0,legit,word_sense,,ai_written,"D.3 mention, not ask: idiom"
+hw_286,Can you read out the numbers that just came in by SMS?,1,scam,otp,,ai_written,D.4 ask without keywords: code
+hw_287,What are the six digits on the message we just sent you?,1,scam,otp,,ai_written,D.4 ask without keywords: code
+hw_288,Just tell me the number on your screen and I'll settle everything for you.,1,scam,otp,,ai_written,D.4 ask without keywords: code
+hw_289,Key in the four digits from the text message into the website now.,1,scam,otp,,ai_written,D.4 ask without keywords: code
+hw_290,Read me the last four numbers printed on the front of your card.,1,scam,otp,,ai_written,D.4 ask without keywords: code
+hw_291,Give me the three digits at the back of the card to confirm it's yours.,1,scam,otp,,ai_written,D.4 ask without keywords: code
+hw_292,Tap approve when the prompt appears on your banking app.,1,scam,otp,,ai_written,D.4 ask without keywords: approve
+hw_293,"You should see a request on your phone, please accept it quickly.",1,scam,otp,,ai_written,D.4 ask without keywords: approve
+hw_294,Authorise the login on your Singpass app so I can verify your identity.,1,scam,otp,,ai_written,D.4 ask without keywords: approve
+hw_295,"When the notification pops up, just press yes.",1,scam,otp,,ai_written,D.4 ask without keywords: approve
+hw_296,You need to clear what you owe to the court by tonight.,1,scam,bill,,ai_written,D.4 ask without keywords: owe
+hw_297,"Settle the outstanding amount first, then we can release your parcel.",1,scam,bill,,ai_written,D.4 ask without keywords: owe
+hw_298,Please clear your arrears today or the line will be cut.,1,scam,bill,,ai_written,D.4 ask without keywords: owe
+hw_299,You have to settle the penalty before the officer comes to your house.,1,scam,bill,,ai_written,D.4 ask without keywords: owe
+hw_300,Move everything in your account to the one I give you for safekeeping.,1,scam,transfer,,ai_written,D.4 ask without keywords: move
+hw_301,Put the whole sum into the holding account until the investigation is over.,1,scam,transfer,,ai_written,D.4 ask without keywords: move
+hw_302,Go to the nearest ATM now and stay on the line with me.,1,scam,transfer,,ai_written,D.4 ask without keywords: move
+hw_303,Bring the cash to the MRT station and pass it to our officer.,1,scam,transfer,,ai_written,D.4 ask without keywords: move
+hw_304,Scan this QR code with your banking app and confirm the amount.,1,scam,transfer,,ai_written,D.4 ask without keywords: move
+hw_305,Download the app I sent you and log in with your bank details.,1,scam,transfer,,ai_written,D.4 ask without keywords: move
+hw_306,"Head to the 7-Eleven and get four Apple cards, then send me photos of the back.",1,scam,transfer,,ai_written,D.4 ask without keywords: move
+hw_307,"Help me buy some Steam cards first, I will return it to you tomorrow.",1,scam,transfer,,ai_written,D.4 ask without keywords: move
+hw_308,"Bro, can you lend me five hundred, I'll return it on Friday.",1,scam,everyday_money,,ai_written,D.4 ask without keywords: friend
+hw_309,"Auntie, quickly send me some to cover the hospital, don't tell Mum.",1,scam,everyday_money,,ai_written,D.4 ask without keywords: friend
+hw_310,Can help me top up my phone first? I'm stuck overseas.,1,scam,everyday_money,,ai_written,D.4 ask without keywords: friend
+hw_311,"Uncle, you just read me the code can already, very fast one.",1,scam,payment,,ai_written,D.4 ask without keywords: singlish
+hw_312,"Boss, you put the money in first lah, then we release the goods.",1,scam,payment,,ai_written,D.4 ask without keywords: singlish
+hw_313,"Ma'am, you go ATM now ok, I wait for you on the line.",1,scam,payment,,ai_written,D.4 ask without keywords: singlish
+hw_314,"Can tell me the OTP or not, otherwise the case cannot close.",1,scam,payment,,ai_written,D.4 ask without keywords: singlish
+hw_315,"If you don't settle it within the hour, a warrant will be issued.",1,scam,bill,,ai_written,D.4 ask without keywords: threat
+hw_316,"Unless you clear the amount today, your account will be frozen.",1,scam,bill,,ai_written,D.4 ask without keywords: threat
+hw_317,"If you refuse to verify with the code, we will report you to the police.",1,scam,bill,,ai_written,D.4 ask without keywords: threat
+hw_318,Could you confirm the last four digits of the card you used for this order?,1,legit,card,,ai_written,D.4 ask without keywords: agent
+hw_319,May I have your account number so I can look into the charge?,1,legit,card,,ai_written,D.4 ask without keywords: agent
+hw_320,"To proceed, please key in your card number using the phone keypad.",1,legit,card,,ai_written,D.4 ask without keywords: agent
+hw_321,Can you pay the delivery fee to the driver in cash when it arrives?,0,legit,card,,ai_written,"D.3 mention, not ask: agent"
+hw_322,Just put in a small amount first to see the returns for yourself.,1,scam,investment,,ai_written,D.4 ask without keywords: invest
+hw_323,Transfer the joining sum today to lock in your slot in the group.,1,scam,investment,,ai_written,D.4 ask without keywords: invest
+hw_324,To unlock your commission you need to complete three more tasks by paying for them first.,1,scam,payment,,ai_written,D.4 ask without keywords: job
+hw_325,Send over the deposit for the uniform and you can start tomorrow.,1,scam,payment,,ai_written,D.4 ask without keywords: job
+hw_326,Transfer three thousand dollars to my colleague's account so we can clear your name.,1,scam,transfer,,ai_written,D.4 ask (batch 2): transfer
+hw_327,Remit the five hundred dollars through the cash deposit machine before four.,1,scam,transfer,,ai_written,D.4 ask (batch 2): transfer
+hw_328,Deposit one thousand into our platform and the profit will show tomorrow.,1,scam,transfer,,ai_written,D.4 ask (batch 2): transfer
+hw_329,Put in two thousand dollars first to activate your trading account.,1,scam,investment,,ai_written,D.4 ask (batch 2): investment
+hw_330,Send the money to my account number and I will release your parcel.,1,scam,transfer,,ai_written,D.4 ask (batch 2): transfer
+hw_331,Please wire the full sum to our company account by this afternoon.,1,scam,transfer,,ai_written,D.4 ask (batch 2): transfer
+hw_332,You must pay the S$800 penalty now or the case goes to court.,1,scam,bill,,ai_written,D.4 ask (batch 2): bill
+hw_333,Clear the outstanding fine of six hundred dollars before the officer arrives.,1,scam,bill,,ai_written,D.4 ask (batch 2): bill
+hw_334,Make the payment of S$250 now to unlock your account.,1,scam,payment,,ai_written,D.4 ask (batch 2): payment
+hw_335,Can you transfer me two hundred dollars? I'm stuck at the airport.,1,scam,everyday_money,,ai_written,D.4 ask (batch 2): everyday_money
+hw_336,"Mum, please PayNow me three hundred, my wallet was stolen.",1,scam,everyday_money,,ai_written,D.4 ask (batch 2): everyday_money
+hw_337,Can you PayNow me forty bucks for the concert tickets?,1,legit,everyday_money,,ai_written,D.4 ask (batch 2): everyday_money
+hw_338,Transfer your share of the rent to my account by tonight.,1,legit,everyday_money,,ai_written,D.4 ask (batch 2): everyday_money
+hw_339,Could you send me the eighty dollars for the hotel booking?,1,legit,everyday_money,,ai_written,D.4 ask (batch 2): everyday_money
+hw_340,Move your savings into our secure account until the investigation ends.,1,scam,transfer,,ai_written,D.4 ask (batch 2): transfer
+hw_341,Buy three hundred dollars of Apple cards and send me the codes.,1,scam,gift_card,,ai_written,D.4 ask (batch 2): gift_card
+hw_342,Pay one hundred and twenty dollars to this account to release your package.,1,scam,payment,,ai_written,D.4 ask (batch 2): payment
+hw_343,Top up five hundred into the app wallet to withdraw your winnings.,1,scam,payment,,ai_written,D.4 ask (batch 2): payment
+hw_344,Pay the two hundred dollar admin fee first and your loan will be approved.,1,scam,loan,,ai_written,D.4 ask (batch 2): loan
+hw_345,Withdraw all your cash and pass it to our officer at the void deck.,1,scam,transfer,,ai_written,D.4 ask (batch 2): transfer
+hw_346,When does your card expire? Tell me the month and year.,1,scam,card,,ai_written,D.4 ask (batch 2): card
+hw_347,What is the expiry date printed on your credit card?,1,scam,card,,ai_written,D.4 ask (batch 2): card
+hw_348,Read me the expiry date and the name on the card.,1,scam,card,,ai_written,D.4 ask (batch 2): card
+hw_349,I need the last four digits of your card to verify you.,1,scam,card,,ai_written,D.4 ask (batch 2): card
+hw_350,"Just confirm the card number for me, it is only for verification.",1,scam,card,,ai_written,D.4 ask (batch 2): card
+hw_351,Which month does your Visa card expire?,1,scam,card,,ai_written,D.4 ask (batch 2): card
+hw_352,Please confirm your appointment for Tuesday at three.,0,legit,everyday,,ai_written,"balancing 0, no ask (batch 2): everyday"
+hw_353,Can you confirm the delivery address for me?,0,legit,everyday,,ai_written,"balancing 0, no ask (batch 2): everyday"
+hw_354,"Just to confirm, the meeting is moved to Friday.",0,legit,everyday,,ai_written,"balancing 0, no ask (batch 2): everyday"
+hw_355,Your purchase has been confirmed and will be shipped tomorrow.,0,legit,payment,,ai_written,"balancing 0, no ask (batch 2): payment"
+hw_356,"Thank you for your purchase, here is your order number.",0,legit,payment,,ai_written,"balancing 0, no ask (batch 2): payment"
+hw_357,Enjoy ten percent off your next purchase with this voucher.,0,legit,payment,,ai_written,"balancing 0, no ask (batch 2): payment"
+hw_358,Would you like to cancel the order or keep it?,0,legit,payment,,ai_written,"balancing 0, no ask (batch 2): payment"
+hw_359,"If you want to cancel this order, press one to speak to an agent.",0,scam,other,,ai_written,"balancing 0, no ask (batch 2): other"
+hw_360,Press one now to report this transaction to our fraud team.,0,scam,other,,ai_written,"balancing 0, no ask (batch 2): other"
+hw_361,I checked my account and the money is still there.,0,legit,bank_info,,ai_written,"balancing 0, no ask (batch 2): bank_info"
+hw_362,Our records show your account is in good standing.,0,legit,bank_info,,ai_written,"balancing 0, no ask (batch 2): bank_info"
+hw_363,Our department has detected a purchase on your account.,0,scam,bank_info,,ai_written,"balancing 0, no ask (batch 2): bank_info"
+hw_364,The order total will be shown on your next billing statement.,0,legit,payment,,ai_written,"balancing 0, no ask (batch 2): payment"
+hw_365,Do you want me to confirm the booking for two people?,0,legit,everyday,,ai_written,"balancing 0, no ask (batch 2): everyday"

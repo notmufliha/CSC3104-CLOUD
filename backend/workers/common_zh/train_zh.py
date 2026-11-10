@@ -23,6 +23,8 @@ Input : data/<signal>_zh.csv        columns used: text_raw, label, source, scena
         data/gold_test_zh.csv       (optional; only for a printout. Scored the way the SERVER scores.)
         model_config.json           (optional; {"threshold": 0.3, ...}). Missing = compute + print.
 Output: model/model.joblib          dict(model, threshold, kind, worker, C, data_version)
+Environment (used by the retraining Job, backend/retrain): CSV_PATH replaces data/<signal>_zh.csv, MODEL_OUT
+replaces model/model.joblib.
 """
 import json
 import logging
@@ -134,7 +136,7 @@ def canonical_check(bundle, signal, here):
 def main(signal):
     here = os.path.dirname(os.path.abspath(sys.argv[0]))
     kind, C = CONFIG[signal]
-    model_path = os.path.join(here, "model", "model.joblib")
+    model_path = os.environ.get("MODEL_OUT", os.path.join(here, "model", "model.joblib"))
     gold_path = os.environ.get("GOLD_PATH", os.path.join(here, "data", "gold_test_zh.csv"))
     if not os.path.exists(gold_path):  # local runs: the gold set lives once in common_zh/
         gold_path = os.path.join(here, "..", "common_zh", "gold_test_zh.csv")

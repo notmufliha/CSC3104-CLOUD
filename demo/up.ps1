@@ -155,6 +155,8 @@ if ($ctlArgs -notmatch 'default-ssl-certificate') {
 
 # ------------------------------------------------------------------------------------------ 7. apply
 Say "Applying manifests to the '$Namespace' namespace"
+# Workstream H: this CronJob was renamed retrain-models when it grew to cover all six workers.
+kubectl delete cronjob retrain-urgency-en -n $Namespace --ignore-not-found
 kubectl apply -f demo/k8s/
 
 Say "Waiting for every Deployment to roll out (timeout $RolloutTimeout each)"
