@@ -83,7 +83,7 @@ Put these files in `app/src/main/assets/models/mobilebert/`:
 
 | File | Required | Contents |
 |---|---|---|
-| `model.onnx` | yes | Fine-tuned MobileBERT, ONNX (INT8 is fine), opset ≤ 21 (ONNX Runtime Android 1.20.0) |
+| `model.onnx` | yes | Fine-tuned MobileBERT, ONNX (INT8 is fine), opset ≤ 21 (ONNX Runtime Android 1.22.0; 1.22+ is needed for 16 KB-page phones) |
 | `vocab.txt` | yes | The WordPiece vocabulary it was trained with: one token per line, line number = id, containing `[CLS]`, `[SEP]`, `[UNK]`. If you only have `tokenizer.json`, write `model.vocab` out in id order. |
 | `bert_config.json` | recommended | `{"version": "...", "max_len": 128, "temperature": 1.0, "scam_index": 1, "max_turns": 5, "lower_case": true, "model_file": "model.onnx"}`. Every key is optional; the values shown are the defaults. |
 
