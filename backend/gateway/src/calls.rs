@@ -32,6 +32,8 @@ pub struct Reason {
 #[derive(Clone, Debug, Default)]
 pub struct Answer {
     pub verdict: String,
+    pub live_alert: String,
+    pub final_verdict: String,
     pub combined_score: f32,
     pub reasons: Vec<Reason>,
     pub action: String,

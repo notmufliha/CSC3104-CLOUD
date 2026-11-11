@@ -3,9 +3,12 @@
 #   kubectl apply -f k8s/bert.yaml        (image: build backend/workers/bert, see its README)
 #
 # The aggregator reaches it through the Service as BERT_ADDR=bert:50051. It is only called when the fast
-# workers are unsure or alarmed, so it needs far fewer replicas than the workers; the HPA adds more under load.
-# Sizing (measured with the int8 model, fill in your numbers): ~150 MB model, ~400-600 MB RAM, 30-80 ms/request
-# on 2 CPU threads.
+# workers are unsure or alarmed, or for the spot check, so it needs far fewer replicas than the workers.
+# Two replicas minimum, so losing a pod doesn't leave the cascade without BERT; the HPA adds more under load.
+# Sizing, measured on Docker Desktop with the int8 model: 136 MB model, ~280-380 MiB RAM, p50 ~35 ms per BERT
+# call, ~57% of a core at 20 lines/s in cascade mode.
+# NOTE: gRPC keeps one connection, so this plain ClusterIP Service sends one aggregator's calls to one pod. The
+# full cluster setup in demo/ (make_manifests.py, same replica counts) puts Envoy in front to spread the calls.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -14,7 +17,7 @@ metadata:
     app: bert
     signal: bert
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: bert
@@ -45,16 +48,20 @@ spec:
             limits:
               cpu: "2"
               memory: "1Gi"
-          # SERVING only after the model has loaded and answered a warm-up request
+          # SERVING only after the model has loaded and answered a warm-up request. The startup probe allows up
+          # to 60 s for that; readiness and liveness only start once it has passed.
+          startupProbe:
+            grpc:
+              port: 50051
+            periodSeconds: 2
+            failureThreshold: 30
           readinessProbe:
             grpc:
               port: 50051
-            initialDelaySeconds: 10
             periodSeconds: 5
           livenessProbe:
             grpc:
               port: 50051
-            initialDelaySeconds: 30
             periodSeconds: 10
 ---
 apiVersion: v1
@@ -78,8 +85,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: bert
-  minReplicas: 1
-  maxReplicas: 3
+  minReplicas: 2
+  maxReplicas: 4
   metrics:
     - type: Resource
       resource:
