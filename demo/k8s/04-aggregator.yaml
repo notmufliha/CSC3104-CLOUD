@@ -38,6 +38,14 @@ spec:
               value: "0.6"
             - name: AGG_UNSURE_THRESHOLD
               value: "0.45"
+            - name: AGG_BERT_SAFE_THRESHOLD
+              value: "0.3"
+            - name: AGG_BERT_SCAM_THRESHOLD
+              value: "0.6"
+            - name: AGG_FALLBACK_STRONG_SIGNAL_THRESHOLD
+              value: "0.8"
+            - name: AGG_RED_DISAGREEMENTS_TO_CLEAR
+              value: "2"
             - name: AGG_WINDOW_LINES
               value: "6"
             - name: AGG_WARMUP_SECS
@@ -62,6 +70,8 @@ spec:
               value: "0.5"
             - name: AGG_BERT_VETO
               value: "0"
+            - name: AGG_BERT_SPOT_EVERY
+              value: "5"
             - name: BERT_ADDR
               value: "envoy-lb:50068"
           resources:
