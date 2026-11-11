@@ -41,14 +41,21 @@ class OnDeviceCallTest {
         return verdict
     }
 
+    /**
+     * Workstream H's learning-loop test calls (scam_en_90/91 "new scam test"): a job scam that every model misses
+     * until it is reported and retrained; demo/LEARNING_LOOP.md says both should end SAFE today. Not a phone bug.
+     */
+    private fun isLearningLoopTest(name: String) = "new_scam_test" in name
+
     @Test fun englishDemoCallsGetAVerdictOnThePhone() {
         val scripts = File("src/main/assets/scripts").listFiles { f -> f.name.contains("_en_") }!!.sortedBy { it.name }
-        assertEquals(10, scripts.size)
+        assertTrue(scripts.size >= 10)
         val results = scripts.associate { it.name to play(it) }
         results.forEach { (name, v) -> println("on-device  ${v?.padEnd(6)}  $name") }
         assertTrue(results.values.all { it in setOf("SAFE", "UNSURE", "SCAM") })
-        // every scam script raises a warning on the phone, as it does in the cloud
-        results.filterKeys { it.startsWith("scam_") }.forEach { (name, v) -> assertTrue("$name: $v", v == "SCAM" || v == "UNSURE") }
+        // every scam script raises a warning on the phone, as it does in the cloud (except H's learning-loop tests)
+        results.filterKeys { it.startsWith("scam_") && !isLearningLoopTest(it) }
+            .forEach { (name, v) -> assertTrue("$name: $v", v == "SCAM" || v == "UNSURE") }
     }
 
     @Test fun answerHasTheGatewaysShape() {
@@ -133,7 +140,7 @@ class OnDeviceCallTest {
     }
 
     @Test fun withTheServerOffHybridStillWarnsFromThePhone() {
-        val scams = File("src/main/assets/scripts").listFiles { f -> f.name.startsWith("scam_en_") }!!
+        val scams = File("src/main/assets/scripts").listFiles { f -> f.name.startsWith("scam_en_") && !isLearningLoopTest(f.name) }!!
         for (f in scams) {
             val offline = playHybrid(f) { null }       // every cloud check fails
             assertEquals("${f.name}: same as on-device", play(f), offline.verdict)

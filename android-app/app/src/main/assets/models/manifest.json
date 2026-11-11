@@ -3,27 +3,27 @@
   "format": 1,
   "models": {
     "impersonation_en": {
-      "exported_at": "2026-11-05T08:04:58+00:00",
-      "features": 26920,
+      "exported_at": "2026-11-11T07:58:49+00:00",
+      "features": 27330,
       "file": "impersonation_en.json",
-      "sha256": "d5e6a3f9c525d1c736184980b667b68f88530f79ef98239ccebd8b3c0eac1aa9",
+      "sha256": "677c3f000b45408b6390c38bf39690f11157cb8a148db4867c45d6bceeaf7cbb",
       "sklearn_version": "1.6.1",
       "source": "backend/workers/impersonation_en/model/model.pkl",
-      "source_sha256": "665eb607649e3de5e8fdfa4d1ce6e0efad5ded2581eacd793e353fb49f92c2a2",
-      "version": "impersonation_en_v2"
+      "source_sha256": "2a3a18121318bdb49ed4dba38b77244e3cd8adf1d3c7d5e48bfad9b1a3b02319",
+      "version": "impersonation_en_v5"
     },
     "money_en": {
-      "exported_at": "2026-11-05T08:04:57+00:00",
-      "features": 50638,
+      "exported_at": "2026-11-11T07:58:48+00:00",
+      "features": 5219,
       "file": "money_en.json",
-      "sha256": "3f9991f3a2536339d1e2d52a21bdcc2ebba13f5debe9dad68d2c6914196fe9f2",
+      "sha256": "484543bdc686ff3f132de809da68208587f69e027791c92d1ad0893a279a0001",
       "sklearn_version": "1.6.1",
-      "source": "backend/workers/money_en/model/E_model.joblib",
-      "source_sha256": "73a046e9a7d5af2a585d45f397fbbb6dc74bd2bfac675327669c53ad5bf2eec4",
-      "version": "money_en_v1"
+      "source": "backend/workers/money_en/model/money_en_v2c.joblib",
+      "source_sha256": "3edbfeee125841dc46cd305e26d1ac180c1d01f88253e5468f75c8012a0ab491",
+      "version": "money_en_v2c"
     },
     "urgency_en": {
-      "exported_at": "2026-11-05T08:04:56+00:00",
+      "exported_at": "2026-11-11T07:58:46+00:00",
       "features": 20333,
       "file": "urgency_en.json",
       "sha256": "2f91b42292f3fee5ad10d1e634a75ebc64346e5fcf9ba98726d31864ed6c813b",

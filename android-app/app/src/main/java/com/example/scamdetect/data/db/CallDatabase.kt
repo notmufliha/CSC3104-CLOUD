@@ -17,7 +17,10 @@ import androidx.room.RoomDatabase
 import androidx.room.Transaction
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
 import androidx.room.withTransaction
+import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.scamdetect.logic.Reasons
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -45,6 +48,11 @@ data class CallRecord(
     val riskiestSentence: String?,
     /** Workstream G.13: the privacy level the call ran at (PrivacyLevel.id). Calls saved before G were cloud. */
     @ColumnInfo(defaultValue = "cloud") val privacyLevel: String = "cloud",
+    /**
+     * The top reason as a code (logic/Reasons.kt), shown in the server's wording. Null = an old row whose text
+     * wasn't recognised by the 2 -> 3 migration: `topReason` is shown as saved.
+     */
+    val reasonCode: String? = null,
 )
 
 /** One caller line's scores, for the risk-over-time chart. Numbers only. */
@@ -166,10 +174,11 @@ interface LabelDao {
 /**
  * Version 2 (Workstream G): CallRecord.privacyLevel, ImplicitLabel, LabelSentence. Room migrates version 1
  * automatically (new column with a default, new tables), so B's saved calls are kept.
+ * Version 3 (Workstream G): CallRecord.reasonCode, filled in for saved calls from their reason text (MIGRATION_2_3).
  */
 @Database(
     entities = [CallRecord::class, ScorePoint::class, ImplicitLabel::class, LabelSentence::class],
-    version = 2,
+    version = 3,
     exportSchema = true,
     autoMigrations = [AutoMigration(from = 1, to = 2)],
 )
@@ -188,8 +197,20 @@ abstract class CallDatabase : RoomDatabase() {
     companion object {
         @Volatile private var instance: CallDatabase? = null
 
+        /**
+         * 2 -> 3: the reason code column, filled in from each saved call's reason text in any wording the app or the
+         * server ever used (Reasons.MIGRATION_CASE_SQL); an unrecognised text gets NULL and is shown as saved.
+         */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE CallRecord ADD COLUMN reasonCode TEXT")
+                db.execSQL("UPDATE CallRecord SET reasonCode = ${Reasons.MIGRATION_CASE_SQL}")
+            }
+        }
+
         fun get(context: Context): CallDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, CallDatabase::class.java, "calls.db")
+                .addMigrations(MIGRATION_2_3)
                 .build()
                 .also { instance = it }
         }

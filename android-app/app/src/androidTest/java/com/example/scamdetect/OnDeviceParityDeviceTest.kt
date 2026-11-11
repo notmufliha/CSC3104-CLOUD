@@ -29,7 +29,7 @@ class OnDeviceParityDeviceTest {
         val prep = ImpersonationText(scorer.models[2].orgTypes)
         val checks = listOf(
             Triple("urgency", UrgencyText::normalize, scorer::urgency),
-            Triple("money", MoneyText::clean, scorer::money),
+            Triple("money", { t: String -> MoneyText.clean(t, scorer.moneyBrands) }, scorer::money),
             Triple("impersonation", prep::prep, scorer::impersonation),
         )
         val failures = mutableListOf<String>()

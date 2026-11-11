@@ -14,8 +14,9 @@ a sigmoid (app/.../ondevice/LinearTextModel.kt), which gives the same numbers as
 
 Run it with the worker's own scikit-learn version (the pickles only load reliably in the version that wrote them):
   urgency_en         scikit-learn 1.4.2, numpy 1.26.4  (backend/workers/urgency_en/requirements.txt)
-  money_en,
+  money_en (v2c),
   impersonation_en   scikit-learn 1.6.1, numpy 2.1.3   (backend/workers/money_en/requirements.txt)
+The files are the ones each worker's Dockerfile bakes in (urgency stays v4 unless MODEL_VERSION is set).
 See tools/README.md for the two virtualenvs.
 
   python android-app/tools/export_models.py urgency
@@ -44,7 +45,7 @@ DIGITS = 9   # significant digits kept for idf / weights: far below the 0.01 par
 MODELS = {
     # name: (worker dir, model file the worker's Dockerfile ships)
     "urgency": ("urgency_en", "model/urgency_en_v4.joblib"),
-    "money": ("money_en", "model/E_model.joblib"),
+    "money": ("money_en", "model/money_en_v2c.joblib"),
     "impersonation": ("impersonation_en", "model/model.pkl"),
 }
 
@@ -125,7 +126,12 @@ def export(name):
     elif name == "money":
         doc["version"] = m.version
         doc["threshold"] = num(m.threshold)
-        doc["cleaning"] = "money_en/money_norm.py clean_text + split_sentences (max over sentences)"
+        doc["cleaning"] = "money_en/money_norm.py clean_text(mask_brands) + split_sentences (max over sentences)"
+        # v2: the model says whether it was trained on brand-masked text; the brand list is data, kept with it
+        import money_norm
+        doc["mask_brands"] = bool(m.info.get("mask_brands", False))
+        if doc["mask_brands"]:
+            doc["brand_types"] = money_norm.BRAND_TYPES
         if len(m.pipe.steps) != 2:
             raise SystemExit(f"expected money pipeline features -> clf, got {[s for s, _ in m.pipe.steps]}")
         doc["vectorizers"], doc["intercept"] = linear_parts(m.pipe.steps[0][1], m.pipe.steps[1][1])

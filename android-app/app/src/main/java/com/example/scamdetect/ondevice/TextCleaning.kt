@@ -94,6 +94,31 @@ object UrgencyText {
     }
 }
 
+/**
+ * money_norm.py v2 (Workstream D, money_en_v2c): brand names become their type token (DBS -> orgbank, PayNow ->
+ * payapp; BRAND_RE) and amounts written as words become moneytoken (WORD_MONEY_RE). Only used when the model was
+ * trained with mask_brands; the brand list comes from the exported model file (money_norm.BRAND_TYPES).
+ */
+class MoneyBrands(brandTypes: Map<String, List<String>>) {
+    // _BRAND_TO_TYPE = {name: type ...}: a later type wins for a repeated name; insertion order kept
+    private val toType = LinkedHashMap<String, String>().apply { brandTypes.forEach { (type, names) -> names.forEach { put(it, type) } } }
+    private val brand: Regex? = toType.keys.sortedByDescending { it.length }.takeIf { it.isNotEmpty() }
+        ?.let { names -> Py.re("""\b(""" + names.joinToString("|") { Regex.escape(it) } + """)(?![\w])""") }
+
+    fun apply(lowered: String): String {
+        val t = brand?.replace(lowered) { toType.getValue(it.groupValues[1]) } ?: lowered
+        return WORD_MONEY.replace(t, " moneytoken ")
+    }
+
+    private companion object {
+        const val NUMW = "(?:a|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|" +
+            "sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|" +
+            "million|and|numtoken)"
+        val WORD_MONEY = Py.re("""\b(?:""" + NUMW + """[ -]){1,6}(?:dollars?|bucks|sgd|ringgit)\b""" +
+            """|\bnumtoken ?(?:k|grand)\b|\b(?:a|one|two|three|five|ten) grand\b""")
+    }
+}
+
 /** backend/workers/money_en/money_norm.py `clean_text` + `split_sentences`. */
 object MoneyText {
     private val PLACEHOLDER = Py.re("""\[([A-Za-z_ ]{2,40})\]""")
@@ -151,12 +176,14 @@ object MoneyText {
         return Py.lower(Py.strip(SPACES.replace(t, " ")))
     }
 
-    fun clean(text: String): String {
+    /** `brands` = the v2 brand/amount masking (clean_text(mask_brands=True)); null = v1's cleaning exactly. */
+    fun clean(text: String, brands: MoneyBrands? = null): String {
         var t = PLACEHOLDER.replace(text) { placeholder(it.groupValues[1]) }
         t = HTML.replace(t, " ")
         for ((rx, rep) in CLEAN_STEPS) t = rx.replace(t, rep)
         t = Normalizer.normalize(t, Normalizer.Form.NFKD).filter { it.code < 128 }   // .encode("ascii", "ignore")
         t = lightNorm(t)
+        if (brands != null) t = brands.apply(t)
         for ((rx, rep) in CONTRACTIONS) t = rx.replace(t, rep)
         t = t.replace("'", "")
         t = NOT_LETTERS.replace(t, " ")

@@ -46,6 +46,7 @@ import com.example.scamdetect.data.db.CallRecord
 import com.example.scamdetect.data.db.ScorePoint
 import com.example.scamdetect.logic.Dashboard
 import com.example.scamdetect.logic.PrivacyLevel
+import com.example.scamdetect.logic.Reasons
 import com.example.scamdetect.logic.Risk
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -128,7 +129,7 @@ fun DashboardScreen(
                                 Text(fmt.format(Date(c.endedAt)), style = MaterialTheme.typography.labelMedium)
                             }
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(c.topReason, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                                Text(Reasons.display(c), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                                 Text(
                                     PrivacyLevel.badgeFor(c.privacyLevel),
                                     style = MaterialTheme.typography.labelSmall,
@@ -210,7 +211,7 @@ fun CallDetailScreen(call: CallRecord?, points: List<ScorePoint>, onBack: () -> 
                     color = levelColor(Dashboard.level(call.finalVerdict)),
                 )
             }
-            Text(call.topReason)
+            Text(Reasons.display(call))
             val seconds = ((call.endedAt - call.startedAt) / 1000).coerceAtLeast(0)
             Text(
                 fmt.format(Date(call.endedAt)) + (if (seconds > 0) " · ${seconds / 60} min ${seconds % 60} s" else "") +

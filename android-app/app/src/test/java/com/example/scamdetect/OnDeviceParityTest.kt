@@ -51,7 +51,7 @@ class OnDeviceParityTest {
 
     @Test fun urgencyMatchesPython() = check("urgency", UrgencyText::normalize, scorer::urgency)
 
-    @Test fun moneyMatchesPython() = check("money", MoneyText::clean, scorer::money)
+    @Test fun moneyMatchesPython() = check("money", { MoneyText.clean(it, scorer.moneyBrands) }, scorer::money)
 
     @Test fun impersonationMatchesPython() {
         val prep = ImpersonationText(scorer.models[2].orgTypes)
