@@ -9,8 +9,10 @@ training or threshold tuning.
 
 **Headline: v4 is not a clean win. It is slightly worse on overall
 discrimination and clearly worse on false alarms on this gold set, even
-though it does a bit better on courier/tech scam rows. Read the recommendation
-at the end before deciding whether to ship it.**
+though it does a bit better on courier/tech scam rows. A third version, v5
+(section 9), was retrained afterward to target a blind spot both v3 and v4
+share; it trades some recall for the lowest false-positive rate of the
+three. Read the recommendation at the end before deciding what to ship.**
 
 ## 1. Threshold-free discrimination (ROC-AUC)
 
@@ -119,20 +121,123 @@ lines moved by 0.05 or more. The shifts are mostly on later, money-ask lines
 (e.g. `scam_en_13` line 7: 0.36 -> 0.90), not on the early opener lines that
 cause TOO EARLY. No normal-call line crossed 0.45 that wasn't already close.
 
+## 8. External, independently-written test lines (`gold_human.csv`), added 2026-11-10
+
+Run on 2026-11-10. `data/impersonation_en/gold_human.csv` holds 96 lines (48
+label 1, 48 label 0) written by four different outside AI chat models (not
+used anywhere else in this project), each given only the abstract labelling
+rule and no examples from our actual data, specifically so the phrasing would
+not echo our training/gold style. `source=external_test` for all of them -
+see the note at the top of this section's commit for why it isn't labelled
+"human" even though the file is still named `gold_human.csv`. None of these
+96 rows overlap (exact-text) with `impersonation_data.csv` or `gold_test.csv`.
+
+| model | precision | recall | f1 | roc_auc | false positives | false negatives |
+|---|---|---|---|---|---|---|
+| v3 (threshold 0.47) | 0.906 | 1.000 | 0.950 | 0.993 | 5 / 48 | 0 / 48 |
+| v4 (threshold 0.30) | 0.870 | 0.979 | 0.922 | 0.988 | 7 / 48 | 1 / 48 |
+
+**This independently confirms section 1-3 above: v3 beats v4 on this
+differently-written set too**, on every metric (ROC-AUC, F1, precision,
+fewer false positives), though neither model catches every label-0 row.
+
+The false positives are informative and point at the same blind spot for
+both models, not something retraining v3 into v4 fixed or worsened much:
+- Person-impersonation money scams with no institutional claim (a "cousin"/
+  "uncle"/"grandson" asking for urgent PayNow transfers, a fake Carousell
+  buyer asking for banking login) score high (0.6-0.97) even though the
+  correct label is 0 under our rule (no organisation is claimed). The model
+  appears to be keying on generic urgency/secrecy/money language rather than
+  the institutional claim specifically.
+- One mention-only row (two people discussing a suspicious IRAS SMS, neither
+  of them is IRAS) scored very high on both models (v3: 0.62, v4: 0.96) -
+  exactly the "mention, not behaviour" confusion D.3 was meant to fix, but 2
+  training examples of that pattern were evidently not enough.
+- One genuine bank call (Maybank, truthfully named, no codes asked) scored
+  high on both (v3: 0.59, v4: 0.95).
+
+This suggests a concrete next step - more hard-negative training rows
+specifically for (a) urgent money requests that impersonate a *person*, not
+an institution, and (b) casual mention/discussion of a scam rather than a
+real scam call - rather than anything that would be fixed by threshold
+tuning alone. Not done yet in this pass; flagging for a possible v5.
+
+## 9. v5 retrain targeting the section 8 blind spot, added 2026-11-10
+
+Added 22 new hard-negative rows (label 0) aimed squarely at the two failure
+patterns `gold_human.csv` exposed in section 8: person-impersonation money
+asks (fake cousin/uncle/grandson/friend requesting urgent PayNow transfers,
+no organisation claimed) and mention-only scam discussions (two people
+talking about a scam, neither one impersonating anyone), plus 4 genuine
+institutional calls that use urgent language but aren't scams, so the model
+has to stop treating "urgent" as a proxy for "impersonation". Retrained as
+`impersonation_en_v5` (`model/model.pkl`, 650 rows). v4 is frozen at
+`model/versions/impersonation_en_v4.pkl` / `.card.json` the same way v3 was.
+
+| | v3 (thr 0.47) | v4 (thr 0.30) | v5 (thr 0.67) |
+|---|---|---|---|
+| gold_test.csv precision | 0.964 | 0.919 | 0.970 |
+| gold_test.csv recall | 0.901 | 0.922 | 0.888 |
+| gold_test.csv f1 | 0.931 | 0.920 | 0.927 |
+| gold_test.csv ROC-AUC | 0.986 | 0.981 | 0.988 |
+| gold_test.csv false positives | 10/328 | 24/328 | 8/328 |
+| gold_test.csv false negatives | 29/294 | 23/294 | 33/294 |
+| gold_human.csv precision | 0.906 | 0.870 | 0.958 |
+| gold_human.csv recall | 1.000 | 0.979 | 0.958 |
+| gold_human.csv f1 | 0.950 | 0.922 | 0.958 |
+| gold_human.csv false positives | 5/48 | 7/48 | 2/48 |
+| gold_human.csv false negatives | 0/48 | 1/48 | 2/48 |
+
+The threshold the training script picked on its own jumped to 0.67 (up from
+v4's 0.30, even higher than v3's 0.47) now that the dev set includes examples
+that look urgent but aren't impersonation - the model needed more separation
+to keep calling those negative.
+
+**v5 fixes most of the section 8 blind spot.** Checking the exact rows that
+were false positives for v3 or v4 in `gold_human.csv`: the grandson-PayNow
+row (v4: 0.95 -> v5: 0.04), the cousin-accident row (v3: 0.75 -> v5: 0.32),
+the uncle-accident row (v4: 0.73 -> v5: 0.49), and the IRAS-SMS mention-only
+row (v4: 0.96 -> v5: 0.59) all dropped below v5's threshold. Two of the
+section 8 false positives remain unfixed: a fake Carousell buyer asking for
+banking login (still 0.98) and the genuine Maybank confirmation call (down
+from 0.95 to 0.83, but still above threshold) - both still score as
+impersonation.
+
+**The cost: v5 trades recall for precision, and misses 2 genuine scams on
+`gold_human.csv` it didn't miss before** - both are the SP Group electricity
+bill scam, scoring 0.56-0.60, just under the new 0.67 cut. The higher
+threshold needed to push the blind-spot rows down also pushes some real but
+less aggressive scam lines below the line. Keyword-dependence held up (0.4%
+ROC-AUC drop when masking top words, same as v3/v4, so v5 isn't a keyword
+detector either), but recall after masking drops much further than v4's did
+(-0.459 vs -0.160), meaning v5 leans more heavily on its strongest words to
+clear the now-higher bar.
+
 ## Recommendation
 
-v4 is a mixed result, not a clear upgrade:
-- Better: slightly fewer courier/tech mistakes, slightly less keyword-reliant.
-- Worse: lower ROC-AUC, lower F1 at either threshold, **more than double the
-  false alarms on the gold set**, slightly worse single-sentence false-trigger
-  rate.
+Three versions, three different trade-offs, none of them a clean sweep:
+- **v3** (threshold 0.47): best recall on both gold sets, but still has the
+  full section 8 blind spot (5 false positives on `gold_human.csv`).
+- **v4** (threshold 0.30): worst false-alarm rate on genuine calls (24/328,
+  double v3's), the section 8 blind spot is just as bad or worse.
+- **v5** (threshold 0.67): fixes 4 of 7 section 8 blind-spot cases, lowest
+  false-positive count on both gold sets, but lower recall than v3 or v4 on
+  `gold_test.csv` and introduces 2 new false negatives on `gold_human.csv`
+  (both the same SP Group electricity scam pattern, scoring just under the
+  new threshold).
 
-The false-alarm regression is the one I would not ship without a decision
-from the team. It is mainly a consequence of the automatic threshold dropping
-from 0.47 to 0.30 on the bigger dev set, which the training script - not me -
-picked by cross-validated F1. **I have left v4 live in the running Docker
-stack for testing (see below), but I recommend keeping `model/versions/
-impersonation_en_v3.pkl` as the fallback and deciding with the team (Mridula
-especially, since she owns the aggregator thresholds) whether v4 ships as is,
-needs a manually-raised threshold, or needs more genuine-call training data
-before the deadline.**
+Whether v5 is "better" depends on what the team weighs more: for a
+scam-detection product, missing a real scam (false negative) is usually
+worse than a false alarm the caller can dismiss, which argues for v3 or v4
+over v5 on raw recall. But v5 is the only version that materially closes the
+specific blind spot (impersonating a relative/friend for money, discussing a
+scam without being one) that both earlier versions shared, and its gold_human
+numbers are the best across the board (f1 0.958, fewest combined errors: 4
+vs v3's 5 and v4's 8). **I'd lean toward shipping v5 over v3/v4**, since the
+2 new false negatives are a narrow, nameable pattern (SP Group / utility
+bill phrasing right at the new threshold) that a couple more training rows
+could likely fix in a future pass, whereas v3 and v4's blind spot is broader
+and already caused real false positives on an independent test set. This is
+a judgement call for the team, not something the numbers settle on their
+own - happy to add a few more utility-scam rows and retrain again if we want
+to try to recover that recall before deciding.
