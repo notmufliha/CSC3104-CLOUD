@@ -14,8 +14,8 @@ import java.io.Reader
  *   money          highest calibrated probability over the line's sentences (MoneyModel.score_chunk)
  *   impersonation  calibrated probability of the whole line (predict.score)
  *
- * Model files ship inside the app (assets/models/, versions in manifest.json). There is no model download
- * service (G.10) in this repo yet, so the bundled versions are the ones used; tools/export_models.py refreshes them.
+ * Model files ship inside the app (assets/models/, versions in manifest.json). G.10: newer federated versions
+ * are downloaded from the model registry (data/ModelUpdater.kt) and used instead; see get().
  */
 class OnDeviceScorer(
     private val urgency: LinearTextModel,
@@ -57,11 +57,24 @@ class OnDeviceScorer(
         private val lock = Mutex()
         @Volatile private var cached: OnDeviceScorer? = null
 
-        /** Loaded once (about 3 MB of JSON) off the main thread, then kept for the app's lifetime. */
+        /**
+         * Loaded once off the main thread, then kept until [reload]. G.10: a model downloaded from the registry
+         * (files/models/, ModelUpdater) wins over the one built into the app; if it can't be read, the built-in
+         * one is used.
+         */
         suspend fun get(context: Context): OnDeviceScorer = cached ?: lock.withLock {
             cached ?: withContext(Dispatchers.Default) {
-                load { f -> context.applicationContext.assets.open("$DIR/$f").bufferedReader() }
+                val app = context.applicationContext
+                val (u, m, i) = FILES.map { f ->
+                    val downloaded = java.io.File(app.filesDir, "$DIR/$f")
+                    (if (downloaded.isFile) runCatching { downloaded.bufferedReader().use { LinearTextModel.load(it) } }.getOrNull() else null)
+                        ?: app.assets.open("$DIR/$f").bufferedReader().use { LinearTextModel.load(it) }
+                }
+                OnDeviceScorer(u, m, i)
             }.also { cached = it }
         }
+
+        /** G.10: forget the loaded models, so the next call picks up the ones just downloaded. */
+        fun reload() { cached = null }
     }
 }

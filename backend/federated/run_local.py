@@ -1,8 +1,10 @@
-"""run_local.py - run one federated experiment on this laptop, without Kubernetes: the Flower server and the
+"""run_local.py - run one federated round set on this laptop, without Kubernetes: the Flower server and the
 simulated phones as separate processes talking over localhost gRPC (the same code the pods run).
 
-  python backend/federated/run_local.py                      # 10 rounds, 10 phones, no noise
-  python backend/federated/run_local.py --noise 1.0 --clip 2  # G.8: with clipping + noise
+  python backend/federated/run_local.py                               # 10 rounds, 10 phones, no noise
+  python backend/federated/run_local.py --noise 0.1 --port 8082       # G.8: clipping (norm 10) + noise
+  python backend/federated/run_local.py --publish --init current      # G.10: a "weekly" round that publishes
+                                                                      # passing models (needs local_stack.py running)
 
 Each run writes backend/federated/results/<run>.json; plot_rounds.py turns them into the G.7/G.8 chart.
 """
@@ -21,13 +23,18 @@ def main():
     ap.add_argument("--rounds", type=int, default=10)
     ap.add_argument("--phones", type=int, default=10)
     ap.add_argument("--noise", type=float, default=0.0)
-    ap.add_argument("--clip", type=float, default=2.0)
+    ap.add_argument("--clip", type=float, default=10.0)
+    ap.add_argument("--init", choices=["zeros", "current"], default="zeros")
+    ap.add_argument("--publish", action="store_true", help="publish passing models to the registry (local_stack.py)")
     ap.add_argument("--port", type=int, default=8080)
     ap.add_argument("--run", default=None)
     args = ap.parse_args()
 
     env = {**os.environ, "FL_ROUNDS": str(args.rounds), "FL_PHONES": str(args.phones), "FL_NOISE": str(args.noise),
-           "FL_CLIP": str(args.clip), "FL_ADDRESS": f"127.0.0.1:{args.port}", "PYTHONIOENCODING": "utf-8"}
+           "FL_CLIP": str(args.clip), "FL_INIT": args.init, "FL_PUBLISH": "1" if args.publish else "0",
+           "FL_ADDRESS": f"127.0.0.1:{args.port}", "PYTHONIOENCODING": "utf-8"}
+    if args.publish:
+        env.setdefault("REVIEW_URL", "http://127.0.0.1:8090")   # local_stack.py's registry
     if args.run:
         env["FL_RUN"] = args.run
     server = subprocess.Popen([sys.executable, str(HERE / "server.py")], env=env)

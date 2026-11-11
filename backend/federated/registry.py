@@ -1,6 +1,6 @@
 """registry.py - Workstream G.10: talk to the model registry Workstream H already runs (backend/review/app.py).
 
-The phone's model is stored there under its own name, PHONE_MODEL ("urgency_en_phone"), next to the cloud workers'
+The phone models are stored there under their own names (PHONE_MODELS: <signal>_en_phone), next to the cloud workers
 models, with the same rules: versions v1, v2, ... are never overwritten, and only a model that passed the release
 check is published. Standard library only (the download service image has nothing else).
 """
@@ -11,7 +11,8 @@ import urllib.request
 import uuid
 
 REVIEW = os.environ.get("REVIEW_URL", "http://review.scamguard.svc.cluster.local:8090")
-PHONE_MODEL = "urgency_en_phone"
+PHONE_MODELS = ("urgency_en_phone", "money_en_phone", "impersonation_en_phone")
+PHONE_MODEL = PHONE_MODELS[0]
 
 
 def _get(path, raw=False, timeout=10):

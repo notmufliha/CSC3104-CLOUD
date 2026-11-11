@@ -64,6 +64,8 @@ fun ScamGuardApp(vm: CallViewModel = viewModel()) {
     val helpImprove by vm.helpImprove.collectAsState()
     val labelCount by vm.labelCount.collectAsState()
     val mobileBertStatus by vm.mobileBertStatus.collectAsState()
+    val modelStatus by vm.modelStatus.collectAsState()
+    val modelCheck by vm.modelCheck.collectAsState()
 
     BackHandler(enabled = screen != Screen.HOME) {
         if (screen == Screen.CALL) vm.discard()   // B.5: during a call, tells the server; no summary, nothing saved
@@ -140,6 +142,9 @@ fun ScamGuardApp(vm: CallViewModel = viewModel()) {
             privacyLevel = privacyLevel,
             onPrivacyLevel = vm::setPrivacyLevel,
             mobileBertStatus = mobileBertStatus,
+            modelStatus = modelStatus,
+            modelCheck = modelCheck,
+            onCheckModels = { vm.checkModelUpdates() },
         )
     }
 }
