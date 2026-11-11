@@ -30,10 +30,14 @@ spec:
               value: "2000"
             - name: REVIEW_URL
               value: "http://review:8090"
+            - name: VERIFY_TIMEOUT_MS
+              value: "1200"
             - name: GATEWAY_BIND_ADDR
               value: "0.0.0.0:8080"
             - name: AGGREGATOR_ADDR
               value: "envoy-lb:50067"
+            - name: BERT_ADDR
+              value: "envoy-lb:50068"
             - name: URGENCY_EN_ADDR
               value: "envoy-lb:50061"
             - name: MONEY_EN_ADDR

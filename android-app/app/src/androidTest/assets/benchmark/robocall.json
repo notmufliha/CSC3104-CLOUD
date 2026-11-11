@@ -1,0 +1,1206 @@
+{
+ "source": "backend/workers/urgency_en/eval/robocall_gold.csv",
+ "label": "urgency (provisional, see LABELING.md)",
+ "rows": [
+  {
+   "id": "1",
+   "text": "So if you want to know about this case just press 1.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "2",
+   "text": "Thanks to your good payment history and good credit score, you have been qualified finally for an interest rate reduction between 0 to 5 percent.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "3",
+   "text": "Your social security number has been used for some kind of fraudulent activities in the south border of Texas.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "4",
+   "text": "Call the number on your caller ID now for this amazing deal.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "5",
+   "text": "This is a disconnection notice from your electric company.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "6",
+   "text": "Now, you should have received something in the mail about this warranty and since we haven't gotten a response, we are giving you a final courtesy call before we close out your file.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "7",
+   "text": "I don't know what you're referring to.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "8",
+   "text": "Hi, we've been trying to reach you concerning your vehicle's extended warranty.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "9",
+   "text": "Serious allegations have been filed against your name, due to which you will be taken into federal custody for further investigation.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "10",
+   "text": "We have gone through your account, and we found that your Amazon account has been used for shopping purpose, as we can see multiple orders placed from your Amazon account.",
+   "label": 0,
+   "status": "disagree"
+  },
+  {
+   "id": "11",
+   "text": "Placed for Apple, I fund 12 Pro using your Amazon account.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "12",
+   "text": "Hi, my name is Jennifer Kelly.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "13",
+   "text": "Very good day to you.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "14",
+   "text": "Discover has made some big changes on your credit card accounts and you are now eligible for a complete debt elimination on all of your credit cards.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "15",
+   "text": "If you have a debit balance of your loan, you will have to resume paying back.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "16",
+   "text": "And if you do not authorize this order, press 1 or 0.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "17",
+   "text": "your case and take necessary action on this matter.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "18",
+   "text": "The reason you receive this phone call from our department is to inform you that there's a legal enforcement action filed on your social security number for fraudulent activities.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "19",
+   "text": "It's urgent that you return my call today to complete your application.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "20",
+   "text": "So if you want to cancel the payment and want to talk our customer service, please press one.",
+   "label": 0,
+   "status": "disagree"
+  },
+  {
+   "id": "21",
+   "text": "You can say things like responding to a text or returning a phone call.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "22",
+   "text": "We go ahead and proceed that parcel to you, sir.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "23",
+   "text": "This number is registered to our Amazon, and this number has been purchased an iPhone XS from our Amazon.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "24",
+   "text": "My state assigned phone number is 855-228-4781 and this call has been marked complete by state agent Mary Marcello, agent number 5568.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "25",
+   "text": "To connect the call press 1, I repeat to avoid any kind of legal consequences or a non-available arrest warrant, you need to talk to the concerned officer immediately.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "26",
+   "text": "The amount charged is $149.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "27",
+   "text": "Because we are thinking of a database.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "28",
+   "text": "So, it's a reminder call to you.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "29",
+   "text": "to your account before the next billing cycle.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "30",
+   "text": "The state has now set aside $1.3 billion.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "31",
+   "text": "The reason of this call is to inform you about a package has been seized under your name by U.S.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "32",
+   "text": "The very second you receive this message you need to leave your work aside, so that we can discuss about your case and take necessary action on this matter in order to connect.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "33",
+   "text": "Please press 1 to contact Fraud Department for dispute.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "34",
+   "text": "So it will be showing you after 12 hours, sir, because the order is now going to shipping mode.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "35",
+   "text": "Your telephone number has been pre-selected to receive a complimentary stay in one of our five-star hotels.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "36",
+   "text": "You have been officially notified.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "37",
+   "text": "Since we have not gotten a response, we are giving you a final courtesy call before you close out your file.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "38",
+   "text": "We are monitoring your payment history and you have been qualified to drop down your interest rate below 6% on your credit cards.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "39",
+   "text": "call is to inform you about a package has been seized under your name by U.S.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "40",
+   "text": "This has been an important call regarding legal enforcement action being executed under your name for suspicious and fraudulent activities carried out using your identity.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "41",
+   "text": "aside, so that we can discuss about your case and take necessary action on this matter.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "42",
+   "text": "There is one pre-authorized order placed for Apple MacBook Pro and AirPod Pro for a total amount of $1499 it will be deducted from your account soon.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "43",
+   "text": "your work aside so that we can discuss about your case and take necessary action on this matter.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "44",
+   "text": "If you did not authorize this transaction, please press 1 to connect with Fraud Specialist immediately.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "45",
+   "text": "I see my Amazon account.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "46",
+   "text": "payment of $469 for your recent purchase.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "47",
+   "text": "If you approve this transaction, please press 2.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "48",
+   "text": "This is an effort from this administration as part of their financial relief program to help Americans recover financially from the virus outbreak.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "49",
+   "text": "Thank you for choosing Hilton Hotels.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "50",
+   "text": "been seized under your name by U.S.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "51",
+   "text": "You have been qualified to drop down your entry straight below 6 on your credit card.",
+   "label": 0,
+   "status": "disagree"
+  },
+  {
+   "id": "52",
+   "text": "Someone order an iPhone X from your Amazon account, which will charge you $899.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "53",
+   "text": "You now qualify for 0% interest rate on all your credit card account.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "54",
+   "text": "own call is to inform you that we will be suspending your social security number because we found some suspicious activities on your social security.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "55",
+   "text": "Is that okay with you?",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "56",
+   "text": "Press 1 if you did not do this.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "57",
+   "text": "Let me explain to you, sir.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "58",
+   "text": "We have seen a recent order number, AMZ0987, of iPhone 11 Pro on your account, which is billed on your card attached to your Amazon account.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "59",
+   "text": "fraudulent and suspicious activity in the state of Texas.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "60",
+   "text": "Only recommend please do not access your account on your device for security reason until your account will not get fixed.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "61",
+   "text": "In order to connect to federal agent press one and you will be connected to the concerned department.",
+   "label": 0,
+   "status": "disagree"
+  },
+  {
+   "id": "62",
+   "text": "Thank you for connecting with Amazon.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "63",
+   "text": "calling you from the legal department to inform you that, due to some suspicious activities related to your name, we are trying to reach you, but unfortunately we missed your answer.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "64",
+   "text": "Call our 800 number at 833-304-1447, UST 456.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "65",
+   "text": "This is an emergency call from your tech support company.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "66",
+   "text": "You need to be simply just verify that cancellation form by your site.",
+   "label": 0,
+   "status": "disagree"
+  },
+  {
+   "id": "67",
+   "text": "Press 1 to get the refund.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "68",
+   "text": "So sorry if you're busy.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "69",
+   "text": "Hello, this is Mary Marcello regarding your COVID-19 relief payment and you can reach me at my state assigned phone number, 855-228-4781.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "70",
+   "text": "in charge for the payment of $469 for your recent purchase.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "71",
+   "text": "Hi, this is Officer Sarah Schulz calling you from the Department of Social Security Administration.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "72",
+   "text": "I would call soon so you don't miss the cutoff.",
+   "label": 0,
+   "status": "disagree"
+  },
+  {
+   "id": "73",
+   "text": "Press 2 to be put on our do not call list or press 1 to speak to someone about possibly extending or reinstating your car's warranty.",
+   "label": 0,
+   "status": "disagree"
+  },
+  {
+   "id": "74",
+   "text": "We strongly recommend please don't access your account on your device for security reason until your account will not get fixed for more support.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "75",
+   "text": "Hello, this is Alex with American Benefits on a recorded line.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "76",
+   "text": "You are now qualified for a complete debt elimination on all of your credit cards.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "77",
+   "text": "your electric service will be disconnected within the next 30 minutes due to non-payment.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "78",
+   "text": "Which computer you are using right now at the moment?",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "79",
+   "text": "And it's my job to make you aware that because you qualified for a relief payment, you also qualify for the new debt relief program.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "80",
+   "text": "And we just suspended your social security number.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "81",
+   "text": "I repeat press 1 to get more details.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "82",
+   "text": "This is the Notifications Department with Jersey Central Power and Light, you have an automatic interruption of service in the next 30 to 45 minutes due to request a discontinue of the service or delinquent account status.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "83",
+   "text": "a disconnection of service today within 30 minutes due to non-payment on the account.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "84",
+   "text": "Hi, this is an automated message from the Disconnection Department of Pacific Gas and Electric, Electricity Company.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "85",
+   "text": "resident, you are now able to take advantage of alternative federal student loan repayment options and hardship programs.",
+   "label": 0,
+   "status": "disagree"
+  },
+  {
+   "id": "86",
+   "text": "Again, this is the Notifications Department with Jersey Central Power and Light, you have an automatic interruption of service in the next 30 to 45 minutes due to request a discontinue of the service or delinquent account status.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "87",
+   "text": "Or to talk to our customer care please press 3.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "88",
+   "text": "In order to connect our legal department press 1 so that we can discuss about your case file and take necessary action on this matter.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "89",
+   "text": "you that there is an order placed for Apple iPhone 11 Pro using your Amazon account.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "90",
+   "text": "Now, you should have received something in the mail about that warranty.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "91",
+   "text": "This call is regarding your purchase of $999 for iPhone 13 Pro Max.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "92",
+   "text": "I look forward to speaking with you today.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "93",
+   "text": "Drop down your injure straight below 6 on your credit card.",
+   "label": 0,
+   "status": "disagree"
+  },
+  {
+   "id": "94",
+   "text": "I repeat press 1 to get more information.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "95",
+   "text": "We encounter a serious issue coming out of your computer.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "96",
+   "text": "And if you don't respond, Bank of America will cancel this promotion.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "97",
+   "text": "On your excellent payment history, you now qualify for a 0% interest rate on all your credit card accounts.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "98",
+   "text": "of PSE&G New Jersey, Electricity Company.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "99",
+   "text": "FedEx International Express will inform you for the last time that you have a parcel that has been delivered twice and no one has signed for it.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "100",
+   "text": "Now is your chance to get into a program so that you can qualify for the $10,000 debt elimination.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "101",
+   "text": "by third party supplier, you will be receiving $50 reward along with 30% discount on your electric and gas bill, please press 1 and get your $50 reward card.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "102",
+   "text": "If you are interested in renewing your auto warranty now, please press 5 now or press 9 to be removed from our list.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "103",
+   "text": "To repeat this message please press 4.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "104",
+   "text": "If you find this to be an error or would like to stop the interruption, please press 1 to speak with the billing department.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "105",
+   "text": "By this call you have been officially notified.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "106",
+   "text": "citizens on our state list that have tax debt about the new zero-tax owed tax debt relief program that was recently put into effect by the Biden administration and is open for enrollment.",
+   "label": 0,
+   "status": "disagree"
+  },
+  {
+   "id": "107",
+   "text": "From suspicious activity from your account we have found an unauthorized login attempt.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "108",
+   "text": "Department of the Social Security Administration.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "109",
+   "text": "It's a Visa card What's a Visa card?",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "110",
+   "text": "If you do not authorize this order to cancel press 1.",
+   "label": 0,
+   "status": "disagree"
+  },
+  {
+   "id": "111",
+   "text": "The reason you have received this phone call from our department is to inform you that there's legal enforcement actions filed on your social security number for fraudulent activities.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "112",
+   "text": "Have a great day, sir.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "113",
+   "text": "My direct phone number is 714-406-4370.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "114",
+   "text": "Hello, this is Sarah from Discover.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "115",
+   "text": "Well, what can I do about it?",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "116",
+   "text": "Otherwise, please press 2 to speak with the billing department.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "117",
+   "text": "We've been trying to reach you concerning your car's extended warranty.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "118",
+   "text": "The very second you receive this message, you need to leave your work aside so that we can discuss about your case and take necessary action on this matter in order to connect.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "119",
+   "text": "So please in order, go ahead, get more information to speak with officer press one.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "120",
+   "text": "suspicious, and fraudulent activities carried out using your identities.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "121",
+   "text": "that your social security number has been used for some kind of fraudulent activities in the south border of Texas, so please in order go ahead get more information.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "122",
+   "text": "Due to non-payment on the account, please press 1 to speak with a representative.",
+   "label": 0,
+   "status": "disagree"
+  },
+  {
+   "id": "123",
+   "text": "Greetings, this is an automated message from the Disconnection Department of the Marva Power and Light to inform you that you will be experiencing a disconnection of service today within 30 minutes.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "124",
+   "text": "Hello, this call is from Microsoft Help Center.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "125",
+   "text": "Press 1 now to speak to our qualification department and complete the enrollment process.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "126",
+   "text": "Using our automated approval technology, you are now able to obtain enrollment information based on your current financial status.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "127",
+   "text": "It's my job to remind you.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "128",
+   "text": "Press 1 and you will be connected to the concerned CBP officer.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "129",
+   "text": "The reason you have received this phone call from our department is to inform you that there's a legal enforcement actions filed on your name for fraudulent activities.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "130",
+   "text": "Due to some suspicious activities related to your social security number, we are forced to suspend your social security number with immediate effect.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "131",
+   "text": "So when you get this message, kindly press 1 to connect with the next available officer.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "132",
+   "text": "that we will be suspending your social security number because we found some suspicious activities on your social security.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "133",
+   "text": "receive this message you need to leave your work aside so that we can discuss about your case and take necessary action on this matter in order to connect.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "134",
+   "text": "By this call, you have been officially notified.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "135",
+   "text": "If you find this to be an error or would like to stop the disjoin, please press 1 to start your claim, otherwise press 2 to speak with the billing department.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "136",
+   "text": "To speak with Officer press 1.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "137",
+   "text": "found some suspicious activity in your Amazon account.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "138",
+   "text": "This was just passed by the Biden administration, actively known as BidenCare.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "139",
+   "text": "Department of Social Security Administration, the reason you have received this phone call from our department is to inform you that there's a legal enforcement action held on your social security number for fraudulent activities.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "140",
+   "text": "For more information, press 1 and hold for the next developmental officer.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "141",
+   "text": "You have a parcel that has been delivered twice, and no one has signed for it.",
+   "label": 0,
+   "status": "disagree"
+  },
+  {
+   "id": "142",
+   "text": "My Capital One card Capital One, I got you.",
+   "label": 0,
+   "status": "disagree"
+  },
+  {
+   "id": "143",
+   "text": "This call is also recorded online with our security purpose.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "144",
+   "text": "This call is all about your parcel, sir.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "145",
+   "text": "With contraband of drugs and cash.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "146",
+   "text": "If you would like to keep coverage or extend it, press 8 to speak to a customer service agent and go over options.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "147",
+   "text": "Press two to be put on our do not call list.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "148",
+   "text": "If it's not fixed right away then your computer will become obsolete and all of your credential information may got compromised.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "149",
+   "text": "If you did not authorize this order, then press 1 for Amazon support.",
+   "label": 0,
+   "status": "disagree"
+  },
+  {
+   "id": "150",
+   "text": "After two failed attempts, I am calling you for the last time.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "151",
+   "text": "below 6 on your credit card, so please press 1 to speak with live operator and get the confirmation number.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "152",
+   "text": "So sorry if you're busy, I just had some fantastic news.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "153",
+   "text": "And thank you for connecting, sir.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "154",
+   "text": "And you can reach me at my state-assigned phone number, 844-877-0123.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "155",
+   "text": "Nadine Smith calling in from the processing department.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "156",
+   "text": "Customer, this is Molly from Amazon.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "157",
+   "text": "A petition is set to be filed on your behalf to extend the suspension of payments indefinitely, meaning you would have a permanent zero-dollar balance.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "158",
+   "text": "Press 4 if you want to be added in DNC list.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "159",
+   "text": "that you have been charged for the payment of $469 for your recent purchase.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "160",
+   "text": "11 Pro using your Amazon account.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "161",
+   "text": "Dear customer, this is David from Amazon.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "162",
+   "text": "you to let you know that your social security number has been used for some kind of fraudulent activities in the south border of Texas.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "163",
+   "text": "You will be charged $600, sir.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "164",
+   "text": "So you want to cancel that parcel and stop that payment, right, sir?",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "165",
+   "text": "This is an automated message from the Disconnection Department of Dominion Energy Electricity Company to inform you that you will be experiencing a disconnection of service today within 30 minutes due to non-payment on the account.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "166",
+   "text": "I repeat, press 1 and do not apply for it.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "167",
+   "text": "So we have put in hold to this transaction.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "168",
+   "text": "Instead of talking to you, I will simply go ahead and run away.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "169",
+   "text": "If you do not authorize this order, press 1 to speak to our representative, or press 2 to authorize.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "170",
+   "text": "And when is the Capital One card going to be expired?",
+   "label": 0,
+   "status": "disagree"
+  },
+  {
+   "id": "171",
+   "text": "activity in the state of Texas.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "172",
+   "text": "This is your number, sir, 4 0 8 8 8 4 1 4 4 5.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "173",
+   "text": "So when you get this message kindly press one to connect with the next available officer.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "174",
+   "text": "The very second you read this message you need to leave your work aside so that we can discuss about your case and take necessary action.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "175",
+   "text": "We would like to inform you that your telephone number was qualified by our booking system to receive an all-inclusive complimentary stay.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "176",
+   "text": "Call your car at 800-833-304-1447.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "177",
+   "text": "And as you know, there have been some pretty big changes to the federal student loan programs recently.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "178",
+   "text": "Since the student loan payment delay is about to come to an end, you can reach us directly to discuss your options at 833-631-7911.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "179",
+   "text": "Otherwise, please press 2 to speak with the disconnection department.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "180",
+   "text": "To confirm this order, please press 1, or to cancel, please press 2.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "181",
+   "text": "And the purpose of the call, we are trying to reach you to let you know that your Social Security number has been used for some kind of fraudulent activities in the south border of Texas.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "182",
+   "text": "We would like to inform you that this order has been placed from your account.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "183",
+   "text": "Please be aware that your electric service will be disconnected within the next 30 minutes due to non-payment.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "184",
+   "text": "Thank you for choosing PSE&G New Jersey.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "185",
+   "text": "In order to avail the discount, kindly call us back at 888-604-0734 from 8am to 5pm Pacific Standard Time.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "186",
+   "text": "Dear customer, this is a disconnection notice from your electric company.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "187",
+   "text": "Power and Light, you have an automatic interruption of service in the next 30 to 45 minutes due to request a discontinue of the service or delinquent account status.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "188",
+   "text": "Press one and you will be connected to the concerned department.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "189",
+   "text": "In order to connect federal agents, press 1 and you will be connected to the concerned department.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "190",
+   "text": "of fraudulent activities in the south border of Texas, so please in order go ahead get more information.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "191",
+   "text": "Well, I don't see that iPhone in my Amazon orders.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "192",
+   "text": "Dear customer, thank you for your purchase from Amazon Shopping.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "193",
+   "text": "We've been trying to reach you as your eligibility for rate reduction is about to expire.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "194",
+   "text": "This is a payment confirmation call for your order ID, AMC 284U49, for a refurbishment book Pro 12, worth $497, for which your card, attached with your Amazon account, has been charged.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "195",
+   "text": "Sir, I need your opinion, sir, because the money is going to your account.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "196",
+   "text": "Our department is to inform you that there is a legal enforcement action filed on your social security number for fraudulent activities.",
+   "label": 1,
+   "status": "both_1"
+  },
+  {
+   "id": "197",
+   "text": "Press 1 to speak with a live operator and get the confirmation code.",
+   "label": 0,
+   "status": "disagree"
+  },
+  {
+   "id": "198",
+   "text": "If you haven't missed payment on the bill for the last three months, get a 25% discount.",
+   "label": 0,
+   "status": "both_0"
+  },
+  {
+   "id": "199",
+   "text": "with Wells Fargo is on hold due to suspicious activities.",
+   "label": 1,
+   "status": "disagree"
+  },
+  {
+   "id": "200",
+   "text": "Well, DirecTV is offering 50% discount to all of its existing customers.",
+   "label": 0,
+   "status": "both_0"
+  }
+ ]
+}

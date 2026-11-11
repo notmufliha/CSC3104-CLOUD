@@ -26,11 +26,18 @@ import com.example.scamdetect.data.ReportRequest
 import com.example.scamdetect.data.ScriptLine
 import com.example.scamdetect.data.ScriptRepository
 import com.example.scamdetect.data.UtteranceRequest
+import com.example.scamdetect.data.UtteranceResponse
+import com.example.scamdetect.data.VerifyRequest
 import com.example.scamdetect.logic.Dashboard
 import com.example.scamdetect.logic.FinalReview
+import com.example.scamdetect.logic.ImplicitLabels
 import com.example.scamdetect.logic.Mask
+import com.example.scamdetect.logic.PrivacyLevel
 import com.example.scamdetect.logic.Risk
 import com.example.scamdetect.logic.Summary
+import com.example.scamdetect.ondevice.MobileBert
+import com.example.scamdetect.ondevice.OnDeviceCall
+import com.example.scamdetect.ondevice.OnDeviceScorer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -47,6 +54,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
 import javax.net.ssl.SSLHandshakeException
@@ -63,6 +73,8 @@ data class ChatLine(
     val flags: List<String> = emptyList(),
     val pending: Boolean = false,
     val failed: Boolean = false,
+    /** G.3 Hybrid: set when this line's masked window was sent to the cloud ("checked with cloud"). */
+    val cloudNote: String? = null,
 )
 
 enum class Phase { IDLE, RINGING, IN_CALL, ENDED }
@@ -80,6 +92,8 @@ data class CallUiState(
     val reviewing: Boolean = false,
     /** Workstream B.5: the end-of-call answer, once it arrived (or UNAVAILABLE). */
     val finalReview: FinalReview? = null,
+    /** Workstream G: the privacy level this call runs at, fixed when it is answered (in-call badge, dashboard). */
+    val privacyLevel: PrivacyLevel = PrivacyLevel.DEFAULT,
 ) {
     /** The live level: the in-call bar. */
     val level get() = Risk.level(verdict, gatewayError)
@@ -109,6 +123,38 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { callHistory.migrateLegacy() }   // the old SharedPreferences History, once
     }
 
+    /** G: Settings' privacy level. A change applies from the next call. */
+    private val _privacyLevel = MutableStateFlow(prefs.privacyLevel)
+    val privacyLevel: StateFlow<PrivacyLevel> = _privacyLevel.asStateFlow()
+
+    /** G.13: "Help improve detection" on the dashboard, and how many labels the phone holds. */
+    private val _helpImprove = MutableStateFlow(prefs.helpImproveDetection)
+    val helpImprove: StateFlow<Boolean> = _helpImprove.asStateFlow()
+    val labelCount: StateFlow<Int> =
+        callHistory.labelCount.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    init {
+        if (prefs.privacyLevel.scoresOnPhone) preloadModels()
+    }
+
+    /** G.4: "MobileBERT installed (version)" or why not, for the Settings screen and the benchmark. */
+    private val _mobileBert = MutableStateFlow("Checking MobileBERT…")
+    val mobileBertStatus: StateFlow<String> = _mobileBert.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _mobileBert.value = when (val s = MobileBert.get(getApplication())) {
+                is MobileBert.Status.Installed -> "MobileBERT installed (${s.model.config.version}): second opinion on this phone"
+                is MobileBert.Status.NotInstalled -> s.reason + ": level 3 uses the small models only"
+            }
+        }
+    }
+
+    /** G.2: load the on-device models in the background, so the first call doesn't wait for them. */
+    private fun preloadModels() {
+        viewModelScope.launch { runCatching { OnDeviceScorer.get(getApplication()) } }
+    }
+
     private val _gatewayUrl = MutableStateFlow(prefs.gatewayUrl)
     val gatewayUrl: StateFlow<String> = _gatewayUrl.asStateFlow()
 
@@ -124,6 +170,8 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     /** B.7: this call's chart points (one per answered caller line) and when it started. Main thread only. */
     private val points = mutableListOf<ScorePoint>()
     private var callStartedAt = 0L
+    /** G.12: when the red alert first showed in this call (ms), null if it hasn't. Main thread only. */
+    private var alertAt: Long? = null
 
     private var lastRandom: String? = null
 
@@ -159,7 +207,8 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         val s = _state.value
         if (s.phase == Phase.IN_CALL) {
             playJob?.cancel()
-            GatewayClientOrNull()?.let { api -> sendEnd(api, callId, "user_discarded", s) }
+            // G: at levels 2 and 3 the server keeps no memory of the call, so there is nothing to clear and nothing is sent
+            if (s.privacyLevel.cloudCall) GatewayClientOrNull()?.let { api -> sendEnd(api, callId, "user_discarded", s) }
         }
         reset()
     }
@@ -178,8 +227,14 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         callId = UUID.randomUUID().toString()
         lastOutcomeSeq = 0L
         points.clear()
+        alertAt = null
         callStartedAt = System.currentTimeMillis()
-        _state.update { it.copy(phase = Phase.IN_CALL) }
+        val level = prefs.privacyLevel
+        _state.update { it.copy(phase = Phase.IN_CALL, privacyLevel = level) }
+        if (level.scoresOnPhone) {
+            playOnDevice(script, level)
+            return
+        }
 
         val api: GatewayApi? = try {
             GatewayClient.get(prefs.gatewayUrl)
@@ -207,6 +262,86 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * G.2 / G.3, privacy levels 2 and 3: the same playback, but every caller line is scored on the phone
+     * (OnDeviceCall). Level 3 makes no request at all. Level 2 (Hybrid) asks the cloud's BERT only at unsure moments
+     * or on the spot check, with the caller's last 5 lines masked, and keeps its own answer if the cloud is slow or
+     * down. Answers go through applyAnswer, like the gateway's, so the screen behaves the same. Lines are handled one
+     * at a time, in order (the rules need that), without holding up the script. English only; other lines show
+     * "could not check".
+     */
+    private fun playOnDevice(script: CallScript, level: PrivacyLevel) {
+        val id = callId
+        val hybrid = level == PrivacyLevel.HYBRID
+        val api = if (hybrid) GatewayClientOrNull() else null       // level 3: never even built
+        playJob = viewModelScope.launch {
+            val loading = async { runCatching { OnDeviceCall(OnDeviceScorer.get(getApplication())) }.getOrNull() }
+            // G.4: level 3's second opinion, only if a MobileBERT model is bundled
+            val mobileBert = if (hybrid) null else (MobileBert.get(getApplication()) as? MobileBert.Status.Installed)?.model
+            val inOrder = Mutex()
+            val jobs = mutableListOf<Job>()
+            script.lines.forEachIndexed { i, line ->
+                delay(line.delayMs ?: DEFAULT_DELAY_MS)
+                val seq = (i + 1).toLong()
+                val text = line.text.orEmpty()
+                _state.update { it.copy(lines = it.lines + ChatLine(seq, line.isCaller, text, pending = line.isCaller)) }
+                if (!line.isCaller) return@forEachIndexed
+                jobs += launch {
+                    inOrder.withLock {
+                        val local = loading.await()
+                        when {
+                            local == null -> markError(seq, "On-device models could not be loaded")
+                            !OnDeviceCall.isEnglish(script.lang, text) -> markError(seq, "On-device checks are English only")
+                            hybrid -> {
+                                val a = withContext(Dispatchers.Default) {
+                                    local.answerHybrid(id, seq, text) { lines -> verifyInCloud(api, lines) }
+                                }
+                                applyAnswer(seq, a.response)
+                                a.second?.let { c -> markCloud(seq, if (c.bertScore != null) CLOUD_CHECKED else CLOUD_UNAVAILABLE) }
+                            }
+                            mobileBert != null -> {
+                                // G.4: same rule as Hybrid, but MobileBERT reads the lines on the phone (not masked:
+                                // they never leave it)
+                                val a = withContext(Dispatchers.Default) {
+                                    local.answerWithSecondOpinion(id, seq, text, { it }) { lines -> runCatching { mobileBert.score(lines) }.getOrNull() }
+                                }
+                                applyAnswer(seq, a.response)
+                                a.second?.let { c -> markCloud(seq, if (c.bertScore != null) MOBILEBERT_CHECKED else MOBILEBERT_FAILED) }
+                            }
+                            else -> applyAnswer(seq, withContext(Dispatchers.Default) { local.answer(id, seq, text) })
+                        }
+                    }
+                }
+            }
+            withTimeoutOrNull(5_000) { jobs.joinAll() }  // let the last answers arrive
+            jobs.forEach { it.cancel() }
+            delay(1_500)                                  // a moment to read the final state
+            endCall(ENDED_SCRIPT)
+        }
+    }
+
+    /**
+     * G.3: POST /v1/verify with the masked lines; BERT's score, or null if the cloud didn't answer within 1.5 s
+     * (or isn't reachable / set up), in which case the phone keeps its own answer.
+     */
+    private suspend fun verifyInCloud(api: GatewayApi?, maskedLines: List<String>): Float? {
+        if (api == null || maskedLines.isEmpty()) return null
+        return withTimeoutOrNull(OnDeviceCall.VERIFY_TIMEOUT_MS) {
+            try {
+                val resp = api.verify(VerifyRequest(maskedLines))
+                if (resp.isSuccessful) resp.body()?.score?.takeIf { it in 0f..1f } else null
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+
+    /** G.3: the small "checked with cloud" note under a bubble. */
+    private fun markCloud(seq: Long, note: String) =
+        _state.update { st -> st.copy(lines = st.lines.map { if (it.seq == seq) it.copy(cloudNote = note) else it }) }
+
     /** User pressed the red button (or "Hang up now" on the red alert). */
     fun hangUp() {
         playJob?.cancel()                                 // also cancels lines still waiting for an answer
@@ -232,14 +367,33 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         val pts = points.toList()
         val startedAt = callStartedAt
         val endedAt = System.currentTimeMillis()
-        val api = GatewayClientOrNull()
+        val onPhone = !s.privacyLevel.cloudCall
+        // G: levels 2 and 3 send no end message (it would carry every caller line, unmasked)
+        val api = if (onPhone) null else GatewayClientOrNull()
         val answer = api?.let { sendEnd(it, id, endedBy, s) }
+        val firstAlert = alertAt
         viewModelScope.launch {
             val resp = answer?.let { withTimeoutOrNull(FINAL_REVIEW_WAIT_MS) { it.await() } }
-            val review = resp?.let { FinalReview.from(it) } ?: FinalReview.UNAVAILABLE
+            val review = resp?.let { FinalReview.from(it) } ?: if (onPhone) FinalReview.ON_DEVICE else FinalReview.UNAVAILABLE
             if (callId == id) _state.update { it.copy(reviewing = false, finalReview = review) }
             saveHistory(id, s.copy(reviewing = false, finalReview = review), pts, startedAt, endedAt)
+            // G.12: hung up soon after the red alert, or a very sure end-of-call review
+            recordLabels(id, s, ImplicitLabels.atEnd(endedBy == ENDED_HUNG_UP, firstAlert, endedAt, review))
         }
+    }
+
+    /** G.12: "This was fine" tapped on the summary of a call that ended with a warning -> a false-alarm label. */
+    fun thisWasFine() {
+        val s = _state.value
+        val label = ImplicitLabels.thisWasFine(s.summaryLevel) ?: return
+        val id = callId
+        viewModelScope.launch { recordLabels(id, s, listOf(label)) }
+    }
+
+    /** G.12: labels go only to the phone's database, like the history row (never for pasted text). */
+    private suspend fun recordLabels(id: String, s: CallUiState, labels: List<ImplicitLabels.Label>) {
+        if (s.script?.kind == "pasted") return
+        callHistory.recordLabels(id, labels, s.lines.filter { it.isCaller }.map { it.seq to it.text })
     }
 
     /** Sends the end message on endScope (survives the screen); the answer is null if it failed. */
@@ -292,6 +446,7 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
                 signalsFired = Risk.SIGNALS.filter { it in fired },
                 review = s.finalReview?.reviewType ?: "unavailable",
                 riskiestSentence = sentence,
+                privacyLevel = s.privacyLevel.id,
             ),
             pts,
         )
@@ -336,6 +491,14 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
             markError(seq, "Empty answer from server")
             return
         }
+        applyAnswer(seq, body)
+    }
+
+    /**
+     * One caller line's answer -> bubble flags, chart point, bar, red alert. Used for the gateway's answer (cloud)
+     * and for the phone's own (on-device), so both drive the screen the same way.
+     */
+    private fun applyAnswer(seq: Long, body: UtteranceResponse) {
         if (body.ignored == true) {
             // B.6: the call had already ended on the server. No change: just stop the bubble's "checking…".
             _state.update { st -> st.copy(lines = st.lines.map { if (it.seq == seq) it.copy(pending = false) else it }) }
@@ -375,6 +538,7 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         // 4.5: first time the call turns SCAM -> vibrate once + red pop-up. scamAlert is never cleared during a
         // call and this block has no suspension point, so two answers cannot both get here.
         if (_state.value.verdict == "SCAM" && !_state.value.scamAlert) {
+            alertAt = System.currentTimeMillis()          // G.12: for "hung up within 10 s of a red alert"
             _state.update { it.copy(scamAlert = true) }
             vibrateOnce()
         }
@@ -409,6 +573,7 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     /** Sends the report after the user agreed. kind = "scam" or "fine". Returns a short message for the screen. */
     suspend fun sendReport(kind: String): String {
         val s = _state.value
+        if (!s.privacyLevel.cloudCall) return NOTHING_SHARED
         val lines = reportPreview()
         if (lines.isEmpty()) return "Nothing to report: the caller said nothing."
         val text = lines.joinToString(" ") { it.text }
@@ -470,7 +635,7 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** B.7 "Delete my history": every saved call, its chart points and any saved sentence. */
+    /** B.7 "Delete my history": every saved call, its chart points and any saved sentence; G.12's labels too. */
     fun deleteHistory() {
         viewModelScope.launch { callHistory.deleteAll() }
     }
@@ -482,6 +647,21 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         if (!on) viewModelScope.launch { callHistory.forgetSentences() }
     }
 
+    /** G: Settings' privacy level. Levels that aren't built yet are refused (AppPrefs reads them back as Cloud). */
+    fun setPrivacyLevel(level: PrivacyLevel) {
+        if (!level.available) return
+        prefs.privacyLevel = level
+        _privacyLevel.value = prefs.privacyLevel
+        if (level.scoresOnPhone) preloadModels()
+    }
+
+    /** G.13 "Help improve detection". Turning it off deletes the sentences already stored with labels. */
+    fun setHelpImprove(on: Boolean) {
+        prefs.helpImproveDetection = on
+        _helpImprove.value = on
+        if (!on) viewModelScope.launch { callHistory.forgetLabelSentences() }
+    }
+
     companion object {
         private const val DEFAULT_DELAY_MS = 1_500L
         /** B.5: how long the summary waits for the end-of-call answer before using the live verdict. */
@@ -489,6 +669,14 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         private const val ENDED_SCRIPT = "script_finished"
         private const val ENDED_HUNG_UP = "user_hung_up"
         const val NOT_CHECKED = "NOT CHECKED"
+        /** G: what the summary says instead of sharing a report at levels 2 and 3. */
+        const val NOTHING_SHARED = "Privacy mode: calls aren't shared from this phone. Your answer is kept here only."
+        /** G.3: notes under a Hybrid caller line whose last 5 lines were sent (masked) to the cloud. */
+        const val CLOUD_CHECKED = "checked with cloud"
+        const val CLOUD_UNAVAILABLE = "cloud check unavailable, checked on this phone"
+        /** G.4: the same note for level 3's MobileBERT second opinion. */
+        const val MOBILEBERT_CHECKED = "checked with MobileBERT on this phone"
+        const val MOBILEBERT_FAILED = "MobileBERT failed, small models only"
         private val KNOWN_VERDICTS = setOf("SAFE", "UNSURE", "SCAM")
         private val WARNING_VERDICTS = setOf("SCAM", "UNSURE")
     }

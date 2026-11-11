@@ -2,6 +2,7 @@ package com.example.scamdetect.data
 
 import android.content.Context
 import androidx.core.content.edit
+import com.example.scamdetect.logic.PrivacyLevel
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
@@ -19,6 +20,16 @@ class AppPrefs(context: Context) {
     var saveRiskiestSentence: Boolean
         get() = sp.getBoolean(KEY_SAVE_SENTENCE, false)
         set(value) = sp.edit { putBoolean(KEY_SAVE_SENTENCE, value) }
+
+    /** Workstream G: where calls are scored. Cloud unless the user picked an available level. */
+    var privacyLevel: PrivacyLevel
+        get() = PrivacyLevel.fromId(sp.getString(KEY_PRIVACY_LEVEL, null))
+        set(value) = sp.edit { putString(KEY_PRIVACY_LEVEL, value.id) }
+
+    /** Workstream G.13: "Help improve detection (federated learning)". Off by default: labels only, no sentences. */
+    var helpImproveDetection: Boolean
+        get() = sp.getBoolean(KEY_HELP_IMPROVE, false)
+        set(value) = sp.edit { putBoolean(KEY_HELP_IMPROVE, value) }
 
     /**
      * The old History (before the Room dashboard), or null if there is none (never had one, or already moved).
@@ -40,5 +51,7 @@ class AppPrefs(context: Context) {
         private const val KEY_URL = "gateway_url"
         private const val KEY_HISTORY = "history"
         private const val KEY_SAVE_SENTENCE = "save_riskiest_sentence"
+        private const val KEY_PRIVACY_LEVEL = "privacy_level"
+        private const val KEY_HELP_IMPROVE = "help_improve_detection"
     }
 }
