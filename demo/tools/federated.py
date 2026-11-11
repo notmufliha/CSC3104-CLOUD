@@ -8,6 +8,8 @@ Needs the main demo running (demo/up.ps1 or up.sh): the registry lives in the re
   python demo/tools/federated.py run [options]    one federated run: fl-server Job + 10 fl-phones pods
         --rounds 10 --phones 10 --noise 0 --clip 10 --init zeros|current --publish --name NAME
         --real-phones   also bring in the model changes real phones uploaded to the inbox (fl-bridge Job)
+        --make-room     pause what a federated run doesn't need (BERT, the 3 Chinese workers, Prometheus, Grafana)
+                        for the run, then put them back: on the 8 GB laptop the 11 extra pods don't fit otherwise
   python demo/tools/federated.py inbox            uploads waiting for the next round, and those already used
   python demo/tools/federated.py chart            all runs saved so far -> backend/federated/results/rounds.png
   python demo/tools/federated.py status           pods, registry versions, the manifest phones see
@@ -28,6 +30,9 @@ sys.path.insert(0, str(REPO / "demo"))
 import make_federated as M  # noqa: E402
 
 RESULTS = REPO / "backend" / "federated" / "results"
+# Not used by a federated run or by phones downloading models: the phone models, the registry (review), the
+# download service and the inbox all stay up. Cloud calls (level 1) still work, without BERT's second opinion.
+ROOM = ["bert", "urgency-zh", "money-zh", "impersonation-zh", "prometheus", "grafana"]
 
 
 def sh(*cmd, check=True, capture=False, input_text=None):
@@ -64,7 +69,41 @@ def cmd_up(_):
           "upload their training to https://<address>/fl/updates.")
 
 
+def make_room() -> dict:
+    """Scale ROOM to 0 and return each one's replica count, to put back afterwards. HPAs leave a Deployment at 0
+    alone, so they don't fight this."""
+    saved = {}
+    for d in ROOM:
+        n = kubectl("get", "deploy", d, "-n", M.NS, "-o", "jsonpath={.spec.replicas}", capture=True, check=False).strip()
+        if n.isdigit() and int(n) > 0:
+            saved[d] = int(n)
+    if saved:
+        kubectl("scale", "deploy", *saved, "-n", M.NS, "--replicas=0")
+        print(f"made room: paused {', '.join(saved)} for this run", flush=True)
+        for _ in range(60):   # wait until their pods are gone (memory is only free then)
+            left = kubectl("get", "pods", "-n", M.NS, "-o", "name", capture=True, check=False)
+            if not any(f"pod/{d}-" in left for d in saved):
+                break
+            time.sleep(3)
+    return saved
+
+
+def give_back(saved: dict) -> None:
+    for d, n in saved.items():
+        kubectl("scale", "deploy", d, "-n", M.NS, f"--replicas={n}", check=False)
+    if saved:
+        print(f"put back: {', '.join(f'{d} x{n}' for d, n in saved.items())}", flush=True)
+
+
 def cmd_run(a):
+    saved = make_room() if a.make_room else {}
+    try:
+        run(a)
+    finally:
+        give_back(saved)
+
+
+def run(a):
     M.write()
     kubectl("apply", "-f", "demo/k8s/federated/10-namespace.yaml")
     kubectl("delete", "job", "fl-server", "fl-phones", "-n", M.FL_NS, "--ignore-not-found", "--wait=true")
@@ -75,8 +114,9 @@ def cmd_run(a):
           f"publish {a.publish}. Watch: kubectl get pods -n {M.FL_NS} -w", flush=True)
     deadline = time.time() + a.timeout
     while time.time() < deadline:
+        # check=False: a busy API server can time out for a moment; just ask again
         state = kubectl("get", "job", "fl-server", "-n", M.FL_NS, "-o",
-                        "jsonpath={.status.succeeded}/{.status.failed}", capture=True)
+                        "jsonpath={.status.succeeded}/{.status.failed}", capture=True, check=False) or ""
         if state.startswith("1/"):
             break
         if state.endswith("/1"):
@@ -140,6 +180,7 @@ def main():
     p.add_argument("--publish", action="store_true", help="publish to the registry if the release check passes")
     p.add_argument("--name", default="")
     p.add_argument("--real-phones", action="store_true", help="include real phones' uploads (fl-bridge)")
+    p.add_argument("--make-room", action="store_true", help="pause BERT, ZH workers and monitoring during the run")
     p.add_argument("--timeout", type=int, default=900)
     p.set_defaults(fn=cmd_run)
     sub.add_parser("chart").set_defaults(fn=cmd_chart)

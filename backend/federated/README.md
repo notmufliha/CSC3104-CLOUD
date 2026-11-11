@@ -190,7 +190,8 @@ Continue from section 2 (local_stack.py running, phone on its address, models do
 demo/up.ps1 ; demo/expose.ps1                  # main demo + the phone's HTTPS address (Workstream E)
 python demo/tools/federated.py build           # scam/federated, scam/model-download, scam/review images
 python demo/tools/federated.py up              # model-download (2 pods) + Ingress /models
-python demo/tools/federated.py run --init current --publish --rounds 3   # 1 server + 10 phone pods
+python demo/tools/federated.py run --init current --publish --rounds 3 --make-room   # 1 server + 10 phone pods
+                                              # --make-room: pauses BERT, ZH workers, monitoring for the run (8 GB laptop)
 python demo/tools/federated.py inbox           # real-phone uploads waiting / used
 python demo/tools/federated.py run --init current --publish --rounds 3 --real-phones   # + fl-bridge Job
 python demo/tools/federated.py status          # registry versions + the manifest phones see
@@ -198,4 +199,4 @@ python demo/tools/federated.py status          # registry versions + the manifes
 Phone: keep the saved address `https://<laptop IP>:8443/api/` (the app derives `/models/` from it), tap **Check
 for model updates**, then do steps 5-6 above. Delete a phone pod mid-run
 (`kubectl delete pod -n scamguard-fl <fl-phones-3-...>`): the Indexed Job restarts it with the same data slice
-and the round continues. A run uses about 2 GB; use the lite demo on the 8 GiB Docker setup.
+and the round continues. A run uses about 2 GB: on the 8 GiB Docker setup (4.9 GB minikube node) always add `--make-room`, or the node runs out of memory and the API server stops answering. Checked 2026-11-12: `results/k8s_weekly.json`, `results/k8s_with_real_phone.json` (1 real-phone upload through the HTTPS Ingress, published money/impersonation v3, urgency blocked; a phone pod deleted mid-round was replaced and the run finished).
