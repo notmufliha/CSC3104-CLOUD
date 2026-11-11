@@ -3,118 +3,211 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ScamGuard labelling</title>
+<title>ScamGuard review</title>
 <style>
-  :root { --bg:#f7f7f5; --card:#fff; --ink:#1d1d1b; --muted:#6b6b66; --line:#deded9; --yes:#b42318; --no:#1f7a3f; --accent:#2f5bb7; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#161615; --card:#21211f; --ink:#ececea; --muted:#a3a39d; --line:#3a3a37; --yes:#f97066; --no:#4ade80; --accent:#7aa2f7; } }
+  :root { --bg:#f6f6f3; --card:#fff; --ink:#1d1d1b; --muted:#66665f; --line:#deded8; --soft:#f0f0ec;
+          --yes:#b42318; --no:#1f7a3f; --accent:#2f5bb7; --warn:#9a5b00; --warn-bg:#fff5e0; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#161615; --card:#21211f; --ink:#ececea; --muted:#a3a39d; --line:#3a3a37;
+          --soft:#2a2a27; --yes:#f97066; --no:#4ade80; --accent:#7aa2f7; --warn:#f5b54a; --warn-bg:#2d2414; } }
   * { box-sizing: border-box; }
-  body { margin:0; font:15px/1.45 system-ui, sans-serif; background:var(--bg); color:var(--ink); }
-  main { max-width: 860px; margin: 0 auto; padding: 16px; }
-  h1 { font-size: 20px; margin: 4px 0 2px; }
+  body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width: 900px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 21px; margin: 4px 0 2px; }
+  h2 { font-size: 16px; margin: 0; }
   .muted { color: var(--muted); font-size: 13px; }
+  .steps { margin: 10px 0; padding-left: 20px; }
+  .steps li { margin: 2px 0; }
   .bar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:12px 0; }
-  input, button { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+  input, button { font: inherit; padding: 6px 11px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
   button { cursor: pointer; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.danger { color: var(--yes); border-color: var(--yes); }
   .tabs button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin: 10px 0; }
-  .text { font-size: 16px; margin: 4px 0 10px; }
+  .report { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin: 14px 0; }
+  .rhead { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:flex-start; }
+  .pill { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; background:var(--soft); margin-right:6px; }
+  .pill.scam { color: var(--yes); } .pill.fine { color: var(--no); }
+  .convo { background: var(--soft); border-radius: 8px; padding: 8px 12px; margin: 10px 0; font-size: 14px; }
+  .convo ol { margin: 0; padding-left: 22px; }
+  .line { border-top: 1px solid var(--line); padding: 10px 0 4px; }
+  .text { font-size: 16px; margin: 0 0 8px; }
   .row { display:flex; gap:8px; align-items:center; margin: 4px 0; flex-wrap: wrap; }
-  .row .sig { width: 120px; font-weight: 600; }
+  .sig { width: 250px; }
+  .sig b { display:block; }
+  .sig span { font-size: 12px; color: var(--muted); }
   .row button[aria-pressed="true"].y { background: var(--yes); color:#fff; border-color: var(--yes); }
   .row button[aria-pressed="true"].n { background: var(--no); color:#fff; border-color: var(--no); }
+  .msg { font-size: 13px; margin-left: 4px; }
+  .msg.err { color: var(--yes); } .msg.ok { color: var(--no); }
+  .banner { background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 8px 12px; font-size: 14px; }
   details { margin: 8px 0; }
-  .stats span { margin-right: 12px; }
+  .stats span { margin-right: 14px; }
+  @media (max-width: 560px) { .sig { width: 100%; } }
 </style>
 </head>
 <body>
 <main>
-  <h1>ScamGuard labelling</h1>
-  <div class="muted">Caller lines from calls users chose to report. Masking misses some details, so read each line. Unlabelled lines are deleted 30 days after the report; lines you label may be kept for training. Internal only.</div>
+  <h1>ScamGuard review</h1>
+  <div class="muted">Calls that app users chose to report, with numbers and names already masked. Internal only.
+    Lines you label can be kept to retrain the models; lines you skip or reject are deleted.
+    Anything not reviewed is deleted 30 days after the report.</div>
+  <ol class="steps">
+    <li>Type your name (so a teammate can spot-check your labels).</li>
+    <li>Read the whole call at the top of a report, then decide each line on its own: for each check, <b>Yes</b> if the line does it, <b>No</b> if not. <b>Nothing suspicious</b> = No for all three.</li>
+    <li>Press <b>Save</b> per line. <b>Skip</b> a line you can't judge. <b>Reject whole report</b> if it's junk or still contains personal details.</li>
+  </ol>
   <details>
-    <summary>Labelling rules (same as each worker's LABELING.md)</summary>
+    <summary>Full labelling rules (same as each worker's LABELING.md)</summary>
     <ul>
-      <li><b>Urgency = 1</b> only when the caller pushes the listener to act <i>now</i> (deadline, threat, "don't hang up"). Ordinary time talk ("I'll call back tomorrow") is 0.</li>
-      <li><b>Money = 1</b> only when the caller <i>asks for</i> money, card details or a code. "Never share your OTP" is 0.</li>
-      <li><b>Impersonation = 1</b> only when the caller <i>claims to be from</i> an organisation (police, bank, government). Mentioning one is 0.</li>
+      <li><b>Urgency = Yes</b> only when the caller pushes the listener to act <i>now</i> (deadline, threat, "don't hang up"). Ordinary time talk ("I'll call back tomorrow") is No.</li>
+      <li><b>Money = Yes</b> only when the caller <i>asks for</i> money, card details or a code. "Never share your OTP" is No.</li>
+      <li><b>Impersonation = Yes</b> only when the caller <i>claims to be from</i> an organisation (police, bank, government). Just mentioning one is No.</li>
       <li>Judge the line on its own. If you can't tell, press <b>Skip</b>.</li>
-      <li><b>Privacy check:</b> always press <b>Skip</b> if anything personal is left: a person's name, an address, or an account number, code or phone number read out as words. Labelled lines can be kept long term; skipped ones are deleted.</li>
+      <li><b>Privacy check:</b> always Skip (or Reject the report) if anything personal is left: a person's name, an address, or an account number, code or phone number read out as words.</li>
     </ul>
   </details>
   <div class="bar">
-    <label>Your name <input id="who" size="12" placeholder="e.g. Maryam"></label>
-    <span class="tabs"><button id="t-queue" aria-pressed="true">Label</button> <button id="t-check" aria-pressed="false">Spot check</button></span>
+    <label>Your name <input id="who" size="14" placeholder="e.g. Maryam"></label>
+    <span class="tabs"><button id="t-queue" aria-pressed="true">Review reports</button> <button id="t-check" aria-pressed="false">Spot-check others</button></span>
     <button id="reload">Reload</button>
+    <span id="topmsg" class="msg"></span>
   </div>
   <div class="stats muted" id="stats"></div>
   <div id="list"></div>
 </main>
 <script>
-const SIGNALS = ["urgency", "money", "impersonation"];
+const SIGNALS = [
+  ["urgency", "Urgency", "pushes the listener to act now"],
+  ["money", "Money", "asks for money, card details or a code"],
+  ["impersonation", "Impersonation", "claims to be from an organisation"],
+];
 const who = document.getElementById("who");
 try { who.value = localStorage.getItem("labeller") || ""; } catch (e) {}
-who.addEventListener("change", () => { try { localStorage.setItem("labeller", who.value.trim()); } catch (e) {} });
+who.addEventListener("input", () => { try { localStorage.setItem("labeller", who.value.trim()); } catch (e) {} });
 let mode = "queue";
 const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); Object.assign(e, attrs); e.append(...kids); return e; };
+const topmsg = document.getElementById("topmsg");
+function say(target, text, ok) { target.textContent = text; target.className = "msg " + (ok ? "ok" : "err"); }
+
 async function api(path, body) {
   const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
-  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.status);
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || ("HTTP " + r.status));
   return r.json();
 }
 async function stats() {
   const s = await api("/api/stats");
   document.getElementById("stats").replaceChildren(
-    el("span", { textContent: `Reports: ${s.reports.scam} scam, ${s.reports.fine} fine` }),
-    el("span", { textContent: `Waiting: ${s.unlabelled}` }),
-    el("span", { textContent: `Not yet trained on: ${s.new_lines.en} English, ${s.new_lines.zh} Chinese` }),
-    el("span", { textContent: `Kept: ${s.kept_lines}` }),
-    el("span", { textContent: `Disputed: ${s.disputed.urgency + s.disputed.money + s.disputed.impersonation}` }));
+    el("span", { textContent: `Reports received: ${s.reports.scam} "scam", ${s.reports.fine} "fine"` }),
+    el("span", { textContent: `Lines waiting: ${s.unlabelled}` }),
+    el("span", { textContent: `Labelled, not yet trained on: ${s.new_lines.en} English, ${s.new_lines.zh} Chinese` }),
+    el("span", { textContent: `Disputed in spot checks: ${s.disputed.urgency + s.disputed.money + s.disputed.impersonation}` }));
 }
-function needName() { if (!who.value.trim()) { who.focus(); alert("Type your name first, so labels can be spot-checked by someone else."); return true; } return false; }
-async function loadQueue() {
-  const items = await api("/api/queue?limit=30");
-  const list = document.getElementById("list");
-  if (!items.length) { list.replaceChildren(el("p", { className: "muted", textContent: "Nothing waiting. Report a call from the app to add some." })); return; }
-  list.replaceChildren(...items.map(it => {
-    const chosen = {};
-    const rows = SIGNALS.map(s => {
-      const y = el("button", { className: "y", textContent: "Yes" }), n = el("button", { className: "n", textContent: "No" });
-      for (const [b, v] of [[y, 1], [n, 0]]) { b.setAttribute("aria-pressed", "false"); b.onclick = () => { chosen[s] = v; y.setAttribute("aria-pressed", v === 1); n.setAttribute("aria-pressed", v === 0); }; }
-      return el("div", { className: "row" }, el("span", { className: "sig", textContent: s }), y, n);
-    });
-    const save = el("button", { className: "primary", textContent: "Save" });
-    const skip = el("button", { textContent: "Skip" });
-    const card = el("div", { className: "card" },
-      el("div", { className: "muted", textContent: `Report ${it.report_id} · user said: ${it.kind === "scam" ? "this was a scam" : "this was fine"} · app showed ${it.app_verdict || "?"} · line ${it.seq} · ${it.language}` }),
-      el("div", { className: "text", textContent: it.text }), ...rows, el("div", { className: "row" }, save, skip));
-    save.onclick = async () => {
-      if (needName()) return;
-      if (Object.keys(chosen).length !== 3) { alert("Choose Yes or No for all three signals."); return; }
+function needName(msgEl) {
+  if (who.value.trim()) return false;
+  who.focus(); say(msgEl, "Type your name at the top first.", false); return true;
+}
+
+function lineCard(it, onDone) {
+  const chosen = {};
+  const msg = el("span", { className: "msg" });
+  const rows = SIGNALS.map(([key, label, hint]) => {
+    const y = el("button", { className: "y", textContent: "Yes" }), n = el("button", { className: "n", textContent: "No" });
+    y.setAttribute("aria-label", `${label}: yes`); n.setAttribute("aria-label", `${label}: no`);
+    const set = v => { chosen[key] = v; y.setAttribute("aria-pressed", v === 1); n.setAttribute("aria-pressed", v === 0); };
+    y.setAttribute("aria-pressed", "false"); n.setAttribute("aria-pressed", "false");
+    y.onclick = () => set(1); n.onclick = () => set(0);
+    return { key, set, node: el("div", { className: "row" }, el("div", { className: "sig" }, el("b", { textContent: label }), el("span", { textContent: hint })), y, n) };
+  });
+  const save = el("button", { className: "primary", textContent: "Save" });
+  const none = el("button", { textContent: "Nothing suspicious" });
+  const skip = el("button", { textContent: "Skip" });
+  const card = el("div", { className: "line" },
+    el("div", { className: "muted", textContent: `Line ${it.seq}` }),
+    el("p", { className: "text", textContent: it.text }), ...rows.map(r => r.node),
+    el("div", { className: "row" }, save, none, skip, msg));
+  async function send() {
+    if (needName(msg)) return;
+    if (Object.keys(chosen).length !== 3) { say(msg, "Choose Yes or No for all three checks (or press Nothing suspicious).", false); return; }
+    try {
       await api("/api/labels", { line_id: it.line_id, labels: chosen, labeller: who.value.trim() });
-      card.remove(); stats();
+      card.replaceChildren(el("p", { className: "muted", textContent: `Line ${it.seq} saved: ` +
+        SIGNALS.map(([k, l]) => `${l} ${chosen[k] ? "Yes" : "No"}`).join(", ") }));
+      onDone(); stats();
+    } catch (e) { say(msg, "Not saved: " + e.message, false); }
+  }
+  save.onclick = send;
+  none.onclick = () => { rows.forEach(r => r.set(0)); send(); };
+  skip.onclick = async () => {
+    try { await api("/api/skip", { line_id: it.line_id }); card.replaceChildren(el("p", { className: "muted", textContent: `Line ${it.seq} skipped (will be deleted).` })); onDone(); stats(); }
+    catch (e) { say(msg, "Not skipped: " + e.message, false); }
+  };
+  return card;
+}
+
+async function loadQueue() {
+  const items = await api("/api/queue?limit=60");
+  const list = document.getElementById("list");
+  if (!items.length) { list.replaceChildren(el("p", { className: "muted", textContent: "Nothing waiting. In the app, open a finished call's summary, tap \"This was a scam\" or \"This was fine\", and agree to share it." })); return; }
+  const reports = new Map();
+  for (const it of items) { if (!reports.has(it.report_id)) reports.set(it.report_id, []); reports.get(it.report_id).push(it); }
+  list.replaceChildren(...[...reports.values()].map(lines => {
+    lines.sort((a, b) => a.seq - b.seq);
+    const first = lines[0];
+    let left = lines.length;
+    const reject = el("button", { className: "danger", textContent: "Reject whole report" });
+    const rmsg = el("span", { className: "msg" });
+    const said = first.kind === "scam" ? "this was a scam" : "this was fine";
+    const card = el("section", { className: "report" },
+      el("div", { className: "rhead" },
+        el("div", {},
+          el("h2", { textContent: `Report ${first.report_id}` }),
+          el("div", {}, el("span", { className: "pill " + first.kind, textContent: `user said: ${said}` }),
+                        el("span", { className: "pill", textContent: `app showed: ${first.app_verdict || "?"}` }),
+                        el("span", { className: "pill", textContent: `${lines.length} caller line${lines.length > 1 ? "s" : ""} · ${first.language === "zh" ? "Chinese" : "English"}` }))),
+        el("div", {}, reject, rmsg)),
+      first.kind === "scam" && first.app_verdict === "SAFE" ? el("div", { className: "banner", textContent: "The app missed this one (showed SAFE but the user says scam): a likely new scam pattern. Label it carefully." }) : "",
+      el("div", { className: "convo" }, el("div", { className: "muted", textContent: "Whole call (caller lines)" }),
+        el("ol", {}, ...lines.map(l => el("li", { value: l.seq, textContent: l.text })))));
+    const done = () => { left -= 1; if (left === 0) card.replaceChildren(el("p", { className: "muted", textContent: `Report ${first.report_id}: all lines done. Thank you.` })); };
+    lines.forEach(l => card.append(lineCard(l, done)));
+    reject.onclick = async () => {
+      if (!reject.dataset.sure) { reject.dataset.sure = "1"; reject.textContent = "Click again to delete all its lines"; return; }
+      try {
+        for (const l of lines) await api("/api/skip", { line_id: l.line_id }).catch(() => {});
+        card.replaceChildren(el("p", { className: "muted", textContent: `Report ${first.report_id} rejected: its lines will be deleted.` })); stats();
+      } catch (e) { say(rmsg, e.message, false); }
     };
-    skip.onclick = async () => { await api("/api/skip", { line_id: it.line_id }); card.remove(); stats(); };
     return card;
   }));
 }
+
 async function loadCheck() {
-  if (needName()) return;
-  const items = await api("/api/spotcheck?limit=20&checker=" + encodeURIComponent(who.value.trim()));
   const list = document.getElementById("list");
+  if (needName(topmsg)) { list.replaceChildren(); return; }
+  const items = await api("/api/spotcheck?limit=20&checker=" + encodeURIComponent(who.value.trim()));
   if (!items.length) { list.replaceChildren(el("p", { className: "muted", textContent: "No one else's labels left to check." })); return; }
   list.replaceChildren(...items.map(it => {
     const agree = el("button", { textContent: "Agree" }), disagree = el("button", { textContent: "Disagree" });
-    const card = el("div", { className: "card" },
-      el("div", { className: "muted", textContent: `${it.labeller} said ${it.signal} = ${it.label ? "Yes" : "No"}` }),
-      el("div", { className: "text", textContent: it.text }), el("div", { className: "row" }, agree, disagree));
+    const msg = el("span", { className: "msg" });
+    const label = (SIGNALS.find(s => s[0] === it.signal) || [, it.signal])[1];
+    const card = el("section", { className: "report" },
+      el("div", { className: "muted", textContent: `${it.labeller} said ${label} = ${it.label ? "Yes" : "No"}. Do you agree?` }),
+      el("p", { className: "text", textContent: it.text }), el("div", { className: "row" }, agree, disagree, msg));
     for (const [b, v] of [[agree, true], [disagree, false]]) b.onclick = async () => {
-      await api("/api/spotcheck", { line_id: it.line_id, signal: it.signal, agrees: v, checker: who.value.trim() });
-      card.remove(); stats();
+      try { await api("/api/spotcheck", { line_id: it.line_id, signal: it.signal, agrees: v, checker: who.value.trim() });
+            card.replaceChildren(el("p", { className: "muted", textContent: `Checked: you ${v ? "agree" : "disagree"}.` })); stats(); }
+      catch (e) { say(msg, e.message, false); }
     };
     return card;
   }));
 }
-function load() { stats(); (mode === "queue" ? loadQueue : loadCheck)().catch(e => alert("Error: " + e.message)); }
+
+function load() {
+  topmsg.textContent = "";
+  stats().catch(() => {});
+  (mode === "queue" ? loadQueue : loadCheck)().catch(e => say(topmsg, "Could not load: " + e.message, false));
+}
 for (const [id, m] of [["t-queue", "queue"], ["t-check", "check"]]) document.getElementById(id).onclick = () => {
   mode = m; document.getElementById("t-queue").setAttribute("aria-pressed", m === "queue"); document.getElementById("t-check").setAttribute("aria-pressed", m === "check"); load();
 };
