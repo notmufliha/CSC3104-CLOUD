@@ -1,5 +1,3 @@
-version: "3.9"
-
 # Local dev stack for the scam-call detection backend. The Android app
 # talks to the gateway only (see README.md for pointing the app at this
 # stack); everything else is internal to the `scamnet` network.
@@ -220,5 +218,92 @@ services:
     networks:
       - scamnet
 
+  # ---------------------------------------------------------------------------------------- Workstream G
+  # On-device model downloads (/models) and real-phone training uploads (/fl) in one container here; Kubernetes
+  # runs them separately (model-download x2, stateless; fl-inbox with a volume). Reads H's registry in `review`.
+  model-service:
+    build:
+      context: ./backend
+      dockerfile: federated/Dockerfile.download
+    environment:
+      REVIEW_URL: "http://review:8090"
+      INBOX_DIR: "/inbox"
+    user: "0"                          # the named volume below is root-owned in plain Docker
+    volumes:
+      - fl-inbox:/inbox
+    depends_on:
+      - review
+    networks:
+      - scamnet
+
+  # The "Ingress" of this stack: one address for the phone, http://<laptop IP>:8088/api/ (demo/compose-edge.conf).
+  edge:
+    image: nginx:1.27-alpine
+    ports:
+      - "8088:8088"
+    volumes:
+      - ./demo/compose-edge.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - gateway
+      - model-service
+    networks:
+      - scamnet
+
+  # A federated-learning run (G.6-G.10): only with `docker compose --profile federated up fl-server fl-phones fl-bridge`.
+  # The Flower server runs FL_ROUNDS rounds over 10 simulated phones (+ real phones' uploads via the bridge),
+  # runs the release check per model, publishes passing models to the registry, writes results, and exits.
+  fl-server:
+    profiles: ["federated"]
+    build:
+      context: .
+      dockerfile: backend/federated/Dockerfile
+    command: ["python", "server.py"]
+    environment:
+      FL_ROUNDS: "${FL_ROUNDS:-3}"
+      FL_PHONES: "10"
+      FL_INIT: "${FL_INIT:-current}"
+      FL_NOISE: "${FL_NOISE:-0}"
+      FL_PUBLISH: "1"
+      FL_BRIDGE: "1"
+      FL_ADDRESS: "0.0.0.0:8080"
+      REVIEW_URL: "http://review:8090"
+      FL_RESULTS: "/results"
+    volumes:
+      - ./backend/federated/results:/results
+    depends_on:
+      - review
+    networks:
+      - scamnet
+  fl-phones:
+    profiles: ["federated"]
+    build:
+      context: .
+      dockerfile: backend/federated/Dockerfile
+    command: ["python", "run_phones.py"]
+    environment:
+      FL_PHONES: "10"
+      FL_SERVER: "fl-server:8080"
+    depends_on:
+      - fl-server
+    networks:
+      - scamnet
+  fl-bridge:
+    profiles: ["federated"]
+    build:
+      context: .
+      dockerfile: backend/federated/Dockerfile
+    command: ["python", "bridge_client.py"]
+    environment:
+      FL_SERVER: "fl-server:8080"
+      INBOX_DIR: "/inbox"
+      REVIEW_URL: "http://review:8090"
+    volumes:
+      - fl-inbox:/inbox
+    depends_on:
+      - fl-server
+    networks:
+      - scamnet
+
 volumes:
   review-data:
+  fl-inbox:

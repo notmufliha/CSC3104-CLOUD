@@ -19,6 +19,7 @@ import com.example.scamdetect.data.EndCallResponse
 import com.example.scamdetect.data.EndLine
 import com.example.scamdetect.data.GatewayApi
 import com.example.scamdetect.data.GatewayClient
+import com.example.scamdetect.data.ModelUpdater
 import com.example.scamdetect.data.db.CallRecord
 import com.example.scamdetect.data.db.ScorePoint
 import com.example.scamdetect.data.ReportLine
@@ -39,6 +40,7 @@ import com.example.scamdetect.logic.Summary
 import com.example.scamdetect.ondevice.MobileBert
 import com.example.scamdetect.ondevice.OnDeviceCall
 import com.example.scamdetect.ondevice.OnDeviceScorer
+import com.example.scamdetect.ondevice.PhoneTrainer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -147,6 +149,65 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
             _mobileBert.value = when (val s = MobileBert.get(getApplication())) {
                 is MobileBert.Status.Installed -> "MobileBERT installed (${s.model.config.version}): second opinion on this phone"
                 is MobileBert.Status.NotInstalled -> s.reason + ": level 3 uses the small models only"
+            }
+        }
+    }
+
+    /** G.10: which on-device model versions this phone runs, and the result of the last update check. */
+    private val _modelStatus = MutableStateFlow(ModelUpdater.describe(getApplication()))
+    val modelStatus: StateFlow<String> = _modelStatus.asStateFlow()
+    private val _modelCheck = MutableStateFlow("")
+    val modelCheck: StateFlow<String> = _modelCheck.asStateFlow()
+
+    init {
+        // G.10: on every app start, quietly fetch newer federated models (only model files come down).
+        viewModelScope.launch { checkModelUpdates() }
+    }
+
+    /** G.10: ask the model-download service for newer versions; also the Settings button. */
+    suspend fun checkModelUpdates(): String {
+        _modelCheck.value = "Checking for model updates…"
+        val msg = ModelUpdater.update(getApplication(), prefs.gatewayUrl)
+        _modelCheck.value = msg
+        _modelStatus.value = ModelUpdater.describe(getApplication())
+        if (prefs.privacyLevel.scoresOnPhone) preloadModels()
+        return msg
+    }
+
+    /** Real-phone training: what the last "Train on my calls" did. */
+    private val _trainResult = MutableStateFlow("")
+    val trainResult: StateFlow<String> = _trainResult.asStateFlow()
+
+    /**
+     * Real-phone training (federated learning on this phone): train the downloaded models on this phone's labelled
+     * calls and upload only the change to the models' numbers (PhoneTrainer). A real system would do this by itself
+     * when the phone is idle, charging and on Wi-Fi; the demo has a button.
+     */
+    fun trainOnPhone() {
+        viewModelScope.launch {
+            _trainResult.value = "Training on this phone…"
+            _trainResult.value = try {
+                val calls = withContext(Dispatchers.IO) { callHistory.labelledCalls() }
+                val versions = ModelUpdater.baseVersions(getApplication())
+                when {
+                    !prefs.helpImproveDetection -> "Turn on \"Help improve detection\" on the dashboard first: without it the phone keeps no lines to learn from."
+                    calls.isEmpty() -> "No labelled calls with saved lines yet. With \"Help improve detection\" on, play a scam call and hang up within 10 s of the red alert, or tap \"This was fine\" after a warning."
+                    versions.isEmpty() -> "Download the federated models first (Check for model updates): the built-in models can't be averaged."
+                    else -> withContext(Dispatchers.Default) {
+                        val scorer = OnDeviceScorer.get(getApplication())
+                        val trainer = PhoneTrainer(scorer)
+                        val examples = trainer.examples(calls)
+                        val updates = trainer.train(examples.filterKeys { it in versions })
+                        if (updates.isEmpty()) "Nothing to learn yet: none of ${calls.size} labelled calls had lines the models flagged."
+                        else {
+                            val sent = ModelUpdater.upload(prefs.gatewayUrl, trainer.uploadJson(updates, prefs.flPhoneId, versions))
+                            "Trained on ${calls.size} labelled calls: " +
+                                updates.joinToString(", ") { "${it.signal} ${it.lines} lines (on ${versions[it.signal]})" } + ". " + sent
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                "Training failed: ${e.javaClass.simpleName}: ${e.message?.take(100)}"
             }
         }
     }

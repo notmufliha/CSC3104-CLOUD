@@ -1,0 +1,24 @@
+# The context is the repo root; send only what the federated image copies.
+*
+!data/urgency_en/final_cleaned_dataset.csv
+!data/urgency_en/silver_relabel.csv
+!data/urgency_en/augment_review_flips.csv
+!data/urgency_en/augment_urgency_en.csv
+!data/money_en/C_train_pool.csv
+!data/impersonation_en/impersonation_data.csv
+!data/impersonation_en/gold_test.csv
+!backend/workers/urgency_en/train.py
+!backend/workers/urgency_en/text_norm.py
+!backend/workers/urgency_en/eval
+!backend/workers/urgency_en/checks
+!backend/workers/urgency_en/training
+!backend/workers/money_en/money_norm.py
+!backend/workers/money_en/eval
+!backend/workers/impersonation_en/train.py
+!backend/workers/impersonation_en/text_utils.py
+!android-app/app/src/main/assets/models/urgency_en.json
+!android-app/app/src/main/assets/models/money_en.json
+!android-app/app/src/main/assets/models/impersonation_en.json
+!backend/retrain/release_check.py
+!backend/federated/*.py
+!backend/federated/reports/tfidf_baselines.json

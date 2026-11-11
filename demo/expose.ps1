@@ -23,6 +23,21 @@ try {
     if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: could not refresh the certificate (is the cluster up? run .\demo\up.ps1)" -ForegroundColor Red; exit 1 }
 } finally { Pop-Location }
 
+# A phone connecting by IP sends no hostname (SNI), so nginx answers with its DEFAULT certificate. up.ps1 makes that
+# the demo certificate (--default-ssl-certificate), but `minikube start` re-applies the ingress addon and drops the
+# flag: then phones get "Kubernetes Ingress Controller Fake Certificate" and fail with "Trust anchor ... not found".
+# So check it on every expose and put it back if it's gone.
+$ctlArgs = kubectl get deployment ingress-nginx-controller -n ingress-nginx -o jsonpath='{.spec.template.spec.containers[0].args}'
+if ($ctlArgs -notmatch 'default-ssl-certificate') {
+    Write-Host "Ingress controller lost its default certificate (minikube restart?): restoring it..." -ForegroundColor Yellow
+    $patch = '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--default-ssl-certificate=scamguard/gateway-tls"}]'
+    $patchFile = Join-Path $env:TEMP "scamguard-ingress-patch.json"
+    [IO.File]::WriteAllText($patchFile, $patch)   # a file, not an argument: PowerShell 5.1 mangles quotes passed to kubectl
+    kubectl patch deployment ingress-nginx-controller -n ingress-nginx --type=json --patch-file $patchFile
+    Remove-Item $patchFile
+    kubectl rollout status deployment/ingress-nginx-controller -n ingress-nginx --timeout=180s
+}
+
 $laptopIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {
     $_.InterfaceAlias -notmatch 'Loopback|vEthernet|WSL' -and $_.IPAddress -notlike '169.254.*'
 } | Select-Object -First 1 -ExpandProperty IPAddress)

@@ -9,6 +9,7 @@ import com.example.scamdetect.data.db.ScorePoint
 import com.example.scamdetect.logic.Dashboard
 import com.example.scamdetect.logic.ImplicitLabels
 import com.example.scamdetect.logic.Mask
+import com.example.scamdetect.ondevice.PhoneTrainer
 import kotlinx.coroutines.flow.Flow
 
 /** Workstream B.7: the dashboard's history, on the phone only (Room). Nothing here is ever uploaded. */
@@ -46,6 +47,22 @@ class CallHistory(context: Context, private val prefs: AppPrefs) {
             )
         }
     }
+
+    /**
+     * G (real-phone training): every labelled call that still has its masked lines, with one label per call.
+     * "This was fine" wins (the user said so); otherwise the call's labels must agree, or the call is left out.
+     */
+    suspend fun labelledCalls(): List<PhoneTrainer.LabelledCall> =
+        labelDao.labels().groupBy { it.callId }.mapNotNull { (callId, labels) ->
+            val label = when {
+                labels.any { it.source == ImplicitLabels.SOURCE_FINE } -> 0
+                labels.all { it.label == 1 } -> 1
+                labels.all { it.label == 0 } -> 0
+                else -> return@mapNotNull null
+            }
+            val lines = labelDao.sentences(callId).map { it.text }
+            if (lines.isEmpty()) null else PhoneTrainer.LabelledCall(label, lines)
+        }
 
     /** "Help improve detection" turned off: delete the stored sentences; the labels (numbers only) stay. */
     suspend fun forgetLabelSentences() = labelDao.deleteSentences()

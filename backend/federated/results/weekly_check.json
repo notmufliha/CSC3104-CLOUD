@@ -1,0 +1,296 @@
+{
+  "run": "weekly_check",
+  "finished_at": "2026-11-11T14:30:17+00:00",
+  "seconds": 8.6,
+  "rounds": 3,
+  "phones": 10,
+  "noise_multiplier": 0.0,
+  "clipping_norm": null,
+  "init": "current",
+  "local_epochs": 3,
+  "learning_rate": 1.0,
+  "local_epochs_used": 1,
+  "history": [
+    {
+      "round": 0,
+      "urgency/gold_handwritten_roc_auc": 0.8228,
+      "urgency/gold_handwritten_f1": 0.6122,
+      "urgency/robocall_gold_roc_auc": 0.9144,
+      "urgency/robocall_gold_f1": 0.5316,
+      "money/sg_gold_roc_auc": 0.8411,
+      "money/sg_gold_f1": 0.6222,
+      "money/test_set_roc_auc": 0.799,
+      "money/test_set_f1": 0.5075,
+      "money/ftc_roc_auc": 0.7225,
+      "money/ftc_f1": 0.0592,
+      "impersonation/gold_test_roc_auc": 0.9867,
+      "impersonation/gold_test_f1": 0.9307
+    },
+    {
+      "round": 1,
+      "urgency/gold_handwritten_roc_auc": 0.8228,
+      "urgency/gold_handwritten_f1": 0.6122,
+      "urgency/robocall_gold_roc_auc": 0.9144,
+      "urgency/robocall_gold_f1": 0.5455,
+      "money/sg_gold_roc_auc": 0.8411,
+      "money/sg_gold_f1": 0.6222,
+      "money/test_set_roc_auc": 0.799,
+      "money/test_set_f1": 0.5075,
+      "money/ftc_roc_auc": 0.7225,
+      "money/ftc_f1": 0.0636,
+      "impersonation/gold_test_roc_auc": 0.9867,
+      "impersonation/gold_test_f1": 0.9291
+    },
+    {
+      "round": 2,
+      "urgency/gold_handwritten_roc_auc": 0.8228,
+      "urgency/gold_handwritten_f1": 0.6122,
+      "urgency/robocall_gold_roc_auc": 0.9144,
+      "urgency/robocall_gold_f1": 0.5185,
+      "money/sg_gold_roc_auc": 0.8411,
+      "money/sg_gold_f1": 0.6222,
+      "money/test_set_roc_auc": 0.799,
+      "money/test_set_f1": 0.5075,
+      "money/ftc_roc_auc": 0.7224,
+      "money/ftc_f1": 0.068,
+      "impersonation/gold_test_roc_auc": 0.9867,
+      "impersonation/gold_test_f1": 0.9274
+    },
+    {
+      "round": 3,
+      "urgency/gold_handwritten_roc_auc": 0.8228,
+      "urgency/gold_handwritten_f1": 0.6122,
+      "urgency/robocall_gold_roc_auc": 0.915,
+      "urgency/robocall_gold_f1": 0.5185,
+      "money/sg_gold_roc_auc": 0.8411,
+      "money/sg_gold_f1": 0.6222,
+      "money/test_set_roc_auc": 0.7989,
+      "money/test_set_f1": 0.5075,
+      "money/ftc_roc_auc": 0.7224,
+      "money/ftc_f1": 0.0592,
+      "impersonation/gold_test_roc_auc": 0.9867,
+      "impersonation/gold_test_f1": 0.9296
+    }
+  ],
+  "update_norms": [
+    [
+      0.934,
+      0.688,
+      0.945,
+      0.873,
+      0.686,
+      0.947,
+      0.6,
+      2.748,
+      0.452,
+      1.184
+    ],
+    [
+      0.498,
+      0.985,
+      1.016,
+      0.561,
+      1.208,
+      2.49,
+      0.699,
+      0.749,
+      1.436,
+      0.735
+    ],
+    [
+      0.951,
+      0.43,
+      0.872,
+      1.104,
+      0.733,
+      0.709,
+      2.379,
+      0.928,
+      0.596,
+      1.014
+    ]
+  ],
+  "central_gold": {
+    "urgency": [
+      {
+        "model": "urgency",
+        "test_set": "gold_handwritten",
+        "rows": 59,
+        "tfidf_roc_auc": 0.8228,
+        "hash_roc_auc": 0.8228,
+        "tfidf_f1": 0.7419,
+        "hash_f1": 0.6122,
+        "roc_auc_gap": 0.0
+      },
+      {
+        "model": "urgency",
+        "test_set": "robocall_gold",
+        "rows": 181,
+        "tfidf_roc_auc": 0.9229,
+        "hash_roc_auc": 0.9144,
+        "tfidf_f1": 0.3717,
+        "hash_f1": 0.5316,
+        "roc_auc_gap": 0.0085
+      }
+    ],
+    "money": [
+      {
+        "model": "money",
+        "test_set": "sg_gold",
+        "rows": 60,
+        "tfidf_roc_auc": 0.8522,
+        "hash_roc_auc": 0.8411,
+        "tfidf_f1": 0.6222,
+        "hash_f1": 0.5909,
+        "roc_auc_gap": 0.0111
+      },
+      {
+        "model": "money",
+        "test_set": "test_set",
+        "rows": 200,
+        "tfidf_roc_auc": 0.7808,
+        "hash_roc_auc": 0.799,
+        "tfidf_f1": 0.5655,
+        "hash_f1": 0.5075,
+        "roc_auc_gap": -0.0182
+      },
+      {
+        "model": "money",
+        "test_set": "ftc",
+        "rows": 1544,
+        "tfidf_roc_auc": 0.6969,
+        "hash_roc_auc": 0.7225,
+        "tfidf_f1": 0.068,
+        "hash_f1": 0.0592,
+        "roc_auc_gap": -0.0256
+      }
+    ],
+    "impersonation": [
+      {
+        "model": "impersonation",
+        "test_set": "gold_test",
+        "rows": 622,
+        "tfidf_roc_auc": 0.9878,
+        "hash_roc_auc": 0.9867,
+        "tfidf_f1": 0.9272,
+        "hash_f1": 0.9307,
+        "roc_auc_gap": 0.0011
+      }
+    ]
+  },
+  "models": {
+    "urgency": {
+      "compared_with": "urgency_en_phone v1",
+      "release_check": {
+        "pass": false,
+        "tolerance": 0.005,
+        "checks": [
+          {
+            "set": "gold_handwritten",
+            "metric": "roc_auc",
+            "current": 0.8228,
+            "candidate": 0.8228,
+            "pass": true
+          },
+          {
+            "set": "gold_handwritten",
+            "metric": "f1",
+            "current": 0.6122,
+            "candidate": 0.6122,
+            "pass": true
+          },
+          {
+            "set": "robocall_gold",
+            "metric": "roc_auc",
+            "current": 0.9144,
+            "candidate": 0.915,
+            "pass": true
+          },
+          {
+            "set": "robocall_gold",
+            "metric": "f1",
+            "current": 0.5316,
+            "candidate": 0.5185,
+            "pass": false
+          }
+        ]
+      }
+    },
+    "money": {
+      "compared_with": "money_en_phone v2",
+      "release_check": {
+        "pass": true,
+        "tolerance": 0.005,
+        "checks": [
+          {
+            "set": "sg_gold",
+            "metric": "roc_auc",
+            "current": 0.8411,
+            "candidate": 0.8411,
+            "pass": true
+          },
+          {
+            "set": "sg_gold",
+            "metric": "f1",
+            "current": 0.6222,
+            "candidate": 0.6222,
+            "pass": true
+          },
+          {
+            "set": "test_set",
+            "metric": "roc_auc",
+            "current": 0.799,
+            "candidate": 0.7989,
+            "pass": true
+          },
+          {
+            "set": "test_set",
+            "metric": "f1",
+            "current": 0.5075,
+            "candidate": 0.5075,
+            "pass": true
+          },
+          {
+            "set": "ftc",
+            "metric": "roc_auc",
+            "current": 0.7225,
+            "candidate": 0.7224,
+            "pass": true
+          },
+          {
+            "set": "ftc",
+            "metric": "f1",
+            "current": 0.0592,
+            "candidate": 0.0592,
+            "pass": true
+          }
+        ]
+      },
+      "published": "v3"
+    },
+    "impersonation": {
+      "compared_with": "impersonation_en_phone v2",
+      "release_check": {
+        "pass": true,
+        "tolerance": 0.005,
+        "checks": [
+          {
+            "set": "gold_test",
+            "metric": "roc_auc",
+            "current": 0.9867,
+            "candidate": 0.9867,
+            "pass": true
+          },
+          {
+            "set": "gold_test",
+            "metric": "f1",
+            "current": 0.9307,
+            "candidate": 0.9296,
+            "pass": true
+          }
+        ]
+      },
+      "published": "v3"
+    }
+  }
+}

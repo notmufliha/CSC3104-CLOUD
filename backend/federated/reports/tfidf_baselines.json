@@ -1,0 +1,50 @@
+{
+  "urgency": {
+    "model": "urgency_en_v4.joblib",
+    "threshold": 0.368475357850524,
+    "sets": {
+      "gold_handwritten": {
+        "rows": 59,
+        "roc_auc": 0.8228,
+        "f1": 0.7419
+      },
+      "robocall_gold": {
+        "rows": 181,
+        "roc_auc": 0.9229,
+        "f1": 0.3717
+      }
+    }
+  },
+  "money": {
+    "model": "money_en_v2c.joblib",
+    "threshold": 0.5,
+    "sets": {
+      "sg_gold": {
+        "rows": 60,
+        "roc_auc": 0.8522,
+        "f1": 0.6222
+      },
+      "test_set": {
+        "rows": 200,
+        "roc_auc": 0.7808,
+        "f1": 0.5655
+      },
+      "ftc": {
+        "rows": 1544,
+        "roc_auc": 0.6969,
+        "f1": 0.068
+      }
+    }
+  },
+  "impersonation": {
+    "model": "model.pkl",
+    "threshold": 0.67,
+    "sets": {
+      "gold_test": {
+        "rows": 622,
+        "roc_auc": 0.9878,
+        "f1": 0.9272
+      }
+    }
+  }
+}
