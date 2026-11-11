@@ -35,6 +35,9 @@ stamp = time.strftime("%H%M%S")
 print(f"## {mode}\n\n| script | key line | key at s | red line | red at s | seconds key -> red |\n|---|---|---|---|---|---|")
 for path in sorted(glob.glob(os.path.join(DIR, "*.json"))):
     name = os.path.basename(path)[:-5]
+    if name.startswith("scam") and name not in KEY:
+        print(f"(skipped {name}: no key sentence set)\n")
+        continue
     t, red, key_t = 0, None, None
     for i, line in enumerate(json.load(open(path, encoding="utf-8")), 1):
         t += line.get("delay_ms", 0)
