@@ -18,6 +18,10 @@ data class FinalReview(
     val topWindowSeqs: Set<Long>,
     /** False when the server never answered (request failed, or the 3 s wait ran out). */
     val answered: Boolean = true,
+    /** G.12: the review's whole-call score (0-1); only meaningful when `reviewed`. */
+    val callScore: Float? = null,
+    /** G.2: privacy level 3, the call was checked on the phone only (no end message was sent). */
+    val onDevice: Boolean = false,
 ) {
     companion object {
         private val KNOWN = setOf("SAFE", "UNSURE", "SCAM")
@@ -25,6 +29,11 @@ data class FinalReview(
         /** Request failed, timed out, or no server: the live verdict is all there is. */
         val UNAVAILABLE =
             FinalReview(finalVerdict = null, reason = "", reviewed = false, topWindowSeqs = emptySet(), answered = false)
+
+        /** Level 3: no server review by design; the live (on-phone) verdict is the final one. */
+        val ON_DEVICE = FinalReview(
+            finalVerdict = null, reason = "", reviewed = false, topWindowSeqs = emptySet(), answered = false, onDevice = true,
+        )
 
         fun from(resp: EndCallResponse?): FinalReview {
             if (resp == null) return UNAVAILABLE
@@ -34,12 +43,14 @@ data class FinalReview(
                 reason = resp.reason.orEmpty(),
                 reviewed = resp.review == "bert" && verdict != null,
                 topWindowSeqs = resp.topWindowSeqs.orEmpty().toSet(),
+                callScore = resp.callScore,
             )
         }
     }
 
-    /** How the dashboard records it: "bert" | "fallback" | "unavailable". */
+    /** How the dashboard records it: "bert" | "fallback" | "unavailable" | "on_device". */
     val reviewType: String get() = when {
+        onDevice -> "on_device"
         reviewed -> "bert"
         answered -> "fallback"
         else -> "unavailable"

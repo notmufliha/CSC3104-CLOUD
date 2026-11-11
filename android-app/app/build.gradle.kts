@@ -18,6 +18,11 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Workstream G.4: ONNX Runtime ships native libraries for 4 CPU types. Keep the phone's (arm64-v8a, e.g. the
+        // Galaxy S25) and the emulator's on Apple-silicon / Intel laptops (x86_64): the APK drops from ~90 MB.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
     }
 
     buildTypes {
@@ -41,6 +46,9 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
+// Workstream G: the migration test (LabelDatabaseTest) builds a version-1 database from 1.json, read from the test APK's assets.
+android.sourceSets.getByName("androidTest").assets.directories.add("$projectDir/schemas")
+
 dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
@@ -60,6 +68,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+    implementation(libs.onnxruntime.android)   // Workstream G.4: MobileBERT (ondevice/MobileBert.kt)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)

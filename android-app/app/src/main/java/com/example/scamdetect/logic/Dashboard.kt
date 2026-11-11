@@ -20,11 +20,16 @@ object Dashboard {
     fun chart(points: List<ScorePoint>): List<Pair<Float, Float>> =
         points.mapNotNull { p -> p.combined?.let { p.secondsIntoCall to it.coerceIn(0f, 1f) } }.sortedBy { it.first }
 
-    /** "Most common warning reasons": the top `n` reasons of calls that ended with a warning, with counts. */
+    /**
+     * "Most common warning reasons": the top `n` reasons of calls that ended with a warning, with counts. Grouped by
+     * the shown wording (Reasons.display), so a cloud call and an on-phone call with the same reason count together.
+     */
     fun topReasons(calls: List<CallRecord>, n: Int = 3): List<Pair<String, Int>> =
         calls.asSequence()
-            .filter { it.finalVerdict in WARNINGS && it.topReason.isNotBlank() }
-            .groupingBy { it.topReason }
+            .filter { it.finalVerdict in WARNINGS }
+            .map { Reasons.display(it) }
+            .filter { it.isNotBlank() }
+            .groupingBy { it }
             .eachCount()
             .entries
             .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
@@ -56,6 +61,7 @@ object Dashboard {
             finalVerdict = e.verdict,
             liveVerdict = null,
             topReason = e.topReason,
+            reasonCode = Reasons.codeForText(e.topReason),
             callScore = e.combinedScore,
             signalsFired = emptyList(),
             review = "migrated",

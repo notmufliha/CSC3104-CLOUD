@@ -109,3 +109,14 @@ data class HistoryEntry(
     val topReason: String,
     val combinedScore: Float?,
 )
+
+/** Workstream G.3: body of POST /v1/verify: 1-5 caller lines, oldest first, already masked (logic/Mask.kt). */
+data class VerifyRequest(val lines: List<String>, val lang: String = "en")
+
+/** Answer from POST /v1/verify. Everything nullable: Gson does not respect Kotlin defaults. */
+data class VerifyResponse(
+    val score: Float?,
+    val verdict: String?,                                   // SAFE | UNSURE | SCAM (aggregator thresholds)
+    @SerializedName("model_version") val modelVersion: String?,
+    @SerializedName("latency_ms") val latencyMs: Long?,
+)

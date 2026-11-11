@@ -43,9 +43,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.scamdetect.logic.PrivacyLevel
 import com.example.scamdetect.logic.Risk
 import com.example.scamdetect.ui.theme.ScamDetectTheme
 
@@ -80,11 +83,15 @@ fun InCallScreen(state: CallUiState, onHangUp: () -> Unit) {
             Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                "On call · Unknown caller",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "On call · Unknown caller",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                PrivacyBadge(state.privacyLevel)
+            }
             RiskBar(state.level, state.combinedScore)
             SignalChips(state.lit)
             // Yellow / grey banner lives in the layout; the red one is the pop-up below until it is dismissed.
@@ -162,6 +169,20 @@ fun SignalChips(lit: List<String>) {
     }
 }
 
+/** Workstream G: the privacy level this call runs at, as a small pill on the in-call screen. */
+@Composable
+fun PrivacyBadge(level: PrivacyLevel) {
+    Surface(shape = RoundedCornerShape(50), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
+        Text(
+            level.badge,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                .semantics { contentDescription = "Privacy level: ${level.badge}" },
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 @Composable
 fun InfoBanner(text: String, color: Color) {
     Surface(color = color.copy(alpha = 0.15f), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, color)) {
@@ -227,6 +248,9 @@ fun ChatBubble(line: ChatLine, riskyHere: Boolean = false) {
             "the conversation turned risky here",
             style = MaterialTheme.typography.labelSmall, color = ScamRed, fontWeight = FontWeight.SemiBold
         )
+        line.cloudNote?.let {
+            Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+        }
         when {
             line.pending -> Text("checking…", style = MaterialTheme.typography.labelSmall, color = NeutralGrey)
             line.failed -> Text("could not check", style = MaterialTheme.typography.labelSmall, color = NeutralGrey)

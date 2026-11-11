@@ -30,6 +30,10 @@ pub struct Settings {
     /// Workstream H: where POST /v1/report is forwarded (the internal review service). None = reporting off
     /// (the endpoint answers 503).
     pub review_url: Option<String>,
+    /// Workstream G.3: the BERT verifier for POST /v1/verify (the app's Hybrid mode). None = verify off (503).
+    pub bert_addr: Option<String>,
+    /// How long POST /v1/verify waits for BERT. The phone gives up after 1.5 s and keeps its own answer.
+    pub verify_timeout: Duration,
 }
 
 impl Settings {
@@ -59,6 +63,12 @@ impl Settings {
                 .map(|v| v.trim().trim_end_matches('/').to_string())
                 .filter(|v| !v.is_empty())
                 .map(|v| normalize_addr(&v)),
+            bert_addr: env::var("BERT_ADDR")
+                .ok()
+                .map(|v| v.trim().to_string())
+                .filter(|v| !v.is_empty())
+                .map(|v| normalize_addr(&v)),
+            verify_timeout: Duration::from_millis(env_u64("VERIFY_TIMEOUT_MS", 1200)),
         }
     }
 }

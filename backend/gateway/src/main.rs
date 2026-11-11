@@ -12,6 +12,8 @@
 //!                              returns the final verdict and clears the call's memory. Lines sent after the end
 //!                              are answered {"ignored": true, "reason": "call_ended"} and never scored.
 //!                              Contract: docs/workstream-b-contract.md
+//!   POST /v1/verify           Workstream G.3: the app's Hybrid mode asks BERT about the caller's last 5 lines,
+//!                              masked on the phone. Stateless, nothing stored (see verify.rs)
 //!
 //! Logs: one "timing" line per worker call and one per aggregator call (milliseconds, outcome), plus one per
 //! request. Transcript text is never logged.
@@ -19,6 +21,7 @@
 mod calls;
 mod config;
 mod language;
+mod verify;
 
 use std::collections::{BTreeMap, HashMap};
 use std::time::{Duration, Instant};
@@ -58,6 +61,8 @@ struct AppState {
     aggregator: Channel,
     calls: CallStore,
     http: hyper::Client<hyper::client::HttpConnector>,
+    /// Workstream G.3: BERT verifier for POST /v1/verify; None when BERT_ADDR is not set.
+    bert: Option<Channel>,
 }
 
 impl AppState {
@@ -724,9 +729,12 @@ async fn main() -> std::io::Result<()> {
         aggregator: lazy_channel(&settings.aggregator_addr),
         calls: CallStore::new(settings.call_ttl, settings.max_calls),
         http: hyper::Client::new(),
+        bert: settings.bert_addr.as_deref().map(lazy_channel),
         workers,
         settings,
     });
+    tracing::info!(bert_addr = state.settings.bert_addr.as_deref().unwrap_or("(off)"),
+                   verify_timeout_ms = state.settings.verify_timeout.as_millis() as u64, "verify (hybrid mode)");
     tracing::info!(review_url = state.settings.review_url.as_deref().unwrap_or("(off)"), "report forwarding");
     tracing::info!(addr = %bind_addr, "starting gateway");
 
@@ -751,7 +759,8 @@ fn routes(cfg: &mut web::ServiceConfig) {
         .service(submit_transcript)
         .service(healthz)
         .service(web::resource("/v1/report").app_data(json_config(MAX_REPORT_BYTES)).route(web::post().to(report)))
-        .service(web::resource("/v1/call/end").app_data(json_config(MAX_END_BYTES)).route(web::post().to(call_end)));
+        .service(web::resource("/v1/call/end").app_data(json_config(MAX_END_BYTES)).route(web::post().to(call_end)))
+        .service(web::resource("/v1/verify").app_data(json_config(verify::MAX_BYTES)).route(web::post().to(verify::verify)));
 }
 
 #[cfg(test)]
@@ -782,12 +791,53 @@ mod tests {
                 call_ttl: Duration::from_secs(60),
                 max_calls: 100,
                 review_url: None,
+                bert_addr: None,
+                verify_timeout: Duration::from_millis(300),
             },
             workers,
             aggregator: lazy_channel(NOWHERE),
             calls: CallStore::new(Duration::from_secs(60), 100),
             http: hyper::Client::new(),
+            bert: None,
         })
+    }
+
+    // ------------------------------------------------------------------ Workstream G.3: POST /v1/verify
+
+    fn with_bert(addr: &str) -> web::Data<AppState> {
+        let s = state();
+        let mut inner = std::sync::Arc::try_unwrap(s.into_inner()).ok().expect("only reference");
+        inner.bert = Some(lazy_channel(addr));
+        web::Data::new(inner)
+    }
+
+    #[actix_web::test]
+    async fn verify_is_off_without_bert_addr() {
+        let (code, body) = post(&state(), "/v1/verify", serde_json::json!({"lines": ["Give me the [NUMBER] OTP"]})).await;
+        assert_eq!(code, 503);
+        assert!(body["error"].as_str().unwrap().contains("BERT_ADDR"));
+    }
+
+    #[actix_web::test]
+    async fn verify_rejects_bad_requests_before_calling_bert() {
+        let s = with_bert(NOWHERE);
+        for body in [
+            serde_json::json!({"lines": []}),
+            serde_json::json!({"lines": ["1", "2", "3", "4", "5", "6"]}),
+            serde_json::json!({"lines": ["hello"], "lang": "fr"}),
+            serde_json::json!({"text": "not the right shape"}),
+        ] {
+            let (code, _) = post(&s, "/v1/verify", body).await;
+            assert_eq!(code, 400);
+        }
+    }
+
+    #[actix_web::test]
+    async fn verify_reports_a_failed_bert_as_502_so_the_phone_keeps_its_own_answer() {
+        let (code, body) = post(&with_bert(NOWHERE), "/v1/verify",
+                                serde_json::json!({"lines": ["This is the police", "Read me the [NUMBER] code"], "lang": "en"})).await;
+        assert!(code == 502 || code == 504, "got {code}");
+        assert!(body["error"].is_string());
     }
 
     async fn post(state: &web::Data<AppState>, path: &str, body: serde_json::Value) -> (u16, serde_json::Value) {
