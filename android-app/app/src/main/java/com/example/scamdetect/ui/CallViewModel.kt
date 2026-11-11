@@ -40,6 +40,7 @@ import com.example.scamdetect.logic.Summary
 import com.example.scamdetect.ondevice.MobileBert
 import com.example.scamdetect.ondevice.OnDeviceCall
 import com.example.scamdetect.ondevice.OnDeviceScorer
+import com.example.scamdetect.ondevice.PhoneTrainer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -171,6 +172,44 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         _modelStatus.value = ModelUpdater.describe(getApplication())
         if (prefs.privacyLevel.scoresOnPhone) preloadModels()
         return msg
+    }
+
+    /** Real-phone training: what the last "Train on my calls" did. */
+    private val _trainResult = MutableStateFlow("")
+    val trainResult: StateFlow<String> = _trainResult.asStateFlow()
+
+    /**
+     * Real-phone training (federated learning on this phone): train the downloaded models on this phone's labelled
+     * calls and upload only the change to the models' numbers (PhoneTrainer). A real system would do this by itself
+     * when the phone is idle, charging and on Wi-Fi; the demo has a button.
+     */
+    fun trainOnPhone() {
+        viewModelScope.launch {
+            _trainResult.value = "Training on this phone…"
+            _trainResult.value = try {
+                val calls = withContext(Dispatchers.IO) { callHistory.labelledCalls() }
+                val versions = ModelUpdater.baseVersions(getApplication())
+                when {
+                    !prefs.helpImproveDetection -> "Turn on \"Help improve detection\" on the dashboard first: without it the phone keeps no lines to learn from."
+                    calls.isEmpty() -> "No labelled calls with saved lines yet. With \"Help improve detection\" on, play a scam call and hang up within 10 s of the red alert, or tap \"This was fine\" after a warning."
+                    versions.isEmpty() -> "Download the federated models first (Check for model updates): the built-in models can't be averaged."
+                    else -> withContext(Dispatchers.Default) {
+                        val scorer = OnDeviceScorer.get(getApplication())
+                        val trainer = PhoneTrainer(scorer)
+                        val examples = trainer.examples(calls)
+                        val updates = trainer.train(examples.filterKeys { it in versions })
+                        if (updates.isEmpty()) "Nothing to learn yet: none of ${calls.size} labelled calls had lines the models flagged."
+                        else {
+                            val sent = ModelUpdater.upload(prefs.gatewayUrl, trainer.uploadJson(updates, prefs.flPhoneId, versions))
+                            "Trained on ${calls.size} labelled calls: " +
+                                updates.joinToString(", ") { "${it.signal} ${it.lines} lines (on ${versions[it.signal]})" } + ". " + sent
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                "Training failed: ${e.javaClass.simpleName}: ${e.message?.take(100)}"
+            }
+        }
     }
 
     /** G.2: load the on-device models in the background, so the first call doesn't wait for them. */

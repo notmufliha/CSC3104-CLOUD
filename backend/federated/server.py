@@ -46,6 +46,9 @@ import train_hashing as G1  # noqa: E402
 
 ROUNDS = int(os.environ.get("FL_ROUNDS", 10))
 PHONES = int(os.environ.get("FL_PHONES", 10))
+# Real phones: one extra Flower client, bridge_client.py, carries the updates real phones uploaded (inbox.py).
+BRIDGE = os.environ.get("FL_BRIDGE", "0") == "1"
+CLIENTS = PHONES + (1 if BRIDGE else 0)
 NOISE = float(os.environ.get("FL_NOISE", 0))          # noise multiplier; 0 = no differential privacy
 CLIP = float(os.environ.get("FL_CLIP", 10.0))         # clipping norm, only used when NOISE > 0
 TOLERANCE = float(os.environ.get("FL_TOLERANCE", 0.005))
@@ -127,7 +130,7 @@ class Model:
 
 def main():
     models = {m: Model(m) for m in fedcore.MODELS}
-    history, last, norms = [], {}, []
+    history, last, norms, real_phones = [], {}, [], []
 
     def evaluate(server_round, params, config):
         row = {"round": server_round}
@@ -143,6 +146,9 @@ def main():
 
     def fit_metrics(results):
         norms.append([round(m["update_norm"], 3) for _, m in results])
+        real = sum(int(m.get("real_phones", 0)) for _, m in results)
+        if real:
+            real_phones.append(real)
         return {"mean_update_norm": float(np.mean(norms[-1]))}
 
     def fit_config(server_round):
@@ -160,21 +166,21 @@ def main():
         for m in fedcore.MODELS:
             cur = models[m].current
             init += [cur["coef"].astype(np.float32), np.array([cur["intercept"]], dtype=np.float32)]
-    strategy = FedAvg(fraction_fit=1.0, fraction_evaluate=0.0, min_fit_clients=PHONES,
-                      min_available_clients=PHONES, initial_parameters=ndarrays_to_parameters(init),
+    strategy = FedAvg(fraction_fit=1.0, fraction_evaluate=0.0, min_fit_clients=CLIENTS,
+                      min_available_clients=CLIENTS, initial_parameters=ndarrays_to_parameters(init),
                       evaluate_fn=evaluate, on_fit_config_fn=fit_config,
                       fit_metrics_aggregation_fn=fit_metrics)
     if NOISE > 0:
         strategy = DifferentialPrivacyClientSideFixedClipping(strategy, noise_multiplier=NOISE, clipping_norm=CLIP,
-                                                              num_sampled_clients=PHONES)
-    print(f"[server] {RUN}: {ROUNDS} rounds, {PHONES} phones, models {', '.join(fedcore.MODELS)}, noise {NOISE}, "
+                                                              num_sampled_clients=CLIENTS)
+    print(f"[server] {RUN}: {ROUNDS} rounds, {PHONES} simulated phones{' + real phones (bridge)' if BRIDGE else ''}, models {', '.join(fedcore.MODELS)}, noise {NOISE}, "
           f"clip {CLIP if NOISE > 0 else '-'}, start from {INIT}", flush=True)
     started = time.time()
     fl.server.start_server(server_address=ADDRESS, config=fl.server.ServerConfig(num_rounds=ROUNDS),
                            strategy=strategy)
 
     out = {"run": RUN, "finished_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-           "seconds": round(time.time() - started, 1), "rounds": ROUNDS, "phones": PHONES, "noise_multiplier": NOISE,
+           "seconds": round(time.time() - started, 1), "rounds": ROUNDS, "phones": PHONES, "real_phones": sum(real_phones), "noise_multiplier": NOISE,
            "clipping_norm": CLIP if NOISE > 0 else None, "init": INIT, "local_epochs": fedcore.LOCAL_EPOCHS,
            "learning_rate": fedcore.LEARNING_RATE if INIT == "zeros" else WEEKLY_LR,
            "local_epochs_used": fedcore.LOCAL_EPOCHS if INIT == "zeros" else WEEKLY_EPOCHS, "history": history, "update_norms": norms,

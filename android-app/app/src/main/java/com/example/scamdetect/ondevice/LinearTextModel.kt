@@ -41,6 +41,29 @@ class LinearTextModel private constructor(private val doc: Doc) {
     /** The logistic regression's raw score (before the sigmoid / calibration). */
     fun decision(cleaned: String): Double = doc.intercept + parts.sumOf { it.dot(cleaned) }
 
+    // ---- Workstream G, real-phone training (PhoneTrainer): the raw inputs and weights of a hashing model.
+
+    val intercept: Double get() = doc.intercept
+
+    /** All weights, parts one after another (the order the server's fedcore uses). */
+    fun weights(): DoubleArray {
+        val out = DoubleArray(featureCount)
+        var offset = 0
+        for (p in parts) { p.copyCoefInto(out, offset); offset += p.size }
+        return out
+    }
+
+    /** The tf-idf input of one cleaned text: slot -> value, later parts' slots shifted by the earlier parts' sizes. */
+    fun features(cleaned: String): Map<Int, Double> {
+        val out = HashMap<Int, Double>()
+        var offset = 0
+        for (p in parts) {
+            for ((i, v) in p.features(cleaned)) out[offset + i] = v
+            offset += p.size
+        }
+        return out
+    }
+
     private class Part(v: Vectorizer) {
         private val analyzer = v.analyzer
         private val minN = v.ngramRange[0]
@@ -72,23 +95,31 @@ class LinearTextModel private constructor(private val doc: Doc) {
         private fun idfOf(i: Int): Double = idf?.get(i) ?: (idfSeen?.get(i) ?: idfDefault)
 
         /** tf-idf (sublinear, l2-normalised) of the text, dotted with this part's weights. */
-        fun dot(text: String): Double {
+        fun dot(text: String): Double = features(text).entries.sumOf { (i, v) -> v * coef[i] }
+
+        /** tf-idf (sublinear, l2-normalised) of the text: slot -> value. */
+        fun features(text: String): Map<Int, Double> {
             val doc = if (lowercase) Py.lower(text) else text
             val counts = HashMap<Int, Int>()
             for (gram in if (analyzer == "word") wordNgrams(doc) else charWbNgrams(doc)) {
                 val i = slotOf(gram) ?: continue
                 counts[i] = (counts[i] ?: 0) + 1
             }
-            if (counts.isEmpty()) return 0.0
+            if (counts.isEmpty()) return emptyMap()
+            val w = HashMap<Int, Double>(counts.size * 2)
             var norm = 0.0
-            var dot = 0.0
             for ((i, c) in counts) {
-                val w = (if (sublinear) ln(c.toDouble()) + 1.0 else c.toDouble()) * idfOf(i)
-                norm += w * w
-                dot += w * coef[i]
+                val v = (if (sublinear) ln(c.toDouble()) + 1.0 else c.toDouble()) * idfOf(i)
+                w[i] = v
+                norm += v * v
             }
-            return if (norm > 0) dot / sqrt(norm) else 0.0
+            if (norm <= 0) return emptyMap()
+            val n = sqrt(norm)
+            for (k in w.keys) w[k] = w[k]!! / n
+            return w
         }
+
+        fun copyCoefInto(out: DoubleArray, offset: Int) = System.arraycopy(coef, 0, out, offset, coef.size)
 
         /** sklearn _word_ngrams: tokens minus stop words, then all n-grams joined by a space. */
         private fun wordNgrams(doc: String): List<String> {

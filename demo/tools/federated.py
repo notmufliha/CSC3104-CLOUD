@@ -7,6 +7,8 @@ Needs the main demo running (demo/up.ps1 or up.sh): the registry lives in the re
   python demo/tools/federated.py up               start the model-download service + its Ingress (/models)
   python demo/tools/federated.py run [options]    one federated run: fl-server Job + 10 fl-phones pods
         --rounds 10 --phones 10 --noise 0 --clip 10 --init zeros|current --publish --name NAME
+        --real-phones   also bring in the model changes real phones uploaded to the inbox (fl-bridge Job)
+  python demo/tools/federated.py inbox            uploads waiting for the next round, and those already used
   python demo/tools/federated.py chart            all runs saved so far -> backend/federated/results/rounds.png
   python demo/tools/federated.py status           pods, registry versions, the manifest phones see
   python demo/tools/federated.py down             delete the run namespace and the download service
@@ -55,15 +57,20 @@ def cmd_build(_):
 def cmd_up(_):
     M.write()
     kubectl("apply", "-f", "demo/k8s/federated/00-download.yaml")
+    kubectl("apply", "-f", "demo/k8s/federated/05-inbox.yaml")
     kubectl("rollout", "status", "deployment/model-download", "-n", M.NS, "--timeout=120s")
-    print("model-download is up. Phones fetch https://<address>/models/manifest on start-up.")
+    kubectl("rollout", "status", "deployment/fl-inbox", "-n", M.NS, "--timeout=120s")
+    print("model-download + fl-inbox are up. Phones fetch https://<address>/models/manifest on start-up and "
+          "upload their training to https://<address>/fl/updates.")
 
 
 def cmd_run(a):
     M.write()
     kubectl("apply", "-f", "demo/k8s/federated/10-namespace.yaml")
     kubectl("delete", "job", "fl-server", "fl-phones", "-n", M.FL_NS, "--ignore-not-found", "--wait=true")
-    kubectl("apply", "-f", "-", input_text=M.run_yaml(a.rounds, a.phones, a.noise, a.clip, a.init, a.publish, a.name))
+    kubectl("delete", "job", "fl-bridge", "-n", M.NS, "--ignore-not-found", "--wait=true")
+    kubectl("apply", "-f", "-", input_text=M.run_yaml(a.rounds, a.phones, a.noise, a.clip, a.init, a.publish, a.name,
+                                                       a.real_phones))
     print(f"started: {a.rounds} rounds, {a.phones} phones, noise {a.noise}, clip {a.clip}, init {a.init}, "
           f"publish {a.publish}. Watch: kubectl get pods -n {M.FL_NS} -w", flush=True)
     deadline = time.time() + a.timeout
@@ -79,8 +86,10 @@ def cmd_run(a):
     else:
         sys.exit(f"timed out after {a.timeout}s; see kubectl logs job/fl-server -n {M.FL_NS}")
     logs = kubectl("logs", "job/fl-server", "-n", M.FL_NS, capture=True)
+    if a.real_phones:
+        logs = kubectl("logs", "job/fl-bridge", "-n", M.NS, capture=True, check=False) + "\n" + logs
     for line in logs.splitlines():
-        if line.startswith("[server]") or "BELOW BAR" in line or line.startswith("=>") or line.rstrip().endswith(" ok"):
+        if line.startswith("[server]") or line.startswith("[bridge]") or "BELOW BAR" in line or line.startswith("=>") or line.rstrip().endswith(" ok"):
             print(line)
     result = next(json.loads(l[len("RESULT_JSON "):]) for l in logs.splitlines() if l.startswith("RESULT_JSON "))
     RESULTS.mkdir(parents=True, exist_ok=True)
@@ -104,9 +113,17 @@ def cmd_status(_):
     print(kubectl("exec", "-n", M.NS, "deploy/model-download", "--", "python", "-c", code, capture=True, check=False))
 
 
+def cmd_inbox(_):
+    code = ("import os;[print(d, sorted(os.listdir('/inbox/'+d)) if os.path.isdir('/inbox/'+d) else [])"
+            " for d in ('pending','used')]")
+    print(kubectl("exec", "-n", M.NS, "deploy/fl-inbox", "--", "python", "-c", code, capture=True, check=False))
+
+
 def cmd_down(_):
     kubectl("delete", "namespace", M.FL_NS, "--ignore-not-found")
+    kubectl("delete", "job", "fl-bridge", "-n", M.NS, "--ignore-not-found")
     kubectl("delete", "-f", "demo/k8s/federated/00-download.yaml", "--ignore-not-found")
+    kubectl("delete", "-f", "demo/k8s/federated/05-inbox.yaml", "--ignore-not-found")
 
 
 def main():
@@ -122,10 +139,12 @@ def main():
     p.add_argument("--init", choices=["zeros", "current"], default="zeros")
     p.add_argument("--publish", action="store_true", help="publish to the registry if the release check passes")
     p.add_argument("--name", default="")
+    p.add_argument("--real-phones", action="store_true", help="include real phones' uploads (fl-bridge)")
     p.add_argument("--timeout", type=int, default=900)
     p.set_defaults(fn=cmd_run)
     sub.add_parser("chart").set_defaults(fn=cmd_chart)
     sub.add_parser("status").set_defaults(fn=cmd_status)
+    sub.add_parser("inbox").set_defaults(fn=cmd_inbox)
     sub.add_parser("down").set_defaults(fn=cmd_down)
     a = ap.parse_args()
     a.fn(a)

@@ -104,7 +104,9 @@ def main():
         meta = {"model": name, "version": VERSION, "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                 "sklearn_version": sklearn.__version__, "parts": [p.describe() for p in spec.parts], "C": spec.C,
                 "threshold": m["threshold"], "platt": m["platt"], "trained_rows": len(m["training"]),
-                "nonzero_weights": int(np.count_nonzero(m["coef"])), "gold": t.to_dict("records")}
+                "nonzero_weights": int(np.count_nonzero(m["coef"])),
+                # NaN (no TF-IDF baseline file) -> None: the registry stores this as JSON and must serve it back
+                "gold": t.astype(object).where(t.notna(), None).to_dict("records")}
         joblib.dump({k: v for k, v in m.items() if k != "training"} | meta, model_path(name))
         (MODEL_DIR / f"{name}_en_{VERSION}.json").write_text(json.dumps(meta, indent=2))
         print(f"wrote {model_path(name).relative_to(HERE.parents[1])}")

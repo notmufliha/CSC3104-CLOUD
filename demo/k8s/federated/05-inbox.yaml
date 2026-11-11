@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fl-inbox
+  namespace: scamguard
+spec:
+  accessModes: [ReadWriteOnce]      # one node (minikube): the inbox pod and the bridge Job both mount it
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fl-inbox
+  namespace: scamguard
+  labels: { app: fl-inbox }
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: { app: fl-inbox }
+  template:
+    metadata:
+      labels: { app: fl-inbox }
+    spec:
+      securityContext: { fsGroup: 65534 }
+      containers:
+        - name: fl-inbox
+          image: scam/model-download:demo       # same small image; INBOX_DIR switches uploads on
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - { name: INBOX_DIR, value: /inbox }
+            - { name: REVIEW_URL, value: "http://review.scamguard.svc.cluster.local:8090" }
+          resources:
+            requests: { cpu: "20m", memory: "48Mi" }
+            limits: { cpu: "300m", memory: "192Mi" }
+          volumeMounts:
+            - { name: inbox, mountPath: /inbox }
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 2
+            periodSeconds: 5
+      volumes:
+        - name: inbox
+          persistentVolumeClaim:
+            claimName: fl-inbox
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fl-inbox
+  namespace: scamguard
+spec:
+  type: ClusterIP
+  selector: { app: fl-inbox }
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+---
+# Real phones upload here: https://<address>/fl/updates. Its own Ingress: an upload is ~4 MB (gzip).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fl-inbox
+  namespace: scamguard
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [scamguard.test]
+      secretName: gateway-tls
+  rules:
+    - host: scamguard.test
+      http:
+        paths:
+          - path: /fl
+            pathType: Prefix
+            backend:
+              service: { name: fl-inbox, port: { number: 8000 } }
+    - http:
+        paths:
+          - path: /fl
+            pathType: Prefix
+            backend:
+              service: { name: fl-inbox, port: { number: 8000 } }
