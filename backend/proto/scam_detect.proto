@@ -18,6 +18,10 @@ service WorkerService {
 // Takes the fanned-out worker scores and produces a final verdict.
 service AggregatorService {
   rpc Aggregate(AggregateRequest) returns (AggregateResponse);
+  // Workstream B: the call is over (the phone hung up / the script finished), or the aggregator's own silence
+  // timeout. Runs the end-of-call review (or falls back to the live verdict), clears the call's memory and
+  // returns the final verdict. Idempotent: a second EndCall returns the first one's result.
+  rpc EndCall(EndCallRequest) returns (EndCallResponse);
 }
 
 // The BERT second opinion (backend/workers/bert): one multilingual model that reads the call's last few
@@ -115,4 +119,45 @@ message AggregateResponse {
   optional float bert_score = 10;
   // "ok" | "timeout" | "error" (asked but no score) | "skipped" (not needed) | "off" (BERT_ADDR not set)
   string bert_status = 11;
+  // Workstream B.6: the call has already ended. This line was NOT scored or stored; the other fields are empty.
+  // (14, not 12: Workstream A took 12 and 13 for live_alert / final_verdict.)
+  bool call_ended = 14;
+}
+
+// Workstream B: one caller line sent with the end message, for the end-of-call review. Passed through and
+// dropped: never stored or logged (Redis stays text-free).
+message CallerLine {
+  int64 seq = 1;
+  string text = 2;
+}
+
+message EndCallRequest {
+  string call_id = 1;
+  // script_finished | user_hung_up | user_discarded | silence (the last one only from the aggregator itself)
+  string ended_by = 2;
+  // The phone's last line number. Only logged.
+  int64 last_seq = 3;
+  // All of the call's caller lines, oldest first. Empty = no review possible (the live verdict is used).
+  repeated CallerLine caller_lines = 4;
+  // "en" | "zh" | "" : the language of caller_lines, for the review.
+  string language = 5;
+}
+
+message EndCallResponse {
+  string call_id = 1;
+  // VERDICT_UNSPECIFIED = the call was never seen (no caller line was scored); the gateway says "UNKNOWN".
+  Verdict final_verdict = 2;
+  float call_score = 3;
+  // The verdict after the call's last caller line.
+  Verdict live_verdict = 4;
+  // "bert" (the end-of-call review answered) | "fallback" (the live verdict is the final one)
+  string review = 5;
+  // Line numbers of the riskiest window of caller lines ("the conversation turned risky here"). Never text.
+  repeated int64 top_window_seqs = 6;
+  // Fixed reason text for the strongest signal, e.g. "Asked for your OTP or money". Empty when SAFE.
+  string reason = 7;
+  // What ended the call first (a repeated end keeps the first value).
+  string ended_by = 8;
+  // True when this call had already ended before this request (nothing was run again).
+  bool already_ended = 9;
 }

@@ -7,7 +7,13 @@
 //!   calllog:<call_id>  list: one JSON verdict-log entry per caller line {call_id, seq, time_ms, verdict,
 //!                      combined, fast, bert, bert_status, rule, scores, recent}. Never transcript text (the
 //!                      call's recent lines pass through the aggregator to BERT but are never stored).
-//!                      Same expiry; capped at LOG_MAX entries.
+//!                      Same expiry; capped at LOG_MAX entries. Workstream B adds one final "event":"end" row.
+//!   callend:<call_id>  Workstream B tombstone, hash: state (claimed|done), ended_by, ended_at_ms, and once done
+//!                      the end result (final_verdict, call_score, live_verdict, review, top_window_seqs, reason).
+//!                      Scores and fixed texts only. Expires after AGG_END_TOMBSTONE_SECS. While it exists the
+//!                      call takes no new lines (the save script refuses them atomically).
+//!   calls:active       Workstream B sorted set: call_id -> time of its last caller line (ms). The silence
+//!                      timeout scans it; a call leaves it when it ends.
 //!
 //! BERT: after reading the call, the update asks BERT (once; a retry reuses the answer) if
 //! policy::wants_second_opinion says the answer depends on it.
@@ -32,19 +38,122 @@ const MAX_ATTEMPTS: u32 = 20;
 /// Verdict-log entries kept per call.
 const LOG_MAX: i64 = 1000;
 
-/// KEYS[1] = call hash, KEYS[2] = verdict log. ARGV[1] = version that was read, ARGV[2] = ttl (s),
-/// ARGV[3] = log entry, ARGV[4] = log cap, ARGV[5..] = field, value, field, value, ...
-/// Returns 1 if saved, 0 if someone else saved first.
+/// Workstream B: index of calls by the time of their last caller line, for the silence timeout.
+pub const ACTIVE_KEY: &str = "calls:active";
+
+pub fn call_key(call_id: &str) -> String {
+    format!("call:{call_id}")
+}
+pub fn log_key(call_id: &str) -> String {
+    format!("calllog:{call_id}")
+}
+pub fn end_key(call_id: &str) -> String {
+    format!("callend:{call_id}")
+}
+
+/// KEYS[1] = call hash, KEYS[2] = verdict log, KEYS[3] = end tombstone, KEYS[4] = active-call index.
+/// ARGV[1] = version that was read, ARGV[2] = ttl (s), ARGV[3] = log entry, ARGV[4] = log cap,
+/// ARGV[5] = call_id, ARGV[6] = now (ms), ARGV[7..] = field, value, field, value, ...
+/// Returns 1 if saved, 0 if someone else saved first, -1 if the call has ended (nothing written).
 const SAVE_LUA: &str = r#"
+if redis.call('EXISTS', KEYS[3]) == 1 then return -1 end
 local current = redis.call('HGET', KEYS[1], 'version') or '0'
 if current ~= ARGV[1] then return 0 end
-redis.call('HSET', KEYS[1], 'version', tostring(tonumber(ARGV[1]) + 1), unpack(ARGV, 5))
+redis.call('HSET', KEYS[1], 'version', tostring(tonumber(ARGV[1]) + 1), 'last_line_ms', ARGV[6], unpack(ARGV, 7))
 redis.call('EXPIRE', KEYS[1], ARGV[2])
 redis.call('RPUSH', KEYS[2], ARGV[3])
 redis.call('LTRIM', KEYS[2], -tonumber(ARGV[4]), -1)
 redis.call('EXPIRE', KEYS[2], ARGV[2])
+redis.call('ZADD', KEYS[4], ARGV[6], ARGV[5])
 return 1
 "#;
+
+/// Workstream B, step 1 of an end: claim it. KEYS[1] = end tombstone. ARGV[1] = ended_by, ARGV[2] = now (ms),
+/// ARGV[3] = tombstone ttl (s). Returns {} if this caller claimed it (and must finish it), otherwise the
+/// existing tombstone's fields (field, value, ...): someone else ended the call first.
+const CLAIM_END_LUA: &str = r#"
+if redis.call('EXISTS', KEYS[1]) == 1 then return redis.call('HGETALL', KEYS[1]) end
+redis.call('HSET', KEYS[1], 'state', 'claimed', 'ended_by', ARGV[1], 'ended_at_ms', ARGV[2])
+redis.call('EXPIRE', KEYS[1], ARGV[3])
+return {}
+"#;
+
+/// Workstream B, step 2 of an end: store the result, forget the call, add the final verdict-log row.
+/// KEYS[1] = end tombstone, KEYS[2] = call hash, KEYS[3] = verdict log, KEYS[4] = active-call index.
+/// ARGV[1] = tombstone ttl (s), ARGV[2] = call_id, ARGV[3] = log entry, ARGV[4] = log cap, ARGV[5] = log ttl (s),
+/// ARGV[6..] = result field, value, ...
+const FINISH_END_LUA: &str = r#"
+redis.call('HSET', KEYS[1], 'state', 'done', unpack(ARGV, 6))
+redis.call('EXPIRE', KEYS[1], ARGV[1])
+redis.call('DEL', KEYS[2])
+redis.call('ZREM', KEYS[4], ARGV[2])
+redis.call('RPUSH', KEYS[3], ARGV[3])
+redis.call('LTRIM', KEYS[3], -tonumber(ARGV[4]), -1)
+redis.call('EXPIRE', KEYS[3], ARGV[5])
+return 1
+"#;
+
+/// Workstream B: a finished call's result, as kept in its tombstone. Scores and fixed texts only.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct EndRecord {
+    /// None = unknown (no caller line of this call was ever scored).
+    pub final_verdict: Option<Verdict>,
+    pub call_score: f32,
+    pub live_verdict: Option<Verdict>,
+    /// "bert" | "fallback"
+    pub review: String,
+    pub top_window_seqs: Vec<i64>,
+    pub reason: String,
+    pub ended_by: String,
+}
+
+impl EndRecord {
+    fn to_fields(&self) -> Vec<(&'static str, String)> {
+        let v = |v: Option<Verdict>| v.map(|v| v.as_str()).unwrap_or("").to_string();
+        vec![
+            ("final_verdict", v(self.final_verdict)),
+            ("call_score", self.call_score.to_string()),
+            ("live_verdict", v(self.live_verdict)),
+            ("review", self.review.clone()),
+            ("top_window_seqs", serde_json::to_string(&self.top_window_seqs).expect("ints serialize")),
+            ("reason", self.reason.clone()),
+            ("ended_by", self.ended_by.clone()),
+        ]
+    }
+
+    fn from_fields(h: &HashMap<String, String>) -> EndRecord {
+        let get = |k: &str| h.get(k).cloned().unwrap_or_default();
+        EndRecord {
+            final_verdict: Verdict::parse(&get("final_verdict")),
+            call_score: get("call_score").parse().unwrap_or(0.0),
+            live_verdict: Verdict::parse(&get("live_verdict")),
+            review: get("review"),
+            top_window_seqs: serde_json::from_str(&get("top_window_seqs")).unwrap_or_default(),
+            reason: get("reason"),
+            ended_by: get("ended_by"),
+        }
+    }
+}
+
+/// Result of trying to claim a call's end.
+#[derive(Debug, PartialEq)]
+pub enum Claim {
+    /// This caller ended the call and must finish it (review, save, clean up).
+    New,
+    /// Already ended and finished: the stored result.
+    Done(EndRecord),
+    /// Another request is finishing the end right now (its review is running).
+    InProgress { ended_by: String },
+}
+
+fn pairs(flat: Vec<String>) -> HashMap<String, String> {
+    let mut it = flat.into_iter();
+    let mut out = HashMap::new();
+    while let (Some(k), Some(v)) = (it.next(), it.next()) {
+        out.insert(k, v);
+    }
+    out
+}
 
 #[derive(Debug)]
 pub enum StoreError {
@@ -76,6 +185,8 @@ impl From<redis::RedisError> for StoreError {
 pub struct Store {
     con: ConnectionManager,
     save: Script,
+    claim_end: Script,
+    finish_end: Script,
 }
 
 impl Store {
@@ -97,6 +208,8 @@ impl Store {
                     return Store {
                         con,
                         save: Script::new(SAVE_LUA),
+                        claim_end: Script::new(CLAIM_END_LUA),
+                        finish_end: Script::new(FINISH_END_LUA),
                     };
                 }
                 Err(e) => {
@@ -107,6 +220,11 @@ impl Store {
         }
     }
 
+    #[cfg(test)]
+    pub fn con_for_tests(&self) -> ConnectionManager {
+        self.con.clone()
+    }
+
     pub async fn ping(&self) -> Result<(), StoreError> {
         let mut con = self.con.clone();
         redis::cmd("PING").query_async::<String>(&mut con).await?;
@@ -114,7 +232,7 @@ impl Store {
     }
 
     /// Load the call, ask BERT if the answer depends on it, apply this line with policy::decide, save.
-    /// Returns the decision.
+    /// Returns the decision, or None if the call has ended (Workstream B.6: the line is not stored or scored).
     #[allow(clippy::too_many_arguments)]
     pub async fn apply(
         &self,
@@ -125,17 +243,24 @@ impl Store {
         call_time_ms: i64,
         cfg: &Settings,
         second: &mut SecondOpinion<'_>,
-    ) -> Result<Decision, StoreError> {
+    ) -> Result<Option<Decision>, StoreError> {
         let mut con = self.con.clone();
-        let (call_key, log_key) = (format!("call:{call_id}"), format!("calllog:{call_id}"));
+        let (call_key, log_key, end_key) = (call_key(call_id), log_key(call_id), end_key(call_id));
         for attempt in 0..MAX_ATTEMPTS {
             if attempt > 0 {
                 tokio::time::sleep(backoff(attempt)).await;
             }
-            let stored: HashMap<String, String> = redis::cmd("HGETALL")
+            // Read the call and whether it ended in one round trip; an ended call costs no BERT call.
+            let (stored, ended): (HashMap<String, String>, bool) = redis::pipe()
+                .cmd("HGETALL")
                 .arg(&call_key)
+                .cmd("EXISTS")
+                .arg(&end_key)
                 .query_async(&mut con)
                 .await?;
+            if ended {
+                return Ok(None);
+            }
             let (state, version) = from_hash(&stored)?;
             let bert = if policy::wants_second_opinion(&state, line, now_ms, call_time_ms, cfg) {
                 second.ask().await
@@ -156,20 +281,109 @@ impl Store {
             let mut invocation = self.save.key(&call_key);
             invocation
                 .key(&log_key)
+                .key(&end_key)
+                .key(ACTIVE_KEY)
                 .arg(version)
                 .arg(cfg.call_ttl.as_secs())
                 .arg(entry)
-                .arg(LOG_MAX);
+                .arg(LOG_MAX)
+                .arg(call_id)
+                .arg(now_ms);
             for (field, value) in to_hash(&state) {
                 invocation.arg(field).arg(value);
             }
             let saved: i64 = invocation.invoke_async(&mut con).await?;
-            if saved == 1 {
-                return Ok(decision);
+            match saved {
+                1 => return Ok(Some(decision)),
+                -1 => return Ok(None), // ended between the read and the save
+                _ => {}
             }
             tracing::debug!(call_id, "another update to this call won, retrying");
         }
         Err(StoreError::Busy)
+    }
+
+    // ---------------------------------------------------------------- Workstream B: call end
+
+    /// Claim a call's end: exactly one caller (across all aggregator copies) gets `Claim::New`.
+    pub async fn claim_end(&self, call_id: &str, ended_by: &str, now_ms: i64, cfg: &Settings) -> Result<Claim, StoreError> {
+        let mut con = self.con.clone();
+        let existing: Vec<String> = self
+            .claim_end
+            .key(end_key(call_id))
+            .arg(ended_by)
+            .arg(now_ms)
+            .arg(cfg.end_tombstone_ttl.as_secs())
+            .invoke_async(&mut con)
+            .await?;
+        if existing.is_empty() {
+            return Ok(Claim::New);
+        }
+        let h = pairs(existing);
+        Ok(if h.get("state").map(String::as_str) == Some("done") {
+            Claim::Done(EndRecord::from_fields(&h))
+        } else {
+            Claim::InProgress { ended_by: h.get("ended_by").cloned().unwrap_or_default() }
+        })
+    }
+
+    /// The stored end result, once the end is finished.
+    pub async fn end_result(&self, call_id: &str) -> Result<Option<EndRecord>, StoreError> {
+        let mut con = self.con.clone();
+        let h: HashMap<String, String> = redis::cmd("HGETALL").arg(end_key(call_id)).query_async(&mut con).await?;
+        Ok((h.get("state").map(String::as_str) == Some("done")).then(|| EndRecord::from_fields(&h)))
+    }
+
+    /// The call's memory as it is now (None = never seen, or already expired / ended).
+    pub async fn read_call(&self, call_id: &str) -> Result<Option<CallState>, StoreError> {
+        let mut con = self.con.clone();
+        let h: HashMap<String, String> = redis::cmd("HGETALL").arg(call_key(call_id)).query_async(&mut con).await?;
+        if h.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(from_hash(&h)?.0))
+    }
+
+    /// Store the end result in the tombstone, delete the call's memory, take it off the active index and add the
+    /// final verdict-log row. One atomic step.
+    pub async fn finish_end(&self, call_id: &str, record: &EndRecord, log_entry: &str, cfg: &Settings) -> Result<(), StoreError> {
+        let mut con = self.con.clone();
+        let mut invocation = self.finish_end.key(end_key(call_id));
+        invocation
+            .key(call_key(call_id))
+            .key(log_key(call_id))
+            .key(ACTIVE_KEY)
+            .arg(cfg.end_tombstone_ttl.as_secs())
+            .arg(call_id)
+            .arg(log_entry)
+            .arg(LOG_MAX)
+            .arg(cfg.call_ttl.as_secs());
+        for (field, value) in record.to_fields() {
+            invocation.arg(field).arg(value);
+        }
+        let _: i64 = invocation.invoke_async(&mut con).await?;
+        Ok(())
+    }
+
+    /// Calls whose last caller line is older than `cutoff_ms` (at most `limit`).
+    pub async fn silent_calls(&self, cutoff_ms: i64, limit: usize) -> Result<Vec<String>, StoreError> {
+        let mut con = self.con.clone();
+        Ok(redis::cmd("ZRANGEBYSCORE")
+            .arg(ACTIVE_KEY)
+            .arg("-inf")
+            .arg(cutoff_ms)
+            .arg("LIMIT")
+            .arg(0)
+            .arg(limit)
+            .query_async(&mut con)
+            .await?)
+    }
+
+    /// Take a call off the active index (it already ended elsewhere).
+    pub async fn forget_active(&self, call_id: &str) -> Result<(), StoreError> {
+        let mut con = self.con.clone();
+        let _: i64 = redis::cmd("ZREM").arg(ACTIVE_KEY).arg(call_id).query_async(&mut con).await?;
+        Ok(())
     }
 }
 
@@ -340,6 +554,30 @@ mod tests {
                 "verdict"
             ]
         );
+    }
+
+    #[test]
+    fn end_record_round_trips_through_the_hash() {
+        let r = EndRecord {
+            final_verdict: Some(Verdict::Scam),
+            call_score: 0.875,
+            live_verdict: Some(Verdict::Unsure),
+            review: "bert".into(),
+            top_window_seqs: vec![9, 11, 13],
+            reason: "Asked for your OTP or money".into(),
+            ended_by: "user_hung_up".into(),
+        };
+        let h: HashMap<String, String> = r.to_fields().into_iter().map(|(k, v)| (k.to_string(), v)).collect();
+        assert_eq!(EndRecord::from_fields(&h), r);
+        let unknown = EndRecord { review: "fallback".into(), ended_by: "silence".into(), ..Default::default() };
+        let h: HashMap<String, String> = unknown.to_fields().into_iter().map(|(k, v)| (k.to_string(), v)).collect();
+        assert_eq!(EndRecord::from_fields(&h), unknown); // "" verdict = unknown
+    }
+
+    #[test]
+    fn flat_reply_pairs() {
+        let h = pairs(vec!["state".into(), "done".into(), "ended_by".into(), "silence".into()]);
+        assert_eq!((h["state"].as_str(), h["ended_by"].as_str()), ("done", "silence"));
     }
 
     #[test]
