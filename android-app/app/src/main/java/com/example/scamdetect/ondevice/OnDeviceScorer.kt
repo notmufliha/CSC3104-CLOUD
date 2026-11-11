@@ -23,6 +23,8 @@ class OnDeviceScorer(
     private val impersonation: LinearTextModel,
 ) {
     private val impersonationText = ImpersonationText(impersonation.orgTypes)
+    /** money_en v2c cleans with brand masking; a v1 model file has none (exactly v1's cleaning). */
+    val moneyBrands: MoneyBrands? = if (money.maskBrands) MoneyBrands(money.brandTypes) else null
 
     /** urgency / money / impersonation -> 0-1, for one caller line. */
     fun score(line: String): Map<String, Float> = mapOf(
@@ -35,7 +37,7 @@ class OnDeviceScorer(
         UrgencyText.windows(text).maxOfOrNull { urgency.proba(UrgencyText.normalize(it)) } ?: 0.0
 
     fun money(text: String): Double =
-        MoneyText.splitSentences(text).ifEmpty { listOf(text) }.maxOf { money.proba(MoneyText.clean(it)) }
+        MoneyText.splitSentences(text).ifEmpty { listOf(text) }.maxOf { money.proba(MoneyText.clean(it, moneyBrands)) }
 
     fun impersonation(text: String): Double = impersonation.proba(impersonationText.prep(text))
 

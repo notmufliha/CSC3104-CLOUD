@@ -40,7 +40,7 @@ import java.util.UUID
  * models and MobileBERT (if installed); app memory (PSS) while scoring; accuracy per level on
  *   (a) the robocall set (backend/workers/urgency_en/eval/robocall_gold.csv): 200 single sentences, label = the
  *       URGENCY label (provisional, partly AI-labelled), so it measures "warns on urgent robocall sentences";
- *   (b) the 14 demo calls (app/src/main/assets/scripts, Workstream 6): call-level scam detection. Correct = a
+ *   (b) the demo calls (app/src/main/assets/scripts: Workstream 6's 14 + H's 2 learning-loop tests): call-level scam detection. Correct = a
  *       scam call ends with a warning (UNSURE/SCAM), a normal call ends SAFE.
  * Levels 1 (Cloud) and 2 (Hybrid) need the server (serverUrl); if it doesn't answer they are left out.
  * Level 3 = the small models only (plus MobileBERT once a model is bundled).
@@ -101,16 +101,21 @@ class BenchmarkTest {
 
     private data class CallResult(val script: CallScript, val verdict: String, val sentWindows: Int = 0, val callerLines: Int = 0) {
         val isScam get() = script.kind == "scam"
+        /** Workstream H's learning-loop tests: a scam every model misses until retrained (should end SAFE today). */
+        val learningLoopTest get() = "new_scam_test" in script.fileName
         val correct get() = if (isScam) verdict == "SCAM" || verdict == "UNSURE" else verdict == "SAFE"
     }
     private fun callSummary(rs: List<CallResult>): String {
         val en = rs.filter { it.script.lang != "zh" }
         val checked = rs.filter { it.verdict != "NOT CHECKED" }
+        val usual = rs.filter { !it.learningLoopTest }
         return "${rs.count { it.correct }}/${rs.size} correct (English ${en.count { it.correct }}/${en.size}" +
-            (if (checked.size < rs.size) "; ${rs.size - checked.size} Chinese calls not checked" else "") + ")"
+            (if (checked.size < rs.size) "; ${rs.size - checked.size} Chinese calls not checked" else "") +
+            "; without H's 2 learning-loop tests ${usual.count { it.correct }}/${usual.size})"
     }
 
     // ------------------------------------------------------------ the benchmark
+    // (the 14 + 2 demo calls: main added H's two learning-loop test scams, scam_en_90/91, in 2026-11)
     @Test fun benchmark() = runBlocking {
         val started = System.currentTimeMillis()
         log("# Benchmark (Workstream G.5)")
@@ -124,7 +129,7 @@ class BenchmarkTest {
         val manifest = app.assets.open("${OnDeviceScorer.DIR}/manifest.json").bufferedReader().use { JsonParser.parseString(it.readText()).asJsonObject }
         val versions = manifest["models"].asJsonObject.entrySet().joinToString { (k, v) -> "$k ${v.asJsonObject["version"].asString}" }
         val smallMb = sizes.values.sum() / 1e6
-        log("- Small models (bundled, pre-main-merge): $versions")
+        log("- Small models (bundled, assets/models/manifest.json): $versions")
 
         // memory + load time of a fresh copy of the small models
         System.gc(); val pss0 = pssMb(); val heap0 = heapMb()
@@ -172,16 +177,17 @@ class BenchmarkTest {
         var l2Robo: List<Pair<Boolean, Boolean>>? = null
         var l1Robo: List<Pair<Boolean, Boolean>>? = null
         val l2Times = mutableListOf<Double>(); val l1Times = mutableListOf<Double>()
-        var l2Sent = 0
         if (serverUp) {
+            // Hybrid asks BERT only once a call has 3 caller lines (like the aggregator), so a one-sentence "call" never
+            // sends anything; the rules then see BERT as "no_context" when it would have been wanted, as the cloud does.
             l2Robo = robo.map { (text, label) ->
                 val s = System.nanoTime()
                 val sc = scorer.score(text)
                 val line = LocalRules.SIGNALS.map { sc[it] }
                 val rules = rulesFor()
-                val own = rules.peek(line, 1_000_000L, 20_000)
-                val bert = if (own.rule != "red" && own.fast >= OnDeviceCall.ASK_AT) { l2Sent++; verify(listOf(Mask.mask(text))) } else null
-                val d = rules.decide(line, 1_000_000L, 20_000, bert)
+                val wanted = rules.wantsSecondOpinion(line, 1_000_000L, 20_000) ||
+                    rules.peek(line, 1_000_000L, 20_000).fast >= OnDeviceCall.ASK_AT
+                val d = rules.decide(line, 1_000_000L, 20_000, null, if (wanted) "no_context" else "skipped")
                 l2Times += (System.nanoTime() - s) / 1e6
                 (d.verdict != "SAFE") to label
             }
@@ -195,7 +201,7 @@ class BenchmarkTest {
             }
         }
 
-        // ---- accuracy on the 14 demo calls, played with their own timing
+        // ---- accuracy on the demo calls, played with their own timing
         val scripts = ScriptRepository(app).loadAll()
         fun playLocal(script: CallScript, ask: (suspend (List<String>) -> Float?)?): CallResult {
             var now = 1_700_000_000_000L
@@ -236,17 +242,17 @@ class BenchmarkTest {
         // ---- report
         val l3RoboPrf = prf(l3Robo)
         log()
-        log("| Level | F1 (robocall sentences, urgency labels) / correct calls (14 demo calls) | Time per sentence (median / p95) | Model size on the phone | Data leaving the phone |")
+        log("| Level | F1 (robocall sentences, urgency labels) / correct calls (${scripts.size} demo calls) | Time per sentence (median / p95) | Model size on the phone | Data leaving the phone |")
         log("|---|---|---|---|---|")
         if (serverUp) {
-            log("| 1. Cloud | ${"%.3f".format(prf(l1Robo!!).f1)} / ${l1Calls!!.count { it.correct }} of 14 | ${ms(l1Times)} (round trip) | 0 MB | every caller sentence (not stored) |")
+            log("| 1. Cloud | ${"%.3f".format(prf(l1Robo!!).f1)} / ${l1Calls!!.count { it.correct }} of ${scripts.size} | ${ms(l1Times)} (round trip) | 0 MB | every caller sentence (not stored) |")
             val l2Lines = l2Calls!!.sumOf { it.callerLines }; val l2Win = l2Calls.sumOf { it.sentWindows }
-            log("| 2. Hybrid | ${"%.3f".format(prf(l2Robo!!).f1)} / ${l2Calls.count { it.correct }} of 14 | ${ms(l2Times)} (incl. cloud when asked) | ${"%.1f".format(smallMb)} MB | masked 5-line windows at unsure moments: $l2Win windows for $l2Lines caller lines (demo calls); $l2Sent of ${robo.size} robocall sentences |")
+            log("| 2. Hybrid | ${"%.3f".format(prf(l2Robo!!).f1)} / ${l2Calls.count { it.correct }} of ${scripts.size} | ${ms(l2Times)} (incl. cloud when asked) | ${"%.1f".format(smallMb)} MB | masked 5-line windows at unsure moments: $l2Win windows for $l2Lines caller lines (demo calls); none for one-sentence robocall checks (BERT waits for 3 lines) |")
         } else {
             log("| 1. Cloud | not run (server not reachable) | | 0 MB | every caller sentence (not stored) |")
             log("| 2. Hybrid | not run (server not reachable) | | ${"%.1f".format(smallMb)} MB | masked windows at unsure moments |")
         }
-        log("| 3. On-device (small models${if (mbModel != null) " + MobileBERT" else " only"}) | ${"%.3f".format(l3RoboPrf.f1)} / ${l3Calls.count { it.correct }} of 14 | ${ms(smallTimes)}${if (mbModel != null) "; MobileBERT ${ms(mbTimes)}" else ""} | ${"%.1f".format(smallMb)} MB${mbModel?.let { " + %.1f MB".format(it.modelBytes / 1e6) } ?: ""} | nothing |")
+        log("| 3. On-device (small models${if (mbModel != null) " + MobileBERT" else " only"}) | ${"%.3f".format(l3RoboPrf.f1)} / ${l3Calls.count { it.correct }} of ${scripts.size} | ${ms(smallTimes)}${if (mbModel != null) "; MobileBERT ${ms(mbTimes)}" else ""} | ${"%.1f".format(smallMb)} MB${mbModel?.let { " + %.1f MB".format(it.modelBytes / 1e6) } ?: ""} | nothing |")
         log()
         log("## Details")
         log("- Model files: " + sizes.entries.joinToString { (f, b) -> "$f ${"%.2f".format(b / 1e6)} MB" } + "; MobileBERT: $mbStatus")
@@ -265,7 +271,7 @@ class BenchmarkTest {
         log("| Call | Kind | Level 1 | Level 2 | Level 3 |")
         log("|---|---|---|---|---|")
         scripts.forEachIndexed { i, s ->
-            log("| ${s.fileName.removeSuffix(".json")} | ${s.kind} | ${l1Calls?.get(i)?.verdict ?: "-"} | ${l2Calls?.get(i)?.let { "${it.verdict} (${it.sentWindows} sent)" } ?: "-"} | ${l3Calls[i].verdict} |")
+            log("| ${s.fileName.removeSuffix(".json")}${if ("new_scam_test" in s.fileName) " (H learning-loop test)" else ""} | ${s.kind} | ${l1Calls?.get(i)?.verdict ?: "-"} | ${l2Calls?.get(i)?.let { "${it.verdict} (${it.sentWindows} sent)" } ?: "-"} | ${l3Calls[i].verdict} |")
         }
         log()
         log("Benchmark took ${(System.currentTimeMillis() - started) / 1000} s.")

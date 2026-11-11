@@ -33,6 +33,7 @@ import com.example.scamdetect.logic.FinalReview
 import com.example.scamdetect.logic.ImplicitLabels
 import com.example.scamdetect.logic.Mask
 import com.example.scamdetect.logic.PrivacyLevel
+import com.example.scamdetect.logic.Reasons
 import com.example.scamdetect.logic.Risk
 import com.example.scamdetect.logic.Summary
 import com.example.scamdetect.ondevice.MobileBert
@@ -442,6 +443,7 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
                 finalVerdict = verdict,
                 liveVerdict = historyVerdict(s.level),
                 topReason = historyReason(s),
+                reasonCode = Reasons.codeFor(s.summaryLevel, s.callScores, s.finalReview?.reason),
                 callScore = s.combinedScore,
                 signalsFired = Risk.SIGNALS.filter { it in fired },
                 review = s.finalReview?.reviewType ?: "unavailable",
@@ -463,6 +465,7 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         Risk.Level.ERROR, Risk.Level.LISTENING -> NOT_CHECKED
     }
 
+    /** The reason text saved with the call (shown only if its code is unknown); the code is what the dashboard uses. */
     private fun historyReason(s: CallUiState) = when (s.summaryLevel) {
         Risk.Level.RED, Risk.Level.YELLOW ->
             s.finalReview?.reason?.takeIf { it.isNotBlank() } ?: Risk.reason(s.lit, s.flaggedTexts)

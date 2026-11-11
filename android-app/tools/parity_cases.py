@@ -29,7 +29,7 @@ OUT = APP / "androidTest" / "assets" / "parity" / "parity_cases.json"
 ROBOCALL = WORKERS / "urgency_en" / "eval" / "robocall_gold.csv"
 MODEL_FILES = {
     "urgency": "urgency_en/model/urgency_en_v4.joblib",
-    "money": "money_en/model/E_model.joblib",
+    "money": "money_en/model/money_en_v2c.joblib",
     "impersonation": "impersonation_en/model/model.pkl",
 }
 
@@ -67,6 +67,12 @@ EDGE = [
     "ＡＢＣ １２３ full-width text, pay ＄５００",
     "line one\nline two with urgency now\r\nline three",
     "This is the police.\n\nTransfer to the safe account.",
+    # money_en v2 cleaning: brand names -> type tokens, written amounts -> moneytoken
+    "Transfer fifty dollars to my PayNow, or two hundred and fifty SGD via PayLah! now",
+    "This is DBS bank, use Grab Pay or GrabPay, the OCBC app or Standard Chartered Bank to pay 2k",
+    "Send three thousand ringgit by Western Union or a grand in cash, apple pay also can",
+    "Can you top up my GXS account with a hundred bucks? Then buy Google Play cards on Shopee or Carousell.",
+    "My mom uses CPF and grab to work; Bank of China and ICBC are banks; Revolut, YouTrip, Alipay, WeChat Pay.",
 ]
 
 
@@ -92,8 +98,7 @@ def scorer(name):
         from text_norm import normalize as clean
         return lambda t: float(predict.score(t)[0]), clean
     if name == "money":
-        from money_norm import clean_text as clean
-        return lambda t: float(predict.score(t)[0]), clean
+        return lambda t: float(predict.score(t)[0]), predict._model.clean   # the model's own cleaning (mask_brands)
     from text_utils import prep
     return lambda t: float(predict.score(t)), lambda t: prep([t], mask=True, caller=True)[0]
 

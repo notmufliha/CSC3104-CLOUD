@@ -18,6 +18,9 @@ class LinearTextModel private constructor(private val doc: Doc) {
     val version: String get() = doc.version
     val threshold: Double get() = doc.threshold
     val orgTypes: Map<String, List<String>> get() = doc.orgTypes.orEmpty()
+    /** money_en v2: the model was trained on brand-masked text (money_norm.clean_text(mask_brands=True)). */
+    val maskBrands: Boolean get() = doc.maskBrands == true
+    val brandTypes: Map<String, List<String>> get() = doc.brandTypes.orEmpty()
     val featureCount: Int get() = parts.sumOf { it.size }
 
     private val parts = doc.vectorizers.map { Part(it) }
@@ -108,6 +111,8 @@ class LinearTextModel private constructor(private val doc: Doc) {
         val intercept: Double,
         val calibration: Calibration?,
         @SerializedName("org_types") val orgTypes: Map<String, List<String>>?,
+        @SerializedName("mask_brands") val maskBrands: Boolean?,
+        @SerializedName("brand_types") val brandTypes: Map<String, List<String>>?,
     )
 
     private class Vectorizer(

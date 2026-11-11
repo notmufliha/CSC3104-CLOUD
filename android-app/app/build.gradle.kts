@@ -18,6 +18,11 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Workstream G.4: ONNX Runtime ships native libraries for 4 CPU types. Keep the phone's (arm64-v8a, e.g. the
+        // Galaxy S25) and the emulator's on Apple-silicon / Intel laptops (x86_64): the APK drops from ~90 MB.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
     }
 
     buildTypes {
