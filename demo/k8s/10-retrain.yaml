@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: retrain-urgency-en
+  name: retrain-models
   namespace: scamguard
 spec:
   schedule: "0 3 * * 0"
@@ -14,7 +14,7 @@ spec:
       ttlSecondsAfterFinished: 86400
       template:
         metadata:
-          labels: { app: retrain-urgency-en }
+          labels: { app: retrain-models }
         spec:
           restartPolicy: Never
           containers:

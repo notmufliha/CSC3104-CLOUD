@@ -10,6 +10,9 @@ it measures the real system: window, streak, money rule, quorum and cascade, not
     python tools/eval_cascade.py run --label fast
     docker compose up -d aggregator                                # back to normal
 
+   Or the live three-way comparison (Workstream F): AGG_MODE=fast|bert_only|cascade docker compose up -d aggregator,
+   one run per mode, then: report --runs fast bert_only cascade
+
 2. Compare (adds "bert_only" if the model files are in backend/workers/bert/model/):
 
     python tools/eval_cascade.py report --runs fast cascade --bert-local backend/workers/bert

@@ -52,9 +52,9 @@ INGRESS_HOST = "scamguard.test"      # must match HOSTNAME in demo/make_tls.py
 INGRESS_TLS_SECRET = "gateway-tls"   # made by `python demo/make_tls.py --apply` (up.sh/up.ps1 run it)
 ENVOY_REPLICAS = 1
 REDIS_REPLICAS = 1
-BERT_HPA_MIN = 1
-BERT_HPA_MAX = 2          # BERT is only called on the cascade path (unsure/alarmed lines), so it needs far
-                          # fewer replicas than the always-called workers.
+BERT_HPA_MIN = 2          # two, so losing a pod doesn't leave the cascade without BERT (C.9)
+BERT_HPA_MAX = 4          # BERT is only called on the cascade path (unsure/alarmed lines and spot checks), so
+                          # it needs fewer replicas than the always-called workers.
 
 # ---- Resource requests/limits -----------------------------------------------------------------------
 # EN/ZH worker numbers are the DEMO_TASK.md section 4.4 estimates, themselves measured on the OLD code
@@ -86,11 +86,13 @@ ENVOY_LIMITS = {"cpu": "500m", "memory": "256Mi"}
 
 # "Lite" bounds up.sh/up.ps1 switch to automatically on a small host (< 6 CPU or < 10 GB docker memory).
 LITE_HPA_MAX = 2
+LITE_BERT_HPA_MIN = 1
 LITE_BERT_HPA_MAX = 1
 LITE_AGGREGATOR_REPLICAS = 1
 
 if DEMO_LITE:
     HPA_MAX = LITE_HPA_MAX
+    BERT_HPA_MIN = LITE_BERT_HPA_MIN
     BERT_HPA_MAX = LITE_BERT_HPA_MAX
     AGGREGATOR_REPLICAS = LITE_AGGREGATOR_REPLICAS
     print("DEMO_LITE=1: using lite bounds (HPA_MAX=2, BERT_HPA_MAX=1, AGGREGATOR_REPLICAS=1)")
@@ -102,6 +104,10 @@ AGG_ENV = {
     "AGG_W_IMPERSONATION": "0.3333",
     "AGG_SCAM_THRESHOLD": "0.6",
     "AGG_UNSURE_THRESHOLD": "0.45",
+    "AGG_BERT_SAFE_THRESHOLD": "0.3",
+    "AGG_BERT_SCAM_THRESHOLD": "0.6",
+    "AGG_FALLBACK_STRONG_SIGNAL_THRESHOLD": "0.8",
+    "AGG_RED_DISAGREEMENTS_TO_CLEAR": "2",
     "AGG_WINDOW_LINES": "6",
     "AGG_WARMUP_SECS": "15",
     "AGG_WARMUP_OVERRIDE": "0.9",
@@ -119,6 +125,7 @@ AGG_ENV = {
     "BERT_TIMEOUT_MS": "300",
     "AGG_BERT_WEIGHT": "0.5",
     "AGG_BERT_VETO": "0",
+    "AGG_BERT_SPOT_EVERY": "5",
 }
 
 # Gateway timing (docker-compose.yml): 2 s promise to the phone = worker budget + aggregator budget.
@@ -134,19 +141,20 @@ GATEWAY_ENV = {
 
 # ---- Workstream H: learning loop (review queue, retraining, monitoring) -----------------------------
 REVIEW_RETENTION_DAYS = "30"        # reported calls are deleted this long after the report
-REVIEW_STORAGE = "1Gi"              # queue database + released model files (each urgency model ~1-2 MB)
+REVIEW_STORAGE = "1Gi"              # queue database + released model files, all six workers
 REVIEW_REQUESTS = {"cpu": "50m", "memory": "96Mi"}
 REVIEW_LIMITS = {"cpu": "500m", "memory": "256Mi"}
 RETRAIN_SCHEDULE = "0 3 * * 0"      # Sundays 03:00; or run now: python demo/tools/learning.py retrain --force
-RETRAIN_MIN_NEW_LABELS = "50"       # skip the weekly run unless this many new labelled lines are waiting
+RETRAIN_MIN_NEW_LABELS = "50"       # per language: skip it unless this many new labelled lines are waiting
 RETRAIN_TOLERANCE = "0.005"         # release check: allowed drop per gold-set metric (rounding-level noise)
-# Measured 2026-11-02: one urgency_en retrain = ~60 s, fits in 1.5 GiB (docker run --memory=1500m).
+# Measured 2026-11-06, one after the other in this limit: urgency_en ~80 s, money_en ~10 s, impersonation_en ~310 s,
+# urgency_zh ~100 s, money_zh ~90 s, impersonation_zh ~30 s.
 RETRAIN_REQUESTS = {"cpu": "500m", "memory": "768Mi"}
 RETRAIN_LIMITS = {"cpu": "2", "memory": "1536Mi"}
 # Workers that load their model version from the registry (MODEL_VERSION, set by learning.py rollout).
 # MODEL_VERSION itself is deliberately NOT written here: `kubectl apply` keeps an env var added by
 # `kubectl set env`, so re-running up.sh/up.ps1 does not silently roll a released version back to v4.
-REGISTRY_WORKERS = {"urgency-en"}
+REGISTRY_WORKERS = {"urgency-en", "money-en", "impersonation-en", "urgency-zh", "money-zh", "impersonation-zh"}
 # Drift alert (H.2): compare the last DRIFT_SHORT with the DRIFT_BASELINE before it. The planning doc's
 # "well above its usual level for a day" = 1h vs 1d. For a live demo, regenerate with e.g. 2m / 30m.
 DRIFT_SHORT = os.environ.get("DRIFT_SHORT", "1h")
@@ -771,12 +779,12 @@ spec:
 
 
 def retrain_yaml() -> str:
-    # Workstream H.6/H.7: weekly retraining of urgency_en with a release check. A blocked release exits 1 and
-    # is NOT retried (backoffLimit 0): the same data would just be blocked again.
+    # Workstream H.6/H.7: weekly retraining of the six fast workers with a release check. A blocked release exits
+    # 1 and is NOT retried (backoffLimit 0): the same data would just be blocked again.
     return f"""apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: retrain-urgency-en
+  name: retrain-models
   namespace: {NAMESPACE}
 spec:
   schedule: "{RETRAIN_SCHEDULE}"
@@ -789,7 +797,7 @@ spec:
       ttlSecondsAfterFinished: 86400
       template:
         metadata:
-          labels: {{ app: retrain-urgency-en }}
+          labels: {{ app: retrain-models }}
         spec:
           restartPolicy: Never
           containers:
