@@ -19,6 +19,7 @@ import com.example.scamdetect.data.EndCallResponse
 import com.example.scamdetect.data.EndLine
 import com.example.scamdetect.data.GatewayApi
 import com.example.scamdetect.data.GatewayClient
+import com.example.scamdetect.data.ModelUpdater
 import com.example.scamdetect.data.db.CallRecord
 import com.example.scamdetect.data.db.ScorePoint
 import com.example.scamdetect.data.ReportLine
@@ -149,6 +150,27 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
                 is MobileBert.Status.NotInstalled -> s.reason + ": level 3 uses the small models only"
             }
         }
+    }
+
+    /** G.10: which on-device model versions this phone runs, and the result of the last update check. */
+    private val _modelStatus = MutableStateFlow(ModelUpdater.describe(getApplication()))
+    val modelStatus: StateFlow<String> = _modelStatus.asStateFlow()
+    private val _modelCheck = MutableStateFlow("")
+    val modelCheck: StateFlow<String> = _modelCheck.asStateFlow()
+
+    init {
+        // G.10: on every app start, quietly fetch newer federated models (only model files come down).
+        viewModelScope.launch { checkModelUpdates() }
+    }
+
+    /** G.10: ask the model-download service for newer versions; also the Settings button. */
+    suspend fun checkModelUpdates(): String {
+        _modelCheck.value = "Checking for model updates…"
+        val msg = ModelUpdater.update(getApplication(), prefs.gatewayUrl)
+        _modelCheck.value = msg
+        _modelStatus.value = ModelUpdater.describe(getApplication())
+        if (prefs.privacyLevel.scoresOnPhone) preloadModels()
+        return msg
     }
 
     /** G.2: load the on-device models in the background, so the first call doesn't wait for them. */

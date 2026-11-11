@@ -1,0 +1,59 @@
+{
+  "model": "money",
+  "version": "hash_v1",
+  "created_at": "2026-11-11T14:12:44+00:00",
+  "sklearn_version": "1.4.2",
+  "parts": [
+    {
+      "analyzer": "word",
+      "ngram": [
+        1,
+        2
+      ],
+      "token_pattern": "(?u)\\b\\w\\w+\\b",
+      "stop_words": [],
+      "lowercase": true,
+      "n_features": 262144
+    }
+  ],
+  "C": 3.0,
+  "threshold": 0.5,
+  "platt": [
+    1.668802907051625,
+    -0.3544986683964893
+  ],
+  "trained_rows": 3130,
+  "nonzero_weights": 15097,
+  "gold": [
+    {
+      "model": "money",
+      "test_set": "sg_gold",
+      "rows": 60,
+      "tfidf_roc_auc": 0.8522,
+      "hash_roc_auc": 0.8411,
+      "tfidf_f1": 0.6222,
+      "hash_f1": 0.5909,
+      "roc_auc_gap": 0.0111
+    },
+    {
+      "model": "money",
+      "test_set": "test_set",
+      "rows": 200,
+      "tfidf_roc_auc": 0.7808,
+      "hash_roc_auc": 0.799,
+      "tfidf_f1": 0.5655,
+      "hash_f1": 0.5075,
+      "roc_auc_gap": -0.0182
+    },
+    {
+      "model": "money",
+      "test_set": "ftc",
+      "rows": 1544,
+      "tfidf_roc_auc": 0.6969,
+      "hash_roc_auc": 0.7225,
+      "tfidf_f1": 0.068,
+      "hash_f1": 0.0592,
+      "roc_auc_gap": -0.0256
+    }
+  ]
+}

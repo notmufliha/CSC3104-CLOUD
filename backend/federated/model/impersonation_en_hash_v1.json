@@ -1,0 +1,50 @@
+{
+  "model": "impersonation",
+  "version": "hash_v1",
+  "created_at": "2026-11-11T14:12:57+00:00",
+  "sklearn_version": "1.4.2",
+  "parts": [
+    {
+      "analyzer": "word",
+      "ngram": [
+        1,
+        2
+      ],
+      "token_pattern": "(?u)\\b\\w\\w+\\b",
+      "stop_words": [],
+      "lowercase": true,
+      "n_features": 262144
+    },
+    {
+      "analyzer": "char_wb",
+      "ngram": [
+        3,
+        5
+      ],
+      "token_pattern": "(?u)\\b\\w\\w+\\b",
+      "stop_words": [],
+      "lowercase": true,
+      "n_features": 262144
+    }
+  ],
+  "C": 30.0,
+  "threshold": 0.59,
+  "platt": [
+    2.1533532449858868,
+    1.145162734753462
+  ],
+  "trained_rows": 1104,
+  "nonzero_weights": 33025,
+  "gold": [
+    {
+      "model": "impersonation",
+      "test_set": "gold_test",
+      "rows": 622,
+      "tfidf_roc_auc": 0.9878,
+      "hash_roc_auc": 0.9867,
+      "tfidf_f1": 0.9272,
+      "hash_f1": 0.9307,
+      "roc_auc_gap": 0.0011
+    }
+  ]
+}

@@ -1,10 +1,12 @@
-"""fedcore.py - Workstream G: what one simulated phone does with the global model, and the shared settings.
+"""fedcore.py - Workstream G: what one simulated phone does with the global models, and the shared settings.
 
 Only numpy and scipy, so the phone image stays small. The features are already hashed (prepare.py), the way a
 real phone would hash its own caller lines on the device.
 
-The model is logistic regression on the fixed hashed features: weights (N_FEATURES) + one intercept. Flower
-sends these as two numpy arrays and FedAvg averages them, weighted by how many lines each phone trained on.
+All three on-device models are trained in the same round. Flower sends them as one list of numpy arrays:
+  [urgency weights, urgency intercept, money weights, money intercept, impersonation weights, impersonation intercept]
+and FedAvg averages each array. A model is logistic regression on fixed hashed features; impersonation has two
+feature parts (words + character n-grams), so twice as many weights.
 """
 import os
 
@@ -12,17 +14,31 @@ import numpy as np
 from scipy import sparse
 
 N_FEATURES = 2 ** 18
+MODELS = ("urgency", "money", "impersonation")
+PARTS = {"urgency": 1, "money": 1, "impersonation": 2}      # must match specs.py (the server checks)
 
 # Local training: a few passes of mini-batch gradient descent on the phone's own labelled lines, starting from the
-# global model. Defaults were tuned so 10 rounds of FedAvg land near the centrally trained model (README.md).
+# global model. Tuned per model so 10 rounds of FedAvg land near the centrally trained model (README.md).
 LOCAL_EPOCHS = int(os.environ.get("FL_LOCAL_EPOCHS", 3))
-LEARNING_RATE = float(os.environ.get("FL_LR", 20.0))
+LEARNING_RATE = {m: float(os.environ.get(f"FL_LR_{m.upper()}", os.environ.get("FL_LR", 20.0))) for m in MODELS}
 BATCH = int(os.environ.get("FL_BATCH", 32))
 L2 = float(os.environ.get("FL_L2", 1e-5))
 
 
+def dims(model):
+    return PARTS[model] * N_FEATURES
+
+
 def zeros():
-    return [np.zeros(N_FEATURES, dtype=np.float32), np.zeros(1, dtype=np.float32)]
+    out = []
+    for m in MODELS:
+        out += [np.zeros(dims(m), dtype=np.float32), np.zeros(1, dtype=np.float32)]
+    return out
+
+
+def split(params):
+    """Flat list -> {model: (weights, intercept)}."""
+    return {m: (params[2 * i], params[2 * i + 1]) for i, m in enumerate(MODELS)}
 
 
 def sigmoid(z):
@@ -38,12 +54,11 @@ def class_weights(y):
     return np.where(y == 1, n / (2 * pos), n / (2 * (n - pos)))
 
 
-def local_train(params, X, y, epochs=None, lr=None, batch=None, l2=None, seed=0):
-    """Mini-batch gradient descent on weighted log loss + L2, from the global params. Returns new params."""
-    epochs, lr = epochs or LOCAL_EPOCHS, lr or LEARNING_RATE
-    batch, l2 = batch or BATCH, (L2 if l2 is None else l2)
-    w, b = params[0].astype(np.float64).copy(), float(params[1][0])
-    sw = class_weights(y)
+def local_train(w, b, X, y, sample_weight=None, lr=20.0, epochs=None, batch=None, l2=None, seed=0):
+    """Mini-batch gradient descent on weighted log loss + L2, from the global (w, b). Returns new (w, b)."""
+    epochs, batch, l2 = epochs or LOCAL_EPOCHS, batch or BATCH, (L2 if l2 is None else l2)
+    w, b = w.astype(np.float64).copy(), float(b[0])
+    sw = class_weights(y) * (sample_weight if sample_weight is not None else 1.0)
     rng = np.random.default_rng(seed)
     steps = -(-len(y) // batch)
     for _ in range(epochs):
@@ -58,12 +73,13 @@ def local_train(params, X, y, epochs=None, lr=None, batch=None, l2=None, seed=0)
             b -= lr * float(err.mean())
         # L2 shrink once per epoch (same total as a per-step shrink, without touching every weight each step).
         w *= (1.0 - lr * l2) ** steps
-    return [w.astype(np.float32), np.array([b], dtype=np.float32)]
+    return w.astype(np.float32), np.array([b], dtype=np.float32)
 
 
 def clip_update(new, old, clipping_norm):
-    """G.8: scale the phone's change (new - old) down so its L2 norm is at most clipping_norm. Clipping bounds how
-    much one phone can move the model, which is what lets the server's noise hide any single phone."""
+    """G.8: scale the phone's whole change (all three models, new - old) down so its L2 norm is at most
+    clipping_norm. Clipping bounds how much one phone can move the models, which is what lets the server's noise
+    hide any single phone."""
     delta = [n.astype(np.float64) - o.astype(np.float64) for n, o in zip(new, old)]
     norm = float(np.sqrt(sum(float((d ** 2).sum()) for d in delta)))
     scale = min(1.0, clipping_norm / norm) if norm > 0 else 1.0

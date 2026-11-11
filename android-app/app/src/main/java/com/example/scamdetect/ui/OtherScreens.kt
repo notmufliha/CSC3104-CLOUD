@@ -395,6 +395,9 @@ fun SettingsScreen(
     privacyLevel: PrivacyLevel = PrivacyLevel.DEFAULT,
     onPrivacyLevel: (PrivacyLevel) -> Unit = {},
     mobileBertStatus: String = "",
+    modelStatus: String = "",
+    modelCheck: String = "",
+    onCheckModels: suspend () -> String = { "" },
 ) {
     var url by remember(currentUrl) { mutableStateOf(currentUrl) }
     var result by remember { mutableStateOf<String?>(null) }
@@ -438,6 +441,21 @@ fun SettingsScreen(
             result?.let { Text(it) }
 
             PrivacyLevelPicker(privacyLevel, onPrivacyLevel, mobileBertStatus)
+
+            // Workstream G.10: which on-device models this phone runs, and a manual update check
+            HorizontalDivider()
+            Text("On-device models", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+            Text(
+                "Used at privacy levels 2 and 3. Improved versions come from federated learning: phones train on " +
+                    "their own calls and share only model changes, never the calls. The app checks for new versions " +
+                    "when it starts.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Text(modelStatus, style = MaterialTheme.typography.bodyMedium)
+            OutlinedButton(onClick = { scope.launch { onCheckModels() } }) { Text("Check for model updates") }
+            if (modelCheck.isNotEmpty()) Text(
+                modelCheck, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }

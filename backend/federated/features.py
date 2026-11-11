@@ -1,58 +1,57 @@
-"""features.py - Workstream G: the fixed feature space every phone and the server share.
+"""features.py - Workstream G: the fixed feature space every phone and the server share (hashing).
 
 Why hashing (G.1): TfidfVectorizer learns its word list from the data it is fitted on, so two phones fitting on
 their own calls would get different word lists, and weight 1234 would mean a different word on each phone. Their
-weights could not be averaged. HashingVectorizer maps every word (and word pair) to a fixed slot with a hash
+weights could not be averaged. HashingVectorizer maps every word (or character n-gram) to a fixed slot with a hash
 function, so slot 1234 means the same thing on every phone without anyone sharing a word list.
 
 The IDF weights (how rare each slot is) are fitted ONCE by the cloud on the public training data and then frozen.
 They ship with the model, like the hash settings. Phones never refit them, so they only ever train the logistic
-regression weights, and those can be averaged (FedAvg).
+regression weights, and those can be averaged (FedAvg). The same holds for the Platt calibration of money and
+impersonation (specs.py): fitted centrally, frozen during federated rounds.
 
-The tokenisation copies the TF-IDF urgency model (backend/workers/urgency_en/train.py): same cleaning
-(text_norm.normalize), same token pattern (keeps "don't" as one token), same placeholder stop words, unigrams +
-bigrams, sublinear tf.
+A model has one or more "parts" (impersonation: words + character n-grams), each hashed into its own N_FEATURES
+slots, TF-IDF weighted (sublinear tf) and l2-normalised on its own, exactly like the TF-IDF workers do it.
 """
-import sys
-from pathlib import Path
+from dataclasses import asdict, dataclass, field
 
 import numpy as np
 from sklearn.feature_extraction.text import HashingVectorizer, TfidfTransformer
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import FeatureUnion, Pipeline
 
-REPO = Path(__file__).resolve().parents[2]
-URGENCY_DIR = REPO / "backend" / "workers" / "urgency_en"
-if str(URGENCY_DIR) not in sys.path:
-    sys.path.insert(0, str(URGENCY_DIR))
-
-from text_norm import normalize  # noqa: E402  the urgency worker's own cleaning, so serving matches training
-
-N_FEATURES = 2 ** 18   # 262,144 slots; the TF-IDF model keeps at most 50,000 words, so collisions are rare
-NGRAM = (1, 2)
-TOKEN_PATTERN = r"(?u)\b[\w']+\b"
-STOP_WORDS = ["numtoken", "timetoken", "moneytoken", "phonetoken", "urltoken", "emailtoken"]
+N_FEATURES = 2 ** 18   # 262,144 slots per part; the TF-IDF workers keep 30,000-50,000 words, so collisions are rare
+DEFAULT_TOKEN = r"(?u)\b\w\w+\b"   # scikit-learn's default
 
 
-def hasher() -> HashingVectorizer:
-    # alternate_sign=False: every count stays positive, so the TF-IDF step behaves as it does on word counts.
-    # norm=None: the TfidfTransformer after it normalises (after applying idf), exactly like TfidfVectorizer.
-    return HashingVectorizer(n_features=N_FEATURES, ngram_range=NGRAM, token_pattern=TOKEN_PATTERN,
-                             lowercase=True, stop_words=STOP_WORDS, alternate_sign=False, norm=None)
+@dataclass(frozen=True)
+class Part:
+    analyzer: str = "word"                  # "word" or "char_wb"
+    ngram: tuple = (1, 2)
+    token_pattern: str = DEFAULT_TOKEN
+    stop_words: tuple = ()
+    lowercase: bool = True
+    n_features: int = N_FEATURES
+    extra: dict = field(default_factory=dict, compare=False)
+
+    def hasher(self) -> HashingVectorizer:
+        # alternate_sign=False: counts stay positive, so the TF-IDF step behaves as it does on word counts.
+        # norm=None: the TfidfTransformer after it normalises (after applying idf), exactly like TfidfVectorizer.
+        return HashingVectorizer(n_features=self.n_features, analyzer=self.analyzer, ngram_range=tuple(self.ngram),
+                                 token_pattern=self.token_pattern if self.analyzer == "word" else None,
+                                 stop_words=list(self.stop_words) or None, lowercase=self.lowercase,
+                                 alternate_sign=False, norm=None)
+
+    def describe(self) -> dict:
+        d = asdict(self)
+        d.pop("extra")
+        d["ngram"], d["stop_words"] = list(self.ngram), list(self.stop_words)
+        return d
 
 
-def featurizer() -> Pipeline:
-    return Pipeline([("hash", hasher()), ("tfidf", TfidfTransformer(sublinear_tf=True))])
-
-
-def clean(texts) -> list:
-    return [normalize(t) for t in texts]
+def featurizer(parts) -> FeatureUnion:
+    return FeatureUnion([(f"part{i}", Pipeline([("hash", p.hasher()), ("tfidf", TfidfTransformer(sublinear_tf=True))]))
+                         for i, p in enumerate(parts)])
 
 
 def sigmoid(z):
-    return 1.0 / (1.0 + np.exp(-z))
-
-
-def score(featurize: Pipeline, coef: np.ndarray, intercept: float, cleaned_texts) -> np.ndarray:
-    """P(urgent) for already-cleaned texts, from raw weights (what FedAvg produces)."""
-    X = featurize.transform(cleaned_texts)
-    return sigmoid(X @ coef + intercept)
+    return 1.0 / (1.0 + np.exp(-np.clip(z, -30, 30)))

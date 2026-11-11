@@ -1,15 +1,17 @@
-"""export_phone.py - Workstream G.10: a hashing model as the JSON file the app downloads from the registry.
+"""export_phone.py - Workstream G.10: a hashing model as the file the app downloads from the registry.
 
-Format "hashing-lr" v1 (read by the app's model updater):
-  hash      the HashingVectorizer settings the phone must copy exactly (murmurhash3_32, seed 0, abs value
-            mod n_features; token pattern; stop words; n-grams)
-  idf       the frozen IDF: one default value for slots never seen in training + the slots that differ
-  weights   logistic regression weights, float32 little-endian, base64 (dense: after DP noise every slot is
-            non-zero, so a sparse list would be bigger)
-  intercept, threshold
-The cleaning step is the urgency worker's text_norm.normalize, which the app already ports (TextCleaning.kt).
+Same layout the app already reads for its bundled TF-IDF models (android-app/.../ondevice/LinearTextModel.kt,
+tools/export_models.py), as format 2: a vectoriser can now be a hashing one instead of a word list:
+  n_features                 slots; a token's slot = abs(murmurhash3_32(utf-8 bytes, seed 0)) % n_features
+                             (scikit-learn's HashingVectorizer, alternate_sign=False)
+  idf_default                idf of every slot not listed (slots never seen in training)
+  idf_index / idf_value      the slots whose idf differs
+  coef_b64                   logistic regression weights for this vectoriser, float32 little-endian, base64
+                             (dense: after federated averaging + noise nearly every slot is non-zero)
+Everything else (calibration, threshold, and the cleaning settings: mask_brands / brand_types / org_types) is copied
+from the bundled TF-IDF file of the same signal, so the phone cleans text exactly as before.
 
-  python backend/federated/export_phone.py backend/federated/model/urgency_en_hash_v1.joblib out.json
+  python backend/federated/export_phone.py money backend/federated/model/money_en_hash_v1.joblib out.json
 """
 import base64
 import json
@@ -22,44 +24,55 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import features as F  # noqa: E402
 
-FORMAT = "hashing-lr"
-FORMAT_VERSION = 1
+FORMAT = 2
+ASSETS = Path(__file__).resolve().parents[2] / "android-app" / "app" / "src" / "main" / "assets" / "models"
+CLEANING_KEYS = ("signal", "language", "cleaning", "mask_brands", "brand_types", "org_types")
 
 
-def to_phone_json(coef, intercept, featurize, threshold, source=""):
-    idf = featurize.named_steps["tfidf"].idf_.astype(np.float64)
-    default = float(np.max(idf))  # slots never seen in training have document frequency 0: the largest idf
-    seen = np.where(np.abs(idf - default) > 1e-9)[0]
-    return {
-        "format": FORMAT, "format_version": FORMAT_VERSION, "signal": "urgency", "language": "en",
-        "source": source,
-        "hash": {"n_features": F.N_FEATURES, "ngram": list(F.NGRAM), "token_pattern": F.TOKEN_PATTERN,
-                 "stop_words": F.STOP_WORDS, "lowercase": True, "alternate_sign": False,
-                 "function": "murmurhash3_32(token, seed=0), abs, mod n_features", "sublinear_tf": True,
-                 "norm": "l2"},
-        "idf": {"default": default, "index": seen.tolist(), "value": [round(float(v), 7) for v in idf[seen]]},
-        "weights_b64": base64.b64encode(np.asarray(coef, dtype="<f4").tobytes()).decode(),
-        "intercept": float(intercept), "threshold": float(threshold),
-    }
+def to_phone_json(name, coef, intercept, featurize, platt, threshold, version, source="") -> dict:
+    bundled = json.loads((ASSETS / f"{name}_en.json").read_text(encoding="utf-8"))
+    parts = [step for _, step in featurize.transformer_list]
+    coef = np.asarray(coef, dtype=np.float64)
+    vecs, offset = [], 0
+    for (_, bundled_vec), pipe in zip([(None, v) for v in bundled["vectorizers"]], parts):
+        h, tf = pipe.named_steps["hash"], pipe.named_steps["tfidf"]
+        n = h.n_features
+        idf = tf.idf_.astype(np.float64)
+        default = float(idf.max())            # slots never seen in training: document frequency 0, the largest idf
+        seen = np.where(np.abs(idf - default) > 1e-9)[0]
+        vecs.append({"analyzer": h.analyzer, "ngram_range": list(h.ngram_range), "lowercase": bool(h.lowercase),
+                     "token_pattern": h.token_pattern or bundled_vec["token_pattern"],
+                     "stop_words": sorted(h.stop_words or []), "sublinear_tf": bool(tf.sublinear_tf),
+                     "n_features": int(n), "idf_default": default, "idf_index": seen.tolist(),
+                     "idf_value": [float(f"{v:.9g}") for v in idf[seen]],
+                     "coef_b64": base64.b64encode(coef[offset:offset + n].astype("<f4").tobytes()).decode()})
+        offset += n
+    assert offset == len(coef), f"{name}: {len(coef)} weights for {offset} slots"
+    doc = {"format": FORMAT, "name": f"{name}_en", "version": version, "source": source,
+           "threshold": float(threshold), "vectorizers": vecs, "intercept": float(intercept),
+           "calibration": {"a": platt[0], "b": platt[1]} if platt else None}
+    doc.update({k: bundled[k] for k in CLEANING_KEYS if k in bundled})
+    return doc
 
 
 def from_phone_json(doc: dict) -> dict:
-    """The weights back out of a published file, to use it as the release check's baseline. The featurizer is not
-    rebuilt: the server checks the hash settings match its own, so its frozen featurizer applies."""
-    want = {"n_features": F.N_FEATURES, "ngram": list(F.NGRAM), "token_pattern": F.TOKEN_PATTERN,
-            "stop_words": F.STOP_WORDS}
-    got = {k: doc["hash"][k] for k in want}
-    if doc.get("format") != FORMAT or got != want:
-        raise ValueError(f"published model uses different features: {got} (expected {want})")
-    coef = np.frombuffer(base64.b64decode(doc["weights_b64"]), dtype="<f4").astype(np.float64)
-    return {"coef": coef, "intercept": float(doc["intercept"]), "threshold": float(doc["threshold"])}
+    """The weights back out of a published file (the release check's baseline). The server uses its own frozen
+    featurizer, so the hash settings must be the ones it knows."""
+    if doc.get("format") != FORMAT:
+        raise ValueError(f"format {doc.get('format')}, expected {FORMAT}")
+    coef = np.concatenate([np.frombuffer(base64.b64decode(v["coef_b64"]), dtype="<f4").astype(np.float64)
+                           for v in doc["vectorizers"]])
+    cal = doc.get("calibration")
+    return {"coef": coef, "intercept": float(doc["intercept"]), "threshold": float(doc["threshold"]),
+            "platt": (cal["a"], cal["b"]) if cal else None}
 
 
 def main():
-    m = joblib.load(sys.argv[1])
-    doc = to_phone_json(m["coef"], m["intercept"], m["featurizer"], m["threshold"], source=m.get("version", ""))
-    Path(sys.argv[2]).write_text(json.dumps(doc))
-    print(f"wrote {sys.argv[2]} ({Path(sys.argv[2]).stat().st_size / 1e6:.1f} MB)")
+    name, src, out = sys.argv[1], sys.argv[2], sys.argv[3]
+    m = joblib.load(src)
+    doc = to_phone_json(name, m["coef"], m["intercept"], m["featurizer"], m["platt"], m["threshold"], m["version"])
+    Path(out).write_text(json.dumps(doc))
+    print(f"wrote {out} ({Path(out).stat().st_size / 1e6:.1f} MB)")
 
 
 if __name__ == "__main__":

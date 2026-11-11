@@ -135,6 +135,7 @@ G changes nothing above. It adds, all optional:
 - `demo/k8s/federated/` (applied by `demo/tools/federated.py`, never by `kubectl apply -f demo/k8s/`):
   `model-download` (2 replicas, read-only, Ingress path `/models`) in `scamguard`, and in its own namespace
   `scamguard-fl` a federated run: a Flower server Job and an Indexed Job of 10 simulated phones;
-- the review service's model registry also stores the phone model, `urgency_en_phone` v1, v2, ...
+- the review service's model registry also stores the three phone models, `urgency_en_phone`, `money_en_phone`,
+  `impersonation_en_phone` (v1, v2, ...); the app downloads newer versions from `/models` on start-up.
 
 Details, results and how to check them: `backend/federated/README.md`.

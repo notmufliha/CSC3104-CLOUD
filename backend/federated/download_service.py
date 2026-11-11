@@ -5,8 +5,8 @@ registry itself: the registry lives in the review service, which also holds the 
 internal. This service only reads the registry's released phone models and caches the files in memory (a few MB,
 identified by sha256), so it can run as several copies and be restarted at any time.
 
-  GET /models/manifest                 {"models": {"urgency_en_phone": {"version", "sha256", "bytes", "path"}}}
-  GET /models/urgency_en_phone/<v>     the model JSON (export_phone.py format)
+  GET /models/manifest                 {"models": {"urgency_en_phone": {"version", "sha256", "path"}, ...}}
+  GET /models/<name>/<v>               the model JSON (export_phone.py format 2), name = urgency|money|impersonation_en_phone
   GET /health
 
 Standard library only.  REVIEW_URL (default http://review.scamguard.svc.cluster.local:8090), PORT (8000).
@@ -23,7 +23,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import registry  # noqa: E402
 
-MODELS = [registry.PHONE_MODEL]
+MODELS = list(registry.PHONE_MODELS)
 FILE_RE = re.compile(r"^/models/([a-z_]+)/(v\d{1,4})$")
 _cache, _lock = {}, threading.Lock()
 
