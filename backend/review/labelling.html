@@ -30,14 +30,15 @@
 <body>
 <main>
   <h1>ScamGuard labelling</h1>
-  <div class="muted">Caller lines from calls users chose to report. Already masked; deleted 30 days after the report. Internal only.</div>
+  <div class="muted">Caller lines from calls users chose to report. Masking misses some details, so read each line. Unlabelled lines are deleted 30 days after the report; lines you label may be kept for training. Internal only.</div>
   <details>
     <summary>Labelling rules (same as each worker's LABELING.md)</summary>
     <ul>
       <li><b>Urgency = 1</b> only when the caller pushes the listener to act <i>now</i> (deadline, threat, "don't hang up"). Ordinary time talk ("I'll call back tomorrow") is 0.</li>
       <li><b>Money = 1</b> only when the caller <i>asks for</i> money, card details or a code. "Never share your OTP" is 0.</li>
       <li><b>Impersonation = 1</b> only when the caller <i>claims to be from</i> an organisation (police, bank, government). Mentioning one is 0.</li>
-      <li>Judge the line on its own. If it still contains a person's name or you can't tell, press <b>Skip</b>.</li>
+      <li>Judge the line on its own. If you can't tell, press <b>Skip</b>.</li>
+      <li><b>Privacy check:</b> always press <b>Skip</b> if anything personal is left: a person's name, an address, or an account number, code or phone number read out as words. Labelled lines can be kept long term; skipped ones are deleted.</li>
     </ul>
   </details>
   <div class="bar">
@@ -65,7 +66,8 @@ async function stats() {
   document.getElementById("stats").replaceChildren(
     el("span", { textContent: `Reports: ${s.reports.scam} scam, ${s.reports.fine} fine` }),
     el("span", { textContent: `Waiting: ${s.unlabelled}` }),
-    el("span", { textContent: `Not yet trained on (urgency): ${s.unused.urgency}` }),
+    el("span", { textContent: `Not yet trained on: ${s.new_lines.en} English, ${s.new_lines.zh} Chinese` }),
+    el("span", { textContent: `Kept: ${s.kept_lines}` }),
     el("span", { textContent: `Disputed: ${s.disputed.urgency + s.disputed.money + s.disputed.impersonation}` }));
 }
 function needName() { if (!who.value.trim()) { who.focus(); alert("Type your name first, so labels can be spot-checked by someone else."); return true; } return false; }

@@ -420,7 +420,7 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
             )
             when {
                 resp.isSuccessful -> "Thank you. Shared ${resp.body()?.linesStored ?: lines.size} lines; " +
-                    "they are deleted after 30 days."
+                    "lines not approved for training are deleted after 30 days."
                 resp.code() == 503 -> "Reporting is not set up on this server."
                 else -> "Could not send the report (server answered ${resp.code()})."
             }

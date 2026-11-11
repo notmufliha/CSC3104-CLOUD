@@ -14,18 +14,25 @@ Rules every worker follows:
   - a scoring failure returns a gRPC INTERNAL error (the gateway then leaves this score out),
     never a made-up score
   - transcript text is never logged, only scores
+
+MODEL_VERSION selects a released version from the model registry instead of the baked model
+(common/model_registry.py).
 """
 import logging
 import os
 import signal
+import sys
 from concurrent import futures
 
 import grpc
 from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 
-import predict
-import scam_detect_pb2
-import scam_detect_pb2_grpc
+# Local runs: the shared file lives in ../common (in the image it sits next to this file).
+sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "common"))
+import model_registry  # noqa: E402
+import predict  # noqa: E402
+import scam_detect_pb2  # noqa: E402
+import scam_detect_pb2_grpc  # noqa: E402
 
 SIGNAL = "impersonation"
 LANGUAGE = "en"
@@ -39,11 +46,13 @@ logger = logging.getLogger(f"worker.{SIGNAL}.{LANGUAGE}")
 
 class WorkerServiceServicer(scam_detect_pb2_grpc.WorkerServiceServicer):
     def __init__(self):
-        if not os.path.exists(MODEL_PATH):
-            raise FileNotFoundError(f"impersonation model not found at {MODEL_PATH} - run train.py or mount it")
-        card = predict.load_model(MODEL_PATH)
-        logger.info("loaded %s (version=%s, sklearn=%s, reporting threshold=%s)", MODEL_PATH,
-                    card.get("model_version", "unversioned"), card.get("sklearn_version"),
+        path, registry_version = model_registry.resolve(f"{SIGNAL}_{LANGUAGE}", MODEL_PATH)
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"impersonation model not found at {path} - run train.py or mount it")
+        card = predict.load_model(path)
+        self.version = registry_version or card.get("model_version", "unversioned")
+        logger.info("loaded %s (version=%s, sklearn=%s, reporting threshold=%s)", path,
+                    self.version, card.get("sklearn_version"),
                     card.get("threshold_used_for_reporting"))
 
     def ClassifyTranscript(self, request, context):
@@ -52,8 +61,9 @@ class WorkerServiceServicer(scam_detect_pb2_grpc.WorkerServiceServicer):
         except Exception as e:  # report the failure; never invent a score
             logger.error("scoring failed: %s", type(e).__name__)
             context.abort(grpc.StatusCode.INTERNAL, "impersonation scoring failed")
-        logger.info("score=%.4f", score)
-        return scam_detect_pb2.WorkerScore(signal=SIGNAL, score=score, language=LANGUAGE)
+        logger.info("score=%.4f version=%s", score, self.version)
+        return scam_detect_pb2.WorkerScore(signal=SIGNAL, score=score, language=LANGUAGE,
+                                           model_version=self.version)
 
 
 def serve():

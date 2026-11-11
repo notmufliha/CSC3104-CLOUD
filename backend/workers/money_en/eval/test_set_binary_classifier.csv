@@ -1,0 +1,201 @@
+sentence_id,text,label,call_type,category
+ng_001,Can you key in the six digit TAC code that was just sent to your mobile phone? ,1,scam,otp_request
+ng_002,Please read out the one-time password you received to confirm your DBS PayLah transaction.,1,scam,otp_request
+ng_003,Kindly tell me the OTP shown on your token so I can help unfreeze your bank account.,1,scam,otp_request
+ng_004,"Sir, I need you to authorize the login push notification on your Singpass app right now.",1,scam,otp_request
+ng_005,What is the six digit code you got via SMS from UOB just a minute ago?,1,scam,otp_request
+ng_006,Please share the six-digit verification code sent to your registered email to process the claim.,1,legit,otp_request
+ng_007,Can you give me the OTP sent to your phone so I can complete your StarHub order?,1,legit,otp_request
+ng_008,"To verify your identity, please state the SMS OTP you just received from IRAS.",1,legit,otp_request
+ng_009,Press approve on your digital token prompt to complete your online banking login.,1,legit,otp_request
+ng_0010,Could you dictate the WhatsApp verification code that appeared on your phone display?,1,scam,otp_request
+ng_0011,Please tell me the authentication PIN you got on your mobile to process your refund.,1,scam,otp_request
+ng_0012,I need the SMS code sent by your credit card issuer to reset your password.,1,scam,otp_request
+ng_0013,Kindly state the four-digit security code received on your handset to verify this call.,1,legit,otp_request
+ng_0014,Provide the OTP you just received so we can link your new mobile number immediately.,1,scam,otp_request
+ng_0015,Please approve the login request on your OCBC OneToken to verify your device.,1,legit,otp_request
+ng_0016,Please transfer S$500 to this PayNow number to clear your outstanding overdue bill.,1,scam,payment_request
+ng_0017,You need to purchase five $100 iTunes gift cards and read the codes to me.,1,scam,payment_request
+ng_0018,Kindly settle your unpaid Singtel invoice of eighty dollars before midnight to avoid line disconnection.,1,legit,payment_request
+ng_0019,Can you remit two thousand dollars via cash deposit to avoid immediate police arrest?,1,scam,payment_request
+ng_0020,Please top up $50 into your EZ-Link account using the online payment link provided.,1,legit,payment_request
+ng_0021,You must make an immediate bank transfer of 3k to settle your taxes.,1,scam,payment_request
+ng_0022,"Bro, can you PayNow me fifty bucks for yesterday's seafood dinner at Changi?",1,legit,payment_request
+ng_0023,Please remit the S$150 registration fee using PayNow QR to secure your slots.,1,legit,payment_request
+ng_0024,You are required to send cash via crypto ATM to resolve your court order.,1,scam,payment_request
+ng_0025,Can you pay the courier twenty dollars in cash upon delivery of your parcel?,1,legit,payment_request
+ng_0026,"Please clear the S$1,200 fine immediately to prevent legal action from government agencies.",1,scam,payment_request
+ng_0027,Top up your ShopeePay wallet with $30 so we can process your order today.,1,legit,payment_request
+ng_0028,You need to make a partial payment of 500 dollars to unfreeze your parcel.,1,scam,payment_request
+ng_0029,Please wire ten thousand dollars to our corporate account to release your court documents.,1,scam,payment_request
+ng_0030,Can you settle your monthly StarHub broadband subscription fee of $65 by Friday?,1,legit,payment_request
+ng_0031,Send three hundred bucks via PayNow to reserve the concert tickets before they sell out.,1,legit,payment_request
+ng_0032,You have to pay a processing fee of S$80 to release your international delivery.,1,scam,payment_request
+ng_0033,Kindly transfer fifty dollars to my UOB savings account for the group gift.,1,legit,payment_request
+ng_0034,Please settle your outstanding credit card balance of $450 before the due date.,1,legit,payment_request
+ng_0035,Buy $200 worth of Google Play gift cards to pay off your municipal penalty.,1,scam,payment_request
+ng_0036,Could you pay me back the twenty dollars I lent you last week for lunch?,1,legit,payment_request
+ng_0037,"Please remit S$1,500 immediately to cover your family member's urgent bail money.",1,scam,payment_request
+ng_0038,Top up your cash card with $20 before driving through the ERP gantry later.,1,legit,payment_request
+ng_0039,You need to make a security deposit of 2k for the apartment rental unit.,1,legit,payment_request
+ng_0040,Please pay the remaining ten bucks balance when you pick up the birthday cake.,1,legit,payment_request
+ng_0041,Could you tell me your 16-digit Visa card number and the CVV on the back?,1,scam,card_bank_details
+ng_0042,Please provide your bank account number and NRIC so we can transfer your tax refund.,1,scam,card_bank_details
+ng_0043,I need your Mastercard expiry date and three digit CVV code to process this booking.,1,legit,card_bank_details
+ng_0044,What is your DBS savings account number for setting up the direct debit arrangement?,1,legit,card_bank_details
+ng_0045,"Kindly state your credit card number, expiration month, and CVV for identity verification.",1,scam,card_bank_details
+ng_0046,Please provide your POSB account details so we can credit your excess payment back.,1,legit,card_bank_details
+ng_0047,We need your full bank account number linked to your NRIC for loan approval.,1,scam,card_bank_details
+ng_0048,Can you read out the 16 digits on your debit card to initiate the refund?,1,scam,card_bank_details
+ng_0049,Please state the bank account number where you wish to deposit your monthly dividend.,1,legit,card_bank_details
+ng_0050,I need your UOB credit card number and CVC code to cancel the unauthorized transaction.,1,scam,card_bank_details
+ng_0051,Your current DBS checking account balance is two thousand three hundred dollars.,1,legit,money_mention
+ng_0052,The total price for the laptop after discount comes to twelve hundred bucks.,1,legit,money_mention
+ng_0053,A refund of S$45 has been successfully credited to your original payment method.,1,legit,money_mention
+ng_0054,The Grab taxi fare for your ride to Jewel Changi was eighteen dollars.,1,legit,money_mention
+ng_0055,"Your monthly salary of $4,500 was successfully transferred into your OCBC account.",1,legit,money_mention
+ng_0056,There is an unbilled transaction of S$350 charged to your credit card today.,1,scam,money_mention
+ng_0057,The buffet dinner costs $88 per pax excluding service charge and GST taxes.,1,legit,money_mention
+ng_0058,Your housing loan monthly installment of 1.8k will be deducted tomorrow morning.,1,legit,money_mention
+ng_0059,An unauthorized transfer of five thousand dollars was detected on your bank account.,1,scam,money_mention
+ng_0060,Your Singtel bill for this month is sixty-five dollars and twenty cents.,1,legit,money_mention
+ng_0061,The parking fee at the shopping mall was four dollars for two hours.,1,legit,money_mention
+ng_0062,Your monthly insurance policy premium of $120 is due in three days.,1,legit,money_mention
+ng_0063,The electricity bill for your flat came up to one hundred and twenty dollars.,1,legit,money_mention
+ng_0064,You have accumulated twenty dollars worth of reward points in your membership account.,1,legit,money_mention
+ng_0065,A fee of $15 will be charged for issuing a replacement ATM card.,1,legit,money_mention
+ng_0066,Your Lazada order totaling fifty-six dollars has been successfully processed and shipped.,1,legit,money_mention
+ng_0067,The repair costs for your mobile phone screen will be eighty bucks.,1,legit,money_mention
+ng_0068,An automatic cashback credit of $10 was added to your monthly card statement.,1,legit,money_mention
+ng_0069,The total amount due on your IRAS income tax assessment is S$850.,1,legit,money_mention
+ng_0070,Your flight ticket to Bangkok cost three hundred and fifty dollars in total.,1,legit,money_mention
+ng_0071,A suspicious transaction of 2k was attempted on your card overseas recently.,1,scam,money_mention
+ng_0072,The movie ticket price is fourteen dollars per person for weekend slots.,1,legit,money_mention
+ng_0073,Your mobile plan subscription includes a monthly handset subsidy value of $200.,1,legit,money_mention
+ng_0074,The tuition fee for this semester is three thousand dollars after government subsidy.,1,legit,money_mention
+ng_0075,Your PayNow transfer of $75 to your friend was completed successfully just now.,1,legit,money_mention
+ng_0076,The dental checkup cost me sixty bucks after utilizing my Medisave funds.,1,legit,money_mention
+ng_0077,There is an outstanding balance of five dollars on your transport card.,1,legit,money_mention
+ng_0078,The maintenance fee for the condo is three hundred dollars every quarter.,1,legit,money_mention
+ng_0079,Your fixed deposit interest payment of $150 was credited to your account.,1,legit,money_mention
+ng_0080,The coffee and kaya toast set cost four dollars and fifty cents.,1,legit,money_mention
+ng_0081,Please remember that DBS officers will never ask for your SMS OTP or PIN.,1,legit,warning_mention
+ng_0082,Do not transfer money to unknown third party bank accounts under any circumstances.,1,legit,warning_mention
+ng_0083,Government agencies will never demand immediate wire transfers or cash payments over phone.,1,legit,warning_mention
+ng_0084,Be cautious of callers requesting your credit card CVV or online banking password.,1,legit,warning_mention
+ng_0085,"Never share your six digit one-time password with anyone, including bank staff.",1,legit,warning_mention
+ng_0086,UOB will never send links asking you to input your digital banking credentials.,1,legit,warning_mention
+ng_0087,Do not reveal your Singpass password or banking PIN to callers claiming to be police.,1,legit,warning_mention
+ng_0088,Important notice: OCBC will never ask you to transfer funds to safe accounts.,1,legit,warning_mention
+ng_0089,Be careful of scams asking for upfront payment before releasing prize winnings or packages.,1,legit,warning_mention
+ng_0090,Never disclose your one-time passwords or bank details to unverified telephone callers.,1,legit,warning_mention
+ng_0091,Make sure you settle what you owe before five o'clock this evening.,1,scam,hard_one
+ng_0092,Buying that new branded handbag is going to set you back eighty bucks.,1,legit,hard_one
+ng_0093,The red packet my grandmother gave me had a hundred in it inside.,1,legit,hard_one
+ng_0094,How much damage did you do at the Great Singapore Sale today?,1,legit,hard_one
+ng_0095,You need to clear your outstanding dues with us by the end of today.,1,scam,hard_one
+ng_0096,I had to cough up a few pineapple notes for the car repairs.,1,legit,hard_one
+ng_0097,That fancy dinner at Marina Bay Sands really burned a huge hole in my pocket.,1,legit,hard_one
+ng_0098,Make sure you balance your ledger before submitting the final financial statements.,1,legit,hard_one
+ng_0099,He asked me to foot the entire bill for the team lunch yesterday.,1,legit,hard_one
+ng_0100,I managed to knock off two red notes from the seller's asking price.,1,legit,hard_one
+ng_0101,Are we still meeting for lunch at the hawker center at six later?,0,legit,everyday
+ng_0102,Remember to buy some groceries on your way home from the office tonight.,0,legit,everyday
+ng_0103,The weather forecast says it will rain heavily in eastern Singapore this afternoon.,0,legit,everyday
+ng_0104,Can you send me the slide presentation deck before our weekly team meeting?,0,legit,everyday
+ng_0105,I am currently waiting for the MRT train at Bishan interchange platform.,0,legit,everyday
+ng_0106,Did you manage to catch the latest movie at the cinema last night?,0,legit,everyday
+ng_0107,Please inform your supervisor that you will be taking medical leave today.,0,legit,everyday
+ng_0108,The library books are due to be returned by next Monday afternoon.,0,legit,everyday
+ng_0109,What time does your flight land at Changi Airport Terminal 3 tomorrow?,0,legit,everyday
+ng_0110,I am planning to go jogging at East Coast Park this coming weekend.,0,legit,everyday
+ng_0111,Don't forget to lock the main door properly when you leave the house.,0,legit,everyday
+ng_0112,Could you help me submit the quarterly project status report to the director?,0,legit,everyday
+ng_0113,The doctor recommended taking this medication twice a day after your meals.,0,legit,everyday
+ng_0114,We are having a potluck gathering at my house next Saturday evening.,0,legit,everyday
+ng_0115,Please double check if the meeting room projector is working properly now.,0,legit,everyday
+ng_0116,My family is planning a short weekend trip to Batam next month.,0,legit,everyday
+ng_0117,Can you help me water the house plants while I am away?,0,legit,everyday
+ng_0118,The traffic on the PIE was extremely heavy during morning peak hours.,0,legit,everyday
+ng_0119,She decided to enroll in a coding course during her university holidays.,0,legit,everyday
+ng_0120,Let's catch up over coffee sometime next week when you are free.,0,legit,everyday
+ng_0121,Please pay close attention to the safety briefing before operating the machinery.,0,legit,word_sense
+ng_0122,Can you transfer this incoming phone call to my senior manager's extension?,0,legit,word_sense
+ng_0123,Make sure you charge your laptop battery fully before attending the seminar.,0,legit,word_sense
+ng_0124,I owe you a huge apology for forgetting your birthday party last week.,0,legit,word_sense
+ng_0125,Can you pass me the salt and pepper shaker across the table?,0,legit,word_sense
+ng_0126,She kindly gave me a quick ride to the nearest MRT station.,0,legit,word_sense
+ng_0127,What is your personal account of the traffic accident that happened this morning?,0,legit,word_sense
+ng_0128,The police officer took charge of the crowd control during the public event.,0,legit,word_sense
+ng_0129,Please transfer the files from your USB flash drive to the shared folder.,0,legit,word_sense
+ng_0130,He paid his respects to his late grandfather at the memorial service.,0,legit,word_sense
+ng_0131,The security guard is currently in charge of monitoring the building entrance.,0,legit,word_sense
+ng_0132,I need to transfer to the East-West line at Raffles Place MRT station.,0,legit,word_sense
+ng_0133,You should pay heed to the doctor's advice and get sufficient rest.,0,legit,word_sense
+ng_0134,Please charge the drill battery before starting the furniture assembly work.,0,legit,word_sense
+ng_0135,He gave a detailed account of his travel experiences in South America.,0,legit,word_sense
+ng_0136,Can you transfer the student's records to the new school administration system?,0,legit,word_sense
+ng_0137,I owe my success in this project to my supportive team members.,0,legit,word_sense
+ng_0138,She was charged with managing the logistics for the upcoming annual conference.,0,legit,word_sense
+ng_0139,Please pay a visit to our new showroom located near the station.,0,legit,word_sense
+ng_0140,The nurse will transfer the patient to the general ward this afternoon.,0,legit,word_sense
+ng_0141,He paid a compliment to his colleague for her excellent project presentation.,0,legit,word_sense
+ng_0142,Make sure to charge your wireless earbuds before heading out for exercise.,0,legit,word_sense
+ng_0143,I need to transfer these potted plants to bigger garden pots today.,0,legit,word_sense
+ng_0144,Please take into account the weather conditions when planning the outdoor event.,0,legit,word_sense
+ng_0145,You must pay tribute to the pioneers who built this organization.,0,legit,word_sense
+ng_0146,You must act immediately or your mobile line will be terminated permanently.,0,scam,urgency_only
+ng_0147,Your immediate response is required or legal proceedings will commence against you.,0,scam,urgency_only
+ng_0148,Failure to comply right now will result in an arrest warrant issued.,0,scam,urgency_only
+ng_0149,Please respond within ten minutes or your registered account will be suspended.,0,scam,urgency_only
+ng_0150,You must cooperate with our officers right now to resolve this matter.,0,scam,urgency_only
+ng_0151,This is an urgent matter that requires your prompt and immediate attention.,0,legit,urgency_only
+ng_0152,Your court summons requires your immediate presence at the district tribunal tomorrow.,0,scam,urgency_only
+ng_0153,Action is needed immediately to prevent your government portal access from expiring.,0,scam,urgency_only
+ng_0154,You must verify your details right now or face immediate service interruption.,0,scam,urgency_only
+ng_0155,Please stay on the line right now as this is extremely urgent.,0,scam,urgency_only
+ng_0156,Failure to clear this issue today will lead to severe administrative penalties.,0,scam,urgency_only
+ng_0157,You need to attend to this matter right away without any delay.,0,legit,urgency_only
+ng_0158,This is your final warning before we initiate formal legal enforcement actions.,0,scam,urgency_only
+ng_0159,Please attend the disciplinary hearing immediately upon receiving this phone call notification.,0,legit,urgency_only
+ng_0160,Your immediate confirmation is required to avoid cancellation of your pending appointment.,0,legit,urgency_only
+ng_0161,I am calling from the Singapore Police Force anti-scam division regarding an investigation.,0,scam,impersonation_only
+ng_0162,This is an official telephone call from the Inland Revenue Authority of Singapore.,0,scam,impersonation_only
+ng_0163,I am an officer representing the Ministry of Manpower labor relations department.,0,legit,impersonation_only
+ng_0164,Calling on behalf of the Immigration and Checkpoints Authority regarding your passport.,0,legit,impersonation_only
+ng_0165,This call is from DBS customer service fraud prevention department officer John.,0,scam,impersonation_only
+ng_0166,I am reaching out from Singtel technical support regarding your fiber broadband line.,0,legit,impersonation_only
+ng_0167,This is the Ministry of Health contact tracing unit calling your line.,0,legit,impersonation_only
+ng_0168,I am an investigation officer from the High Court of Singapore office.,0,scam,impersonation_only
+ng_0169,This is StarHub customer service calling to follow up on your feedback.,0,legit,impersonation_only
+ng_0170,I am calling from the Central Provident Fund Board policy division desk.,0,legit,impersonation_only
+ng_0171,This is an automated call from the Interpol international law enforcement agency.,0,scam,impersonation_only
+ng_0172,Calling from UOB fraud monitoring department to verify your recent account activity.,0,scam,impersonation_only
+ng_0173,I am an officer from the National Environment Agency conducting routine checks.,0,legit,impersonation_only
+ng_0174,This is OCBC security division calling regarding your online banking profile status.,0,scam,impersonation_only
+ng_0175,I am calling from Shopee Express delivery services regarding your parcel delivery.,0,legit,impersonation_only
+ng_0176,Your parcel collection code for the smart locker is eight four two.,0,legit,otp_lookalike
+ng_0177,Please press 1 to continue speaking with our customer service representative.,0,legit,otp_lookalike
+ng_0178,The passenger elevator is currently located at level twelve of the building.,0,legit,otp_lookalike
+ng_0179,Your queue ticket number for the service counter is three zero five.,0,legit,otp_lookalike
+ng_0180,Enter option 2 on your telephone keypad to select the English language.,0,legit,otp_lookalike
+ng_0181,The verification PIN for unlocking your office door access lock is 4589.,0,legit,otp_lookalike
+ng_0182,Your registration reference code for the upcoming seminar workshop is REF-9012.,0,legit,otp_lookalike
+ng_0183,Press key 9 if you wish to opt out of future marketing SMS.,0,legit,otp_lookalike
+ng_0184,The Wi-Fi access code for the visitor network is printed on screen.,0,legit,otp_lookalike
+ng_0185,Your parcel is stored in locker unit number six near the void deck.,0,legit,otp_lookalike
+ng_0186,The company reported a massive increase in web traffic over the past quarter.,0,legit,hard_zero
+ng_0187,She has a rich knowledge of ancient history and Southeast Asian cultures.,0,legit,hard_zero
+ng_0188,We need to invest more time and effort into training our junior employees.,0,legit,hard_zero
+ng_0189,He made a valuable contribution to the research team's latest publication success.,0,legit,hard_zero
+ng_0190,The interest in our new educational program has grown significantly this year.,0,legit,hard_zero
+ng_0191,You should save your working files frequently to prevent any unexpected data loss.,0,legit,hard_zero
+ng_0192,The museum displays a rare collection of priceless historical artifacts and paintings.,0,legit,hard_zero
+ng_0193,She gave a rich and detailed explanation of the complex scientific theory.,0,legit,hard_zero
+ng_0194,We need to strike a good balance between work duties and personal life.,0,legit,hard_zero
+ng_0195,His vast experience in management is a major asset to our entire company.,0,legit,hard_zero
+ng_0196,The bank of the Singapore River was crowded with people watching fireworks.,0,legit,hard_zero
+ng_0197,You can redeem your free parking coupon at the customer service counter.,0,legit,hard_zero
+ng_0198,The credit for organizing this successful charity event goes to the committee.,0,legit,hard_zero
+ng_0199,We should capitalize on this good opportunity to expand our local business.,0,legit,hard_zero
+ng_0200,The bill was passed in parliament after a lengthy debate among members.,0,legit,hard_zero

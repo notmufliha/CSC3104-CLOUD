@@ -96,6 +96,9 @@ enum Verdict {
 
 message AggregateResponse {
   Verdict verdict = 1;
+  // Live alert for the call so far. Workstream C will populate final_verdict at call end.
+  Verdict live_alert = 12;
+  string final_verdict = 13;
   // Weighted average of each signal's recent highest score (weights of missing signals are shared out).
   float combined_score = 2;
   repeated Reason reasons = 3;
@@ -117,7 +120,8 @@ message AggregateResponse {
   // "ok" | "timeout" | "error" (asked but no score) | "skipped" (not needed) | "off" (BERT_ADDR not set)
   string bert_status = 11;
   // Workstream B.6: the call has already ended. This line was NOT scored or stored; the other fields are empty.
-  bool call_ended = 12;
+  // (14, not 12: Workstream A took 12 and 13 for live_alert / final_verdict.)
+  bool call_ended = 14;
 }
 
 // Workstream B: one caller line sent with the end message, for the end-of-call review. Passed through and

@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """learning.py - Workstream H: run the "learn a new scam" loop on the Kubernetes demo, step by step.
 
-    python demo/tools/learning.py status                      what's deployed: model version, queue, registry
+    python demo/tools/learning.py status                      what's deployed: model versions, queue, registry
     python demo/tools/learning.py report  [--url URL]         play a short scam call and report it (what the
                                                               app's "Report this call" button does)
     python demo/tools/learning.py review                      open the labelling page: http://127.0.0.1:8090/
     python demo/tools/learning.py retrain [--force]           run the retraining Job now and show its result
-    python demo/tools/learning.py rollout v5 [--during-call]  rolling update urgency-en to v5, one pod at a time
-    python demo/tools/learning.py rollout v4                  back to the model baked into the image
-    python demo/tools/learning.py rollback [--during-call]    kubectl rollout undo (undo the last change)
+    python demo/tools/learning.py rollout latest [--during-call]   every model with a newer release, one pod at a time
+    python demo/tools/learning.py rollout v5 --model urgency_en    one model to one version (its baked version = back
+                                                                   to the model baked into the image)
+    python demo/tools/learning.py rollback [--model urgency_en] [--during-call]   kubectl rollout undo (the last
+                                                                   change; no --model = every model on a release)
     python demo/tools/learning.py monitoring up|down          Prometheus + Grafana (optional, ~400 MB)
     python demo/tools/learning.py ensure-key                  (used by up.sh/up.ps1) create the review-key Secret
 
@@ -30,10 +32,9 @@ import urllib.request
 from pathlib import Path
 
 NS = "scamguard"
-DEPLOY = "urgency-en"
-MODEL = "urgency_en"
-BAKED = "v4"   # the version baked into the urgency_en image
 REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO / "backend" / "retrain"))
+from models import MODELS  # noqa: E402  the six workers, their signal, language and baked version
 CA = REPO / "demo" / "tls" / "ca.crt"
 DEFAULT_URL = "https://127.0.0.1:8443/api/"
 SCAM_CALL = [
@@ -42,13 +43,25 @@ SCAM_CALL = [
     "Please stay on the line, if you hang up now the case is closed.",
     "I need you to do this right now, there is no time to ask anyone.",
 ]
+SCAM_CALL_ZH = ["您好，这里是快递公司，您有一个包裹出了问题。", "请在十分钟内确认，否则包裹今晚就会被退回。",
+                "请不要挂电话，挂断的话案件就会关闭。", "您现在马上处理，没有时间问别人了。"]
+
+
+def deploy_of(model: str) -> str:
+    return model.replace("_", "-")
+
+
+def baked(model: str) -> str:
+    return f"v{MODELS[model]['baked']}"
 
 
 # ------------------------------------------------------------------------------------------------ helpers
 def kubectl(*args, check=True, capture=True, input_text=None):
     if not shutil.which("kubectl"):
         sys.exit("kubectl not found")
-    r = subprocess.run(["kubectl", *args], capture_output=capture, text=True, input=input_text)
+    # UTF-8 explicitly: Chinese job logs can't be read with Windows' default encoding.
+    r = subprocess.run(["kubectl", *args], capture_output=capture, text=True, input=input_text,
+                       encoding="utf-8", errors="replace")
     if check and r.returncode != 0:
         sys.exit(f"kubectl {' '.join(args)} failed:\n{r.stderr if capture else ''}")
     return r
@@ -81,10 +94,15 @@ def gateway(url: str):
     return post
 
 
-def deployed_version() -> str:
-    env = json.loads(kubectl("get", "deploy", DEPLOY, "-n", NS, "-o",
+def released_version(model: str) -> str:
+    """The registry version this worker's Deployment is set to run; empty = the model baked into its image."""
+    env = json.loads(kubectl("get", "deploy", deploy_of(model), "-n", NS, "-o",
                              "jsonpath={.spec.template.spec.containers[0].env}").stdout or "[]")
-    return next((e.get("value", "") for e in env if e["name"] == "MODEL_VERSION"), "") or f"{BAKED} (baked)"
+    return next((e.get("value", "") for e in env if e["name"] == "MODEL_VERSION"), "")
+
+
+def deployed_version(model: str) -> str:
+    return released_version(model) or f"{baked(model)} (baked)"
 
 
 # ----------------------------------------------------------------------------------------------- commands
@@ -102,18 +120,19 @@ def cmd_ensure_key(_):
 
 
 def cmd_status(_):
-    print(f"urgency-en model version: {deployed_version()}")
-    pods = kubectl("get", "pods", "-n", NS, "-l", f"app={DEPLOY}", "-o",
-                   "jsonpath={range .items[*]}{.metadata.name} {.status.phase}{\"\\n\"}{end}").stdout.strip()
-    print("pods:\n  " + pods.replace("\n", "\n  "))
     try:
-        print("registry:", [m["version"] for m in review_get(f"/models/{MODEL}")] or "(empty: only the baked v4)")
+        print(f"{'model':<20}{'running':<14}{'pods':<7}released")
+        for model in MODELS:
+            pods = kubectl("get", "pods", "-n", NS, "-l", f"app={deploy_of(model)}", "--field-selector=status.phase=Running",
+                           "-o", "name").stdout.split()
+            have = [m["version"] for m in review_get(f"/models/{model}")]
+            print(f"{model:<20}{deployed_version(model):<14}{len(pods):<7}{', '.join(have) or '-'}")
         s = review_get("/api/stats")
-        print(f"queue: {s['reports']} reports, {s['unlabelled']} lines waiting for a label, "
-              f"{s['unused']['urgency']} urgency label(s) not trained on yet, disputed {s['disputed']}")
+        print(f"queue: {s['reports']} reports, {s['unlabelled']} lines waiting for a label, {s['kept_lines']} kept "
+              f"after expiry, not trained on yet: {s['new_lines']}, disputed {s['disputed']}")
     except SystemExit as e:
         print(f"review service not reachable: {e}")
-    jobs = kubectl("get", "jobs", "-n", NS, "-l", "app=retrain-urgency-en", "--sort-by=.metadata.creationTimestamp",
+    jobs = kubectl("get", "jobs", "-n", NS, "-l", "app=retrain-models", "--sort-by=.metadata.creationTimestamp",
                    "-o", "jsonpath={range .items[*]}{.metadata.name} succeeded={.status.succeeded} "
                    "failed={.status.failed}{\"\\n\"}{end}", check=False).stdout.strip()
     print("retrain jobs:\n  " + (jobs.replace("\n", "\n  ") if jobs else "(none yet)"))
@@ -130,11 +149,10 @@ def cmd_report(a):
         r = post("v1/utterance", {"call_id": call_id, "seq": seq, "speaker": "caller", "lang": "en",
                                   "text": text, "t_ms": 20000 + 4000 * i})
         verdict = r.get("verdict")
-        print(f"  line {seq}: {verdict:<6} urgency={r['scores'].get('urgency')} "
-              f"model={r.get('model_versions', {}).get('urgency', '?')}")
+        print(f"  line {seq}: {verdict:<6} scores={r['scores']} models={r.get('model_versions', {})}")
         lines.append({"seq": seq, "text": text})
     r = post("v1/report", {"call_id": call_id, "kind": "scam", "app_verdict": verdict or "", "language": "en",
-                           "consent": True, "lines": lines})
+                           "consent": True, "consent_version": 2, "lines": lines})
     print(f"Reported with consent: {r}")
     print("Next: label it ->  python demo/tools/learning.py review")
     return 0
@@ -150,7 +168,7 @@ def cmd_review(_):
 
 def cmd_retrain(a):
     name = f"retrain-now-{int(time.time())}"
-    job = json.loads(kubectl("create", "job", name, "-n", NS, "--from=cronjob/retrain-urgency-en",
+    job = json.loads(kubectl("create", "job", name, "-n", NS, "--from=cronjob/retrain-models",
                              "--dry-run=client", "-o", "json").stdout)
     env = job["spec"]["template"]["spec"]["containers"][0].setdefault("env", [])
     if a.force:
@@ -158,8 +176,8 @@ def cmd_retrain(a):
     if a.tolerance is not None:
         env[:] = [e for e in env if e["name"] != "TOLERANCE"] + [{"name": "TOLERANCE", "value": str(a.tolerance)}]
     kubectl("apply", "-f", "-", input_text=json.dumps(job))
-    print(f"Job {name} started{' (FORCE)' if a.force else ''}; training takes about a minute...")
-    deadline = time.time() + 900
+    print(f"Job {name} started{' (FORCE)' if a.force else ''}; each model takes a few minutes...")
+    deadline = time.time() + 2400
     while time.time() < deadline:
         st = json.loads(kubectl("get", "job", name, "-n", NS, "-o", "json").stdout).get("status", {})
         if st.get("succeeded") or st.get("failed"):
@@ -171,36 +189,39 @@ def cmd_retrain(a):
     return 0 if ok else 1
 
 
-def call_during(url, stop, log):
-    """Sends a caller line every 0.5 s until stopped; records which model version answered."""
+def call_during(url, model, stop, log):
+    """Sends a caller line every 0.5 s until stopped; records which version of this model answered."""
     post = gateway(url)
-    call_id, seq = f"rollout-{int(time.time())}", 0
+    signal, lang = MODELS[model]["signal"], MODELS[model]["language"]
+    script = SCAM_CALL_ZH if lang == "zh" else SCAM_CALL
+    call_id, seq = f"rollout-{model}-{int(time.time())}", 0
     while not stop.is_set():
         seq += 1
         t = time.monotonic()
         try:
-            r = post("v1/utterance", {"call_id": call_id, "seq": seq, "speaker": "caller", "lang": "en",
-                                      "text": SCAM_CALL[seq % len(SCAM_CALL)], "t_ms": 20000 + 3000 * seq}, timeout=4)
-            v = r.get("model_versions", {}).get("urgency", "missing" if "urgency" in r.get("missing", []) else "?")
+            r = post("v1/utterance", {"call_id": call_id, "seq": seq, "speaker": "caller", "lang": lang,
+                                      "text": script[seq % len(script)], "t_ms": 20000 + 3000 * seq}, timeout=4)
+            v = r.get("model_versions", {}).get(signal, "missing" if signal in r.get("missing", []) else "?")
             log.append((seq, v, None, (time.monotonic() - t) * 1000))
         except (urllib.error.URLError, OSError, ValueError) as e:
             log.append((seq, None, str(e), (time.monotonic() - t) * 1000))
         stop.wait(0.5)
 
 
-def with_call(a, change) -> int:
-    """Runs change() (a kubectl change to urgency-en), waits for the rollout, optionally with a live call."""
+def with_call(a, model, change) -> int:
+    """Runs change() (a kubectl change to this model's worker), waits for the rollout, optionally with a live call."""
     stop, log = threading.Event(), []
     th = None
     if a.during_call:
-        th = threading.Thread(target=call_during, args=(a.url, stop, log), daemon=True)
+        th = threading.Thread(target=call_during, args=(a.url, model, stop, log), daemon=True)
         th.start()
         time.sleep(2)
     t0 = time.monotonic()
     change()
-    r = kubectl("rollout", "status", f"deployment/{DEPLOY}", "-n", NS, "--timeout=300s", check=False, capture=False)
+    deploy = deploy_of(model)
+    r = kubectl("rollout", "status", f"deployment/{deploy}", "-n", NS, "--timeout=300s", check=False, capture=False)
     print(f"rollout {'finished' if r.returncode == 0 else 'DID NOT FINISH'} in {time.monotonic() - t0:.0f}s; "
-          f"{DEPLOY} now runs {deployed_version()}")
+          f"{deploy} now runs {deployed_version(model)}")
     if th:
         time.sleep(3)
         stop.set()
@@ -209,23 +230,38 @@ def with_call(a, change) -> int:
     return r.returncode
 
 
-def cmd_rollout(a):
-    version = a.version
-    have = [m["version"] for m in review_get(f"/models/{MODEL}")]
-    if version not in have + [BAKED]:
-        sys.exit(f"{version} is not in the registry (released: {have or 'none'}; {BAKED} is baked in). Only "
-                 f"versions that passed the release check can be rolled out.")
-    before = deployed_version()
+def roll_out(a, model: str, version: str) -> int:
+    deploy, before = deploy_of(model), deployed_version(model)
 
     def change():
-        print(f"Rolling update {DEPLOY}: {before} -> {version} (one pod at a time; old pods serve until new ones are ready)")
+        print(f"Rolling update {deploy}: {before} -> {version} (one pod at a time; old pods serve until new ones are ready)")
         # Annotate first: the new revision copies it, so `kubectl rollout history` says what each revision was.
-        kubectl("annotate", f"deployment/{DEPLOY}", "-n", NS, "--overwrite",
-                f"kubernetes.io/change-cause=urgency_en model {before} -> {version}")
+        kubectl("annotate", f"deployment/{deploy}", "-n", NS, "--overwrite",
+                f"kubernetes.io/change-cause={model} model {before} -> {version}")
         # The baked version = no MODEL_VERSION at all.
-        kubectl("set", "env", f"deployment/{DEPLOY}", "-n", NS,
-                "MODEL_VERSION-" if version == BAKED else f"MODEL_VERSION={version}")
-    return with_call(a, change)
+        kubectl("set", "env", f"deployment/{deploy}", "-n", NS,
+                "MODEL_VERSION-" if version == baked(model) else f"MODEL_VERSION={version}")
+    return with_call(a, model, change)
+
+
+def cmd_rollout(a):
+    if a.version == "latest":
+        rc = 0
+        for model in ([a.model] if a.model else MODELS):
+            have = [m["version"] for m in review_get(f"/models/{model}")]
+            if not have or have[-1] == released_version(model):
+                print(f"{model}: nothing newer (running {deployed_version(model)})")
+                continue
+            rc = roll_out(a, model, have[-1]) or rc
+        return rc
+    if not a.model:
+        sys.exit(f"Which model should run {a.version}? Add --model, e.g. --model urgency_en. "
+                 f"('rollout latest' moves every model to its newest release.)")
+    have = [m["version"] for m in review_get(f"/models/{a.model}")]
+    if a.version not in have + [baked(a.model)]:
+        sys.exit(f"{a.version} is not in the registry for {a.model} (released: {have or 'none'}; {baked(a.model)} is "
+                 f"baked in). Only versions that passed the release check can be rolled out.")
+    return roll_out(a, a.model, a.version)
 
 
 def report_call(log):
@@ -244,19 +280,24 @@ def report_call(log):
 
 
 def cmd_rollback(a):
-    """kubectl rollout undo: back to the revision before the LAST change to urgency-en (normally the last rollout)."""
-    before = deployed_version()
+    """kubectl rollout undo: back to the revision before the LAST change to a worker (normally the last rollout)."""
+    rc = 0
+    models = [a.model] if a.model else [m for m in MODELS if released_version(m)]
+    if not models:
+        print("Every model already runs its baked version: nothing to roll back.")
+    for model in models:
+        deploy, before = deploy_of(model), deployed_version(model)
 
-    def change():
-        print(f"Rolling back {DEPLOY} (now {before}) to its previous revision")
-        kubectl("rollout", "undo", f"deployment/{DEPLOY}", "-n", NS)
-    rc = with_call(a, change)
-    # Kubernetes copies the Deployment's note onto its current revision, so set it AFTER the undo (before it,
-    # it would overwrite the note of the revision being undone); otherwise the restored revision keeps the last
-    # rollout's note, which describes the wrong change.
-    kubectl("annotate", f"deployment/{DEPLOY}", "-n", NS, "--overwrite",
-            f"kubernetes.io/change-cause=rollback: urgency_en model {before} -> {deployed_version()}")
-    print(kubectl("rollout", "history", f"deployment/{DEPLOY}", "-n", NS).stdout)
+        def change():
+            print(f"Rolling back {deploy} (now {before}) to its previous revision")
+            kubectl("rollout", "undo", f"deployment/{deploy}", "-n", NS)
+        rc = with_call(a, model, change) or rc
+        # Kubernetes copies the Deployment's note onto its current revision, so set it AFTER the undo (before it,
+        # it would overwrite the note of the revision being undone); otherwise the restored revision keeps the last
+        # rollout's note, which describes the wrong change.
+        kubectl("annotate", f"deployment/{deploy}", "-n", NS, "--overwrite",
+                f"kubernetes.io/change-cause=rollback: {model} model {before} -> {deployed_version(model)}")
+        print(kubectl("rollout", "history", f"deployment/{deploy}", "-n", NS).stdout)
     return rc
 
 
@@ -282,6 +323,7 @@ def cmd_monitoring(a):
 
 
 def main() -> int:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # job logs can contain Chinese
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("ensure-key").set_defaults(fn=cmd_ensure_key)
@@ -295,11 +337,13 @@ def main() -> int:
     p.add_argument("--tolerance", type=float, help="override the release check's tolerance (e.g. -0.05 to see a block)")
     p.set_defaults(fn=cmd_retrain)
     p = sub.add_parser("rollout")
-    p.add_argument("version")
+    p.add_argument("version", help="'latest', or a version such as v5 (with --model)")
+    p.add_argument("--model", choices=list(MODELS), help="one model; 'rollout latest' without it means all of them")
     p.add_argument("--during-call", action="store_true", help="keep a call running during the update and report it")
     p.add_argument("--url", default=DEFAULT_URL)
     p.set_defaults(fn=cmd_rollout)
     p = sub.add_parser("rollback")
+    p.add_argument("--model", choices=list(MODELS), help="one model; without it, every model on a released version")
     p.add_argument("--during-call", action="store_true")
     p.add_argument("--url", default=DEFAULT_URL)
     p.set_defaults(fn=cmd_rollback)

@@ -1,0 +1,108 @@
+{
+  "model_version": "impersonation_en_v4",
+  "threshold": 0.3,
+  "top_word_features": [
+    [
+      "now",
+      5.379132655764583
+    ],
+    [
+      "officer",
+      4.517330244279482
+    ],
+    [
+      "must",
+      4.454932726262921
+    ],
+    [
+      "you must",
+      3.940793546989418
+    ],
+    [
+      "your",
+      3.6567757897952835
+    ],
+    [
+      "am",
+      3.441079514686009
+    ],
+    [
+      "security",
+      3.21464700321344
+    ],
+    [
+      "so",
+      3.1403083992722607
+    ],
+    [
+      "you to",
+      3.078403118074177
+    ],
+    [
+      "fraud",
+      3.035579857756187
+    ],
+    [
+      "give",
+      2.756136085726471
+    ],
+    [
+      "give me",
+      2.734300549206048
+    ],
+    [
+      "am officer",
+      2.7151906918824307
+    ],
+    [
+      "do not",
+      2.6557819962512674
+    ],
+    [
+      "we need",
+      2.6349124885345625
+    ],
+    [
+      "verify",
+      2.6334302037035107
+    ],
+    [
+      "account",
+      2.505858939761056
+    ],
+    [
+      "to our",
+      2.4675348081257042
+    ],
+    [
+      "name",
+      2.4509447748521653
+    ],
+    [
+      "department",
+      2.4192270216180716
+    ]
+  ],
+  "top_char_features": [],
+  "metrics_before": {
+    "precision": 0.9186,
+    "recall": 0.9218,
+    "f1": 0.9202,
+    "roc_auc": 0.9805
+  },
+  "metrics_after_masking": {
+    "precision": 0.9739,
+    "recall": 0.7619,
+    "f1": 0.855,
+    "roc_auc": 0.974
+  },
+  "drop": {
+    "precision": -0.0553,
+    "recall": 0.1599,
+    "f1": 0.0652,
+    "roc_auc": 0.0065
+  },
+  "roc_auc_relative_drop": 0.0066,
+  "verdict": "not primarily a keyword detector (ROC-AUC held up after masking top words)",
+  "gold_rows": 622
+}

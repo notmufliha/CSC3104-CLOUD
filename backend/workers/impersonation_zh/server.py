@@ -13,25 +13,33 @@ Rules every worker follows:
     never a made-up score
   - transcript text is never logged, only scores
 
+MODEL_VERSION selects a released version from the model registry instead of the baked model
+(common/model_registry.py).
+
 Quick test without gRPC:   python predict.py "我是公安局的警官，请马上转账"
 """
 import logging
 import os
 import signal
+import sys
 from concurrent import futures
 
 import grpc
 from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 
-import predict
-import scam_detect_pb2
-import scam_detect_pb2_grpc
+# Local runs: the shared file lives in ../common (in the image it sits next to this file).
+sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "common"))
+import model_registry  # noqa: E402
+import predict  # noqa: E402
+import scam_detect_pb2  # noqa: E402
+import scam_detect_pb2_grpc  # noqa: E402
 
 SIGNAL = "impersonation"
 LANGUAGE = "zh"
 SERVICE_NAME = "scam_detect.WorkerService"
 MODEL_PATH = os.environ.get("MODEL_PATH", str(predict.DEFAULT_MODEL))
 PORT = os.environ.get("PORT", "50051")
+BAKED_MODEL_VERSION = "v1"  # the model train.py builds inside the image
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 logging.getLogger("jieba").setLevel(logging.WARNING)
@@ -40,10 +48,13 @@ logger = logging.getLogger(f"worker.{SIGNAL}.{LANGUAGE}")
 
 class WorkerServiceServicer(scam_detect_pb2_grpc.WorkerServiceServicer):
     def __init__(self):
-        if not os.path.exists(MODEL_PATH):
-            raise FileNotFoundError(f"no model at {MODEL_PATH}: run train.py (the Dockerfile does this at build time)")
-        b = predict.load_model(MODEL_PATH)
-        logger.info("loaded %s (kind=%s, C=%s, threshold=%.2f)", MODEL_PATH, b["kind"], b.get("C"), b["threshold"])
+        path, registry_version = model_registry.resolve(f"{SIGNAL}_{LANGUAGE}", MODEL_PATH)
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"no model at {path}: run train.py (the Dockerfile does this at build time)")
+        b = predict.load_model(path)
+        self.version = registry_version or BAKED_MODEL_VERSION
+        logger.info("loaded %s (version=%s, kind=%s, C=%s, threshold=%.2f)", path, self.version, b["kind"], b.get("C"),
+                    b["threshold"])
 
     def ClassifyTranscript(self, request, context):
         try:
@@ -51,8 +62,9 @@ class WorkerServiceServicer(scam_detect_pb2_grpc.WorkerServiceServicer):
         except Exception as e:  # report the failure; never invent a score
             logger.error("scoring failed: %s", type(e).__name__)
             context.abort(grpc.StatusCode.INTERNAL, "impersonation scoring failed")
-        logger.info("score=%.3f", score)
-        return scam_detect_pb2.WorkerScore(signal=SIGNAL, score=score, language=LANGUAGE)
+        logger.info("score=%.3f version=%s", score, self.version)
+        return scam_detect_pb2.WorkerScore(signal=SIGNAL, score=score, language=LANGUAGE,
+                                           model_version=self.version)
 
 
 def serve():
