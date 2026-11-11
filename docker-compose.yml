@@ -33,6 +33,9 @@ services:
       AGGREGATOR_TIMEOUT_MS: "550"
       # caller lines per call sent along for BERT (0 = never send text to the aggregator)
       BERT_CONTEXT_LINES: "5"
+      # Workstream B: POST /v1/call/end waits this long for the aggregator's end-of-call review + clean-up
+      # (above AGG_END_REVIEW_TIMEOUT_MS; the phone waits up to 3 s)
+      END_CALL_TIMEOUT_MS: "2000"
       # Workstream H: POST /v1/report goes to the review service (the phone never reaches it directly)
       REVIEW_URL: "http://review:8090"
     depends_on:
@@ -91,6 +94,13 @@ services:
       AGG_REASON_THRESHOLD: "0.5"
       AGG_MIN_QUORUM: "2"
       AGG_CALL_TTL_SECS: "3600"
+      # Workstream B: when a call ends. No caller line for AGG_SILENCE_SECS -> the aggregator ends the call itself
+      # (0 = off). The end-of-call review gets AGG_END_REVIEW_TIMEOUT_MS, then the live verdict is used. Late
+      # lines are ignored for AGG_END_TOMBSTONE_SECS after the end.
+      AGG_SILENCE_SECS: "${AGG_SILENCE_SECS-30}"
+      AGG_SILENCE_CHECK_SECS: "5"
+      AGG_END_REVIEW_TIMEOUT_MS: "1500"
+      AGG_END_TOMBSTONE_SECS: "3600"
       # BERT second opinion (cascade, task 7.4). Empty BERT_ADDR = off, the aggregator then works as before.
       # `BERT_ADDR= docker compose up -d aggregator` switches the cascade off (fast-only run for 7.5)
       BERT_ADDR: "${BERT_ADDR-http://bert:50051}"

@@ -3,15 +3,19 @@
 //! (rules in policy.rs, settings in config.rs, Redis in store.rs).
 //!
 //!   gRPC  AggregatorService.Aggregate   (AGGREGATOR_GRPC_ADDR, default 0.0.0.0:50052)
+//!   gRPC  AggregatorService.EndCall     Workstream B: the call is over -> final verdict, memory cleared (end.rs)
 //!   HTTP  GET /health                   (AGGREGATOR_HTTP_ADDR, default 0.0.0.0:8082) - 503 if Redis is down
 //!   HTTP  GET /metrics                  Prometheus counts, never text (metrics.rs, Workstream H.1)
 //!
 //! A request without call_id is a one-shot (the gateway's /submit-transcript): no memory, no Redis.
 //! BERT second opinion (bert.rs): asked only when the fast vote is unsure or alarmed, if BERT_ADDR is set.
-//! Logs: one "verdict" line per decision {call_id, seq, verdict, combined, fast, bert, rule, scores}. Never text.
+//! Workstream B: a background task ends calls with no caller line for AGG_SILENCE_SECS (end.rs).
+//! Logs: one "verdict" line per decision {call_id, seq, verdict, combined, fast, bert, rule, scores}, plus one
+//! "event":"end" line per ended call. Never text.
 
 mod bert;
 mod config;
+mod end;
 mod metrics;
 mod policy;
 mod store;
@@ -32,7 +36,7 @@ use metrics::Metrics;
 use config::{Mode, Settings, SIGNALS};
 use policy::{Decision, LineScores};
 use scam_detect::aggregator_service_server::{AggregatorService, AggregatorServiceServer};
-use scam_detect::{AggregateRequest, AggregateResponse, Reason, WorkerScore};
+use scam_detect::{AggregateRequest, AggregateResponse, EndCallRequest, EndCallResponse, Reason, WorkerScore};
 use store::{Store, StoreError};
 
 const MAX_CALL_ID_LEN: usize = 128;
@@ -102,6 +106,7 @@ fn to_response(d: Decision, bert_status: &str) -> AggregateResponse {
         warming_up: d.warming_up,
         quorum_met: d.quorum_met,
         caller_lines: d.caller_lines,
+        call_ended: false,
     }
 }
 
@@ -141,20 +146,14 @@ impl AggregatorService for Aggregator {
                     "call_id longer than {MAX_CALL_ID_LEN} characters"
                 )));
             }
-            match self
-                .store
-                .apply(
-                    call_id,
-                    req.seq,
-                    line,
-                    now,
-                    req.call_time_ms,
-                    &self.settings,
-                    &mut second,
-                )
-                .await
-            {
-                Ok(d) => d,
+            match self.store.apply(call_id, req.seq, line, now, req.call_time_ms, &self.settings, &mut second).await {
+                Ok(Some(d)) => d,
+                Ok(None) => {
+                    // B.6: the call has ended. The line is not stored, scored or logged as a verdict.
+                    tracing::warn!(call_id, seq = req.seq, "late line after call ended: ignored, not scored");
+                    self.metrics.record_late_line();
+                    return Ok(Response::new(AggregateResponse { call_ended: true, ..Default::default() }));
+                }
                 Err(e) => {
                     tracing::error!(call_id, seq = req.seq, error = %e, "call memory update failed");
                     return Err(match e {
@@ -176,6 +175,46 @@ impl AggregatorService for Aggregator {
         self.metrics
             .record(call_id, &line, &decision, second.status(), &self.settings);
         Ok(Response::new(to_response(decision, second.status())))
+    }
+
+    /// Workstream B: the call is over (end.rs). Idempotent. The caller lines go to the review hook and are dropped.
+    async fn end_call(&self, request: Request<EndCallRequest>) -> Result<Response<EndCallResponse>, Status> {
+        let req = request.into_inner();
+        let call_id = req.call_id.trim();
+        if call_id.is_empty() || call_id.len() > MAX_CALL_ID_LEN {
+            return Err(Status::invalid_argument(format!("call_id must be 1-{MAX_CALL_ID_LEN} characters")));
+        }
+        let ended_by = req.ended_by.trim();
+        if !end::ENDED_BY.contains(&ended_by) {
+            return Err(Status::invalid_argument(format!("ended_by must be one of {:?}", end::ENDED_BY)));
+        }
+        let lines: Vec<(i64, String)> = req.caller_lines.into_iter().map(|l| (l.seq, l.text)).collect();
+        let ended = end::end_call(&self.store, &self.settings, &self.metrics, call_id, ended_by, &lines,
+                                  req.language.trim(), now_ms())
+            .await
+            .map_err(|e| {
+                tracing::error!(call_id, error = %e, "ending the call failed");
+                match e {
+                    StoreError::Redis(_) => Status::unavailable("call memory (redis) unavailable"),
+                    StoreError::Busy => Status::aborted("too many simultaneous updates to this call"),
+                    StoreError::Corrupt(_) => Status::internal("stored call unreadable"),
+                }
+            })?;
+        let verdict = |v: Option<policy::Verdict>| {
+            v.map(to_proto_verdict).unwrap_or(scam_detect::Verdict::Unspecified) as i32
+        };
+        let r = ended.record;
+        Ok(Response::new(EndCallResponse {
+            call_id: call_id.to_string(),
+            final_verdict: verdict(r.final_verdict),
+            call_score: r.call_score,
+            live_verdict: verdict(r.live_verdict),
+            review: r.review,
+            top_window_seqs: r.top_window_seqs,
+            reason: r.reason,
+            ended_by: r.ended_by,
+            already_ended: ended.already_ended,
+        }))
     }
 }
 
@@ -239,6 +278,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                    bert_timeout_ms = settings.bert_timeout.as_millis() as u64, bert_weight = %settings.bert_weight,
                    bert_veto = %settings.bert_veto, mode = settings.mode.as_str(), "starting aggregator");
 
+    tracing::info!(silence_secs = settings.silence.as_secs(), silence_check_secs = settings.silence_check.as_secs(),
+                   end_review_timeout_ms = settings.end_review_timeout.as_millis() as u64,
+                   end_tombstone_secs = settings.end_tombstone_ttl.as_secs(), "call end settings (Workstream B)");
+
     let grpc_addr = settings.grpc_addr.parse()?;
     let http_addr = settings.http_addr.clone();
     let store = Store::connect(&settings.redis_url, &settings.redis_url_for_log()).await;
@@ -248,12 +291,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         _ => BertClient::new(&settings.bert_addr, settings.bert_timeout),
     };
     let metrics = Arc::new(Metrics::default());
-    let aggregator = Aggregator {
-        settings: Arc::new(settings),
-        store: store.clone(),
-        bert,
-        metrics: metrics.clone(),
-    };
+    let settings = Arc::new(settings);
+    let aggregator = Aggregator { settings: settings.clone(), store: store.clone(), bert, metrics: metrics.clone() };
+
+    // B.4: every copy looks for silent calls; the end claim in Redis makes sure each is ended once.
+    tokio::spawn(end::silence_loop(store.clone(), settings, metrics.clone()));
 
     // gRPC server (the Aggregate endpoint the gateway calls) on a background task, a small Actix-web HTTP
     // server (health) on the main task. Either exiting (e.g. a bind failure) brings the process down.

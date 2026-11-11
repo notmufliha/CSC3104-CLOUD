@@ -202,8 +202,9 @@ fun Transcript(lines: List<ChatLine>, modifier: Modifier = Modifier) {
     }
 }
 
+/** riskyHere = B.5: one of the lines where the end-of-call review says "the conversation turned risky here". */
 @Composable
-fun ChatBubble(line: ChatLine) {
+fun ChatBubble(line: ChatLine, riskyHere: Boolean = false) {
     val flagged = line.flags.isNotEmpty()
     Column(
         Modifier.fillMaxWidth(),
@@ -217,11 +218,15 @@ fun ChatBubble(line: ChatLine) {
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = if (line.isCaller) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primaryContainer,
-            border = if (flagged) BorderStroke(2.dp, ScamRed) else null,
+            border = if (flagged || riskyHere) BorderStroke(2.dp, ScamRed) else null,
             modifier = Modifier.widthIn(max = 300.dp)
         ) {
             Text(line.text, Modifier.padding(12.dp), style = MaterialTheme.typography.bodyLarge)
         }
+        if (riskyHere) Text(
+            "the conversation turned risky here",
+            style = MaterialTheme.typography.labelSmall, color = ScamRed, fontWeight = FontWeight.SemiBold
+        )
         when {
             line.pending -> Text("checking…", style = MaterialTheme.typography.labelSmall, color = NeutralGrey)
             line.failed -> Text("could not check", style = MaterialTheme.typography.labelSmall, color = NeutralGrey)

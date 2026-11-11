@@ -8,6 +8,10 @@
 //!     MAX_CONTEXT_CHARS characters), sent with every aggregate request so the aggregator can ask the BERT
 //!     second opinion. RAM only, never logged, forgotten with the call.
 //!
+//!   - Workstream B: whether the call has ended (POST /v1/call/end, or the aggregator said so), and the end
+//!     result, so a late line is ignored without calling the workers and a repeated end is answered at once.
+//!     Ending a call drops its caller lines and seqs; only the scores-only end result is kept.
+//!
 //! Lives in the gateway's memory: with several gateway replicas, all lines of one call should reach the same
 //! replica (sticky routing on call_id) for these two to work; the verdicts themselves are right either way.
 //! Calls are forgotten after CALL_TTL_SECS without a new line.
@@ -45,10 +49,29 @@ pub struct Answer {
     pub fast_score: f32,
     pub bert_score: Option<f32>,
     pub bert_status: String,
+    /// Workstream B.6: the aggregator refused the line because the call had ended (the other fields are empty).
+    pub call_ended: bool,
+}
+
+/// Workstream B: a finished call's result, as the aggregator returned it. Scores and fixed texts only.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Ended {
+    pub final_verdict: String,
+    pub call_score: f32,
+    pub live_verdict: String,
+    pub review: String,
+    pub top_window_seqs: Vec<i64>,
+    pub reason: String,
+    pub ended_by: String,
 }
 
 struct CallState {
     last: Option<Answer>,
+    /// The call is over: later lines are ignored (B.6).
+    ended: bool,
+    /// The aggregator's end result; None if the call ended without one (aggregator unreachable, or it reported
+    /// the call as ended on a late line), so a repeated end asks the aggregator again.
+    end_result: Option<Ended>,
     seen_seqs: HashSet<u64>,
     /// Last caller lines, oldest first (for the BERT second opinion).
     context: VecDeque<String>,
@@ -138,6 +161,29 @@ impl CallStore {
         c.last_seen = Instant::now();
     }
 
+    /// Workstream B: the call is over. Forgets its caller lines and seqs (keeps the last answer for a late line's
+    /// reply). `result` None keeps an earlier result, if any.
+    pub fn mark_ended(&self, call_id: &str, result: Option<Ended>) {
+        let mut calls = self.calls.lock().unwrap();
+        let c = self.get_or_create(&mut calls, call_id);
+        c.ended = true;
+        if result.is_some() {
+            c.end_result = result;
+        }
+        c.context.clear();
+        c.seen_seqs.clear();
+        c.last_seen = Instant::now();
+    }
+
+    pub fn is_ended(&self, call_id: &str) -> bool {
+        self.calls.lock().unwrap().get(call_id).is_some_and(|c| c.ended)
+    }
+
+    /// The stored end result of a call that ended through the aggregator.
+    pub fn end_result(&self, call_id: &str) -> Option<Ended> {
+        self.calls.lock().unwrap().get(call_id).and_then(|c| c.end_result.clone())
+    }
+
     pub fn len(&self) -> usize {
         self.calls.lock().unwrap().len()
     }
@@ -147,7 +193,14 @@ impl CallStore {
             self.evict(calls);
             calls.insert(
                 call_id.to_string(),
-                CallState { last: None, seen_seqs: HashSet::new(), context: VecDeque::new(), last_seen: Instant::now() },
+                CallState {
+                    last: None,
+                    ended: false,
+                    end_result: None,
+                    seen_seqs: HashSet::new(),
+                    context: VecDeque::new(),
+                    last_seen: Instant::now(),
+                },
             );
         }
         calls.get_mut(call_id).expect("just inserted")
@@ -210,6 +263,26 @@ mod tests {
         let ctx = store.context_with("c3", &long, 5);
         assert_eq!(ctx[0].chars().count(), MAX_CONTEXT_CHARS);
         assert!(ctx[0].ends_with("END"));
+    }
+
+    #[test]
+    fn ending_a_call_forgets_its_text_but_keeps_the_verdict() {
+        let store = CallStore::new(Duration::from_secs(60), 100);
+        store.mark_seq("c1", 1);
+        store.push_context("c1", "give me your OTP", 5);
+        store.set_answer("c1", Answer { verdict: "SCAM".into(), ..Default::default() });
+        assert!(!store.is_ended("c1"));
+        store.mark_ended("c1", None);
+        assert!(store.is_ended("c1"));
+        assert_eq!(store.end_result("c1"), None); // no aggregator result yet: a repeated end asks again
+        assert_eq!(store.context_with("c1", "x", 5), ["x"]); // the text is gone
+        assert!(store.mark_seq("c1", 1)); // and the seqs
+        assert_eq!(store.last_answer("c1").unwrap().verdict, "SCAM"); // the verdict is kept
+        let r = Ended { final_verdict: "SCAM".into(), ended_by: "user_hung_up".into(), ..Default::default() };
+        store.mark_ended("c1", Some(r.clone()));
+        store.mark_ended("c1", None); // does not drop the stored result
+        assert_eq!(store.end_result("c1"), Some(r));
+        assert!(!store.is_ended("c2"));
     }
 
     #[test]
