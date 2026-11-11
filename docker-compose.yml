@@ -38,6 +38,10 @@ services:
       END_CALL_TIMEOUT_MS: "2000"
       # Workstream H: POST /v1/report goes to the review service (the phone never reaches it directly)
       REVIEW_URL: "http://review:8090"
+      # Workstream G.3: POST /v1/verify (the app's Hybrid mode) asks BERT about 5 masked caller lines.
+      # Empty = verify off (503); the phone then keeps its own answer.
+      BERT_ADDR: "${BERT_ADDR-http://bert:50051}"
+      VERIFY_TIMEOUT_MS: "1200"
     depends_on:
       - aggregator
       - urgency_en

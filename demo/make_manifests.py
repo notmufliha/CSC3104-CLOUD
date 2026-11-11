@@ -137,6 +137,9 @@ GATEWAY_ENV = {
     "END_CALL_TIMEOUT_MS": "2000",
     # Workstream H: where POST /v1/report goes (the internal review service).
     "REVIEW_URL": "http://review:8090",
+    # Workstream G.3: POST /v1/verify's wait for BERT (the app's Hybrid mode; the phone gives up after 1.5 s).
+    # BERT_ADDR is set in gateway_yaml: through Envoy, so its 300 ms BERT route limit applies here too.
+    "VERIFY_TIMEOUT_MS": "1200",
 }
 
 # ---- Workstream H: learning loop (review queue, retraining, monitoring) -----------------------------
@@ -601,6 +604,7 @@ def gateway_yaml() -> str:
     env = dict(GATEWAY_ENV)
     env["GATEWAY_BIND_ADDR"] = "0.0.0.0:8080"
     env["AGGREGATOR_ADDR"] = f"envoy-lb:{ENVOY_AGGREGATOR_PORT}"
+    env["BERT_ADDR"] = f"envoy-lb:{ENVOY_BERT_PORT}"   # Workstream G.3: POST /v1/verify
     for signal, lang in WORKERS:
         key = f"{signal.upper()}_{lang.upper()}_ADDR"
         env[key] = f"envoy-lb:{ENVOY_WORKER_PORTS[f'{signal}_{lang}']}"
