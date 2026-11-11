@@ -994,6 +994,28 @@ data:
         "delay_ms": 3400
       }
     ]
+  scam_en_90_new_scam_test_A_report_this.json: |
+    [
+      {"speaker": "caller", "text": "Good evening, our recruiter saw your profile and has a work from home role for you.", "delay_ms": 1500},
+      {"speaker": "receiver", "text": "Oh, what kind of work is it?", "delay_ms": 4000},
+      {"speaker": "caller", "text": "You just rate products on our platform and earn commission each day.", "delay_ms": 2500},
+      {"speaker": "caller", "text": "The first task needs a small top up in USDT which comes back with your commission.", "delay_ms": 5000},
+      {"speaker": "receiver", "text": "I see. How do I start?", "delay_ms": 4000},
+      {"speaker": "caller", "text": "I will add you to the Telegram group where the mentor shows you the steps.", "delay_ms": 2500},
+      {"speaker": "caller", "text": "Top up again today to unlock the next task or your commission stays frozen.", "delay_ms": 5000},
+      {"speaker": "caller", "text": "Slots fill up fast so please decide tonight.", "delay_ms": 5000}
+    ]
+  scam_en_91_new_scam_test_B_same_scam_new_words.json: |
+    [
+      {"speaker": "caller", "text": "Hi, our hiring team found your resume and we have a part time online job for you.", "delay_ms": 1500},
+      {"speaker": "receiver", "text": "Really? What would I do?", "delay_ms": 4000},
+      {"speaker": "caller", "text": "All you do is rate products on the platform and your commission builds up.", "delay_ms": 2500},
+      {"speaker": "caller", "text": "Task one needs a small USDT top up, which is returned together with your commission.", "delay_ms": 5000},
+      {"speaker": "receiver", "text": "Okay, then what?", "delay_ms": 4000},
+      {"speaker": "caller", "text": "Our mentor in the Telegram group explains each step.", "delay_ms": 2500},
+      {"speaker": "caller", "text": "One more top up today unlocks the next task, if not your commission stays frozen.", "delay_ms": 5000},
+      {"speaker": "caller", "text": "Places are filling up fast, so decide tonight.", "delay_ms": 5000}
+    ]
   scam_zh_10_gov_official.json: |
     [
       {
