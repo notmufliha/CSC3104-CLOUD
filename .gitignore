@@ -49,3 +49,8 @@ tools/testing/results_*.csv
 # local eval outputs
 data/eval/
 script_results*.md
+
+# Workstream G (federated): rebuilt by backend/federated/Dockerfile or train_hashing.py / prepare.py
+backend/federated/data/
+backend/federated/model/*.joblib
+backend/federated/results/*.joblib

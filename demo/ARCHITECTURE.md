@@ -127,3 +127,14 @@ This repo has no message broker. The gateway calls workers and the aggregator sy
 within a ~2 second budget (`WORKER_TIMEOUT_MS` + `AGGREGATOR_TIMEOUT_MS`, both in `docker-compose.yml`).
 If an architecture diagram elsewhere shows Kafka, Dapr, or any async broker between these services, it
 does not describe this codebase — this repo's actual data flow is request/response gRPC + HTTP, full stop.
+
+## Workstream G: on-device models and federated learning (optional add-on)
+
+G changes nothing above. It adds, all optional:
+- the app's privacy levels 2 (Hybrid: `POST /v1/verify` on the gateway, masked lines to BERT) and 3 (On-device);
+- `demo/k8s/federated/` (applied by `demo/tools/federated.py`, never by `kubectl apply -f demo/k8s/`):
+  `model-download` (2 replicas, read-only, Ingress path `/models`) in `scamguard`, and in its own namespace
+  `scamguard-fl` a federated run: a Flower server Job and an Indexed Job of 10 simulated phones;
+- the review service's model registry also stores the phone model, `urgency_en_phone` v1, v2, ...
+
+Details, results and how to check them: `backend/federated/README.md`.

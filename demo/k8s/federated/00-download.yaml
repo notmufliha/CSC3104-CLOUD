@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-download
+  namespace: scamguard
+  labels: { app: model-download }
+spec:
+  replicas: 2          # stateless (reads the registry, caches files by version), so copies are free
+  selector:
+    matchLabels: { app: model-download }
+  template:
+    metadata:
+      labels: { app: model-download }
+    spec:
+      containers:
+        - name: model-download
+          image: scam/model-download:demo
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: REVIEW_URL
+              value: "http://review.scamguard.svc.cluster.local:8090"
+          resources:
+            requests: { cpu: "20m", memory: "32Mi" }
+            limits: { cpu: "200m", memory: "128Mi" }
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-download
+  namespace: scamguard
+spec:
+  type: ClusterIP
+  selector: { app: model-download }
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+---
+# A second Ingress on the same host as the gateway's (nginx merges them). No rewrite: /models/... is passed as is.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: model-download
+  namespace: scamguard
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "1k"     # GET only
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [scamguard.test]
+      secretName: gateway-tls
+  rules:
+    - host: scamguard.test
+      http:
+        paths:
+          - path: /models
+            pathType: Prefix
+            backend:
+              service: { name: model-download, port: { number: 8000 } }
+    - http:
+        paths:
+          - path: /models
+            pathType: Prefix
+            backend:
+              service: { name: model-download, port: { number: 8000 } }

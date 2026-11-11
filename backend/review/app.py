@@ -48,7 +48,7 @@ if not KEY:
     raise SystemExit("REVIEW_KEY is not set: the review queue refuses to store text unencrypted")
 store = Store(os.environ.get("REVIEW_DATA_DIR", "/data"), KEY.encode(),
               int(os.environ.get("REVIEW_RETENTION_DAYS", "30")))
-NAME_RE = re.compile(r"^[a-z]+_(en|zh)$")
+NAME_RE = re.compile(r"^[a-z]+_(en|zh)(_phone)?$")   # _phone: the on-device model (Workstream G.10)
 VERSION_RE = re.compile(r"^v\d{1,4}$")
 reports_received = {"scam": 0, "fine": 0}
 

@@ -1,0 +1,5 @@
+test_set,rows,model,roc_auc,f1,precision,recall
+gold_handwritten,59,tfidf_v4,0.8228,0.7419,0.6389,0.8846
+gold_handwritten,59,hash_v1,0.8228,0.6122,0.6522,0.5769
+robocall_gold,181,tfidf_v4,0.9229,0.3717,0.2333,0.913
+robocall_gold,181,hash_v1,0.9144,0.5316,0.375,0.913
