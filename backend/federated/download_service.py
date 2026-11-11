@@ -8,6 +8,9 @@ identified by sha256), so it can run as several copies and be restarted at any t
   GET /models/manifest                 {"models": {"urgency_en_phone": {"version", "sha256", "path"}, ...}}
   GET /models/<name>/<v>               the model JSON (export_phone.py format 2), name = urgency|money|impersonation_en_phone
   GET /health
+  POST /fl/updates                     real-phone training (only when INBOX_DIR is set): one phone's model
+                                       change, see inbox.py. The fl-inbox Deployment runs this same file with
+                                       INBOX_DIR on a volume; the download copies don't accept uploads.
 
 Standard library only.  REVIEW_URL (default http://review.scamguard.svc.cluster.local:8090), PORT (8000).
 """
@@ -21,6 +24,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import inbox  # noqa: E402
 import registry  # noqa: E402
 
 MODELS = list(registry.PHONE_MODELS)
@@ -75,6 +79,19 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:  # registry down or unknown version: the app keeps the model it has
             code = getattr(e, "code", 503)
             return self._send(code if code in (404,) else 503, json.dumps({"error": type(e).__name__}).encode())
+
+    def do_POST(self):  # noqa: N802
+        path = self.path.split("?")[0].rstrip("/")
+        if path != "/fl/updates" or not inbox.ENABLED:
+            return self._send(404, b'{"error":"not found"}')
+        try:
+            n = int(self.headers.get("Content-Length", "0"))
+            if n <= 0 or n > inbox.MAX_BYTES:
+                return self._send(413, b'{"error":"update too large"}')
+            receipt = inbox.store(self.rfile.read(n), gzipped=self.headers.get("Content-Encoding") == "gzip")
+            return self._send(200, json.dumps(receipt).encode())
+        except ValueError as e:
+            return self._send(400, json.dumps({"error": str(e)}).encode())
 
     def log_message(self, fmt, *args):
         sys.stderr.write(f"{self.address_string()} {fmt % args}\n")

@@ -43,6 +43,7 @@ spec:
             - { name: FL_PUBLISH, value: "0" }
             - { name: REVIEW_URL, value: "http://review.scamguard.svc.cluster.local:8090" }
             - { name: FL_RESULTS, value: "/results" }
+            - { name: FL_BRIDGE, value: "0" }
           resources:
             requests: { cpu: "200m", memory: "384Mi" }
             limits: { cpu: "1", memory: "1Gi" }

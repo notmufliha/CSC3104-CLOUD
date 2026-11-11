@@ -14,7 +14,8 @@ time **without anyone's calls leaving their phone**:
    starts.
 
 In this project the "many phones" are 10 simulated phones (pods in Kubernetes, or processes on a laptop), each
-holding a different slice of the training data. The real app does the download step (5) for real.
+holding a different slice of the training data, **plus any real phone running the app**: it trains on its own
+labelled calls (Settings > "Train on my calls and share the update") and its upload joins the next round.
 
 ## What is in this folder
 
@@ -25,10 +26,35 @@ holding a different slice of the training data. The real app does the download s
 | G.7 | 10 rounds; every model scored on its fixed test sets after every round, vs the central model | `server.py`, `plot_rounds.py` |
 | G.8 | Clipping + noise (Flower's `DifferentialPrivacyClientSideFixedClipping`), accuracy cost | `server.py`, `fedcore.py` |
 | G.9 | Release check per model: the code H.7 uses (`backend/retrain/release_check.py`) | `server.py` |
+| G (real phones) | The app trains the downloaded models on its labelled calls and uploads only the clipped, noised change; an inbox keeps it; a bridge client brings it into the next round | app `ondevice/PhoneTrainer.kt`, `inbox.py`, `bridge_client.py` |
 | G.10 | Publish to H's registry as `<signal>_en_phone` vN; read-only download service; the app downloads, verifies and uses them | `registry.py`, `download_service.py`, `export_phone.py`, app `data/ModelUpdater.kt`, `ondevice/Murmur3.kt`, `ondevice/LinearTextModel.kt` |
 
 Not done: G.11 (distillation, stretch). The Chinese models are not on the phone (the brief scopes G to English),
 so they are not part of the federated loop.
+
+## Who updates which model, and how (the whole picture)
+
+There are three kinds of model, and each one gets updated in its own way. No path ever sends raw calls to a bigger
+model to train it.
+
+| Model | Runs where | Who updates it | How a new version reaches users |
+|---|---|---|---|
+| 6 cloud workers (urgency/money/impersonation, EN + ZH) | Kubernetes pods (level 1) | **Developers + Workstream H**: retrain on the original data plus reviewed, consented reports (`learning.py retrain`) | release check, then registry, then **rolling update** of the pods (`learning.py rollout`), no downtime, `rollback` if needed |
+| Cloud BERT (DistilBERT) | Kubernetes pod (level 1, and level 2's second opinion) | **Developers** (GPU notebook, Goutham): public datasets + reviewed reports only | new image, rolling update |
+| 3 phone models (hashing urgency/money/impersonation) | On the phone (levels 2 and 3) | **Federated learning**: phones train on their own calls; the cloud only averages changes. Developers seed v1 (G.1, central, public data) and set the release check | release check, then registry as `<signal>_en_phone` vN, then **the app downloads it on start-up** |
+| Built-in phone models (TF-IDF) | Inside the app (fallback) | **Developers**: `android-app/tools/export_models.py` from the cloud workers | a new app version |
+| MobileBERT (level 3 second opinion) | On the phone | **Developers** (not trained yet) | bundled in the app |
+
+What leaves a phone, by level:
+- Level 1: every caller line goes to the cloud models (scored, never stored). Reports only with consent (H).
+- Level 2: only at unsure moments, the last 5 lines, masked, to the cloud BERT for a second opinion. That is
+  inference, not training: the big model is never trained on them.
+- Level 3: nothing about calls. With "Help improve detection" on and a tap on "Train on my calls", only the clipped,
+  noised change to the model numbers goes up. The cloud never sees text, labels or the phone number.
+- Every level: model files come down from `/models` (only downloads).
+
+The "bigger model" in the federated design (G.11, distillation, not built) would be trained by the developers on
+public data only, and used to teach the small model; it never receives phone data.
 
 ## How it works
 
@@ -101,6 +127,9 @@ What to say in the report:
   times and report the mean and spread.
 - The release check is doing its job: it blocks candidates that are worse on the fixed test sets (urgency in the
   weekly round), so a bad round never reaches phones.
+- Real phones: the app's trainer is checked on the JVM (training moves scores the right way, the upload is clipped
+  and noised, and the inbox + bridge accept it and bring it into a round, `results/with_real_phone.json`).
+  A real phone has few labelled calls, so its update is small; it matters when many phones send one.
 - Honest limits: no secure aggregation (Flower's SecAgg+ needs the newer ServerApp API); the server adds the noise,
   so it must be trusted to; no privacy budget (epsilon) computed; phones are simulated, and the real phone does not
   train yet (its implicit labels, G.12, are what it would train on).
@@ -142,6 +171,19 @@ The laptop runs the registry and the download service; the phone downloads the m
 With this address the cloud levels don't work (there is no gateway on port 8000); set the gateway address back
 afterwards.
 
+### 2b. Real-phone training (phone trains, laptop averages)
+
+Continue from section 2 (local_stack.py running, phone on its address, models downloaded):
+1. Dashboard: turn on **Help improve detection** (the phone then keeps the masked lines of labelled calls).
+2. Privacy level **On-device**. Play a few calls and give them labels: on a scam call, tap **Hang up** within 10 s of
+   the red alert (= scam); after a call that warned but was fine, tap **This was fine** (= false alarm).
+3. Settings > **Train on my calls and share the update**. Expect "Trained on N labelled calls: urgency x lines (on v2),
+   ... Uploaded 4.2 MB of model changes (no call text)". The upload appears in
+   `backend/federated/data/inbox/pending` on the laptop.
+4. Laptop: `python backend/federated/run_local.py --publish --init current --rounds 3 --real-phones`. Look for
+   `[bridge] round 1: 1 real phone(s)` and then PUBLISHED / BLOCKED per model.
+5. Phone: **Check for model updates**: the models that passed move up a version, now partly trained by your phone.
+
 ### 3. On your phone, full demo (minikube)
 
 ```bash
@@ -149,6 +191,8 @@ demo/up.ps1 ; demo/expose.ps1                  # main demo + the phone's HTTPS a
 python demo/tools/federated.py build           # scam/federated, scam/model-download, scam/review images
 python demo/tools/federated.py up              # model-download (2 pods) + Ingress /models
 python demo/tools/federated.py run --init current --publish --rounds 3   # 1 server + 10 phone pods
+python demo/tools/federated.py inbox           # real-phone uploads waiting / used
+python demo/tools/federated.py run --init current --publish --rounds 3 --real-phones   # + fl-bridge Job
 python demo/tools/federated.py status          # registry versions + the manifest phones see
 ```
 Phone: keep the saved address `https://<laptop IP>:8443/api/` (the app derives `/models/` from it), tap **Check

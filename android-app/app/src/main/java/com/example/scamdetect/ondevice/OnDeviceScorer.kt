@@ -44,6 +44,30 @@ class OnDeviceScorer(
     /** For the benchmark screen and the version note. */
     val models: List<LinearTextModel> get() = listOf(urgency, money, impersonation)
 
+    /** G (real-phone training): the model behind a signal. */
+    fun model(signal: String): LinearTextModel = when (signal) {
+        "urgency" -> urgency
+        "money" -> money
+        "impersonation" -> impersonation
+        else -> error("unknown signal $signal")
+    }
+
+    /** G (real-phone training): one caller line as that model's training rows, cleaned the way it trained. */
+    fun trainingTexts(signal: String, line: String): List<String> = when (signal) {
+        "urgency" -> listOf(UrgencyText.normalize(line))
+        "money" -> MoneyText.splitSentences(line).ifEmpty { listOf(line) }.map { MoneyText.clean(it, moneyBrands) }
+        "impersonation" -> listOf(impersonationText.prep(line))
+        else -> error("unknown signal $signal")
+    }.filter { it.isNotBlank() }
+
+    /** G (real-phone training): this signal's score for one caller line, as during a call. */
+    fun score(signal: String, line: String): Double = when (signal) {
+        "urgency" -> urgency(line)
+        "money" -> money(line)
+        "impersonation" -> impersonation(line)
+        else -> error("unknown signal $signal")
+    }
+
     companion object {
         const val DIR = "models"
         val FILES = listOf("urgency_en.json", "money_en.json", "impersonation_en.json")

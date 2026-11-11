@@ -28,6 +28,7 @@ COPY android-app/app/src/main/assets/models/urgency_en.json android-app/app/src/
      android-app/app/src/main/assets/models/impersonation_en.json android-app/app/src/main/assets/models/
 COPY backend/retrain/release_check.py backend/retrain/
 COPY backend/federated/*.py backend/federated/
+COPY backend/federated/reports/tfidf_baselines.json backend/federated/reports/
 # G.1 (deterministic: fixed seeds), then the phone slices. The training text is deleted afterwards: phones only
 # carry their own hashed features, and the server only needs the test sets.
 RUN cd backend/federated && python train_hashing.py && python prepare.py \

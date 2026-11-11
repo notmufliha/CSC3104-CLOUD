@@ -7,8 +7,10 @@ import com.google.gson.Gson
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
@@ -120,6 +122,32 @@ object ModelUpdater {
             else -> "Up to date"
         }
     }
+
+    /**
+     * Real-phone training: send this phone's model change (PhoneTrainer.uploadJson) to the update inbox, next to
+     * /models on the same address: https://<address>:8443/fl/updates. gzip-compressed. Returns a short message.
+     */
+    suspend fun upload(gatewayUrl: String, json: String): String = withContext(Dispatchers.IO) {
+        val url = modelsBase(gatewayUrl).removeSuffix("models/") + "fl/updates"
+        val body = java.io.ByteArrayOutputStream().also { out ->
+            java.util.zip.GZIPOutputStream(out).use { it.write(json.toByteArray()) }
+        }.toByteArray()
+        val req = Request.Builder().url(url).header("Content-Encoding", "gzip")
+            .post(body.toRequestBody("application/json".toMediaTypeOrNull())).build()
+        try {
+            http.newCall(req).execute().use { r ->
+                if (r.isSuccessful) "Uploaded ${"%.1f".format(body.size / 1e6)} MB of model changes (no call text). " +
+                    "They join the next federated round."
+                else "Upload refused: HTTP ${r.code} ${r.body?.string()?.take(120).orEmpty()}"
+            }
+        } catch (e: Exception) {
+            "Upload failed: ${e.javaClass.simpleName} ($url)"
+        }
+    }
+
+    /** The registry version of each downloaded model ("v3"), by signal; built-in models have none. */
+    fun baseVersions(context: Context): Map<String, String> =
+        installed(context).mapKeys { it.key.substringBefore("_") }.mapValues { it.value.version }
 
     private fun get(url: String): ByteArray {
         http.newCall(Request.Builder().url(url).build()).execute().use { r ->
