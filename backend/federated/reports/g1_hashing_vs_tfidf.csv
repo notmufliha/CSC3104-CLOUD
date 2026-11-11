@@ -1,0 +1,7 @@
+model,test_set,rows,tfidf_roc_auc,hash_roc_auc,tfidf_f1,hash_f1,roc_auc_gap
+urgency,gold_handwritten,59,0.8228,0.8228,0.7419,0.6122,0.0
+urgency,robocall_gold,181,0.9229,0.9144,0.3717,0.5316,0.0085
+money,sg_gold,60,0.8522,0.8411,0.6222,0.5909,0.0111
+money,test_set,200,0.7808,0.799,0.5655,0.5075,-0.0182
+money,ftc,1544,0.6969,0.7225,0.068,0.0592,-0.0256
+impersonation,gold_test,622,0.9878,0.9867,0.9272,0.9307,0.0011

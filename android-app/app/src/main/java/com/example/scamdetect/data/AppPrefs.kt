@@ -32,6 +32,15 @@ class AppPrefs(context: Context) {
         set(value) = sp.edit { putBoolean(KEY_HELP_IMPROVE, value) }
 
     /**
+     * Workstream G (real-phone training): a random id made once per install, so a newer upload replaces this phone's
+     * older one in the inbox. Not linked to the user, the phone number or the device.
+     */
+    val flPhoneId: String
+        get() = sp.getString(KEY_FL_PHONE_ID, null) ?: java.util.UUID.randomUUID().toString().also { id ->
+            sp.edit { putString(KEY_FL_PHONE_ID, id) }
+        }
+
+    /**
      * The old History (before the Room dashboard), or null if there is none (never had one, or already moved).
      * Read once by CallHistory.migrateLegacy, which then calls removeLegacyHistory.
      */
@@ -53,5 +62,6 @@ class AppPrefs(context: Context) {
         private const val KEY_SAVE_SENTENCE = "save_riskiest_sentence"
         private const val KEY_PRIVACY_LEVEL = "privacy_level"
         private const val KEY_HELP_IMPROVE = "help_improve_detection"
+        private const val KEY_FL_PHONE_ID = "fl_phone_id"
     }
 }

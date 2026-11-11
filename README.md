@@ -1,23 +1,95 @@
-# CSC3104 — Distributed Scam-Call Detection
+# ScamGuard: distributed, privacy-aware scam-call detection (CSC3104, Group 15)
 
-A skeleton for a distributed scam-call detection system: an Android app
-captures/simulates a call transcript, a Rust gateway fans it out via gRPC to
-language-specific worker services for scoring, and an aggregator combines
-the scores into a verdict.
+ScamGuard warns a phone user **during** a call that the caller sounds like a scammer. The Android app sends the
+caller's lines to a cloud-native backend on Kubernetes: a Rust gateway fans each line out over gRPC to six small
+detector services (urgency, money/OTP, impersonation; English and Chinese), a Rust aggregator combines their votes
+with call memory in Redis, and a DistilBERT "second opinion" is asked only when the vote is unsure or alarmed.
+Users who want more privacy can run the three English detectors **on the phone** (Hybrid / On-device levels), and
+those phone models improve through **federated learning** (phones share only noisy model changes, never calls),
+gated by a release check and delivered as versioned downloads. A consented report / review / retrain loop keeps
+the cloud models learning new scams with no downtime (rolling updates).
 
-This is a **working skeleton**, not a finished product — see the `TODO`
-comments throughout for what still needs real data, trained models, or
-production hardening.
+## Check it yourself
+
+| I want to... | Do this | Time |
+|---|---|---|
+| Run the whole backend on a laptop with Docker only | [A. Docker Compose](#a-docker-compose-laptop-docker-only) | ~15 min first build |
+| See the distributed features (replicas, autoscaling, pod kills, rolling updates, federated pods) | [B. Kubernetes demo (minikube)](#b-kubernetes-demo-minikube) | ~20 min first build |
+| Try it on an Android phone or emulator | [C. The app](#c-the-android-app) | 10 min |
+| Review reported calls (accept / reject / label) | [D. Review website](#d-the-review-website) | 2 min |
+| Check federated learning on its own, no containers | [`backend/federated/README.md`](backend/federated/README.md) section 1 | 10 min |
+
+Needs: Docker Desktop (8 GB memory for Docker is enough), Python 3.10+ for the helper scripts, and for B
+`minikube` + `kubectl`. Windows: use the `.ps1` scripts; macOS/Linux: the `.sh` ones.
+
+### A. Docker Compose (laptop, Docker only)
+
+```bash
+docker compose up -d --build            # gateway, aggregator, Redis, 6 workers, BERT, review, model-service, edge
+docker compose ps                       # wait until everything is Up
+python tools/gateway_test.py --no-stop  # end-to-end check: scam line -> SCAM, calm line -> SAFE
+python tools/testing/replay.py --only scam_en_11 --caller-only   # replay one scripted call, line by line
+```
+- The phone/emulator address is the **edge** (same job as the Kubernetes Ingress): `http://<laptop IP>:8088/api/`
+  (emulator: `http://10.0.2.2:8088/api/`). `/models` and `/fl` (on-device model downloads and training uploads)
+  are on the same address.
+- Review website: http://127.0.0.1:8090/ (see D).
+- Federated learning round (Flower server + 10 simulated phones + real-phone bridge), publishes passing models:
+  `docker compose --profile federated up --build fl-server fl-phones fl-bridge` (exits when done; results in
+  `backend/federated/results/`).
+- Stop: `docker compose down` (add `-v` to also delete the review queue and model registry).
+
+### B. Kubernetes demo (minikube)
+
+```powershell
+demo\up.ps1        # builds 11 images, starts minikube, deploys everything to namespace scamguard (bash: demo/up.sh)
+demo\expose.ps1    # prints the phone's HTTPS address, https://<laptop IP>:8443/api/ (leave it running)
+python demo\tools\demo_flow.py      # reference run: 4 calls through the live cluster, verdict per line
+python demo\tools\load_sim.py       # load test; then demo\spread.ps1 shows the even spread over pods
+demo\watch.ps1                      # live pods + autoscalers; demo\chaos.ps1 kills pods during calls
+python demo\tools\federated.py build ; python demo\tools\federated.py up
+python demo\tools\federated.py run --init current --publish --rounds 3 --make-room --real-phones
+```
+Details: [demo/README.md](demo/README.md) (demo script, expected output, troubleshooting),
+[demo/LEARNING_LOOP.md](demo/LEARNING_LOOP.md) (report -> review -> retrain -> rolling update),
+[backend/federated/README.md](backend/federated/README.md) (federated learning, phone steps).
+On an 8 GB laptop `up.ps1` picks a "lite" profile automatically; always add `--make-room` to federated runs.
+
+### C. The Android app
+
+Open `android-app/` in Android Studio and press **Run** (a debug build). In the app: **Settings** -> paste the
+address from A or B -> **Save** -> **Test connection** ("Connected: ok"). Debug builds already trust the
+laptop's demo HTTPS certificate (`demo/tls/ca.crt`, built in at build time), so nothing needs installing on the
+phone. Then **Home -> Choose a call script…**: `Bank OTP` / `Gov official` go red; `Clinic appointment` stays
+green. Settings -> **Privacy level** switches between Cloud, Hybrid and On-device (works in airplane mode).
+
+### D. The review website
+
+Where a teammate accepts, labels or rejects calls that users chose to report (Workstream H). Internal only: it
+holds caller lines (masked), so it is never exposed to phones.
+- Compose: http://127.0.0.1:8090/ . Kubernetes: `python demo/tools/learning.py review` (opens a port-forward), then
+  http://127.0.0.1:8090/ .
+- Type your name -> each reported call shows the whole conversation, then each line with Yes/No for urgency,
+  money and impersonation (**Nothing suspicious** = No for all three) -> **Save**. **Reject whole report** deletes
+  a junk report or one that still contains personal details. **Spot-check others** lets a second person
+  agree/disagree with labels.
+- To get a report into it: in the app, finish a call, tap **This was a scam** (or **This was fine**) on the summary
+  and agree on the consent screen.
 
 ## Architecture
 
 ```
-Android app --HTTP/JSON--> gateway --gRPC--> urgency_{en,zh}
-                              |     --gRPC--> money_{en,zh}
-                              |     --gRPC--> impersonation_{en,zh}
-                              `-----gRPC--> aggregator <--> Redis (call memory)
-                                                 `--gRPC--> bert (second opinion, only when unsure/alarmed)
+Android app --HTTPS--> Ingress (k8s) / edge (compose)
+   |                     |-- /api    --> gateway --gRPC via Envoy--> urgency_{en,zh}, money_{en,zh}, impersonation_{en,zh}
+   |                     |                  `--gRPC--> aggregator <--> Redis (call memory)
+   |                     |                                  `--gRPC--> bert (second opinion, only when unsure/alarmed)
+   |                     |-- /models --> model-download (on-device models, read-only)
+   |                     `-- /fl     --> fl-inbox (real-phone training uploads)
+   |  levels 2/3: 3 English models run ON the phone
+review (registry + review queue + labelling page) <-- retrain CronJob (H) / Flower server + phones (G, federated)
 ```
+Full design notes: [demo/ARCHITECTURE.md](demo/ARCHITECTURE.md); Workstream G:
+[backend/federated/README.md](backend/federated/README.md).
 
 - **bert** (Python, ONNX Runtime): the **second opinion**. One multilingual DistilBERT that reads the call's
   last 5 caller lines together. The aggregator asks it only when the fast vote is unsure or alarmed (or too
@@ -361,30 +433,19 @@ probability; "threshold" is the model's own cut-off.
 
 ## Pointing the Android app at the backend
 
-The app's base URL is set in
-[android-app/app/src/main/java/com/csc3104/scamdetect/network/RetrofitClient.kt](android-app/app/src/main/java/com/csc3104/scamdetect/network/RetrofitClient.kt):
-
-- **Android emulator** against a `docker compose up` running on the same
-  machine: the default, `http://10.0.2.2:8080/`, already works —
-  `10.0.2.2` is the emulator's alias for the host's `localhost`.
-- **Physical device**: change `BASE_URL` to your host machine's LAN IP,
-  e.g. `http://192.168.1.23:8080/`, and make sure the device is on the same
-  network and nothing (firewall, VPN) blocks port 8080.
-
-Open `android-app/` in Android Studio, let Gradle sync, and run the `app`
-configuration. The `IncomingCallScreen` composable previews (with fake
-verdict data) are visible in the Compose Preview pane without needing to
-run the app or the backend.
+The address is a setting in the app (**Settings** -> server address), not in the code: see
+[C. The app](#c-the-android-app). Addresses: compose `http://<laptop IP>:8088/api/` (edge) or the gateway directly
+`http://<laptop IP>:8080/`; Kubernetes `https://<laptop IP>:8443/api/` from `demo/expose.ps1`; the emulator reaches
+the laptop as `10.0.2.2`. More: [docs/android-app-guide.md](docs/android-app-guide.md),
+[demo/STABLE_ADDRESS.md](demo/STABLE_ADDRESS.md).
 
 ## Kubernetes
 
-[k8s/](k8s/) has `.tmpl` templates (Deployment, Service, HPA) for a single
-worker, parameterised by `${SIGNAL}` and `${LANGUAGE}` — copy/substitute
-per worker (see the comments at the top of each file for an `envsubst`
-example). The gateway and aggregator aren't templated here yet — TODO.
-[k8s/bert.yaml](k8s/bert.yaml) is the BERT second opinion (Deployment + Service + HPA); point the
-aggregator's `BERT_ADDR` at it (through Envoy if you want the HPA's extra replicas to share the load, like the
-workers: a gRPC client keeps one connection to one pod).
+The maintained manifests are generated into [demo/k8s/](demo/k8s/) by `demo/make_manifests.py` (don't hand-edit
+them): Deployments with readiness/liveness probes and resource limits, HPAs on every worker and BERT, Envoy for
+per-request gRPC load balancing, Redis, the Ingress with HTTPS, the review service with a volume, the retraining
+CronJob, and (optional, `demo/k8s/federated/`) the model-download service, the update inbox and the federated-learning
+Jobs. [k8s/](k8s/) holds the older per-worker templates. How to run it: [B. Kubernetes demo](#b-kubernetes-demo-minikube).
 
 ## Demo deployment
 

@@ -1,0 +1,53 @@
+{
+  "model": "urgency",
+  "version": "hash_v1",
+  "created_at": "2026-11-11T14:12:44+00:00",
+  "sklearn_version": "1.4.2",
+  "parts": [
+    {
+      "analyzer": "word",
+      "ngram": [
+        1,
+        2
+      ],
+      "token_pattern": "(?u)\\b[\\w']+\\b",
+      "stop_words": [
+        "numtoken",
+        "timetoken",
+        "moneytoken",
+        "phonetoken",
+        "urltoken",
+        "emailtoken"
+      ],
+      "lowercase": true,
+      "n_features": 262144
+    }
+  ],
+  "C": 0.3,
+  "threshold": 0.43186293389538605,
+  "platt": null,
+  "trained_rows": 13031,
+  "nonzero_weights": 56465,
+  "gold": [
+    {
+      "model": "urgency",
+      "test_set": "gold_handwritten",
+      "rows": 59,
+      "tfidf_roc_auc": 0.8228,
+      "hash_roc_auc": 0.8228,
+      "tfidf_f1": 0.7419,
+      "hash_f1": 0.6122,
+      "roc_auc_gap": 0.0
+    },
+    {
+      "model": "urgency",
+      "test_set": "robocall_gold",
+      "rows": 181,
+      "tfidf_roc_auc": 0.9229,
+      "hash_roc_auc": 0.9144,
+      "tfidf_f1": 0.3717,
+      "hash_f1": 0.5316,
+      "roc_auc_gap": 0.0085
+    }
+  ]
+}
