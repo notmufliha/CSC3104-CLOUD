@@ -22,5 +22,8 @@ RUN python train.py && rm -rf data
 # warm the jieba cache so the first request is fast
 RUN python -c "import jieba; jieba.initialize()"
 
+# H.8: loads a released version from the model registry when MODEL_VERSION is set.
+COPY workers/common/model_registry.py ./
+
 EXPOSE 50051
 CMD ["python", "server.py"]

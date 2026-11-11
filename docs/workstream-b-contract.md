@@ -151,7 +151,7 @@ message EndCallResponse {
 
 message AggregateResponse {
   // ... fields 1-11 unchanged ...
-  bool call_ended = 12;         // addition: this call has ended; the line was NOT scored (B.6)
+  bool call_ended = 14;         // addition: this call has ended; the line was NOT scored (B.6). 14: A took 12/13
 }
 ```
 
@@ -260,7 +260,7 @@ It must be above the review timeout plus Redis time.
 | C1 | Tombstone `call:{id}:ended`. | Existing style is `calllog:<id>`. | `callend:<id>`. Only the name changes. |
 | C2 | Unknown call → `final_verdict: "UNKNOWN"`. | The proto `Verdict` enum has no UNKNOWN. | gRPC uses `VERDICT_UNSPECIFIED`, and the gateway turns it into `"UNKNOWN"` over HTTP. No enum change. |
 | C3 ✅ | "Delete the call's Redis memory. Keep only the tombstone." | `calllog:<id>` is the per-line verdict log (no text). `tools/aggregator_replay.py` reads it after a replay, and the README and ARCHITECTURE docs point to it. | **Decided:** delete `call:<id>` (the memory), and **keep `calllog:<id>`** until its existing 1 h TTL with the final end row added. Then the "verdict log row" from B.3 lives where the other rows are, and the replay tool keeps working. The alternative is to delete it too, but then the per-line log disappears at hang-up and `aggregator_replay.py` breaks. |
-| C4 | The gateway or the aggregator checks the tombstone for late sentences. | The gateway has no Redis connection. Silence ends happen only in the aggregator. | Both: the gateway uses its own RAM for app-sent ends (no worker calls), and the aggregator checks atomically in `SAVE_LUA` as the backstop. That needs one additive proto field, `AggregateResponse.call_ended = 12`. |
+| C4 | The gateway or the aggregator checks the tombstone for late sentences. | The gateway has no Redis connection. Silence ends happen only in the aggregator. | Both: the gateway uses its own RAM for app-sent ends (no worker calls), and the aggregator checks atomically in `SAVE_LUA` as the backstop. That needs one additive proto field, `AggregateResponse.call_ended = 14` (12 at first; renumbered when merging main, where Workstream A took 12 and 13). |
 | C5 | Late sentence: "never scored". | For silence-ended calls the gateway doesn't know the call ended, so the 3 workers still run before the aggregator refuses the line. | The line is never added to the call's memory, the verdict log or the verdict. The worker calls are wasted work, not scoring. Removing them would need Redis in the gateway, which goes against "keep gateway changes small". |
 | C6 | `/v1/utterance` late response is `{"ignored": true, "reason": "call_ended"}`. | Rule: "existing fields stay the same". | The full existing body (as for a receiver line) **plus** `ignored`, `reason`. |
 | C7 | Contract has no `language` or `already_ended`. | BERT's `ScoreContext` needs `language`. Idempotency is easier to test with a flag. | Both are added (additive, optional). The app sends no `language` (the gateway works it out from the lines with the existing 30 % rule, or from the script's `lang`). |

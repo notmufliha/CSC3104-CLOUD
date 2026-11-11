@@ -33,7 +33,7 @@ pub mod scam_detect {
 
 use bert::{BertClient, SecondOpinion};
 use metrics::Metrics;
-use config::{Settings, SIGNALS};
+use config::{Mode, Settings, SIGNALS};
 use policy::{Decision, LineScores};
 use scam_detect::aggregator_service_server::{AggregatorService, AggregatorServiceServer};
 use scam_detect::{AggregateRequest, AggregateResponse, EndCallRequest, EndCallResponse, Reason, WorkerScore};
@@ -55,7 +55,10 @@ fn line_scores(scores: &[WorkerScore]) -> Result<LineScores, Status> {
     let mut line: LineScores = [None; 3];
     for s in scores {
         if !s.score.is_finite() {
-            return Err(Status::invalid_argument(format!("score for '{}' is not a number", s.signal)));
+            return Err(Status::invalid_argument(format!(
+                "score for '{}' is not a number",
+                s.signal
+            )));
         }
         match SIGNALS.iter().position(|name| *name == s.signal) {
             Some(i) => {
@@ -82,11 +85,17 @@ fn to_response(d: Decision, bert_status: &str) -> AggregateResponse {
         bert_score: d.bert,
         bert_status: bert_status.to_string(),
         verdict: to_proto_verdict(d.verdict) as i32,
+        live_alert: to_proto_verdict(d.verdict) as i32,
+        final_verdict: String::new(),
         combined_score: d.combined,
         reasons: d
             .reasons
             .into_iter()
-            .map(|r| Reason { signal: r.signal.to_string(), score: r.score, text: r.text })
+            .map(|r| Reason {
+                signal: r.signal.to_string(),
+                score: r.score,
+                text: r.text,
+            })
             .collect(),
         action: d.action.to_string(),
         recent_scores: SIGNALS
@@ -102,18 +111,25 @@ fn to_response(d: Decision, bert_status: &str) -> AggregateResponse {
 }
 
 fn now_ms() -> i64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
 }
 
 #[tonic::async_trait]
 impl AggregatorService for Aggregator {
-    async fn aggregate(&self, request: Request<AggregateRequest>) -> Result<Response<AggregateResponse>, Status> {
+    async fn aggregate(
+        &self,
+        request: Request<AggregateRequest>,
+    ) -> Result<Response<AggregateResponse>, Status> {
         let req = request.into_inner();
         let line = line_scores(&req.scores)?;
         let call_id = req.call_id.trim();
         let now = now_ms();
         let language = req.scores.first().map(|s| s.language.as_str()).unwrap_or("");
-        let mut second = SecondOpinion::new(self.bert.as_ref(), &req.context, language);
+        let min_bert_lines = if self.settings.mode == Mode::BertOnly { 1 } else { bert::MIN_LINES };
+        let mut second = SecondOpinion::new(self.bert.as_ref(), &req.context, language).with_min_lines(min_bert_lines);
 
         // An empty line (no worker answered) is allowed: the quorum rule turns it into UNSURE (or BERT stands
         // in), or SCAM if the call is already red.
@@ -123,10 +139,12 @@ impl AggregatorService for Aggregator {
             } else {
                 None
             };
-            policy::decide_one_shot(line, bert, &self.settings)
+            policy::decide_one_shot_with_bert_status(line, bert, second.status(), &self.settings)
         } else {
             if call_id.len() > MAX_CALL_ID_LEN {
-                return Err(Status::invalid_argument(format!("call_id longer than {MAX_CALL_ID_LEN} characters")));
+                return Err(Status::invalid_argument(format!(
+                    "call_id longer than {MAX_CALL_ID_LEN} characters"
+                )));
             }
             match self.store.apply(call_id, req.seq, line, now, req.call_time_ms, &self.settings, &mut second).await {
                 Ok(Some(d)) => d,
@@ -139,8 +157,12 @@ impl AggregatorService for Aggregator {
                 Err(e) => {
                     tracing::error!(call_id, seq = req.seq, error = %e, "call memory update failed");
                     return Err(match e {
-                        StoreError::Redis(_) => Status::unavailable("call memory (redis) unavailable"),
-                        StoreError::Busy => Status::aborted("too many simultaneous updates to this call"),
+                        StoreError::Redis(_) => {
+                            Status::unavailable("call memory (redis) unavailable")
+                        }
+                        StoreError::Busy => {
+                            Status::aborted("too many simultaneous updates to this call")
+                        }
                         StoreError::Corrupt(_) => Status::internal("stored call unreadable"),
                     });
                 }
@@ -150,7 +172,8 @@ impl AggregatorService for Aggregator {
         // 3.8 verdict log: ids, time, verdict and scores, never text.
         tracing::info!(target: "verdict", entry = %store::log_entry(call_id, req.seq, now, &line, &decision,
                        second.status()), bert_ms = second.ms, "verdict");
-        self.metrics.record(call_id, &line, &decision, second.status(), &self.settings);
+        self.metrics
+            .record(call_id, &line, &decision, second.status(), &self.settings);
         Ok(Response::new(to_response(decision, second.status())))
     }
 
@@ -197,7 +220,9 @@ impl AggregatorService for Aggregator {
 
 #[get("/metrics")]
 async fn metrics_endpoint(m: web::Data<Arc<Metrics>>) -> HttpResponse {
-    HttpResponse::Ok().content_type("text/plain; version=0.0.4").body(m.render())
+    HttpResponse::Ok()
+        .content_type("text/plain; version=0.0.4")
+        .body(m.render())
 }
 
 #[get("/health")]
@@ -212,12 +237,21 @@ async fn health(store: web::Data<Store>) -> HttpResponse {
 fn init_logging() {
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
-    if std::env::var("LOG_FORMAT").map(|v| v.eq_ignore_ascii_case("json")).unwrap_or(false) {
-        tracing_subscriber::fmt().with_env_filter(filter).json().init();
+    if std::env::var("LOG_FORMAT")
+        .map(|v| v.eq_ignore_ascii_case("json"))
+        .unwrap_or(false)
+    {
+        tracing_subscriber::fmt()
+            .with_env_filter(filter)
+            .json()
+            .init();
     } else {
         // colours only on a real terminal, so `docker logs` stays plain text that scripts can parse
         let ansi = std::io::IsTerminal::is_terminal(&std::io::stdout());
-        tracing_subscriber::fmt().with_env_filter(filter).with_ansi(ansi).init();
+        tracing_subscriber::fmt()
+            .with_env_filter(filter)
+            .with_ansi(ansi)
+            .init();
     }
 }
 
@@ -242,7 +276,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                    call_ttl_secs = settings.call_ttl.as_secs(),
                    bert_addr = if settings.bert_addr.is_empty() { "(off)" } else { settings.bert_addr.as_str() },
                    bert_timeout_ms = settings.bert_timeout.as_millis() as u64, bert_weight = %settings.bert_weight,
-                   bert_veto = %settings.bert_veto, "starting aggregator");
+                   bert_veto = %settings.bert_veto, mode = settings.mode.as_str(), "starting aggregator");
 
     tracing::info!(silence_secs = settings.silence.as_secs(), silence_check_secs = settings.silence_check.as_secs(),
                    end_review_timeout_ms = settings.end_review_timeout.as_millis() as u64,
@@ -251,7 +285,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let grpc_addr = settings.grpc_addr.parse()?;
     let http_addr = settings.http_addr.clone();
     let store = Store::connect(&settings.redis_url, &settings.redis_url_for_log()).await;
-    let bert = BertClient::new(&settings.bert_addr, settings.bert_timeout);
+    // AGG_MODE=fast is the same as an empty BERT_ADDR: no client, every line's bert_status is "off".
+    let bert = match settings.mode {
+        Mode::Fast => None,
+        _ => BertClient::new(&settings.bert_addr, settings.bert_timeout),
+    };
     let metrics = Arc::new(Metrics::default());
     let settings = Arc::new(settings);
     let aggregator = Aggregator { settings: settings.clone(), store: store.clone(), bert, metrics: metrics.clone() };
@@ -277,8 +315,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .service(health)
             .service(metrics_endpoint)
     })
-        .bind(&http_addr)?
-        .run();
+    .bind(&http_addr)?
+    .run();
 
     tokio::select! {
         res = grpc_handle => {
@@ -297,12 +335,23 @@ mod tests {
     use super::*;
 
     fn ws(signal: &str, score: f32) -> WorkerScore {
-        WorkerScore { signal: signal.into(), score, language: "en".into(), model_version: String::new() }
+        WorkerScore {
+            signal: signal.into(),
+            score,
+            language: "en".into(),
+            model_version: String::new(),
+        }
     }
 
     #[test]
     fn line_scores_by_signal() {
-        let line = line_scores(&[ws("money", 0.8), ws("urgency", 1.4), ws("money", 0.9), ws("other", 0.5)]).unwrap();
+        let line = line_scores(&[
+            ws("money", 0.8),
+            ws("urgency", 1.4),
+            ws("money", 0.9),
+            ws("other", 0.5),
+        ])
+        .unwrap();
         assert_eq!(line, [Some(1.0), Some(0.9), None]); // clamped, highest kept, unknown ignored
         assert_eq!(line_scores(&[]).unwrap(), [None; 3]); // empty line is allowed
         assert!(line_scores(&[ws("money", f32::NAN)]).is_err());
@@ -311,7 +360,10 @@ mod tests {
     #[test]
     fn response_has_reasons_action_and_recent_scores() {
         let cfg = Settings::from_lookup(|_| None).unwrap();
-        let r = to_response(policy::decide_one_shot([Some(0.6), Some(0.95), None], None, &cfg), "skipped");
+        let r = to_response(
+            policy::decide_one_shot([Some(0.8), Some(0.95), None], None, &cfg),
+            "skipped",
+        );
         assert_eq!(r.verdict, scam_detect::Verdict::Scam as i32);
         assert_eq!(r.reasons[0].signal, "money");
         assert_eq!(r.action, policy::ACTION_SCAM);

@@ -1,0 +1,133 @@
+{
+  "version": "money_en_v2c",
+  "evaluated": "2026-11-05T08:28:56",
+  "recheck_labels_used": 549,
+  "before_after": [
+    {
+      "goal": "SG gold: ROC-AUC",
+      "target": ">= 0.85",
+      "labels": "new rule",
+      "v1": 0.808,
+      "v1_pass": false,
+      "v2": 0.938,
+      "v2_pass": true
+    },
+    {
+      "goal": "SG gold: F1 @0.5",
+      "target": "> keyword list F1",
+      "labels": "new rule",
+      "v1": 0.609,
+      "v1_pass": false,
+      "v2": 0.75,
+      "v2_pass": true
+    },
+    {
+      "goal": "SG gold: false-alarm rate on 0s",
+      "target": "<= 0.10",
+      "labels": "new rule",
+      "v1": 0.349,
+      "v1_pass": false,
+      "v2": 0.07,
+      "v2_pass": true
+    },
+    {
+      "goal": "Test set: ROC-AUC",
+      "target": ">= 0.85",
+      "labels": "new rule",
+      "v1": 0.802,
+      "v1_pass": false,
+      "v2": 0.977,
+      "v2_pass": true
+    },
+    {
+      "goal": "Test set: F1 @0.5",
+      "target": "> keyword list F1",
+      "labels": "new rule",
+      "v1": 0.615,
+      "v1_pass": false,
+      "v2": 0.826,
+      "v2_pass": true
+    },
+    {
+      "goal": "Test set: false-alarm rate on 0s",
+      "target": "<= 0.10",
+      "labels": "new rule",
+      "v1": 0.34,
+      "v1_pass": false,
+      "v2": 0.046,
+      "v2_pass": true
+    },
+    {
+      "goal": "FTC: ROC-AUC",
+      "target": ">= 0.85",
+      "labels": "new rule",
+      "v1": 0.763,
+      "v1_pass": false,
+      "v2": 0.954,
+      "v2_pass": true
+    },
+    {
+      "goal": "FTC: F1 @0.5",
+      "target": "> keyword list F1",
+      "labels": "new rule",
+      "v1": 0.047,
+      "v1_pass": true,
+      "v2": 0.4,
+      "v2_pass": true
+    },
+    {
+      "goal": "FTC: false-alarm rate on 0s",
+      "target": "<= 0.10",
+      "labels": "new rule",
+      "v1": 0.233,
+      "v1_pass": false,
+      "v2": 0.01,
+      "v2_pass": true
+    },
+    {
+      "goal": "SG gold: ROC-AUC with own top 20 words hidden",
+      "target": ">= 0.75",
+      "labels": "new rule",
+      "v1": 0.767,
+      "v1_pass": true,
+      "v2": 0.925,
+      "v2_pass": true
+    },
+    {
+      "goal": "Test set: ROC-AUC with own top 20 words hidden",
+      "target": ">= 0.75",
+      "labels": "new rule",
+      "v1": 0.785,
+      "v1_pass": true,
+      "v2": 0.956,
+      "v2_pass": true
+    },
+    {
+      "goal": "FTC: ROC-AUC with own top 20 words hidden",
+      "target": ">= 0.75",
+      "labels": "new rule",
+      "v1": 0.741,
+      "v1_pass": false,
+      "v2": 0.954,
+      "v2_pass": true
+    },
+    {
+      "goal": "Training data: % of 0s with a money word",
+      "target": ">= 5",
+      "labels": "training",
+      "v1": 0.0,
+      "v1_pass": false,
+      "v2": 35.3,
+      "v2_pass": true
+    },
+    {
+      "goal": "Training data: % of 1s without a money word",
+      "target": ">= 5",
+      "labels": "training",
+      "v1": 0.0,
+      "v1_pass": false,
+      "v2": 18.6,
+      "v2_pass": true
+    }
+  ]
+}

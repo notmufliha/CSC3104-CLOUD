@@ -11,9 +11,9 @@ Reads
   data/impersonation_en/gold_test.csv            (same columns; final held-out test, never tuned on)
 
 Writes
-  backend/workers/impersonation_en/model/model.pkl        (text_utils.CalibratedModel, unless --no-save)
-  backend/workers/impersonation_en/model_card.json        (settings + test/gold metrics)
-  backend/workers/impersonation_en/reports/*.csv           (CV tuning table, misclassified rows)
+  backend/workers/impersonation_en/model/model.pkl                (text_utils.CalibratedModel, unless --no-save)
+  backend/workers/impersonation_en/model_card.json                (settings + test/gold metrics)
+  backend/workers/impersonation_en/training_outputs/*.csv          (CV tuning table, misclassified rows)
 
 How C and "use character n-grams" are chosen: 5-fold grouped cross-validation on the
 development set (85% of the data; the test set is the other 15%, held out and only
@@ -26,16 +26,18 @@ Train with scikit-learn 1.6.1 (pinned in requirements.txt): the server pins the
 same version, and a joblib model generally only loads in the version that wrote it.
 
 Usage
-  python train.py                       # writes model/model.pkl + reports/
+  python train.py                       # writes model/model.pkl + training_outputs/
   python train.py --no-save             # just print the CV/test/gold numbers
   python train.py --data PATH --gold PATH --out PATH
 """
 import argparse
+import hashlib
 import json
 import os
 import random
 import sys
 import warnings
+from datetime import date
 from functools import partial
 from pathlib import Path
 
@@ -62,7 +64,7 @@ REPO = HERE.parents[2]
 DEFAULT_DATA = REPO / "data" / "impersonation_en" / "impersonation_data.csv"
 DEFAULT_GOLD = REPO / "data" / "impersonation_en" / "gold_test.csv"
 DEFAULT_OUT = HERE / "model" / "model.pkl"
-REPORTS = HERE / "reports"
+REPORTS = HERE / "training_outputs"
 
 RANDOM_STATE = 42
 TEST_SIZE = 0.15
@@ -77,8 +79,13 @@ TRY_CHAR_NGRAMS = True
 CALLER_ONLY = True
 MASK_BRANDS = True
 NOISE_COPIES = 1
-MODEL_VERSION = "impersonation_en_v2"
+MODEL_VERSION = "impersonation_en_v5"
+PREVIOUS_VERSION = "impersonation_en_v4"
 SYNTHETIC_PATTERN = "synthetic|ai_written|llm"
+
+
+def sha256_of(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def tidy(frame):
@@ -278,8 +285,12 @@ def main():
         gold_metrics = scores_for(gold["label"].values, gold_pred, gold_prob)
         print(f"gold set  (threshold {threshold}): " + ", ".join(f"{k}={v:.3f}" for k, v in gold_metrics.items()))
 
+    rows_by_source = df["source"].value_counts().to_dict()
+
     card = {
         "model_version": MODEL_VERSION,
+        "previous_version": PREVIOUS_VERSION,
+        "trained_on": date.today().isoformat(),
         "task": "English institutional impersonation (probability 0 to 1)",
         "features": f"TF-IDF ngram {NGRAM_RANGE}, min_df {MIN_DF}, max_features {MAX_FEATURES}",
         "brand_masking": MASK_BRANDS,
@@ -293,8 +304,14 @@ def main():
         "noisy_copies": NOISE_COPIES,
         "calibrated": True,
         "sklearn_version": sklearn.__version__,
+        "training_rows_by_source": {k: int(v) for k, v in rows_by_source.items()},
+        "data_files": {
+            "train": {"path": str(args.data.relative_to(REPO)).replace("\\", "/"), "rows": int(len(df)), "sha256": sha256_of(args.data)},
+        },
         "test_metrics": test_metrics,
     }
+    if args.gold.exists():
+        card["data_files"]["gold"] = {"path": str(args.gold.relative_to(REPO)).replace("\\", "/"), "rows": int(len(gold)), "sha256": sha256_of(args.gold)}
     if gold_metrics is not None:
         card["gold_metrics"] = gold_metrics
 
