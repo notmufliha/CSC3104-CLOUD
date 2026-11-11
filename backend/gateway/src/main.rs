@@ -112,6 +112,8 @@ struct UtteranceResponse {
     /// true when this (call_id, seq) was already scored: a resend.
     duplicate: bool,
     verdict: Option<String>,
+    live_alert: Option<String>,
+    final_verdict: Option<String>,
     combined_score: Option<f32>,
     /// Which signals fired and why, strongest first (empty when SAFE).
     reasons: Vec<Reason>,
@@ -237,8 +239,13 @@ async fn aggregate(
             let verdict = scam_detect::Verdict::try_from(r.verdict)
                 .map(|v| v.as_str_name().to_string())
                 .unwrap_or_else(|_| "VERDICT_UNSPECIFIED".to_string());
+            let live_alert = scam_detect::Verdict::try_from(r.live_alert)
+                .map(|v| v.as_str_name().to_string())
+                .unwrap_or_else(|_| "VERDICT_UNSPECIFIED".to_string());
             Ok(Answer {
                 verdict,
+                live_alert,
+                final_verdict: r.final_verdict,
                 combined_score: r.combined_score,
                 reasons: r
                     .reasons
@@ -288,6 +295,8 @@ async fn utterance(state: web::Data<AppState>, body: web::Json<UtteranceRequest>
             scored: false,
             duplicate,
             verdict: last.as_ref().map(|a| a.verdict.clone()),
+            live_alert: last.as_ref().map(|a| a.live_alert.clone()),
+            final_verdict: last.as_ref().map(|a| a.final_verdict.clone()),
             combined_score: last.as_ref().map(|a| a.combined_score),
             reasons: a.reasons,
             action: a.action,
@@ -393,6 +402,8 @@ async fn utterance(state: web::Data<AppState>, body: web::Json<UtteranceRequest>
         scored: true,
         duplicate: false,
         verdict: Some(answer.verdict),
+        live_alert: Some(answer.live_alert),
+        final_verdict: Some(answer.final_verdict),
         combined_score: Some(answer.combined_score),
         reasons: answer.reasons,
         action: answer.action,
@@ -617,6 +628,8 @@ async fn submit_transcript(state: web::Data<AppState>, body: web::Json<SubmitTra
     match aggregate(&state, "", None, None, lang, &arrived, context).await {
         Ok(a) => HttpResponse::Ok().json(serde_json::json!({
             "verdict": a.verdict,
+            "live_alert": a.live_alert,
+            "final_verdict": a.final_verdict,
             "combined_score": a.combined_score,
             "fast_score": a.fast_score,
             "bert_score": a.bert_score,

@@ -137,9 +137,10 @@ Answer for a caller line:
 - `model_versions` in each answer (Workstream H.8): the model version each worker that answered used, e.g.
   `{"urgency": "v5"}`. Workers that don't report a version yet are left out.
 - `POST /v1/report` (Workstream H.3): after a call, the user shares it with consent:
-  `{"call_id", "kind": "scam"|"fine", "app_verdict", "language": "en"|"zh", "consent": true, "lines": [{"seq", "text"}]}`
-  (caller lines, masked on the phone). Forwarded to the internal review service, which masks again, stores the
-  lines encrypted and deletes them after 30 days. 400 without `consent: true`; 503 if `REVIEW_URL` isn't set.
+  `{"call_id", "kind": "scam"|"fine", "app_verdict", "language": "en"|"zh", "consent": true, "consent_version": 2,
+  "lines": [{"seq", "text"}]}` (caller lines, masked on the phone). Forwarded to the internal review service, which
+  masks again and stores the lines encrypted. After 30 days it deletes them, except lines a reviewer approved when
+  the user agreed to that (`consent_version` 2). 400 without `consent: true`; 503 if `REVIEW_URL` isn't set.
   See [demo/LEARNING_LOOP.md](demo/LEARNING_LOOP.md).
 
 Gateway settings (environment variables; defaults match `docker-compose.yml`):
@@ -172,17 +173,30 @@ it back and returns the verdict, reasons and action. The rules live in
 | # | Rule | Default | Setting |
 |---|---|---|---|
 | 1 | **Window**: each signal's recent score is its highest over the call's last N caller lines (a scammer says "police", "act now" and "give me the OTP" in different sentences). Receiver lines don't count. | 6 lines | `AGG_WINDOW_LINES` |
-| 2 | **Red stays red**: once a call is `SCAM`, every later line is `SCAM`. | | |
+| 2 | **Live red alert**: red is provisional. Every move to red is reviewed by BERT; if BERT is down, at least two different signals must be ≥ 0.8. A red alert clears only after BERT disagrees twice in a row. | strong fallback 0.8, 2 disagreements | `AGG_FALLBACK_STRONG_SIGNAL_THRESHOLD`, `AGG_RED_DISAGREEMENTS_TO_CLEAR` |
 | 3 | **Quorum**: fewer than N workers answered *this* line → `UNSURE` "Not enough data" (also during the warm-up). | 2 | `AGG_MIN_QUORUM` |
 | 4 | **Weighted vote**: combined = Σ wᵢ·sᵢ / Σ wᵢ over the signals that have a recent score, so a missing worker's weight is shared among the others. | ⅓ each | `AGG_W_URGENCY`, `AGG_W_MONEY`, `AGG_W_IMPERSONATION` |
 | 5 | **Warm-up**: in the call's first N seconds stay quiet (`SAFE`) unless some recent score is ≥ the override. This beats the money rule too; the scores stay in the window, so they still count on the first line after the warm-up. | 15 s, override 0.9 | `AGG_WARMUP_SECS`, `AGG_WARMUP_OVERRIDE` |
-| 6 | **Money rule**: money ≥ 0.7 while another signal is ≥ 0.5, both within the last N caller lines → `SCAM` immediately. N = 6 (the whole window) is the original rule; N = 1 means the money ask and the other signal must be in the same caller line (N = 2: same or adjacent), so "your card bill is due" and a later "call the number on your card" don't add up to a scam; a scam that splits them across lines is then left to the 2-in-a-row path and BERT. | 0.7 / 0.5, N 6 | `AGG_MONEY_RULE`, `AGG_MONEY_RULE_OTHER`, `AGG_MONEY_RULE_LINES` |
-| 7 | **2 in a row**: combined ≥ 0.6 → the first time `UNSURE`, the Nth update in a row `SCAM`. Because of the window, one strong line keeps combined high, so the call turns red on the next caller line. | 0.6, 2 | `AGG_SCAM_THRESHOLD`, `AGG_SCAM_STREAK` |
-| 8 | **Unsure**: combined ≥ 0.45 → `UNSURE` (resets the streak). | 0.45 | `AGG_UNSURE_THRESHOLD` |
+| 6 | **Alarmed**: fast worker score ≥ 0.6 always asks BERT before red. BERT ≥ 0.6 confirms `SCAM`; BERT 0.3–0.6 produces `UNSURE`. | 0.6 | `AGG_SCAM_THRESHOLD`, `AGG_BERT_SCAM_THRESHOLD`, `AGG_BERT_SAFE_THRESHOLD` |
+| 7 | **BERT unavailable**: keep the small models' level, but cap the result at `UNSURE` unless two different signals are ≥ 0.8. | 0.8 | `AGG_FALLBACK_STRONG_SIGNAL_THRESHOLD` |
+| 8 | **Unsure**: fast score 0.45–0.6 → `UNSURE` and asks BERT. Fast score below 0.45 → `SAFE` unless another rule applies. | 0.45 / 0.6 | `AGG_UNSURE_THRESHOLD`, `AGG_SCAM_THRESHOLD` |
 | 9 | Otherwise `SAFE` (resets the streak). | | |
-| B | **BERT second opinion** (cascade): asked only when rules 3, 6, 7 or 8 would decide this line without it, i.e. never for a clearly `SAFE` line, during the quiet warm-up, or once red. When it answers in time, rules 7-8 use **final = (1 − w)·combined + w·BERT**; with too few workers (rule 3) BERT's score stands in alone (still 2 high updates in a row for `SCAM`); BERT ≥ the warm-up override also breaks the warm-up; and BERT below the veto cancels the money rule (veto **off** by default: recall first). Slow, down or off → the line is decided exactly as without BERT. It is a reason too: "The conversation as a whole sounds like a scam". | w 0.5, timeout 300 ms, veto 0 | `BERT_ADDR` (empty = off), `BERT_TIMEOUT_MS`, `AGG_BERT_WEIGHT`, `AGG_BERT_VETO` |
+| S | **Spot check** (cascade): every 5th caller line also asks BERT, even if the line looks safe or is in the warm-up, so a scam that keeps the workers quiet still gets checked. Never once red. | every 5 | `AGG_BERT_SPOT_EVERY` (0 = off) |
+| M | **Mode** (Workstream F comparison): `cascade` is everything above; `fast` never asks BERT; `bert_only` asks BERT on every caller line (lines 1-2 too) and BERT alone decides with the same warm-up, thresholds and streak, no quorum or money rule. BERT down in `bert_only` → `UNSURE` "The scam check did not answer". | cascade | `AGG_MODE` |
+| B | **Decision table**: calm (<0.45) → 🟢 `SAFE`; unsure (0.45–0.6) → 🟡 `UNSURE`, ask BERT; unsure/alarmed with BERT scam (≥0.6) → 🔴 `SCAM`; alarmed with BERT unsure (0.3–0.6) or safe (<0.3) → 🟡 `UNSURE`, never straight to green. The live alert can change during the call; the final verdict is separate and belongs to the end-of-call review. | BERT timeout 300 ms | `BERT_ADDR`, `BERT_TIMEOUT_MS`, `AGG_BERT_SAFE_THRESHOLD`, `AGG_BERT_SCAM_THRESHOLD` |
 | | **Reasons**: every signal with a recent score ≥ 0.5 when not `SAFE`, strongest first: "Asked for your OTP or money", "Claims to be police, a bank or the government", "Pressuring you to act now". Plus one action: `SCAM` "Hang up now. Call the organisation back on its official number, or ScamShield on 1799.", `UNSURE` "Don't share any codes or transfer money. Hang up and check with the official number." | 0.5 | `AGG_REASON_THRESHOLD` |
 | | **Memory expiry**: a call is deleted from Redis this long after its last line. | 1 hour | `AGG_CALL_TTL_SECS` |
+
+The live decision table is the source of truth:
+
+| Small models | BERT | Result |
+|---|---|---|
+| Calm (< 0.45) | Not asked | 🟢 `SAFE` |
+| Unsure (0.45–0.6) | Not asked yet | 🟡 `UNSURE`, ask BERT |
+| Unsure or alarmed | Scam (≥ 0.6) | 🔴 `SCAM` |
+| Alarmed (≥ 0.6) | Unsure (0.3–0.6) | 🟡 `UNSURE` |
+| Alarmed (≥ 0.6) | Safe (< 0.3) | 🟡 `UNSURE`, never straight to green |
+| Any | Times out or is down | Keep the small-model level, but at most 🟡 unless two signals are ≥ 0.8 |
 
 A request without `call_id` (the gateway's `/submit-transcript`) is judged alone: no memory, no warm-up,
 no streak (combined ≥ 0.6 → `SCAM` straight away); quorum, the money rule and BERT still apply.
@@ -198,8 +212,8 @@ start-up with a message instead of being silently ignored. Also `REDIS_URL` (def
 
 Redis keys:
 
-- `call:<call_id>`: hash with `started_at_ms`, `window` (last N lines' scores), `streak`, `red`,
-  `caller_lines`, `verdict`, `combined`, `version`. Two aggregator copies updating the same call at once
+- `call:<call_id>`: hash with `started_at_ms`, `window` (last N lines' scores), `streak`, live `red`,
+  `red_disagreements`, `caller_lines`, `verdict`, `combined`, `version`. Two aggregator copies updating the same call at once
   can't overwrite each other: the save is a Lua script that only writes if `version` is unchanged, and the
   loser re-reads and retries.
 - `calllog:<call_id>`: the verdict log, one JSON entry per caller line
@@ -338,7 +352,7 @@ probability; "threshold" is the model's own cut-off.
 | Worker | Version | Test score (scam / normal) | Known weak spots |
 |---|---|---|---|
 | urgency_en | v4, TF-IDF + LR (sklearn 1.4.2), frozen 2026-10-13, threshold 0.368 | 0.470 / 0.365 | Passes 2/8 urgency goals. Many false alarms: "no rush", banks' anti-scam advice, normal time talk ("bill due on the 15th"). Misses pressure with no keywords. The normal test sentence sits just under the threshold. |
-| money_en | money_en_v1, word + char TF-IDF + LR, Platt-calibrated (sklearn 1.6.1), created 2026-10-15, threshold 0.5 | 1.000 / 0.000 | Scores **any** mention of money or OTPs, so a genuine "your bill is due" also scores high (by design; the aggregator separates scams). Validation F1 0.988 is on its own data split, so expect lower on real calls. Training notebook isn't in the repo yet (`train.py` is the old template), so the model can't be reproduced. |
+| money_en | money_en_v2c, word TF-IDF (1-2 grams, brand names masked) + LR, Platt-calibrated (sklearn 1.6.1), created 2026-11-05, threshold 0.5 | 0.999 / 0.000 | Scores whether the speaker **asks** for money, card/bank details or a code (rule: `backend/workers/money_en/LABELING.md`); a money word alone ("never share your OTP": 0.002) scores low. SG gold: ROC-AUC 0.938, F1 0.75, false alarms 0.07 (v1: 0.81 / 0.61 / 0.35); 200-sentence test set ROC-AUC 0.977, F1 0.83; FTC robocalls ROC-AUC 0.954 but F1 only 0.40 (`model/money_en_v2c_eval.json`). A routine bill reminder can sit on the line ("Your credit card payment of $240 is due on the 25th": 0.503), and a genuine agent asking for a card number scores high by design. Reproducible: `train.py` + `data/money_en/C_train_pool.csv` (MD5 in `model/money_en_v2c.json`), notebook `money_otp_worker_en_v2.ipynb`. |
 | impersonation_en | impersonation_en_v2, TF-IDF + char n-grams + LR, calibrated (sklearn 1.6.1), threshold 0.47 | 0.941 / 0.011 | Trained and tested only on synthetic, advisory-based rows (~510 dev rows); performance on real calls is unknown. Scores a plain greeting high: 0.90 for "Hello, good afternoon, am I speaking with Mr Tan?" (2026-10-23). |
 | urgency_zh | v6, trained at image build (char TF-IDF + LR, calibrated, C=100), frozen threshold 0.34 | 0.472 / 0.016 | Under 0.5 on the scam test sentence: urgency words are diluted when one sentence also carries police + OTP (the call is still SCAM via money + impersonation; BERT reads the context). Gold F1 0.65 at 0.5, AUC 0.86. |
 | money_zh | v6 (char, C=100), frozen threshold 0.16 | 0.996 / 0.011 | Gold F1 0.91 at 0.5, AUC 0.998. |

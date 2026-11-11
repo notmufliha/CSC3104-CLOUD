@@ -1,0 +1,100 @@
+﻿script,type,lang,line,verdict,imp,mon,urg,combined,text_60
+scam_en_10_gov_official,scam,en,1,UNSURE,0.96,0.35,0.42,0.58,"Good afternoon, this is the fraud prevention unit calling ab"
+scam_en_10_gov_official,scam,en,3,SCAM,1.00,1.00,0.25,0.81,We detected a credit card opened under your NRIC that was us
+scam_en_10_gov_official,scam,en,5,SCAM,1.00,0.02,0.66,0.89,"I understand. Because this is a serious case, I will transfe"
+scam_en_10_gov_official,scam,en,7,SCAM,0.96,0.00,0.21,0.89,"I am Inspector Tan from the Singapore Police Force, badge nu"
+scam_en_10_gov_official,scam,en,8,SCAM,0.97,0.00,0.61,0.89,Your name is linked to a criminal case and you may be arrest
+scam_en_10_gov_official,scam,en,10,SCAM,1.00,0.34,0.56,0.89,"You must not tell anyone, not your family and not your bank."
+scam_en_10_gov_official,scam,en,11,SCAM,0.99,1.00,0.72,0.91,"To prove your innocence, we need to check your funds. Transf"
+scam_en_10_gov_official,scam,en,13,SCAM,0.22,0.05,0.68,0.91,"Do it right now, within the next thirty minutes, or a warran"
+scam_en_10_gov_official,scam,en,14,SCAM,0.22,1.00,0.38,0.91,Open your banking app and send all the money to this account
+scam_en_10_gov_official,scam,en,16,SCAM,0.59,0.34,0.30,0.91,Stay on the line. Do not hang up until the transfer is done.
+scam_en_11_bank_otp,scam,en,1,SCAM,1.00,0.88,0.56,0.81,"Hello, this is the security department of your bank. Is this"
+scam_en_11_bank_otp,scam,en,3,SCAM,1.00,1.00,0.56,0.85,We noticed a suspicious payment of three thousand two hundre
+scam_en_11_bank_otp,scam,en,5,SCAM,1.00,0.00,0.37,0.85,"Don't worry, I can cancel it, but I need to verify your iden"
+scam_en_11_bank_otp,scam,en,7,SCAM,0.75,0.13,0.82,0.94,"The transaction will go through in five minutes, so we must "
+scam_en_11_bank_otp,scam,en,9,SCAM,1.00,0.98,0.38,0.94,I am sending a six-digit code to your phone now. Please read
+scam_en_11_bank_otp,scam,en,11,SCAM,0.03,0.97,0.18,0.94,"Yes, that is normal, it is part of the cancellation process."
+scam_en_11_bank_otp,scam,en,13,SCAM,0.66,0.99,0.14,0.94,Also give me your card number and the three digits at the ba
+scam_en_12_parcel_customs,scam,en,1,SAFE,0.24,0.00,0.41,0.22,"Hello, this is the courier service. We have a parcel under y"
+scam_en_12_parcel_customs,scam,en,3,UNSURE,0.99,0.03,0.16,0.48,It was sent from overseas and the declared contents do not m
+scam_en_12_parcel_customs,scam,en,5,UNSURE,0.98,0.00,0.39,0.73,I will connect you to the customs enforcement officer. Pleas
+scam_en_12_parcel_customs,scam,en,6,SCAM,0.96,0.12,0.23,0.75,"Good afternoon, I am Officer Lim from Singapore Customs. You"
+scam_en_12_parcel_customs,scam,en,8,SCAM,0.98,0.04,0.88,0.67,"If you do not resolve this today, we will refer your case to"
+scam_en_12_parcel_customs,scam,en,10,SCAM,0.04,1.00,0.37,0.96,You need to pay a release fee of four hundred and eighty dol
+scam_en_12_parcel_customs,scam,en,12,SCAM,0.99,0.99,0.46,0.96,"I will send you the number now. Pay within one hour, otherwi"
+scam_en_12_parcel_customs,scam,en,13,SCAM,0.20,0.85,0.27,0.96,"After you pay, take a screenshot of the receipt and send it "
+scam_en_13_tech_support,scam,en,1,SAFE,1.00,0.00,0.26,0.42,"Good morning, I am calling from the technical support team o"
+scam_en_13_tech_support,scam,en,3,SAFE,0.88,0.00,0.33,0.44,"Yes, our system shows your router has been hacked and your c"
+scam_en_13_tech_support,scam,en,5,SAFE,0.07,0.00,0.37,0.23,It is very serious. Hackers may already have access to your 
+scam_en_13_tech_support,scam,en,7,SAFE,0.36,0.00,0.35,0.26,Please turn on your computer and open the web browser. I wil
+scam_en_13_tech_support,scam,en,9,UNSURE,0.99,0.32,0.19,0.75,"Yes, give me the nine-digit code on the screen so I can conn"
+scam_en_13_tech_support,scam,en,11,SCAM,0.70,0.91,0.32,0.88,Now I can see your screen. The virus has reached your bankin
+scam_en_13_tech_support,scam,en,13,SCAM,1.00,1.00,0.64,0.88,"Yes, we must move your money to a protected account before t"
+scam_en_13_tech_support,scam,en,14,SCAM,0.00,1.00,0.36,0.88,The cleaning service also costs two hundred dollars. Please 
+scam_en_14_friend_in_trouble,scam,en,1,SAFE,0.00,0.00,0.48,0.16,"Hello Auntie, it's me! Guess who this is?"
+scam_en_14_friend_in_trouble,scam,en,3,SAFE,0.00,0.00,0.15,0.16,"Yes yes, it's Jason! Sorry, I changed my number, my old phon"
+scam_en_14_friend_in_trouble,scam,en,5,SAFE,0.00,0.01,0.24,0.17,"Auntie, I'm in a bit of trouble. I was in a car accident and"
+scam_en_14_friend_in_trouble,scam,en,7,SCAM,0.01,1.00,0.54,0.72,"I'm fine, but I need to pay the other driver's repair cost a"
+scam_en_14_friend_in_trouble,scam,en,9,SCAM,0.01,1.00,0.66,0.56,"Five thousand five hundred dollars. Please don't tell Mum, s"
+scam_en_14_friend_in_trouble,scam,en,10,SCAM,0.01,0.92,0.29,0.56,Can you PayNow it now? I'll give you the number. It's really
+scam_en_14_friend_in_trouble,scam,en,12,SCAM,0.00,0.67,0.57,0.56,"Thank you Auntie, I'll pay you back next week, I promise. Pl"
+scam_zh_10_gov_official,scam,zh,1,SAFE,1.00,0.12,0.12,0.41,您好，这里是银行的反欺诈部门，想跟您确认一下您的银行账户情况。
+scam_zh_10_gov_official,scam,zh,3,SCAM,0.00,0.71,0.49,0.73,我们发现有人用您的身份证号码开了一张信用卡，而且这张卡被用于洗钱。
+scam_zh_10_gov_official,scam,zh,5,SCAM,1.00,0.11,0.16,0.73,我理解。因为案情严重，我现在把电话转接给新加坡警察部队的警官。
+scam_zh_10_gov_official,scam,zh,7,SCAM,1.00,0.01,0.04,0.73,我是新加坡警察部队的陈警官，警号二零四七。
+scam_zh_10_gov_official,scam,zh,8,SCAM,0.00,0.02,1.00,0.9,您已经涉及一宗刑事案件，如果今天不配合调查，可能会被逮捕。
+scam_zh_10_gov_official,scam,zh,10,SCAM,0.22,0.01,1.00,0.9,这件事绝对保密，不能告诉任何人，包括您的家人和银行。
+scam_zh_10_gov_official,scam,zh,11,SCAM,0.00,0.99,0.33,1.0,为了证明您的清白，我们需要核查您的资金，请把您的存款转到我们提供的安全账户。
+scam_zh_10_gov_official,scam,zh,13,SCAM,0.04,0.03,1.00,1.0,必须现在就办，三十分钟内，否则法院会发出拘捕令。
+scam_zh_10_gov_official,scam,zh,14,SCAM,0.07,1.00,0.29,1.0,请打开手机银行，把钱转到这个账户，银行发来验证码时马上念给我听。
+scam_zh_10_gov_official,scam,zh,16,SCAM,0.00,0.73,0.45,0.74,不要挂电话，转账完成之前请一直保持通话。
+scam_zh_12_parcel_customs,scam,zh,1,SAFE,0.98,0.04,0.18,0.4,您好，这里是快递公司。有一个以您名字寄出的包裹被海关扣留了。
+scam_zh_12_parcel_customs,scam,zh,3,SAFE,0.96,0.01,0.04,0.4,包裹是从海外寄来的，申报的内容和实际不符，所以被海关标记了。
+scam_zh_12_parcel_customs,scam,zh,5,UNSURE,0.39,0.39,0.07,0.75,我现在帮您转接海关执法人员，请稍等。
+scam_zh_12_parcel_customs,scam,zh,6,SCAM,1.00,0.03,0.39,0.78,您好，我是新加坡海关的林官员，您涉嫌进口违禁物品，现在正在被调查。
+scam_zh_12_parcel_customs,scam,zh,8,SCAM,0.00,0.03,0.64,0.68,如果今天之内不处理，案件会移交给警方，包裹也会被销毁。
+scam_zh_12_parcel_customs,scam,zh,10,SCAM,0.00,0.93,0.06,0.86,您需要通过PayNow缴付四百八十元的放行费。
+scam_zh_12_parcel_customs,scam,zh,12,SCAM,0.00,0.54,0.96,0.96,我马上把号码发给您，请在一小时内付款，否则罚款会加倍。
+scam_zh_12_parcel_customs,scam,zh,13,SCAM,0.00,0.77,0.04,0.96,付款后请把收据截图，用WhatsApp发给我。
+normal_en_10_bank_reminder,normal,en,1,SAFE,0.02,0.81,0.49,0.44,"Good morning, this is a reminder call from your bank's card "
+normal_en_10_bank_reminder,normal,en,3,UNSURE,0.01,1.00,0.38,0.5,Not at all. Your credit card payment of two hundred and fort
+normal_en_10_bank_reminder,normal,en,5,SAFE,0.00,1.00,0.37,0.25,"You can pay through the mobile app, internet banking, or GIR"
+normal_en_10_bank_reminder,normal,en,7,SAFE,0.00,1.00,0.34,0.26,"Sure. And please remember, the bank will never ask you for y"
+normal_en_10_bank_reminder,normal,en,9,SCAM,0.00,0.34,0.50,0.26,"No problem. If you have any questions, call the number print"
+normal_en_10_bank_reminder,normal,en,11,SCAM,0.00,0.00,0.05,0.51,"Thank you, have a good day."
+normal_en_11_clinic_appointment,normal,en,1,SAFE,0.00,0.00,0.43,0.14,"Hello, this is the clinic calling to confirm your appointmen"
+normal_en_11_clinic_appointment,normal,en,3,SAFE,0.01,0.02,0.24,0.15,Great. Please bring your NRIC and any medication you are cur
+normal_en_11_clinic_appointment,normal,en,5,SAFE,0.00,0.00,0.32,0.15,"Yes, no food for eight hours before the blood test, but you "
+normal_en_11_clinic_appointment,normal,en,7,SAFE,0.00,0.00,0.47,0.17,About thirty minutes. Please arrive ten minutes early to reg
+normal_en_11_clinic_appointment,normal,en,9,SAFE,0.00,1.00,0.33,0.25,"Yes, there is a carpark behind the building. The consultatio"
+normal_en_11_clinic_appointment,normal,en,11,SAFE,0.01,0.00,0.43,0.25,See you tomorrow. Take care.
+normal_en_12_delivery_driver,normal,en,1,SAFE,0.00,0.00,0.33,0.11,"Hi, I'm the delivery driver. I'm downstairs at your block no"
+normal_en_12_delivery_driver,normal,en,3,SAFE,0.00,0.00,0.26,0.11,I'm at the lobby near the letterboxes. Blue jacket.
+normal_en_12_delivery_driver,normal,en,5,SAFE,0.17,0.00,0.19,0.17,No problem. Can you confirm the unit number? The app shows n
+normal_en_12_delivery_driver,normal,en,7,SAFE,0.00,1.00,0.19,0.25,The total is twenty-three dollars fifty. It's cash on delive
+normal_en_12_delivery_driver,normal,en,9,SAFE,0.08,0.00,0.09,0.25,"Yes, no problem."
+normal_en_13_insurance_sales,normal,en,1,SAFE,0.03,0.00,0.19,0.07,"Hello, good afternoon. My name is Amelia, I'm calling from a"
+normal_en_13_insurance_sales,normal,en,3,SAFE,0.00,0.00,0.18,0.07,We have a new hospitalisation plan for young working adults.
+normal_en_13_insurance_sales,normal,en,5,SAFE,0.00,0.02,0.18,0.08,That's great. Many people find employer coverage ends when t
+normal_en_13_insurance_sales,normal,en,7,SAFE,0.01,1.00,0.21,0.41,"It starts from about thirty dollars a month, depending on yo"
+normal_en_13_insurance_sales,normal,en,9,SAFE,0.00,0.03,0.40,0.24,"Of course. This promotion ends at the end of the month, but "
+normal_en_13_insurance_sales,normal,en,11,SAFE,0.00,0.00,0.19,0.24,"Understood, thank you for your time."
+normal_en_14_family_call,normal,en,1,SAFE,0.00,0.00,0.25,0.08,"Hello, it's Mum. Are you free this weekend?"
+normal_en_14_family_call,normal,en,3,SAFE,0.00,0.00,0.19,0.08,Ah Ma's birthday is on Sunday. Your aunt booked the restaura
+normal_en_14_family_call,normal,en,5,SAFE,0.00,0.01,0.21,0.09,Can you pick up the cake on the way? I'll PayNow you back af
+normal_en_14_family_call,normal,en,7,SAFE,0.01,0.01,0.35,0.12,The one near your office. Please remember to ask them to wri
+normal_en_14_family_call,normal,en,9,SAFE,0.00,0.00,0.39,0.14,"Come by eleven thirty, so we can all walk in together."
+normal_en_14_family_call,normal,en,11,SAFE,0.10,0.00,0.30,0.16,Bye bye. Take care and eat properly ah.
+normal_zh_10_bank_reminder,normal,zh,1,SAFE,1.00,0.01,0.01,0.34,早上好，这里是银行信用卡服务部的提醒电话。
+normal_zh_10_bank_reminder,normal,zh,3,UNSURE,0.00,0.34,0.07,0.47,没有问题。您的信用卡有两百四十元的款项，本月二十五号到期。
+normal_zh_10_bank_reminder,normal,zh,5,SAFE,0.57,0.04,0.01,0.24,您可以用手机银行、网上银行，或者GIRO自动扣款来缴付。
+normal_zh_10_bank_reminder,normal,zh,7,SAFE,0.01,0.35,0.02,0.24,好的。另外请记住，银行绝对不会通过电话向您索取验证码或密码。
+normal_zh_10_bank_reminder,normal,zh,9,SAFE,0.00,0.17,0.02,0.24,不客气。如果有疑问，请拨打您信用卡背面印着的号码。
+normal_zh_10_bank_reminder,normal,zh,11,SAFE,0.00,0.01,0.01,0.24,谢谢您，祝您有愉快的一天。
+normal_zh_14_family_call,normal,zh,1,SAFE,0.00,0.04,0.06,0.03,喂，是妈妈。这个周末你有空吗？
+normal_zh_14_family_call,normal,zh,3,SAFE,0.00,0.00,0.02,0.03,星期天是阿嬷的生日，你阿姨订了中午十二点的餐厅。
+normal_zh_14_family_call,normal,zh,5,SAFE,0.00,0.70,0.02,0.25,你来的路上能不能顺便取一下蛋糕？吃完饭我再用PayNow把钱转给你。
+normal_zh_14_family_call,normal,zh,7,SAFE,0.00,0.14,0.09,0.26,就是你公司附近那一家。记得请他们在蛋糕上写阿嬷的名字。
+normal_zh_14_family_call,normal,zh,9,SAFE,0.00,0.05,0.02,0.26,十一点半到吧，我们一起进去。
+normal_zh_14_family_call,normal,zh,11,SAFE,0.00,0.02,0.03,0.26,再见，路上小心，要好好吃饭哦。

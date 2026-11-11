@@ -18,5 +18,8 @@ COPY workers/impersonation_en/server.py workers/impersonation_en/predict.py work
 # Re-run train.py and rebuild if data/impersonation_en/*.csv changes.
 COPY workers/impersonation_en/model/model.pkl model/model.pkl
 
+# H.8: loads a released version from the model registry when MODEL_VERSION is set.
+COPY workers/common/model_registry.py ./
+
 EXPOSE 50051
 CMD ["python", "server.py"]

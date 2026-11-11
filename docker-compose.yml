@@ -75,11 +75,17 @@ services:
       REDIS_URL: "redis://redis:6379"
       # Decision rules (see README "Aggregator timing policy"). These are the defaults; change and
       # `docker compose up -d aggregator` to tune without rebuilding.
+      # fast | bert_only | cascade (Workstream F). Try: AGG_MODE=bert_only docker compose up -d aggregator
+      AGG_MODE: "${AGG_MODE-cascade}"
       AGG_W_URGENCY: "0.3333"
       AGG_W_MONEY: "0.3333"
       AGG_W_IMPERSONATION: "0.3333"
       AGG_SCAM_THRESHOLD: "0.6"
       AGG_UNSURE_THRESHOLD: "0.45"
+      AGG_BERT_SAFE_THRESHOLD: "0.3"
+      AGG_BERT_SCAM_THRESHOLD: "0.6"
+      AGG_FALLBACK_STRONG_SIGNAL_THRESHOLD: "0.8"
+      AGG_RED_DISAGREEMENTS_TO_CLEAR: "2"
       AGG_WINDOW_LINES: "6"
       AGG_WARMUP_SECS: "15"
       AGG_WARMUP_OVERRIDE: "0.9"
@@ -104,6 +110,7 @@ services:
       BERT_ADDR: "${BERT_ADDR-http://bert:50051}"
       BERT_TIMEOUT_MS: "300"
       AGG_BERT_WEIGHT: "0.5"   # final = 0.5 * fast vote + 0.5 * BERT
+      AGG_BERT_SPOT_EVERY: "${AGG_BERT_SPOT_EVERY-5}"   # cascade: also ask BERT every Nth caller line; 0 = off
       AGG_BERT_VETO: "${AGG_BERT_VETO-0}"   # 0 = BERT can't cancel the money rule (recall first); see README
     depends_on:
       redis:
@@ -130,6 +137,8 @@ services:
       dockerfile: workers/urgency_zh/Dockerfile
     environment:
       PORT: "50051"
+      MODEL_REGISTRY_URL: "http://review:8090"
+      MODEL_VERSION: "${URGENCY_ZH_MODEL_VERSION:-}"
     networks:
       - scamnet
 
@@ -139,6 +148,8 @@ services:
       dockerfile: workers/money_en/Dockerfile
     environment:
       PORT: "50051"
+      MODEL_REGISTRY_URL: "http://review:8090"
+      MODEL_VERSION: "${MONEY_EN_MODEL_VERSION:-}"
     networks:
       - scamnet
 
@@ -148,6 +159,8 @@ services:
       dockerfile: workers/money_zh/Dockerfile
     environment:
       PORT: "50051"
+      MODEL_REGISTRY_URL: "http://review:8090"
+      MODEL_VERSION: "${MONEY_ZH_MODEL_VERSION:-}"
     networks:
       - scamnet
 
@@ -157,6 +170,8 @@ services:
       dockerfile: workers/impersonation_en/Dockerfile
     environment:
       PORT: "50051"
+      MODEL_REGISTRY_URL: "http://review:8090"
+      MODEL_VERSION: "${IMPERSONATION_EN_MODEL_VERSION:-}"
     networks:
       - scamnet
 
@@ -166,6 +181,8 @@ services:
       dockerfile: workers/impersonation_zh/Dockerfile
     environment:
       PORT: "50051"
+      MODEL_REGISTRY_URL: "http://review:8090"
+      MODEL_VERSION: "${IMPERSONATION_ZH_MODEL_VERSION:-}"
     networks:
       - scamnet
 

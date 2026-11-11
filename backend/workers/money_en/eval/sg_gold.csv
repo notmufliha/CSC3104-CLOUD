@@ -1,0 +1,61 @@
+sentence_id,text,label,call_type,category
+sg_g01,"Tell me the six digits we just texted you.",1,scam,otp_request
+sg_g02,"Please read out the one-time password on your screen.",1,scam,otp_request
+sg_g03,"What is the TAC number you received from the bank?",1,scam,otp_request
+sg_g04,"Approve the login on your banking app so I can stop the fraud.",1,scam,otp_request
+sg_g05,"OCBC will never call to ask for your OTP.",1,legit,money_mention
+sg_g06,"Enter the code sent to your phone to log in to the app.",1,legit,otp_request
+sg_g07,"Move all your savings to this account so the police can investigate.",1,scam,payment_request
+sg_g08,"PayNow the amount to 9123 4567 and I will release the order.",1,scam,payment_request
+sg_g09,"Settle the outstanding amount before tonight to avoid legal action.",1,scam,payment_request
+sg_g10,"Go to the nearest AXS machine and make the payment.",1,scam,payment_request
+sg_g11,"Buy Steam cards and send me photos of them.",1,scam,payment_request
+sg_g12,"Pay a small handling fee and the prize will be yours.",1,scam,payment_request
+sg_g13,"You can earn S$500 a day just by liking videos.",1,scam,money_mention
+sg_g14,"Deposit S$2,000 into our trading platform to start.",1,scam,payment_request
+sg_g15,"Your friend is in trouble and needs S$3,000 for bail.",1,scam,payment_request
+sg_g16,"Top up your account first so you can withdraw the commission.",1,scam,payment_request
+sg_g17,"Your PayLah transfer of S$15 to Ah Seng was successful.",1,legit,money_mention
+sg_g18,"Your MediShield Life premium will be deducted from your MediSave account.",1,legit,money_mention
+sg_g19,"The cashback will appear in your account within three days.",1,legit,money_mention
+sg_g20,"We have reversed the double charge on your credit card.",1,legit,money_mention
+sg_g21,"Your town council conservancy charges are due next week.",1,legit,money_mention
+sg_g22,"How much did the hawker charge you for the char kway teow?",1,legit,money_mention
+sg_g23,"Can I owe you the ten bucks until tomorrow?",1,legit,money_mention
+sg_g24,"The red packet from my uncle had a hundred dollars in it.",1,legit,money_mention
+sg_g25,"Your NETS payment at FairPrice was approved.",1,legit,money_mention
+sg_g26,"Your salary has been credited.",1,legit,money_mention
+sg_g27,"Please give me your card details so I can refund you.",1,scam,payment_request
+sg_g28,"I will help you apply for the loan if you pay the admin charge.",1,scam,payment_request
+sg_g29,"Your Carousell buyer has sent the payment, click this link to receive it.",1,scam,money_mention
+sg_g30,"Kindly keep the money ready for collection by our officer.",1,scam,payment_request
+sg_g31,"Please pay close attention to the instructions.",0,legit,word_sense
+sg_g32,"Transfer to the East-West Line at Tanah Merah.",0,legit,word_sense
+sg_g33,"The officer in charge will call you shortly.",0,scam,word_sense
+sg_g34,"Give credit where it is due, she worked very hard.",0,legit,word_sense
+sg_g35,"Please charge your phone before the trip.",0,legit,word_sense
+sg_g36,"Is there a dress code for the wedding?",0,legit,word_sense
+sg_g37,"Take traffic into account when you leave.",0,legit,word_sense
+sg_g38,"Bill and Mary are joining us for dinner.",0,legit,word_sense
+sg_g39,"I lost interest in that drama after the first episode.",0,legit,word_sense
+sg_g40,"We had a picnic by the bank of the reservoir.",0,legit,word_sense
+sg_g41,"Hold on, I am transferring your call to my supervisor.",0,legit,word_sense
+sg_g42,"Update the password for your school email.",0,legit,word_sense
+sg_g43,"This is Corporal Ng from the Singapore Police Force.",0,scam,impersonation_only
+sg_g44,"I am calling on behalf of the Ministry of Law.",0,scam,impersonation_only
+sg_g45,"This is an officer from the Central Narcotics Bureau.",0,scam,impersonation_only
+sg_g46,"Hello, I am calling from the Land Transport Authority.",0,scam,impersonation_only
+sg_g47,"Your identity card has been used to register a phone line.",0,scam,impersonation_only
+sg_g48,"You must stay on the line until the officer speaks to you.",0,scam,urgency_only
+sg_g49,"If you hang up now, you will be arrested.",0,scam,urgency_only
+sg_g50,"This matter is extremely urgent, act immediately.",0,scam,urgency_only
+sg_g51,"Do not tell anyone about this investigation.",0,scam,urgency_only
+sg_g52,"Your SIM card will be deactivated within one hour.",0,scam,urgency_only
+sg_g53,"Press 9 to speak to our customer service officer.",0,scam,urgency_only
+sg_g54,"Can you confirm your full name and address?",0,scam,impersonation_only
+sg_g55,"Are we still on for lunch at Jurong Point?",0,legit,everyday
+sg_g56,"The bus was packed this morning.",0,legit,everyday
+sg_g57,"My exam results will be out next week.",0,legit,everyday
+sg_g58,"Your delivery is scheduled for tomorrow afternoon.",0,legit,everyday
+sg_g59,"Sorry, who is this speaking?",0,legit,everyday
+sg_g60,"Thanks for the update, I will check with my son first.",0,legit,everyday
