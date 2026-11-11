@@ -1,0 +1,9 @@
+{
+  "version": "DUMMY-not-a-real-model",
+  "max_len": 32,
+  "temperature": 1.5,
+  "scam_index": 1,
+  "max_turns": 5,
+  "lower_case": true,
+  "model_file": "model.onnx"
+}

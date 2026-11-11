@@ -22,6 +22,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -32,6 +35,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,11 +50,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.example.scamdetect.data.CallScript
 import com.example.scamdetect.data.ReportLine
+import com.example.scamdetect.logic.PrivacyLevel
 import com.example.scamdetect.logic.Risk
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -252,6 +258,8 @@ fun SummaryScreen(
     reportPreview: () -> List<ReportLine>,
     onReport: suspend (kind: String) -> String,
     onDone: () -> Unit,
+    /** G.12: "This was fine" tapped (kept as a local label; sharing still goes through the consent screen). */
+    onThisWasFine: () -> Unit = {},
 ) {
     val context = LocalContext.current
     // H.3: which button opened the consent screen ("scam" / "fine"), and the result once sent.
@@ -292,8 +300,11 @@ fun SummaryScreen(
             color = levelColor(level)
         )
         Text(
-            "During the call: " + levelLabel(state.level) +
-                if (review?.reviewed == true) "" else " · Final review unavailable",
+            "During the call: " + levelLabel(state.level) + when {
+                review?.onDevice == true -> " · Checked on this phone"
+                review?.reviewed == true -> ""
+                else -> " · Final review unavailable"
+            },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -319,11 +330,14 @@ fun SummaryScreen(
         ) { Text("Report to ScamShield") }
         // H.3: help ScamGuard learn. Disabled once sent, so one call is shared at most once.
         val sent = reportResult?.startsWith("Thank you") == true
+        // G: at levels 2 and 3 calls aren't shared, so there is no consent screen and nothing is sent
+        val canShare = state.privacyLevel.cloudCall
+        fun share(kind: String) { if (canShare) asking = kind else reportResult = CallViewModel.NOTHING_SHARED }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            OutlinedButton(onClick = { asking = "scam" }, enabled = !sent && !sending, modifier = Modifier.weight(1f)) {
+            OutlinedButton(onClick = { share("scam") }, enabled = !sent && !sending, modifier = Modifier.weight(1f)) {
                 Text("This was a scam")
             }
-            OutlinedButton(onClick = { asking = "fine" }, enabled = !sent && !sending, modifier = Modifier.weight(1f)) {
+            OutlinedButton(onClick = { onThisWasFine(); share("fine") }, enabled = !sent && !sending, modifier = Modifier.weight(1f)) {
                 Text("This was fine")
             }
         }
@@ -374,45 +388,84 @@ fun SettingsScreen(
     onSave: (String) -> Unit,
     onTest: suspend (String) -> String,
     onBack: () -> Unit,
+    privacyLevel: PrivacyLevel = PrivacyLevel.DEFAULT,
+    onPrivacyLevel: (PrivacyLevel) -> Unit = {},
+    mobileBertStatus: String = "",
 ) {
     var url by remember(currentUrl) { mutableStateOf(currentUrl) }
     var result by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     Page("Settings", onBack) {
-        OutlinedTextField(
-            value = url, onValueChange = { url = it },
-            label = { Text("Gateway URL") }, singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        val encrypted = url.trim().startsWith("https://", ignoreCase = true)
-        Text(
-            if (encrypted) "Encrypted (HTTPS)" else "Not encrypted: transcripts are sent as plain text",
-            color = if (encrypted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-            style = MaterialTheme.typography.labelMedium
-        )
-        Text("Presets", fontWeight = FontWeight.SemiBold)
-        Row(
-            Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedButton(onClick = { url = "https://10.0.2.2:8443/api/" }) { Text("Emulator (HTTPS)") }
-            OutlinedButton(onClick = { url = "https://192.168.1.23:8443/api/" }) { Text("Phone (HTTPS)") }
-            OutlinedButton(onClick = { url = "http://10.0.2.2:8080/" }) { Text("Emulator (HTTP)") }
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedTextField(
+                value = url, onValueChange = { url = it },
+                label = { Text("Gateway URL") }, singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            val encrypted = url.trim().startsWith("https://", ignoreCase = true)
+            Text(
+                if (encrypted) "Encrypted (HTTPS)" else "Not encrypted: transcripts are sent as plain text",
+                color = if (encrypted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.labelMedium
+            )
+            Text("Presets", fontWeight = FontWeight.SemiBold)
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(onClick = { url = "https://10.0.2.2:8443/api/" }) { Text("Emulator (HTTPS)") }
+                OutlinedButton(onClick = { url = "https://192.168.1.23:8443/api/" }) { Text("Phone (HTTPS)") }
+                OutlinedButton(onClick = { url = "http://10.0.2.2:8080/" }) { Text("Emulator (HTTP)") }
+            }
+            Text(
+                "Kubernetes: run demo/expose on the laptop; it prints the address to save here " +
+                    "(https://<laptop Wi-Fi IP>:8443/api/). It stays the same when the cluster or the gateway restarts. " +
+                    "Emulator: 10.0.2.2 is your laptop. First time only: install demo/tls/ca.crt on this device. " +
+                    "HTTP: docker compose or demo/port-forward.",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { onSave(url); result = "Saved" }) { Text("Save") }
+                OutlinedButton(onClick = { scope.launch { result = "Testing…"; result = onTest(url) } }) {
+                    Text("Test connection")
+                }
+            }
+            result?.let { Text(it) }
+
+            PrivacyLevelPicker(privacyLevel, onPrivacyLevel, mobileBertStatus)
         }
-        Text(
-            "Kubernetes: run demo/expose on the laptop; it prints the address to save here " +
-                "(https://<laptop Wi-Fi IP>:8443/api/). It stays the same when the cluster or the gateway restarts. " +
-                "Emulator: 10.0.2.2 is your laptop. First time only: install demo/tls/ca.crt on this device. " +
-                "HTTP: docker compose or demo/port-forward.",
-            style = MaterialTheme.typography.bodySmall
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { onSave(url); result = "Saved" }) { Text("Save") }
-            OutlinedButton(onClick = { scope.launch { result = "Testing…"; result = onTest(url) } }) {
-                Text("Test connection")
+    }
+}
+
+/** Workstream G: the privacy level setting, one line of explanation per level. Applies from the next call. */
+@Composable
+private fun PrivacyLevelPicker(current: PrivacyLevel, onPick: (PrivacyLevel) -> Unit, mobileBertStatus: String) {
+    Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        HorizontalDivider()
+        Text("Privacy level", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+        PrivacyLevel.entries.forEach { level ->
+            Row(
+                Modifier.fillMaxWidth()
+                    .selectable(selected = level == current, enabled = level.available, role = Role.RadioButton) { onPick(level) }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                RadioButton(selected = level == current, onClick = null, enabled = level.available)
+                Column(Modifier.padding(start = 8.dp)) {
+                    Text(level.title, color = if (level.available) Color.Unspecified else NeutralGrey)
+                    Text(
+                        level.explanation + if (level.available) "" else " (Not available in this version yet.)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    // G.4: whether level 3 has its MobileBERT second opinion
+                    if (level == PrivacyLevel.ON_DEVICE && mobileBertStatus.isNotEmpty()) Text(
+                        mobileBertStatus, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
         }
-        result?.let { Text(it) }
+        Text("A change applies from the next call.", style = MaterialTheme.typography.bodySmall)
     }
 }

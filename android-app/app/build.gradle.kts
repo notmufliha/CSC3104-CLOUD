@@ -41,6 +41,9 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
+// Workstream G: the migration test (LabelDatabaseTest) builds a version-1 database from 1.json, read from the test APK's assets.
+android.sourceSets.getByName("androidTest").assets.directories.add("$projectDir/schemas")
+
 dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
@@ -60,6 +63,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+    implementation(libs.onnxruntime.android)   // Workstream G.4: MobileBERT (ondevice/MobileBert.kt)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)

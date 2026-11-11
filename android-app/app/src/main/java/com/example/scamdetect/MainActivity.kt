@@ -60,6 +60,10 @@ fun ScamGuardApp(vm: CallViewModel = viewModel()) {
     val saveSentence by vm.saveSentence.collectAsState()
     var openCallId by rememberSaveable { mutableStateOf<String?>(null) }
     val gatewayUrl by vm.gatewayUrl.collectAsState()
+    val privacyLevel by vm.privacyLevel.collectAsState()
+    val helpImprove by vm.helpImprove.collectAsState()
+    val labelCount by vm.labelCount.collectAsState()
+    val mobileBertStatus by vm.mobileBertStatus.collectAsState()
 
     BackHandler(enabled = screen != Screen.HOME) {
         if (screen == Screen.CALL) vm.discard()   // B.5: during a call, tells the server; no summary, nothing saved
@@ -104,6 +108,7 @@ fun ScamGuardApp(vm: CallViewModel = viewModel()) {
                 reportPreview = { vm.reportPreview() },
                 onReport = { kind -> vm.sendReport(kind) },
                 onDone = { vm.reset(); screen = Screen.HOME },
+                onThisWasFine = vm::thisWasFine,
             )
             Phase.IDLE -> LaunchedEffect(Unit) { screen = Screen.HOME }
         }
@@ -115,6 +120,9 @@ fun ScamGuardApp(vm: CallViewModel = viewModel()) {
             onDeleteHistory = vm::deleteHistory,
             onOpen = { openCallId = it; screen = Screen.CALL_DETAIL },
             onBack = { screen = Screen.HOME },
+            helpImprove = helpImprove,
+            onHelpImprove = vm::setHelpImprove,
+            labelCount = labelCount,
         )
 
         Screen.CALL_DETAIL -> {
@@ -129,6 +137,9 @@ fun ScamGuardApp(vm: CallViewModel = viewModel()) {
             onSave = vm::saveGatewayUrl,
             onTest = { vm.testConnection(it) },
             onBack = { screen = Screen.HOME },
+            privacyLevel = privacyLevel,
+            onPrivacyLevel = vm::setPrivacyLevel,
+            mobileBertStatus = mobileBertStatus,
         )
     }
 }

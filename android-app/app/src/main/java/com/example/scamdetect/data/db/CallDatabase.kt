@@ -1,6 +1,8 @@
 package com.example.scamdetect.data.db
 
 import android.content.Context
+import androidx.room.AutoMigration
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
@@ -15,6 +17,7 @@ import androidx.room.RoomDatabase
 import androidx.room.Transaction
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -40,6 +43,8 @@ data class CallRecord(
     val review: String,
     /** The caller line that scored highest. Null unless the user allowed saving it. */
     val riskiestSentence: String?,
+    /** Workstream G.13: the privacy level the call ran at (PrivacyLevel.id). Calls saved before G were cloud. */
+    @ColumnInfo(defaultValue = "cloud") val privacyLevel: String = "cloud",
 )
 
 /** One caller line's scores, for the risk-over-time chart. Numbers only. */
@@ -63,6 +68,30 @@ data class ScorePoint(
     val urgency: Float?,
     val money: Float?,
     val impersonation: Float?,
+)
+
+/**
+ * Workstream G.12: a label the phone inferred from what the user did (1 = likely scam, 0 = false alarm).
+ * Numbers only. One per call and source (ImplicitLabels.SOURCE_*), so a repeated tap adds nothing.
+ */
+@Entity(indices = [Index(value = ["callId", "source"], unique = true)])
+data class ImplicitLabel(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val callId: String,
+    val label: Int,
+    val source: String,
+    val time: Long,
+)
+
+/**
+ * Workstream G.12/G.13: the caller's lines of a labelled call, numbers and names masked. Saved only while
+ * "Help improve detection" is on; turning it off deletes them. Never uploaded.
+ */
+@Entity(primaryKeys = ["callId", "seq"])
+data class LabelSentence(
+    val callId: String,
+    val seq: Long,
+    val text: String,
 )
 
 class Converters {
@@ -94,7 +123,7 @@ interface CallDao {
     @Query("SELECT * FROM ScorePoint WHERE callId = :callId ORDER BY seq")
     fun points(callId: String): Flow<List<ScorePoint>>
 
-    /** "Delete my history": every call; their points go with them (ON DELETE CASCADE). */
+    /** Every call; their points go with them (ON DELETE CASCADE). Use CallDatabase.deleteHistory for the button. */
     @Query("DELETE FROM CallRecord")
     suspend fun deleteAll()
 
@@ -105,10 +134,56 @@ interface CallDao {
     suspend fun forgetSentences()
 }
 
-@Database(entities = [CallRecord::class, ScorePoint::class], version = 1, exportSchema = true)
+/** Workstream G.12: implicit labels and, with the opt-in on, their masked sentences. */
+@Dao
+interface LabelDao {
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertLabel(label: ImplicitLabel): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertSentences(sentences: List<LabelSentence>)
+
+    @Query("SELECT * FROM ImplicitLabel ORDER BY time")
+    suspend fun labels(): List<ImplicitLabel>
+
+    @Query("SELECT COUNT(*) FROM ImplicitLabel")
+    fun labelCount(): Flow<Int>
+
+    @Query("SELECT * FROM LabelSentence WHERE callId = :callId ORDER BY seq")
+    suspend fun sentences(callId: String): List<LabelSentence>
+
+    @Query("SELECT COUNT(*) FROM LabelSentence")
+    suspend fun sentenceCount(): Int
+
+    @Query("DELETE FROM ImplicitLabel")
+    suspend fun deleteLabels()
+
+    /** "Help improve detection" turned off: the stored sentences go, the labels (numbers only) stay. */
+    @Query("DELETE FROM LabelSentence")
+    suspend fun deleteSentences()
+}
+
+/**
+ * Version 2 (Workstream G): CallRecord.privacyLevel, ImplicitLabel, LabelSentence. Room migrates version 1
+ * automatically (new column with a default, new tables), so B's saved calls are kept.
+ */
+@Database(
+    entities = [CallRecord::class, ScorePoint::class, ImplicitLabel::class, LabelSentence::class],
+    version = 2,
+    exportSchema = true,
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
+)
 @TypeConverters(Converters::class)
 abstract class CallDatabase : RoomDatabase() {
     abstract fun calls(): CallDao
+    abstract fun labels(): LabelDao
+
+    /** "Delete my history": every call, chart point, implicit label and stored sentence, all or nothing. */
+    suspend fun deleteHistory() = withTransaction {
+        calls().deleteAll()
+        labels().deleteLabels()
+        labels().deleteSentences()
+    }
 
     companion object {
         @Volatile private var instance: CallDatabase? = null

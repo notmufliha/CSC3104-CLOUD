@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import com.example.scamdetect.data.db.CallRecord
 import com.example.scamdetect.data.db.ScorePoint
 import com.example.scamdetect.logic.Dashboard
+import com.example.scamdetect.logic.PrivacyLevel
 import com.example.scamdetect.logic.Risk
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -68,6 +69,9 @@ fun DashboardScreen(
     onDeleteHistory: () -> Unit,
     onOpen: (String) -> Unit,
     onBack: () -> Unit,
+    helpImprove: Boolean = false,
+    onHelpImprove: (Boolean) -> Unit = {},
+    labelCount: Int = 0,
 ) {
     val fmt = remember { dateFormat() }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -76,7 +80,10 @@ fun DashboardScreen(
             onDismissRequest = { confirmDelete = false },
             title = { Text("Delete my history?") },
             text = {
-                Text("Deletes every saved call on this phone: verdicts, charts and any saved sentences. This can't be undone.")
+                Text(
+                    "Deletes every saved call on this phone: verdicts, charts, saved sentences, and the labels kept " +
+                        "for improving detection. This can't be undone."
+                )
             },
             confirmButton = {
                 Button(
@@ -106,6 +113,7 @@ fun DashboardScreen(
             }
             item { Text("Past calls (${calls.size})", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp)) }
             if (calls.isEmpty()) item { Text("No calls yet.") }
+            // G.13: each row also says which privacy level the call ran at
             items(calls, key = { it.id }) { c ->
                 Card(Modifier.fillMaxWidth().clickable { onOpen(c.id) }) {
                     Row(
@@ -119,7 +127,15 @@ fun DashboardScreen(
                                 Text(c.finalVerdict, color = levelColor(Dashboard.level(c.finalVerdict)), fontWeight = FontWeight.Bold)
                                 Text(fmt.format(Date(c.endedAt)), style = MaterialTheme.typography.labelMedium)
                             }
-                            Text(c.topReason, style = MaterialTheme.typography.bodyMedium)
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(c.topReason, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    PrivacyLevel.badgeFor(c.privacyLevel),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                )
+                            }
                         }
                     }
                 }
@@ -140,6 +156,26 @@ fun DashboardScreen(
                         }
                         Switch(checked = saveSentence, onCheckedChange = onSaveSentence)
                     }
+                    // G.13: opt-in, off by default
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Help improve detection (federated learning)")
+                            Text(
+                                "The app keeps simple labels on this phone (for example, you hung up right after a " +
+                                    "warning, or tapped \"This was fine\"). On: the caller's lines of those calls are kept " +
+                                    "too, with numbers and names removed, so a future update could learn from them on " +
+                                    "this phone. Nothing is uploaded. Off: labels only, no words.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                "Labels kept on this phone: $labelCount",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(checked = helpImprove, onCheckedChange = onHelpImprove)
+                    }
                     Text(
                         "Your history stays on this phone. Nothing on this screen is uploaded.",
                         style = MaterialTheme.typography.bodySmall,
@@ -147,7 +183,7 @@ fun DashboardScreen(
                     )
                     OutlinedButton(
                         onClick = { confirmDelete = true },
-                        enabled = calls.isNotEmpty(),
+                        enabled = calls.isNotEmpty() || labelCount > 0,
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text("Delete my history") }
                 }
@@ -178,7 +214,8 @@ fun CallDetailScreen(call: CallRecord?, points: List<ScorePoint>, onBack: () -> 
             val seconds = ((call.endedAt - call.startedAt) / 1000).coerceAtLeast(0)
             Text(
                 fmt.format(Date(call.endedAt)) + (if (seconds > 0) " · ${seconds / 60} min ${seconds % 60} s" else "") +
-                    (call.liveVerdict?.let { " · during the call: $it" } ?: "") + " · " + reviewLabel(call.review),
+                    (call.liveVerdict?.let { " · during the call: $it" } ?: "") + " · " + reviewLabel(call.review) +
+                    " · privacy: " + PrivacyLevel.badgeFor(call.privacyLevel),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -202,6 +239,7 @@ private fun reviewLabel(review: String) = when (review) {
     "bert" -> "final review"
     "fallback" -> "final review unavailable"
     "unavailable" -> "server not reached at the end"
+    "on_device" -> "checked on this phone"
     "migrated" -> "from the old history"
     else -> review
 }

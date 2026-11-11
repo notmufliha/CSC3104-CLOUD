@@ -1,0 +1,36 @@
+{
+  "export": "json (vocabulary + idf + logistic regression weights); see tools/export_models.py for why not ONNX",
+  "format": 1,
+  "models": {
+    "impersonation_en": {
+      "exported_at": "2026-11-05T08:04:58+00:00",
+      "features": 26920,
+      "file": "impersonation_en.json",
+      "sha256": "d5e6a3f9c525d1c736184980b667b68f88530f79ef98239ccebd8b3c0eac1aa9",
+      "sklearn_version": "1.6.1",
+      "source": "backend/workers/impersonation_en/model/model.pkl",
+      "source_sha256": "665eb607649e3de5e8fdfa4d1ce6e0efad5ded2581eacd793e353fb49f92c2a2",
+      "version": "impersonation_en_v2"
+    },
+    "money_en": {
+      "exported_at": "2026-11-05T08:04:57+00:00",
+      "features": 50638,
+      "file": "money_en.json",
+      "sha256": "3f9991f3a2536339d1e2d52a21bdcc2ebba13f5debe9dad68d2c6914196fe9f2",
+      "sklearn_version": "1.6.1",
+      "source": "backend/workers/money_en/model/E_model.joblib",
+      "source_sha256": "73a046e9a7d5af2a585d45f397fbbb6dc74bd2bfac675327669c53ad5bf2eec4",
+      "version": "money_en_v1"
+    },
+    "urgency_en": {
+      "exported_at": "2026-11-05T08:04:56+00:00",
+      "features": 20333,
+      "file": "urgency_en.json",
+      "sha256": "2f91b42292f3fee5ad10d1e634a75ebc64346e5fcf9ba98726d31864ed6c813b",
+      "sklearn_version": "1.4.2",
+      "source": "backend/workers/urgency_en/model/urgency_en_v4.joblib",
+      "source_sha256": "c0c53e7c1b49764bcd0d2639c806ea4b1df20536545c93c75fca476fa78aee20",
+      "version": "v4"
+    }
+  }
+}

@@ -24,6 +24,10 @@ interface GatewayApi {
     /** Workstream H.3: a consented report of a finished call. */
     @POST("v1/report")
     suspend fun report(@Body body: ReportRequest): Response<ReportResponse>
+
+    /** Workstream G.3 (Hybrid): BERT's opinion on the caller's last 5 lines, masked on the phone. Stateless. */
+    @POST("v1/verify")
+    suspend fun verify(@Body body: VerifyRequest): Response<VerifyResponse>
 }
 
 /** Builds one Retrofit client per base URL, so changing the URL in Settings takes effect at once. */
