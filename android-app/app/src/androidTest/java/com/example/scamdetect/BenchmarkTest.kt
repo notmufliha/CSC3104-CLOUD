@@ -43,7 +43,8 @@ import java.util.UUID
  *   (b) the demo calls (app/src/main/assets/scripts: Workstream 6's 14 + H's 2 learning-loop tests): call-level scam detection. Correct = a
  *       scam call ends with a warning (UNSURE/SCAM), a normal call ends SAFE.
  * Levels 1 (Cloud) and 2 (Hybrid) need the server (serverUrl); if it doesn't answer they are left out.
- * Level 3 = the small models only (plus MobileBERT once a model is bundled).
+ * Level 3 = the small models, plus MobileBERT when a model is bundled, asked exactly as the app asks it
+ * (OnDeviceCall.answerWithSecondOpinion, as CallViewModel does); the report also gives level 3 without MobileBERT.
  */
 @RunWith(AndroidJUnit4::class)
 class BenchmarkTest {
@@ -162,9 +163,17 @@ class BenchmarkTest {
 
         // ---- accuracy, level 3 (and 2) on robocall sentences: each sentence as one caller line, past the warm-up
         fun rulesFor() = LocalRules()
+        // Without MobileBERT the rules see BERT as "off" (AGG_MODE=fast). With it, as in the app, a one-sentence call is
+        // "no_context" when BERT would have been wanted (it waits for 3 caller lines), else "skipped".
         val l3Robo = robo.map { (text, label) ->
             val sc = scorer.score(text)
-            val d = rulesFor().decide(LocalRules.SIGNALS.map { sc[it] }, 1_000_000L, callTimeMs = 20_000)
+            val line = LocalRules.SIGNALS.map { sc[it] }
+            val rules = rulesFor()
+            val d = if (mbModel == null) rules.decide(line, 1_000_000L, callTimeMs = 20_000) else {
+                val wanted = rules.wantsSecondOpinion(line, 1_000_000L, 20_000) ||
+                    rules.peek(line, 1_000_000L, 20_000).fast >= OnDeviceCall.ASK_AT
+                rules.decide(line, 1_000_000L, 20_000, null, if (wanted) "no_context" else "skipped")
+            }
             (d.verdict != "SAFE") to label
         }
 
@@ -203,7 +212,8 @@ class BenchmarkTest {
 
         // ---- accuracy on the demo calls, played with their own timing
         val scripts = ScriptRepository(app).loadAll()
-        fun playLocal(script: CallScript, ask: (suspend (List<String>) -> Float?)?): CallResult {
+        /** ask = null: small models only. onPhone: level 3's MobileBERT (raw lines, also on red calls); else Hybrid. */
+        fun playLocal(script: CallScript, onPhone: Boolean = false, ask: (suspend (List<String>) -> Float?)?): CallResult {
             var now = 1_700_000_000_000L
             val call = OnDeviceCall(scorer, clock = { now })
             var verdict = "LISTENING"; var notChecked = false; var sent = 0; var n = 0
@@ -214,13 +224,31 @@ class BenchmarkTest {
                 val text = line.text.orEmpty()
                 if (!OnDeviceCall.isEnglish(script.lang, text)) { notChecked = true; return@forEachIndexed }
                 verdict = if (ask == null) call.answer("b", (i + 1).toLong(), text).verdict!!
-                else runBlocking { call.answerHybrid("b", (i + 1).toLong(), text, ask).also { if (it.second != null) sent++ }.response.verdict!! }
+                else runBlocking {
+                    val a = if (onPhone) call.answerWithSecondOpinion("b", (i + 1).toLong(), text, { it }, ask = ask)
+                    else call.answerHybrid("b", (i + 1).toLong(), text, ask)
+                    if (a.second != null) sent++
+                    a.response.verdict!!
+                }
             }
             // the app: a line that couldn't be checked beats SAFE ("Could not check"), a warning always shows
             val final = if (notChecked && verdict !in setOf("SCAM", "UNSURE")) "NOT CHECKED" else verdict
             return CallResult(script, final, sent, n)
         }
-        val l3Calls = scripts.map { playLocal(it, null) }
+        val l3SmallCalls = scripts.map { playLocal(it, ask = null) }
+        // level 3 as the app plays it (CallViewModel.playOnDevice): MobileBERT asked through answerWithSecondOpinion
+        val l3Calls = mbModel?.let { m ->
+            scripts.map { playLocal(it, onPhone = true) { lines -> runCatching { m.score(lines) }.getOrNull() } }
+        } ?: l3SmallCalls
+        // MobileBERT on real windows (the caller's last 1-5 lines of every English demo call), not just one sentence
+        val mbWindowTimes = mbModel?.let { m ->
+            scripts.filter { it.lang != "zh" }.flatMap { s ->
+                val caller = s.lines.filter { it.isCaller }.map { it.text.orEmpty() }
+                caller.indices.map { i ->
+                    val t0 = System.nanoTime(); m.score(caller.subList(maxOf(0, i - 4), i + 1)); (System.nanoTime() - t0) / 1e6
+                }
+            }
+        }.orEmpty()
         val l2Calls = if (serverUp) scripts.map { playLocal(it) { lines -> verify(lines) } } else null
         val l1Calls = if (serverUp) scripts.map { script ->
             val id = "bench-${UUID.randomUUID()}"; var t = 0L; var verdict = "LISTENING"
@@ -252,12 +280,17 @@ class BenchmarkTest {
             log("| 1. Cloud | not run (server not reachable) | | 0 MB | every caller sentence (not stored) |")
             log("| 2. Hybrid | not run (server not reachable) | | ${"%.1f".format(smallMb)} MB | masked windows at unsure moments |")
         }
-        log("| 3. On-device (small models${if (mbModel != null) " + MobileBERT" else " only"}) | ${"%.3f".format(l3RoboPrf.f1)} / ${l3Calls.count { it.correct }} of ${scripts.size} | ${ms(smallTimes)}${if (mbModel != null) "; MobileBERT ${ms(mbTimes)}" else ""} | ${"%.1f".format(smallMb)} MB${mbModel?.let { " + %.1f MB".format(it.modelBytes / 1e6) } ?: ""} | nothing |")
+        log("| 3. On-device (small models${if (mbModel != null) " + MobileBERT" else " only"}) | ${"%.3f".format(l3RoboPrf.f1)} / ${l3Calls.count { it.correct }} of ${scripts.size} | ${ms(smallTimes)}${if (mbModel != null) "; MobileBERT ${ms(mbWindowTimes)} per 5-line window" else ""} | ${"%.1f".format(smallMb)} MB${mbModel?.let { " + %.1f MB".format(it.modelBytes / 1e6) } ?: ""} | nothing |")
         log()
         log("## Details")
         log("- Model files: " + sizes.entries.joinToString { (f, b) -> "$f ${"%.2f".format(b / 1e6)} MB" } + "; MobileBERT: $mbStatus")
         log("- Load time of the three small models (fresh, from assets): ${"%.0f".format(loadMs)} ms")
         log("- Time per sentence, per check: " + perModel.joinToString { (n, xs) -> "$n ${ms(xs)}" })
+        if (mbModel != null) {
+            log("- MobileBERT time: one sentence ${ms(mbTimes)}; demo-call windows (last 1-5 caller lines, up to " +
+                "${mbModel.config.maxLen} tokens) ${ms(mbWindowTimes)}; asked on ${l3Calls.sumOf { it.sentWindows }} of " +
+                "${l3Calls.filter { it.script.lang != "zh" }.sumOf { it.callerLines }} English demo caller lines")
+        }
         log("- App memory (PSS): before loading ${"%.0f".format(pss0)} MB, after loading ${"%.0f".format(pss1)} MB, peak while scoring ${"%.0f".format(pssPeak)} MB; Java heap ${"%.0f".format(heap0)} -> ${"%.0f".format(heap1)} MB")
         log("- Robocall set: ${robo.size} sentences, ${robo.count { it.second }} labelled 1 (urgent). Warned = verdict UNSURE or SCAM for the sentence on its own, past the 15 s warm-up.")
         log("  - Level 3: $l3RoboPrf")
@@ -265,13 +298,17 @@ class BenchmarkTest {
         l1Robo?.let { log("  - Level 1: ${prf(it)}") }
         log("- Demo calls (correct = scam call ends UNSURE/SCAM, normal call ends SAFE):")
         log("  - Level 3: ${callSummary(l3Calls)}")
+        if (mbModel != null) log("  - Level 3 without MobileBERT: ${callSummary(l3SmallCalls)}")
         l2Calls?.let { log("  - Level 2: ${callSummary(it)}") }
         l1Calls?.let { log("  - Level 1: ${callSummary(it)}") }
         log()
-        log("| Call | Kind | Level 1 | Level 2 | Level 3 |")
-        log("|---|---|---|---|---|")
+        val mbCol = mbModel != null
+        log("| Call | Kind | Level 1 | Level 2 | Level 3 |" + if (mbCol) " Level 3 without MobileBERT |" else "")
+        log("|---|---|---|---|---|" + if (mbCol) "---|" else "")
         scripts.forEachIndexed { i, s ->
-            log("| ${s.fileName.removeSuffix(".json")}${if ("new_scam_test" in s.fileName) " (H learning-loop test)" else ""} | ${s.kind} | ${l1Calls?.get(i)?.verdict ?: "-"} | ${l2Calls?.get(i)?.let { "${it.verdict} (${it.sentWindows} sent)" } ?: "-"} | ${l3Calls[i].verdict} |")
+            val l3 = l3Calls[i].let { if (mbCol) "${it.verdict} (${it.sentWindows} asked)" else it.verdict }
+            log("| ${s.fileName.removeSuffix(".json")}${if ("new_scam_test" in s.fileName) " (H learning-loop test)" else ""} | ${s.kind} | ${l1Calls?.get(i)?.verdict ?: "-"} | ${l2Calls?.get(i)?.let { "${it.verdict} (${it.sentWindows} sent)" } ?: "-"} | $l3 |" +
+                if (mbCol) " ${l3SmallCalls[i].verdict} |" else "")
         }
         log()
         log("Benchmark took ${(System.currentTimeMillis() - started) / 1000} s.")

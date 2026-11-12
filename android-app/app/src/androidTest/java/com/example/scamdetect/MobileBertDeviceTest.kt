@@ -49,9 +49,18 @@ class MobileBertDeviceTest {
         model.close()
     }
 
-    @Test fun theAppItselfSaysNotInstalled() = runBlocking {
+    /** The real model in assets/models/mobilebert/ (notebooks/mobilebert_g4.ipynb) loads and gives a probability. */
+    @Test fun theAppItselfLoadsTheBundledModel() = runBlocking {
         val status = MobileBert.get(InstrumentationRegistry.getInstrumentation().targetContext)
-        assertTrue("no model is bundled yet: $status", status is MobileBert.Status.NotInstalled)
+        assertTrue("the bundled MobileBERT should load: $status", status is MobileBert.Status.Installed)
+        val model = (status as MobileBert.Status.Installed).model
+        assertTrue("version ${model.config.version}", model.config.version.startsWith("mobilebert-"))
+        val p = model.score(listOf(
+            "This is the police. Your bank account is linked to money laundering.",
+            "Transfer all your savings to the safe account now and read me the OTP.",
+        ))
+        println("G4-REAL ${model.config.version}: police/OTP window scores $p")
+        assertTrue("score $p", p in 0f..1f)
     }
 
     /** Level 3 with a second opinion: asked only at unsure moments / the spot check, its score blended in. */

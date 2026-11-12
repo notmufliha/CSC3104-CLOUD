@@ -62,8 +62,16 @@ class WordPieceTokenizerTest {
         assertEquals("MobileBERT not installed (no vocab.txt)", (onlyModel as MobileBert.Status.NotInstalled).reason)
     }
 
-    @Test fun theAppShipsNoMobileBertYet() {
-        // Until Goutham's export is added, assets/models/mobilebert/ has no model.onnx and level 3 is small models only.
-        assertTrue(!File("src/main/assets/models/mobilebert/model.onnx").exists())
+    @Test fun theAppShipsMobileBert() {
+        // G.4: the export from notebooks/mobilebert_g4.ipynb is bundled (MobileBertDeviceTest loads and runs it on a phone).
+        val dir = File("src/main/assets/models/mobilebert")
+        assertTrue("model.onnx missing or empty", File(dir, "model.onnx").length() > 1_000_000)
+        val cfg = JsonParser.parseString(File(dir, "bert_config.json").readText()).asJsonObject
+        assertTrue(cfg["version"].asString.startsWith("mobilebert-"))
+        assertTrue(cfg["lower_case"].asBoolean)
+        // fromVocabLines throws if [CLS] / [SEP] / [UNK] are missing
+        val tok = WordPieceTokenizer.fromVocabLines(File(dir, "vocab.txt").readLines().asSequence(), lowerCase = true)
+        val ids = tok.encode("Please read me the OTP now.", cfg["max_len"].asInt)
+        assertTrue(ids.size > 3 && ids.none { it == tok.unkId.toLong() })
     }
 }
