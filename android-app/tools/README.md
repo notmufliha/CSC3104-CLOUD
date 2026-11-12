@@ -74,8 +74,27 @@ when the answer depends on BERT (alarmed, unsure, not enough data), on every 5th
 confirm it, or clear it after 2 disagreements, like Workstream A's decision table). It reads the caller's last 5
 lines (not masked, because they never leave the phone) and its score is blended in exactly as the aggregator blends
 the cloud BERT (`ondevice/LocalRules.kt`). Hybrid uses the same rule except that it never asks once a call is red,
-so nothing more leaves the phone. **No model is bundled yet**, so Settings shows "MobileBERT not
-installed" and level 3 uses the small models only. Training and export are Goutham's.
+so nothing more leaves the phone. Training and export are Goutham's: `notebooks/mobilebert_g4.ipynb` (below).
+
+### The bundled model (`mobilebert-v1-20261112`)
+
+`notebooks/mobilebert_g4.ipynb` (Colab, T4, about 25 min; writes only to `MyDrive/CSC3104/mobilebert/`, never to
+`bert/` or Hugging Face). Settings shows "MobileBERT installed (mobilebert-v1-20261112)".
+- **Model:** `google/mobilebert-uncased`, fine-tuned in fp32 (fp16 gives NaN losses with MobileBERT), lr 5e-5,
+  4 epochs (best of them by validation AUC), `max_len` 128, left truncation. Temperature T = 1.29 (validation split).
+- **Data, English only:** BothBosu (scam-dialogue, single-agent, multi-agent) plus the 50 English calls of
+  `notebooks/data/bert_hard_calls.jsonl` (×4 in train), as windows built with the server's `bert_text.make_window`;
+  scam windows only from caller line 3; split by call (13,646 train / 1,562 val / 1,552 test windows). Never
+  trained on: the English demo scripts (incl. `scam_en_90/91`) and the robocall set (the notebook drops any call
+  containing one of their lines; none did).
+- **Results (offline, PyTorch):** test AUC 1.00, F1 0.996 (BothBosu is synthetic, so this is easy; not real-world
+  accuracy). Robocall sentences F1 0.58 (single sentences, urgency label, not scam). English demo scripts, scored from
+  caller line 3: 10 of 10 right (normal calls max 0.15, scam calls reach 1.00); H's `scam_en_90/91` missed (0.08 /
+  0.06), as expected until retrained.
+- **Export:** ONNX opset 17, dynamic int8, **26.6 MB** (inputs `input_ids`, `attention_mask`; output `logits`).
+  int8 vs PyTorch, scored exactly as the phone does (ids from `vocab.txt`, batch 1): same decision on **100.0%** of
+  1,500 val/test windows at 0.5 and 99.9% at 0.6; AUC 1.000 both. The phone's tokenizer gave the training
+  tokenizer's ids on all 3,395 checked windows.
 
 ### What the exported model must look like
 
@@ -112,9 +131,9 @@ bash gradlew connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.class=com.example.scamdetect.MobileBertDeviceTest
 ```
 
-With a real model in `assets/models/mobilebert/`, `MobileBertDeviceTest.theAppItselfSaysNotInstalled` will
-(correctly) fail: delete that test, then run the benchmark below for its speed and accuracy.
-`WordPieceTokenizerTest` checks the phone's tokenizer against Hugging Face `tokenizers`, id by id.
+`WordPieceTokenizerTest` checks the phone's tokenizer against Hugging Face `tokenizers`, id by id, and that the real
+model is bundled (`theAppShipsMobileBert`); `MobileBertDeviceTest.theAppItselfLoadsTheBundledModel` loads and runs it
+on the phone. Then run the benchmark below for its speed and accuracy.
 
 **APK size:** `onnxruntime-android` bundles native libraries for 4 CPU types (about 17.6 MB for arm64 alone), so
 the debug APK grew from 16.5 MB to about 90 MB. `app/build.gradle.kts` now keeps only `arm64-v8a` (phones such as
@@ -125,12 +144,13 @@ x86 (32-bit) device can't install it.
 
 `app/src/androidTest/.../BenchmarkTest.kt` measures every privacy level on the device it runs on and prints a
 Markdown report (tag `G5` in logcat):
-- **Model size:** the three small models (and MobileBERT, once bundled).
-- **Time per sentence:** median and p95 over the 200 robocall sentences (and per check).
+- **Model size:** the three small models and MobileBERT.
+- **Time per sentence:** median and p95 over the 200 robocall sentences (and per check); MobileBERT also per real
+  5-line window of the demo calls.
 - **App memory:** PSS before and after loading, and the peak while scoring.
 - **Accuracy per level**, on two sets:
   - **Robocall set** (`backend/workers/urgency_en/eval/robocall_gold.csv`, copied to `androidTest/assets/benchmark/robocall.json` by `benchmark_data.py`). Its `label` is the urgency worker's label (1 = urgent), partly AI-labelled and marked provisional in `urgency_en/LABELING.md`. So this F1 means "warns on urgent robocall sentences", not scam detection.
-  - **The 16 demo calls** (`app/src/main/assets/scripts`: Workstream 6's 14, plus H's 2 learning-loop test scams `scam_en_90/91`, which every model is meant to miss until retrained; the report also gives the score without them), played with their own timing. Correct = a scam call ends UNSURE/SCAM and a normal call ends SAFE. Chinese calls are "not checked" at levels 2 and 3 (English-only models).
+  - **The 16 demo calls** (`app/src/main/assets/scripts`: Workstream 6's 14, plus H's 2 learning-loop test scams `scam_en_90/91`, which every model is meant to miss until retrained; the report also gives the score without them), played with their own timing. Correct = a scam call ends UNSURE/SCAM and a normal call ends SAFE. Chinese calls are "not checked" at levels 2 and 3 (English-only models). Level 3 asks MobileBERT exactly as the app does (`OnDeviceCall.answerWithSecondOpinion`); the report adds a "Level 3 without MobileBERT" column.
 - Levels 1 and 2 run only if the server at `serverUrl` answers `/healthz`.
 
 Run it (emulator or a real phone over USB, with the backend running):
