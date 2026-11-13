@@ -45,6 +45,11 @@ impl BertClient {
             .connect_lazy();
         Some(BertClient { channel, timeout })
     }
+
+    /// The same connection with another time limit (the end-of-call review has its own, longer budget).
+    pub fn with_timeout(&self, timeout: Duration) -> BertClient {
+        BertClient { channel: self.channel.clone(), timeout }
+    }
 }
 
 /// One line's second opinion: asked lazily, at most once (a Redis retry reuses the answer).
