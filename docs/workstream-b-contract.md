@@ -72,8 +72,8 @@ Response **200**:
 | `final_verdict` | `SAFE` / `UNSURE` / `SCAM`, or `UNKNOWN` when the server never saw a caller line of this call (proto `VERDICT_UNSPECIFIED` → `"UNKNOWN"`). |
 | `call_score` | From the review when it ran; otherwise the live `combined` score from Redis (0 if unknown). |
 | `live_verdict` | The verdict after the last caller line (`call:<id>.verdict`), or `UNKNOWN`. |
-| `review` | `"bert"` if the end-of-call review (C.6) answered; `"fallback"` otherwise. Until C exists, always `"fallback"`. |
-| `top_window_seqs` | The seqs of the riskiest window of 5 (C.8). Empty with the fallback. |
+| `review` | `"bert"` if the end-of-call review (C.6) answered; `"fallback"` otherwise (BERT off or down, fewer than 3 caller lines, a window failed, or over `AGG_END_REVIEW_TIMEOUT_MS`). |
+| `top_window_seqs` | The seqs of the riskiest window of up to 5 caller lines (C.8): the earliest window with the highest BERT score. Empty with the fallback. |
 | `reason` | The top signal's fixed reason text (the same text as the live `reasons`, e.g. "Asked for your OTP or money"). Empty when SAFE or UNKNOWN. Never transcript text. |
 | `ended_by` | The value stored by the **first** end, so a repeat end, or an end that comes after the silence timeout, shows the original value. |
 | `already_ended` | *Addition to the brief.* `true` when this call had already ended (a repeat end, or a silence end). Lets the app and tests see that the call was ended only once. |
@@ -179,9 +179,18 @@ The tombstone is named `callend:<id>` instead of the brief's `call:{id}:ended`. 
    (`already_ended = true`). Otherwise create it with `ended_by` and `ended_at_ms` and continue. With 2 aggregator replicas
    and an app end racing a silence end, exactly one of them runs steps 2-5.
 2. **Read** `call:<id>` (live verdict, combined, window) for the fallback.
-3. **Review hook** `end_of_call_review(call_id, caller_lines, language)` with a timeout of
-   `AGG_END_REVIEW_TIMEOUT_MS` (1500). For now it **always returns `None` ("not available")**, so the
-   fallback is used. Workstream C fills it in later (C.6, C.8). It also returns `None` on a timeout, an error or when there are no lines.
+3. **Review** `end_of_call_review(bert, settings, call_id, caller_lines, language)` (Workstream C.6-C.8, `end.rs`)
+   with a timeout of `AGG_END_REVIEW_TIMEOUT_MS` (1500). BERT reads the whole call through the same
+   `BertService.ScoreContext` as the live check: one window per caller line from line 3, each the caller's last
+   5 lines at that point (exactly the windows the live check can send, so a red BERT confirmed live is seen again);
+   a call longer than 42 caller lines is tiled with back-to-back windows instead (every line read, at most 40
+   windows). Up to 4 windows at a time. **Call score = the highest window; final verdict (C.7): SCAM at
+   `AGG_BERT_SCAM_THRESHOLD` (0.6), UNSURE at `AGG_UNSURE_THRESHOLD` (0.45), else SAFE;** `top_window_seqs` = that
+   window's seqs (C.8, the earliest on a tie); `reason` = the live reason, or "The conversation as a whole sounds
+   like a scam" when the live call had none. Returns `None` (fallback) when BERT is off (`BERT_ADDR` empty or
+   `AGG_MODE=fast`), there are fewer than 3 caller lines, any window fails (a partial review could miss the
+   riskiest part), or on the timeout. The text goes to BERT and is dropped: never stored or logged.
+   Check it on the demo scripts: `python3 tools/endcall_check.py` (and again with `docker compose stop bert`).
 4. **Fallback:** `final_verdict = live verdict`, `call_score = combined`, `reason` = the reason text of the
    highest signal in the window that is ≥ `AGG_REASON_THRESHOLD` (empty if SAFE), `top_window_seqs = []`,
    `review = "fallback"`. With no `call:<id>` at all: `VERDICT_UNSPECIFIED`, 0, `""`.
