@@ -121,7 +121,7 @@ pub const ACTION_SCAM: &str =
 pub const ACTION_UNSURE: &str =
     "Don't share any codes or transfer money. Hang up and check with the official number.";
 
-fn reason_text(signal: &str) -> &'static str {
+pub(crate) fn reason_text(signal: &str) -> &'static str {
     match signal {
         "money" => "Asked for your OTP or money",
         "impersonation" => "Claims to be police, a bank or the government",
