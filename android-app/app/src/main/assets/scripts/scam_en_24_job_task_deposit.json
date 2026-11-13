@@ -1,0 +1,62 @@
+[
+  {
+    "speaker": "caller",
+    "text": "Hi, I'm Rachel from an online marketing agency. You applied for our part-time job, right?",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "Oh, maybe. What's the job about?",
+    "delay_ms": 5205
+  },
+  {
+    "speaker": "caller",
+    "text": "You just like and review products on shopping sites from home. You can earn eighty to two hundred dollars a day.",
+    "delay_ms": 2640
+  },
+  {
+    "speaker": "receiver",
+    "text": "That sounds easy. Is there a catch?",
+    "delay_ms": 6240
+  },
+  {
+    "speaker": "caller",
+    "text": "No catch. I already added three tasks to your account, and your first commission is waiting.",
+    "delay_ms": 2775
+  },
+  {
+    "speaker": "receiver",
+    "text": "Okay, I see the tasks.",
+    "delay_ms": 5340
+  },
+  {
+    "speaker": "caller",
+    "text": "Good. To withdraw your commission, the system needs you to complete one merchant task first.",
+    "delay_ms": 2190
+  },
+  {
+    "speaker": "receiver",
+    "text": "What is a merchant task?",
+    "delay_ms": 5340
+  },
+  {
+    "speaker": "caller",
+    "text": "You top up five hundred dollars to the merchant account, and you get it back with thirty percent commission.",
+    "delay_ms": 2280
+  },
+  {
+    "speaker": "receiver",
+    "text": "Why do I have to pay to work?",
+    "delay_ms": 6060
+  },
+  {
+    "speaker": "caller",
+    "text": "The task expires in twenty minutes, so please transfer now or you will lose everything you earned today.",
+    "delay_ms": 2505
+  },
+  {
+    "speaker": "receiver",
+    "text": "I don't think I want this job.",
+    "delay_ms": 5880
+  }
+]

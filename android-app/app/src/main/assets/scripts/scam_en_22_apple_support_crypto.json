@@ -1,0 +1,62 @@
+[
+  {
+    "speaker": "caller",
+    "text": "Hi, this is Apple Support. You received an alert about a sign-in to your Apple ID from a new device.",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "Yes, I just got that message. It wasn't me.",
+    "delay_ms": 5700
+  },
+  {
+    "speaker": "caller",
+    "text": "Someone is trying to log in right now and they can reach your crypto exchange app through your iCloud.",
+    "delay_ms": 3135
+  },
+  {
+    "speaker": "receiver",
+    "text": "Oh no, I have some Bitcoin on that app.",
+    "delay_ms": 5790
+  },
+  {
+    "speaker": "caller",
+    "text": "Don't worry, I will help you secure it. Please open the exchange app while I stay on the line.",
+    "delay_ms": 2955
+  },
+  {
+    "speaker": "receiver",
+    "text": "Okay, it's open.",
+    "delay_ms": 5430
+  },
+  {
+    "speaker": "caller",
+    "text": "We need to act fast before they get in, every minute counts.",
+    "delay_ms": 1920
+  },
+  {
+    "speaker": "receiver",
+    "text": "What do I need to do?",
+    "delay_ms": 3900
+  },
+  {
+    "speaker": "caller",
+    "text": "Transfer all your coins to the Apple secure wallet address I'm sending you, then read me the six-digit code you receive.",
+    "delay_ms": 2145
+  },
+  {
+    "speaker": "receiver",
+    "text": "Why does Apple need my coins?",
+    "delay_ms": 6600
+  },
+  {
+    "speaker": "caller",
+    "text": "It's only temporary. Once the hacker is blocked, we send everything back to you.",
+    "delay_ms": 2505
+  },
+  {
+    "speaker": "receiver",
+    "text": "I think I will check with Apple myself first.",
+    "delay_ms": 4800
+  }
+]

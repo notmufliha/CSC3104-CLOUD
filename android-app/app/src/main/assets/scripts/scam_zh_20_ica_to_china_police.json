@@ -1,0 +1,62 @@
+[
+  {
+    "speaker": "caller",
+    "text": "您好，这里是新加坡移民与关卡局，我姓林。",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "您好，有什么事吗？",
+    "delay_ms": 2100
+  },
+  {
+    "speaker": "caller",
+    "text": "我们发现有人用您的护照在上海办了一张电话卡，涉及洗钱案件。",
+    "delay_ms": 1605
+  },
+  {
+    "speaker": "receiver",
+    "text": "我从来没有去过上海。",
+    "delay_ms": 2505
+  },
+  {
+    "speaker": "caller",
+    "text": "这个案子由中国警方负责，我现在帮您转接上海公安局的张警官。",
+    "delay_ms": 1650
+  },
+  {
+    "speaker": "receiver",
+    "text": "好的，我等一下。",
+    "delay_ms": 2505
+  },
+  {
+    "speaker": "caller",
+    "text": "我是张警官。如果您今天不配合调查，我们会发出通缉令，您一出境就会被逮捕。",
+    "delay_ms": 1560
+  },
+  {
+    "speaker": "receiver",
+    "text": "我真的什么都没做。",
+    "delay_ms": 2820
+  },
+  {
+    "speaker": "caller",
+    "text": "为了证明您的清白，请马上把银行里的存款全部转到我们指定的安全账户。",
+    "delay_ms": 1605
+  },
+  {
+    "speaker": "receiver",
+    "text": "全部都要转吗？",
+    "delay_ms": 2685
+  },
+  {
+    "speaker": "caller",
+    "text": "对，现在就去转账，不要告诉银行职员和家人，这是保密调查。",
+    "delay_ms": 1515
+  },
+  {
+    "speaker": "receiver",
+    "text": "我想先问问我的家人。",
+    "delay_ms": 2460
+  }
+]

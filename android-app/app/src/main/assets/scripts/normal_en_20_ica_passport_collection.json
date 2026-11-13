@@ -1,0 +1,57 @@
+[
+  {
+    "speaker": "caller",
+    "text": "Hello, this is a reminder call from the Immigration and Checkpoints Authority about your passport renewal.",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "Oh yes, I applied last month.",
+    "delay_ms": 5970
+  },
+  {
+    "speaker": "caller",
+    "text": "Your new passport is ready for collection at the ICA Building.",
+    "delay_ms": 2505
+  },
+  {
+    "speaker": "receiver",
+    "text": "Great. When can I collect it?",
+    "delay_ms": 3990
+  },
+  {
+    "speaker": "caller",
+    "text": "Please book a collection appointment through the MyICA app or the ICA website.",
+    "delay_ms": 2505
+  },
+  {
+    "speaker": "receiver",
+    "text": "Okay, I'll do that tonight.",
+    "delay_ms": 4710
+  },
+  {
+    "speaker": "caller",
+    "text": "Remember to bring your old passport and your NRIC when you come.",
+    "delay_ms": 2415
+  },
+  {
+    "speaker": "receiver",
+    "text": "Do I need to pay anything now?",
+    "delay_ms": 4080
+  },
+  {
+    "speaker": "caller",
+    "text": "No, the fee was already paid with your application. ICA will never ask you to transfer money over the phone.",
+    "delay_ms": 2550
+  },
+  {
+    "speaker": "receiver",
+    "text": "Good to know, thank you.",
+    "delay_ms": 6060
+  },
+  {
+    "speaker": "caller",
+    "text": "You're welcome. Have a nice day.",
+    "delay_ms": 2280
+  }
+]

@@ -360,7 +360,8 @@ def cmd_canary(a):
         else:
             print(f"Promoting: every {deploy} pod moves to {saved['version']}, one at a time")
         kubectl("patch", "deploy", deploy, "-n", NS, "--type=merge", "-p",
-                json.dumps({"spec": {"minReadySeconds": saved["minReadySeconds"]}}))
+                json.dumps({"spec": {"minReadySeconds": saved["minReadySeconds"],
+                                     "progressDeadlineSeconds": saved.get("progressDeadlineSeconds", 600)}}))
         kubectl("rollout", "status", f"deployment/{deploy}", "-n", NS, "--timeout=300s", capture=False)
         kubectl("patch", "hpa", deploy, "-n", NS, "--type=merge", "-p",
                 json.dumps({"spec": {"minReplicas": saved["minReplicas"]}}))
@@ -380,7 +381,8 @@ def cmd_canary(a):
     before = deployed_version(model)
     hpa = json.loads(kubectl("get", "hpa", deploy, "-n", NS, "-o", "json").stdout)
     saved = {"version": version, "before": before, "minReplicas": hpa["spec"].get("minReplicas", 1),
-             "minReadySeconds": d["spec"].get("minReadySeconds", 0)}
+             "minReadySeconds": d["spec"].get("minReadySeconds", 0),
+             "progressDeadlineSeconds": d["spec"].get("progressDeadlineSeconds", 600)}
     pods = max(a.pods, saved["minReplicas"])
 
     print(f"1. {deploy}: {pods} pods first (autoscaler minimum {saved['minReplicas']} -> {pods} during the canary)")
@@ -392,7 +394,9 @@ def cmd_canary(a):
     print(f"2. Canary: ONE new pod runs {version}; the {pods} others keep {before}")
     kubectl("annotate", "deploy", deploy, "-n", NS, "--overwrite", f"{CANARY_NOTE}={json.dumps(saved)}",
             f"kubernetes.io/change-cause=canary: {model} model {before} -> {version}")
-    kubectl("patch", "deploy", deploy, "-n", NS, "--type=merge", "-p", json.dumps({"spec": {"minReadySeconds": 3600}}))
+    # Kubernetes requires progressDeadlineSeconds > minReadySeconds, so both are raised (and both restored after).
+    kubectl("patch", "deploy", deploy, "-n", NS, "--type=merge", "-p",
+            json.dumps({"spec": {"minReadySeconds": 3600, "progressDeadlineSeconds": 7200}}))
     kubectl("set", "env", f"deployment/{deploy}", "-n", NS,
             "MODEL_VERSION-" if version == baked(model) else f"MODEL_VERSION={version}")
     deadline = time.monotonic() + 240

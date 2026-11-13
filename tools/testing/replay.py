@@ -2,7 +2,7 @@
 replay.py - Workstream 6.3 / 6.4: play the demo calls through the gateway line by line.
 
     docker compose up -d --build                      # from the repo root
-    python tools/testing/replay.py                        # the 14 Workstream 6 scripts, in real time (uses delay_ms)
+    python tools/testing/replay.py                        # every script (Workstream 6 + the 2026 calls), in real time (uses delay_ms)
     python tools/testing/replay.py --only scam_en_10 --verbose   # one script (name prefix), print the text too
     python tools/testing/replay.py --caller-only          # send exactly what the app sends (no receiver lines)
     python tools/testing/replay.py --speed 10             # 10x faster (breaks the 15-second warm-up rule, see README)
