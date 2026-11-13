@@ -1,0 +1,57 @@
+[
+  {
+    "speaker": "caller",
+    "text": "Hello, this is the card security team from your bank. We want to check one transaction on your credit card.",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "Sure, what transaction?",
+    "delay_ms": 6015
+  },
+  {
+    "speaker": "caller",
+    "text": "There was a purchase of one hundred and twenty dollars at an online electronics store this morning. Was that you?",
+    "delay_ms": 2235
+  },
+  {
+    "speaker": "receiver",
+    "text": "No, I didn't buy anything today.",
+    "delay_ms": 6285
+  },
+  {
+    "speaker": "caller",
+    "text": "Thank you. We have blocked the card to keep your account safe, and the charge will be reversed.",
+    "delay_ms": 2640
+  },
+  {
+    "speaker": "receiver",
+    "text": "Okay. Do I need to do anything?",
+    "delay_ms": 5475
+  },
+  {
+    "speaker": "caller",
+    "text": "A replacement card will be mailed to your registered address in five working days.",
+    "delay_ms": 2595
+  },
+  {
+    "speaker": "receiver",
+    "text": "Alright.",
+    "delay_ms": 4890
+  },
+  {
+    "speaker": "caller",
+    "text": "We will never ask for your PIN or a one-time password. If you're unsure, call us back on the number on the back of your card.",
+    "delay_ms": 1560
+  },
+  {
+    "speaker": "receiver",
+    "text": "I will. Thanks for letting me know.",
+    "delay_ms": 6825
+  },
+  {
+    "speaker": "caller",
+    "text": "You're welcome. Goodbye.",
+    "delay_ms": 2775
+  }
+]

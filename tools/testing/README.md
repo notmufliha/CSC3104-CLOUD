@@ -34,6 +34,27 @@ Status in `replay.py`: red before "from" = TOO EARLY, after "late if after" = TO
 goes red = FALSE ALARM, red that later drops back = NOT STICKY. The key lines and ranges are a judgement call: edit
 `expected.json` if the team disagrees. Every key line falls after 15 s of call time, so the warm-up rule (3.5) does not hide it.
 
+### Calls added in November 2026 (from SPF's 2026 scam advisories)
+
+Dialogue written by the team, modelled on the scam patterns in the Singapore Police Force's 2026 advisories (each
+row in `expected.json` links its advisory). Each scam has a genuine call that uses the same words (a "hard negative").
+Measured on 2026-11-13 (Kubernetes, `replay.py --caller-only --speed 4`):
+
+| File | What it is | Key line | Red allowed from | Measured |
+|---|---|---|---|---|
+| `scam_en_20_ica_to_china_police` (+ `scam_zh_20_…`) | fake ICA officer hands over to "Shanghai police", supervision account | 11 (zh 9) | 7 (zh 5) | red at 7 (zh 7) |
+| `scam_en_21_telco_to_mas_officer` | "Singtel" about a second line, hand-off to a fake MAS officer, safety account | 9 | 5 | red at 5 |
+| `scam_en_22_apple_support_crypto` | fake Apple support after a sign-in alert, move crypto to a "secure wallet" | 9 | 7 | red at 9 |
+| `scam_en_23_bank_card_handover` | fake bank fraud team, courier collects card and PIN, ATM cash | 9 | 5 | red at 5 |
+| `scam_en_24_job_task_deposit` | job/task scam: top up to "unlock" commission | 9 | 7 | **MISSED** (UNSURE): no one is impersonated |
+| `normal_en_20_ica_passport_collection` | real ICA reminder, book in MyICA, "ICA never asks for money by phone" | never red | | SAFE |
+| `normal_en_21_bank_fraud_check` | real bank fraud team: one yes/no question, card blocked, "call the number on your card" | never red | | **FALSE ALARM** (red at 5) |
+| `normal_en_22_telco_contract_renewal` | real telco renewal offer, nothing to pay today | never red | | SAFE |
+
+The two misses are kept on purpose: the job scam is a new scam the models don't know yet, and the bank fraud check is
+a real false alarm. Both are what the learning loop (`demo/LEARNING_LOOP.md`) is for: report them ("This was a
+scam" / "This was fine"), label them on the review website, retrain, and replay to compare.
+
 ## Test it
 
 ```bash
