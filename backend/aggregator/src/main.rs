@@ -79,11 +79,12 @@ fn to_proto_verdict(v: policy::Verdict) -> scam_detect::Verdict {
     }
 }
 
-fn to_response(d: Decision, bert_status: &str) -> AggregateResponse {
+fn to_response(d: Decision, bert_status: &str, bert_version: &str) -> AggregateResponse {
     AggregateResponse {
         fast_score: d.fast,
         bert_score: d.bert,
         bert_status: bert_status.to_string(),
+        bert_model_version: bert_version.to_string(),
         verdict: to_proto_verdict(d.verdict) as i32,
         live_alert: to_proto_verdict(d.verdict) as i32,
         final_verdict: String::new(),
@@ -174,7 +175,7 @@ impl AggregatorService for Aggregator {
                        second.status()), bert_ms = second.ms, "verdict");
         self.metrics
             .record(call_id, &line, &decision, second.status(), &self.settings);
-        Ok(Response::new(to_response(decision, second.status())))
+        Ok(Response::new(to_response(decision, second.status(), second.version())))
     }
 
     /// Workstream B: the call is over (end.rs). Idempotent. The caller lines go to the review hook and are dropped.
@@ -363,6 +364,7 @@ mod tests {
         let r = to_response(
             policy::decide_one_shot([Some(0.8), Some(0.95), None], None, &cfg),
             "skipped",
+            "",
         );
         assert_eq!(r.verdict, scam_detect::Verdict::Scam as i32);
         assert_eq!(r.reasons[0].signal, "money");

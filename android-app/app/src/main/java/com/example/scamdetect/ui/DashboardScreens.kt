@@ -69,7 +69,7 @@ fun DashboardScreen(
     onSaveSentence: (Boolean) -> Unit,
     onDeleteHistory: () -> Unit,
     onOpen: (String) -> Unit,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,   // null: opened from the tab bar, so no Back link
     helpImprove: Boolean = false,
     onHelpImprove: (Boolean) -> Unit = {},
     labelCount: Int = 0,

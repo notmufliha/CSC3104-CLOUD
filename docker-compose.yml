@@ -236,13 +236,16 @@ services:
     networks:
       - scamnet
 
-  # The "Ingress" of this stack: one address for the phone, http://<laptop IP>:8088/api/ (demo/compose-edge.conf).
+  # The "Ingress" of this stack: one address for the phone, http://<laptop IP>:8088/api/ (demo/compose-edge.conf),
+  # and the ScamGuard web app at http://127.0.0.1:8088/ (web/: the Android app's cloud mode in a browser).
   edge:
     image: nginx:1.27-alpine
     ports:
       - "8088:8088"
     volumes:
       - ./demo/compose-edge.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./web:/usr/share/nginx/html:ro
+      - ./android-app/app/src/main/assets/scripts:/usr/share/nginx/scripts:ro
     depends_on:
       - gateway
       - model-service

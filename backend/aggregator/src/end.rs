@@ -283,7 +283,7 @@ pub async fn end_call(
     let entry = end_log_entry(call_id, now_ms, &record, review_ms);
     store.finish_end(call_id, &record, &entry, cfg).await?;
     tracing::info!(target: "verdict", entry = %entry, lines = lines.len(), "verdict");
-    metrics.record_end(ended_by, &record.review);
+    metrics.record_end(ended_by, &record.review, record.final_verdict);
     Ok(Ended { record, already_ended: false })
 }
 

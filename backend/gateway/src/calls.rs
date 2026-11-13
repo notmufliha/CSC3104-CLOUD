@@ -49,6 +49,8 @@ pub struct Answer {
     pub fast_score: f32,
     pub bert_score: Option<f32>,
     pub bert_status: String,
+    /// H.8: BERT's model version when it answered this line; shown under model_versions["bert"].
+    pub bert_model_version: String,
     /// Workstream B.6: the aggregator refused the line because the call had ended (the other fields are empty).
     pub call_ended: bool,
 }

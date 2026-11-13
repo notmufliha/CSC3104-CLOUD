@@ -1,0 +1,53 @@
+{
+ "note": "Shared cases for backend/review/mask.py, android-app logic/Mask.kt and web/app.js (Mask). The last three are KNOWN HOLES kept on purpose: Chinese numerals, spoken-out digits and names without a cue phrase are not masked, which is why the consent screen says some can slip through.",
+ "cases": [
+  {
+   "text": "Call me at +65 9123 4567 or email john.tan@gmail.com",
+   "masked": "Call me at [PHONE_NUMBER] or email [EMAIL_ADDRESS]"
+  },
+  {
+   "text": "Transfer S$5,000 to the safe account at www.safe-pay.com now",
+   "masked": "Transfer [MONEY_AMOUNT] to the safe account at [URL] now"
+  },
+  {
+   "text": "Your NRIC S1234567D is linked to a case",
+   "masked": "Your NRIC [NUMBER] is linked to a case"
+  },
+  {
+   "text": "Read me the OTP 482913 please",
+   "masked": "Read me the OTP [NUMBER] please"
+  },
+  {
+   "text": "This is Officer John Tan from the police",
+   "masked": "This is Officer [PERSON_NAME] from the police"
+  },
+  {
+   "text": "Hi, this is the police calling about your account",
+   "masked": "Hi, this is the police calling about your account"
+  },
+  {
+   "text": "My name is Sarah Lim and I'm from DBS",
+   "masked": "My name is [PERSON_NAME] and I'm from DBS"
+  },
+  {
+   "text": "我叫王小明，请转账5000元",
+   "masked": "我叫[PERSON_NAME]，请转账[MONEY_AMOUNT]"
+  },
+  {
+   "text": "我是王警官，转账五千元",
+   "masked": "我是王警官，转账五千元"
+  },
+  {
+   "text": "my otp is nine one two three",
+   "masked": "my otp is nine one two three"
+  },
+  {
+   "text": "Hi Sarah, it's David from the bank",
+   "masked": "Hi Sarah, it's David from the bank"
+  },
+  {
+   "text": "Pay 300 dollars by 5pm today",
+   "masked": "Pay [MONEY_AMOUNT] by [NUMBER]pm today"
+  }
+ ]
+}

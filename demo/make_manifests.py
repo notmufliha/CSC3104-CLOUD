@@ -821,6 +821,108 @@ spec:
 {resources_block(RETRAIN_REQUESTS, RETRAIN_LIMITS, "              ")}"""
 
 
+def web_yaml() -> str:
+    # The ScamGuard web app (web/: the Android app's cloud mode in a browser) and the app's call scripts, served by a
+    # small nginx at https://<laptop IP>:8443/ through the same Ingress as /api/, so the page calls the gateway on its
+    # own address (no CORS). The files go in ConfigMaps, made here from the repo, so no image has to be built.
+    import hashlib
+    import json
+    root = Path(__file__).resolve().parent.parent
+    web_dir = root / "web"
+    scripts_dir = root / "android-app" / "app" / "src" / "main" / "assets" / "scripts"
+
+    def configmap(name: str, files: dict) -> str:
+        body = "".join(f"  {k}: {json.dumps(v, ensure_ascii=False)}\n" for k, v in sorted(files.items()))
+        return f"""apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {name}
+  namespace: {NAMESPACE}
+data:
+{body}"""
+
+    web_files = {f.name: f.read_text(encoding="utf-8") for f in sorted(web_dir.iterdir()) if f.is_file()}
+    script_files = {f.name: f.read_text(encoding="utf-8") for f in sorted(scripts_dir.glob("*.json"))}
+    nginx_conf = """server {
+    listen 8080;
+    root /usr/share/nginx/html;
+    add_header Cache-Control "no-cache";
+    location / { index index.html; }
+    location /scripts/ { alias /usr/share/nginx/scripts/; autoindex on; autoindex_format json; }
+    location = /healthz { return 200 "ok"; }
+}
+"""
+    files_hash = hashlib.sha256(json.dumps([web_files, script_files], sort_keys=True).encode()).hexdigest()[:12]
+    return "---\n".join([
+        configmap("web-files", web_files),
+        configmap("web-scripts", script_files),
+        configmap("web-nginx", {"default.conf": nginx_conf}),
+        f"""apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: {NAMESPACE}
+  labels: {{ app: web }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {{ app: web }}
+  template:
+    metadata:
+      labels: {{ app: web }}
+      annotations:
+        # a changed page or script changes this hash, so `kubectl apply` rolls the pod and it serves the new files
+        scamguard/files-hash: "{files_hash}"
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports: [{{ containerPort: 8080 }}]
+          resources:
+            requests: {{ cpu: 10m, memory: 16Mi }}
+            limits: {{ cpu: 100m, memory: 64Mi }}
+          readinessProbe:
+            httpGet: {{ path: /healthz, port: 8080 }}
+          volumeMounts:
+            - {{ name: files, mountPath: /usr/share/nginx/html }}
+            - {{ name: scripts, mountPath: /usr/share/nginx/scripts }}
+            - {{ name: conf, mountPath: /etc/nginx/conf.d }}
+      volumes:
+        - {{ name: files, configMap: {{ name: web-files }} }}
+        - {{ name: scripts, configMap: {{ name: web-scripts }} }}
+        - {{ name: conf, configMap: {{ name: web-nginx }} }}
+""",
+        f"""apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: {NAMESPACE}
+spec:
+  selector: {{ app: web }}
+  ports: [{{ port: 8080, targetPort: 8080 }}]
+""",
+        f"""apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+  namespace: {NAMESPACE}
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [{INGRESS_HOST}]
+      secretName: {INGRESS_TLS_SECRET}
+  rules:
+    - host: {INGRESS_HOST}
+      http:
+        paths:
+          - {{ path: /, pathType: Prefix, backend: {{ service: {{ name: web, port: {{ number: 8080 }} }} }} }}
+    - http:
+        paths:
+          - {{ path: /, pathType: Prefix, backend: {{ service: {{ name: web, port: {{ number: 8080 }} }} }} }}
+""",
+    ])
+
+
 def write(name: str, content: str) -> None:
     path = OUT_DIR / name
     path.write_text(content, encoding="utf-8")
@@ -846,7 +948,8 @@ def main() -> int:
     write("08-ingress.yaml", ingress_yaml())
     write("09-review.yaml", review_yaml())
     write("10-retrain.yaml", retrain_yaml())
-    print(f"\n{2 + 1 + 1 + 1 + 1 + len(WORKERS) + 1 + 1 + 2} manifest files written to {OUT_DIR}")
+    write("11-web.yaml", web_yaml())
+    print(f"\n{2 + 1 + 1 + 1 + 1 + len(WORKERS) + 1 + 1 + 3} manifest files written to {OUT_DIR}")
     import make_monitoring  # optional Prometheus + Grafana (H.1/H.2), in demo/k8s/monitoring/
     make_monitoring.main(NAMESPACE, DRIFT_SHORT, DRIFT_BASELINE, DRIFT_FACTOR, DRIFT_MIN_UNSURE_SHARE,
                          PROMETHEUS_IMAGE, GRAFANA_IMAGE)

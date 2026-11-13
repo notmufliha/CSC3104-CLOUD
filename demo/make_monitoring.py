@@ -152,7 +152,7 @@ def panel(pid, title, targets, x, y, w=12, h=8, unit="short", kind="timeseries",
     return p
 
 
-def dashboard(short) -> dict:
+def dashboard(short, baseline) -> dict:
     w = "5m"
     share = 'sum by (verdict) (rate(scamguard_lines_total[{w}])) / ignoring(verdict) group_left sum(rate(scamguard_lines_total[{w}]))'
     panels = [
@@ -162,14 +162,18 @@ def dashboard(short) -> dict:
         panel(3, "Reports waiting to be labelled", [("review_lines_unlabelled", "lines")], 12, 0, w=6, h=5, kind="stat"),
         panel(4, "Newest released urgency_en model", [('review_model_latest{name="urgency_en"}', "v")], 18, 0, w=6, h=5, kind="stat",
               desc="Version number in the registry (5 = v5). Rolled out separately with learning.py rollout."),
-        panel(5, "Verdict share per caller line", [(share.format(w=w), "{{verdict}}")], 0, 5, unit="percentunit", stack=True, maxv=1,
-              desc="Per line until Workstream B adds an end-of-call event; then per call."),
+        panel(5, "Verdict share per call (final verdict)",
+              [('sum by (verdict) (increase(scamguard_calls_final_total[1h])) / ignoring(verdict) group_left '
+                'sum(increase(scamguard_calls_final_total[1h]))', "{{verdict}} (calls)"),
+               (share.format(w=w), "{{verdict}} (lines)")], 0, 5, unit="percentunit", maxv=1,
+              desc="Calls: the share of calls that ended SAFE / UNSURE / SCAM in the last hour. Lines: per caller line."),
         panel(6, f"UNSURE share: now vs usual ({short} window)",
               [("scamguard:unsure_share:short", "last " + short),
-               ("avg_over_time(scamguard:unsure_share:short[1d] offset 1h)", "usual (1 day before)")],
+               (f"avg_over_time(scamguard:unsure_share:short[{baseline}] offset {short})", f"usual ({baseline} before)")],
               12, 5, unit="percentunit", maxv=1),
         panel(7, "Worker / BERT disagreement rate",
               [("scamguard:disagreement_rate:short", "share of BERT answers"),
+               (f"avg_over_time(scamguard:disagreement_rate:short[{baseline}] offset {short})", f"usual ({baseline} before)"),
                ('sum by (direction) (rate(scamguard_disagreements_total[5m])) * 60', "{{direction}} per min")],
               0, 13, desc="bert_safer: workers alarmed, BERT says safe. bert_riskier: workers calm, BERT says scam."),
         panel(8, "BERT second opinion outcomes (per min)", [("sum by (status) (rate(scamguard_bert_total[5m])) * 60", "{{status}}")],
@@ -180,12 +184,15 @@ def dashboard(short) -> dict:
         panel(10, "Review queue", [("review_lines_unlabelled", "waiting for a label"),
                                    ('review_labels_unused{signal="urgency"}', "urgency labels not trained on yet"),
                                    ("sum(review_labels_disputed)", "disputed by a spot check")], 12, 21),
+        panel(11, "Missed scams reported by users", [('sum(review_reports_received_total{kind="scam",app_verdict="SAFE"})', "app said SAFE"),
+                                                    ('sum(review_reports_received_total{kind="scam",app_verdict="UNSURE"})', "app said UNSURE")],
+              0, 29, desc="\"This was a scam\" reports on calls the app did not turn red. A rising count is a new-scam signal that needs no text."),
     ]
     return {"uid": "scamguard-learning", "title": "ScamGuard: learning new scams", "schemaVersion": 39,
             "time": {"from": "now-1h", "to": "now"}, "refresh": "15s", "tags": ["scamguard"], "panels": panels}
 
 
-def grafana_yaml(ns, short, image) -> str:
+def grafana_yaml(ns, short, baseline, image) -> str:
     datasource = """apiVersion: 1
 datasources:
   - name: Prometheus
@@ -220,7 +227,7 @@ metadata:
   namespace: {ns}
 data:
   scamguard.json: |
-{indent(json.dumps(dashboard(short), indent=2), 4)}
+{indent(json.dumps(dashboard(short, baseline), indent=2), 4)}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -280,7 +287,7 @@ def main(ns="scamguard", short="1h", baseline="1d", factor="1.5", min_share="0.1
          prom_image="prom/prometheus:v3.1.0", grafana_image="grafana/grafana:11.4.0"):
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     for name, text in (("prometheus.yaml", prometheus_yaml(ns, short, baseline, factor, min_share, prom_image)),
-                       ("grafana.yaml", grafana_yaml(ns, short, grafana_image))):
+                       ("grafana.yaml", grafana_yaml(ns, short, baseline, grafana_image))):
         (OUT_DIR / name).write_text(text, encoding="utf-8")
         print(f"wrote {OUT_DIR / name}")
 

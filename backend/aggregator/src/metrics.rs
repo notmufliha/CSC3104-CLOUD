@@ -11,6 +11,8 @@
 //!                                              but BERT scam (>= scam threshold): direction="bert_riskier"
 //!   scamguard_signal_score_sum / _count{signal} average score per worker signal
 //!   scamguard_calls_ended_total{ended_by,review} Workstream B: calls ended (phone or silence), by review type
+//!   scamguard_calls_final_total{verdict}       H.1: calls ended, by their final verdict (SAFE / UNSURE / SCAM /
+//!                                              UNKNOWN), so the dashboard can show the share of calls, not lines
 //!   scamguard_late_lines_total                 Workstream B.6: caller lines refused because their call had ended
 //!
 //! Counters are per process; Prometheus scrapes every aggregator pod and adds them up.
@@ -41,6 +43,8 @@ pub struct Metrics {
     signal_count: [AtomicU64; 3],
     /// Workstream B: [ended_by (end::ENDED_BY order)][review (REVIEWS order)].
     ended: [[AtomicU64; 2]; 4],
+    /// H.1: [SAFE, UNSURE, SCAM, UNKNOWN] final verdicts of ended calls.
+    final_verdicts: [AtomicU64; 4],
     late_lines: AtomicU64,
 }
 
@@ -88,11 +92,18 @@ impl Metrics {
     }
 
     /// Workstream B: one call ended (counted once, by whoever ran the end).
-    pub fn record_end(&self, ended_by: &str, review: &str) {
+    pub fn record_end(&self, ended_by: &str, review: &str, final_verdict: Option<Verdict>) {
         let i = crate::end::ENDED_BY.iter().position(|x| *x == ended_by);
         let j = REVIEWS.iter().position(|x| *x == review);
         if let (Some(i), Some(j)) = (i, j) {
             self.ended[i][j].fetch_add(1, Relaxed);
+            let v = match final_verdict {
+                Some(Verdict::Safe) => 0,
+                Some(Verdict::Unsure) => 1,
+                Some(Verdict::Scam) => 2,
+                None => 3,
+            };
+            self.final_verdicts[v].fetch_add(1, Relaxed);
         }
     }
 
@@ -186,6 +197,11 @@ impl Metrics {
                 let _ = writeln!(o, "scamguard_calls_ended_total{{ended_by=\"{by}\",review=\"{review}\"}} {n}");
             }
         }
+        let _ = writeln!(o, "# HELP scamguard_calls_final_total Calls ended, by their final verdict.");
+        let _ = writeln!(o, "# TYPE scamguard_calls_final_total counter");
+        for (i, v) in ["SAFE", "UNSURE", "SCAM", "UNKNOWN"].iter().enumerate() {
+            let _ = writeln!(o, "scamguard_calls_final_total{{verdict=\"{v}\"}} {}", self.final_verdicts[i].load(Relaxed));
+        }
         let _ = writeln!(o, "# TYPE scamguard_late_lines_total counter");
         let _ = writeln!(o, "scamguard_late_lines_total {}", self.late_lines.load(Relaxed));
         o
@@ -221,15 +237,18 @@ mod tests {
     #[test]
     fn counts_ended_calls_and_late_lines() {
         let m = Metrics::default();
-        m.record_end("silence", "fallback");
-        m.record_end("user_hung_up", "fallback");
-        m.record_end("user_hung_up", "fallback");
-        m.record_end("nonsense", "fallback"); // ignored
+        m.record_end("silence", "fallback", None);
+        m.record_end("user_hung_up", "fallback", Some(Verdict::Scam));
+        m.record_end("user_hung_up", "fallback", Some(Verdict::Safe));
+        m.record_end("nonsense", "fallback", Some(Verdict::Scam)); // ignored
         m.record_late_line();
         let out = m.render();
         assert!(out.contains("scamguard_calls_ended_total{ended_by=\"silence\",review=\"fallback\"} 1"));
         assert!(out.contains("scamguard_calls_ended_total{ended_by=\"user_hung_up\",review=\"fallback\"} 2"));
         assert!(out.contains("scamguard_calls_ended_total{ended_by=\"user_hung_up\",review=\"bert\"} 0"));
         assert!(out.contains("scamguard_late_lines_total 1"));
+        assert!(out.contains("scamguard_calls_final_total{verdict=\"SCAM\"} 1"));
+        assert!(out.contains("scamguard_calls_final_total{verdict=\"SAFE\"} 1"));
+        assert!(out.contains("scamguard_calls_final_total{verdict=\"UNKNOWN\"} 1"));
     }
 }

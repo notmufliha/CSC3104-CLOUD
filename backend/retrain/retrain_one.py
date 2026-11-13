@@ -104,8 +104,11 @@ def main(name: str) -> int:
     threshold = adapter.train(reports, candidate, version)
     print(f"{name}: trained {version} in {time.monotonic() - t0:.0f}s")
 
+    # Floor (release_check.py): a later release must also stay within TOLERANCE of the baked model.
+    baked = f"v{cfg['baked']}"
+    floor = None if cur_version == baked else (baked, adapter.load(adapter.baked_path), adapter.baked_threshold())
     result = release_check.compare(adapter, current, cur_threshold, adapter.load(candidate), threshold,
-                                   TOLERANCE, learned)
+                                   TOLERANCE, learned, floor)
     release_check.print_table(result, cur_version, version)
     if not result["pass"]:
         print(f"{name} {version} BLOCKED by the release check: not published. {cur_version} stays in service.")

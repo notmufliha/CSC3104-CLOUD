@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#6650a4">
+  <title>ScamGuard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- ScamGuard web app: the Android app's cloud mode (privacy level 1) in a browser, so the system can be tried
+       without Android Studio. Served by the compose "edge" (http://127.0.0.1:8088/) and by the Kubernetes Ingress
+       (https://<laptop IP>:8443/). It calls the same gateway as the phone, at api/ on the same address. -->
+  <div id="phone">
+    <main id="screen" aria-live="polite"></main>
+    <nav id="tabs" aria-label="Main">
+      <button data-tab="home"><span class="ico">⌂</span>Home</button>
+      <button data-tab="dashboard"><span class="ico">☰</span>Dashboard</button>
+      <button data-tab="settings"><span class="ico">⚙</span>Settings</button>
+    </nav>
+  </div>
+  <div id="overlay" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>

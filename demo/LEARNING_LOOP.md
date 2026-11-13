@@ -41,6 +41,7 @@ flowchart LR
 | H.8 Versions | Released models live in the registry as v5, v6..., each with its sha256 and release-check scores, never overwritten. All six workers load the version in `MODEL_VERSION` and report it in every answer (`model_version` in the proto; `model_versions` in the gateway's reply). | `backend/workers/common/model_registry.py`, `scam_detect.proto` |
 | H.9 Rolling update | `learning.py rollout latest` sets `MODEL_VERSION` on every worker with a newer release, one worker at a time (`rollout v5 --model urgency_en` for just one); Kubernetes starts a new pod, waits until it's ready, then removes an old one (`maxSurge 1, maxUnavailable 0`). `--during-call` keeps a call running through it and reports any failed lines. A version that fails to load never becomes ready, so the old pods keep serving. Every worker pauses 5 s before stopping (`preStop`), so Envoy stops sending it lines before it goes. | `demo/tools/learning.py` |
 | H.10 Rollback | `learning.py rollback` = `kubectl rollout undo` for every worker on a release (`--model` for just one); `kubectl rollout history` shows each revision's model change. | `demo/tools/learning.py` |
+| H.10 Canary | `learning.py canary v5 --model urgency_en`: 1 pod on v5, 3 on the current version, same Deployment (no second Deployment, so no overlapping selectors). Test traffic shows `model_versions` per answer; `canary promote` finishes the update, `canary abort` undoes it. | `demo/tools/learning.py` |
 
 The Chinese workers build their models inside their images, so their first registry version is v2 and the baked
 model counts as v1. The retraining image builds the same baselines to compare against.
@@ -178,14 +179,16 @@ Monitoring (`learning.py monitoring up`, then the 4 `demo_flow.py` calls):
   answers can block a model. In the measured run urgency_en v6 improved every ROC-AUC but got 1 more catch and about 7
   more false alarms on the robocall set (F1 -0.0102), so it was blocked. `--tolerance 0.015` lets it through for one
   run. Whether to accept that trade is a decision for a person, which is why the default wasn't changed.
-- **The bar follows the newest release.** Each release is compared with the one before it, not a fixed baseline, so
-  small drops inside the tolerance can add up over many releases.
+- **The bar follows the newest release, with a floor.** Each release is compared with the newest one in the
+  registry (not necessarily the one running, after a rollback) AND with the model baked into the image, so small
+  drops inside the tolerance can't add up over many releases.
 - **Internal services have no login.** Any pod in the cluster can read the queue or publish a model. The registry
   relies on the Job to run the release check; it doesn't enforce it.
 - **`/v1/report` has no rate limit**, so reports could fill the 1 GiB volume.
-- **No canary.** Running the new version on 1 of 3 pods first would need a second Deployment sharing the
-  Service, which Kubernetes discourages (overlapping selectors). The rolling update + rollback covers the
-  "ship safely" part; a canary is the next step.
+- **Canary is manual.** `learning.py canary v5 --model urgency_en` runs v5 on ONE pod next to 3 old ones (it raises
+  the autoscaler minimum to 3 and holds the rolling update after its first pod with `minReadySeconds`), sends test
+  lines and shows which version answered each and its average score. A person then runs `canary promote` or
+  `canary abort`. Nothing promotes or aborts it automatically.
 - **Labels are human, so they're slow.** Retraining waits for 50 new labelled lines by default.
 
 ## For the report (one paragraph)
