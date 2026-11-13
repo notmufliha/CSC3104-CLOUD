@@ -189,8 +189,8 @@ impl AggregatorService for Aggregator {
             return Err(Status::invalid_argument(format!("ended_by must be one of {:?}", end::ENDED_BY)));
         }
         let lines: Vec<(i64, String)> = req.caller_lines.into_iter().map(|l| (l.seq, l.text)).collect();
-        let ended = end::end_call(&self.store, &self.settings, &self.metrics, call_id, ended_by, &lines,
-                                  req.language.trim(), now_ms())
+        let ended = end::end_call(&self.store, &self.settings, &self.metrics, self.bert.as_ref(), call_id, ended_by,
+                                  &lines, req.language.trim(), now_ms())
             .await
             .map_err(|e| {
                 tracing::error!(call_id, error = %e, "ending the call failed");
