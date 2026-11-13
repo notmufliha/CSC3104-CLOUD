@@ -11,7 +11,8 @@ BERT is not here: it is a 136 MB DistilBERT fine-tuned in a GPU notebook, so it 
 MODELS = {
     "urgency_en": {"signal": "urgency", "language": "en", "python": "sk14", "baked": 4},
     "money_en": {"signal": "money", "language": "en", "python": "sk16", "baked": 2},
-    "impersonation_en": {"signal": "impersonation", "language": "en", "python": "sk16", "baked": 4},
+    # The baked impersonation model is already impersonation_en_v5 (Workstream D's retrain), so releases start at v6.
+    "impersonation_en": {"signal": "impersonation", "language": "en", "python": "sk16", "baked": 5},
     "urgency_zh": {"signal": "urgency", "language": "zh", "python": "sk14", "baked": 1},
     "money_zh": {"signal": "money", "language": "zh", "python": "sk14", "baked": 1},
     "impersonation_zh": {"signal": "impersonation", "language": "zh", "python": "sk14", "baked": 1},

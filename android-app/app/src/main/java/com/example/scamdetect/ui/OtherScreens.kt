@@ -45,6 +45,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,9 +73,7 @@ internal fun Page(title: String, onBack: (() -> Unit)? = null, content: @Composa
             Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row {
-                if (onBack != null) TextButton(onClick = onBack) { Text("‹ Back") }
-            }
+            if (onBack != null) Row { TextButton(onClick = onBack) { Text("‹ Back") } }
             Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
             content()
         }
@@ -89,8 +88,6 @@ fun HomeScreen(
     onNormalCall: () -> Unit,
     onPickScript: () -> Unit,
     onPasteText: () -> Unit,
-    onDashboard: () -> Unit,
-    onSettings: () -> Unit,
 ) {
     Page("ScamGuard") {
         Text("Simulate a call and watch the scam check work live.", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -99,11 +96,6 @@ fun HomeScreen(
         Button(onClick = onNormalCall, modifier = wide) { Text("Simulate normal call") }
         OutlinedButton(onClick = onPickScript, modifier = wide) { Text("Choose a call script…") }
         OutlinedButton(onClick = onPasteText, modifier = wide) { Text("Paste text") }
-        HorizontalDivider()
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = onDashboard) { Text("Dashboard") }
-            TextButton(onClick = onSettings) { Text("Settings") }
-        }
     }
 }
 
@@ -263,9 +255,11 @@ fun SummaryScreen(
 ) {
     val context = LocalContext.current
     // H.3: which button opened the consent screen ("scam" / "fine"), and the result once sent.
-    var asking by remember { mutableStateOf<String?>(null) }
-    var reportResult by remember { mutableStateOf<String?>(null) }
-    var sending by remember { mutableStateOf(false) }
+    // Saveable: rotating the phone must not re-enable the buttons and let one call be reported twice. If the phone
+    // turns while sending, the screen keeps "Sending…" and the buttons stay off rather than offer a second send.
+    var asking by rememberSaveable { mutableStateOf<String?>(null) }
+    var reportResult by rememberSaveable { mutableStateOf<String?>(null) }
+    var sending by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     asking?.let { kind ->
         ConsentDialog(
@@ -391,7 +385,7 @@ fun SettingsScreen(
     currentUrl: String,
     onSave: (String) -> Unit,
     onTest: suspend (String) -> String,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,   // null: opened from the tab bar, so no Back link
     privacyLevel: PrivacyLevel = PrivacyLevel.DEFAULT,
     onPrivacyLevel: (PrivacyLevel) -> Unit = {},
     mobileBertStatus: String = "",

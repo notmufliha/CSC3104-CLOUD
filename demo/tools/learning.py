@@ -11,6 +11,9 @@
                                                                    to the model baked into the image)
     python demo/tools/learning.py rollback [--model urgency_en] [--during-call]   kubectl rollout undo (the last
                                                                    change; no --model = every model on a release)
+    python demo/tools/learning.py canary v5 --model urgency_en [--pods 3]   H.10 canary: 1 pod runs v5 next to the
+                                                                   others, real traffic shows which answers better
+    python demo/tools/learning.py canary promote|abort --model urgency_en   finish the rollout, or undo it
     python demo/tools/learning.py monitoring up|down          Prometheus + Grafana (optional, ~400 MB)
     python demo/tools/learning.py ensure-key                  (used by up.sh/up.ps1) create the review-key Secret
 
@@ -301,6 +304,116 @@ def cmd_rollback(a):
     return rc
 
 
+# ------------------------------------------------------------------------------------------------ H.10 canary
+# One pod runs the new version next to the old ones, on real traffic, until a person promotes or aborts it.
+# How it stops after ONE new pod (no second Deployment, no timing race): minReadySeconds is raised first, so the
+# new pod is Ready (it gets traffic: readiness is what the Service and Envoy use) but not "available" for an hour.
+# With maxUnavailable: 0 the rolling update may not remove an old pod until the new one is available, so it holds
+# at the old pods + 1 new. promote = minReadySeconds back -> the update finishes; abort = rollout undo.
+CANARY_NOTE = "scamguard/canary"
+
+
+def deploy_json(deploy: str) -> dict:
+    return json.loads(kubectl("get", "deploy", deploy, "-n", NS, "-o", "json").stdout)
+
+
+def canary_watch(a, model: str, seconds: int) -> None:
+    """Sends caller lines for `seconds`; counts which version answered each and its average score."""
+    post = gateway(a.url)
+    signal, lang = MODELS[model]["signal"], MODELS[model]["language"]
+    script = SCAM_CALL_ZH if lang == "zh" else SCAM_CALL
+    seen: dict = {}
+    end, i = time.monotonic() + seconds, 0
+    while time.monotonic() < end:
+        i += 1
+        try:
+            # a new call per line, so each line is a fresh request the load balancer can send to any pod
+            r = post("v1/utterance", {"call_id": f"canary-{model}-{int(time.time())}-{i}", "seq": 1,
+                                      "speaker": "caller", "lang": lang, "text": script[i % len(script)]}, timeout=4)
+            v = r.get("model_versions", {}).get(signal)
+            score = (r.get("scores") or {}).get(signal)
+            if v and score is not None:
+                n, total = seen.get(v, (0, 0.0))
+                seen[v] = (n + 1, total + score)
+        except (urllib.error.URLError, OSError, ValueError):
+            n, _ = seen.get("failed", (0, 0.0))
+            seen["failed"] = (n + 1, 0.0)
+        time.sleep(0.2)
+    print(f"\nTraffic during the canary ({seconds}s, {i} lines; every version gets the same scam lines):")
+    for v, (n, total) in sorted(seen.items()):
+        avg = f"   average {signal} score {total / n:.3f}" if n and v != "failed" else ""
+        print(f"  {v:<24} answered {n:>4} lines{avg}")
+
+
+def cmd_canary(a):
+    model, deploy = a.model, deploy_of(a.model)
+    d = deploy_json(deploy)
+    note = (d["metadata"].get("annotations") or {}).get(CANARY_NOTE)
+
+    if a.version in ("promote", "abort"):
+        if not note:
+            sys.exit(f"{deploy} has no canary running.")
+        saved = json.loads(note)
+        if a.version == "abort":
+            print(f"Aborting: {deploy} goes back to {saved['before']}")
+            kubectl("rollout", "undo", f"deployment/{deploy}", "-n", NS)
+        else:
+            print(f"Promoting: every {deploy} pod moves to {saved['version']}, one at a time")
+        kubectl("patch", "deploy", deploy, "-n", NS, "--type=merge", "-p",
+                json.dumps({"spec": {"minReadySeconds": saved["minReadySeconds"]}}))
+        kubectl("rollout", "status", f"deployment/{deploy}", "-n", NS, "--timeout=300s", capture=False)
+        kubectl("patch", "hpa", deploy, "-n", NS, "--type=merge", "-p",
+                json.dumps({"spec": {"minReplicas": saved["minReplicas"]}}))
+        kubectl("annotate", "deploy", deploy, "-n", NS, f"{CANARY_NOTE}-")
+        if a.version == "abort":
+            kubectl("annotate", f"deployment/{deploy}", "-n", NS, "--overwrite",
+                    f"kubernetes.io/change-cause=canary aborted: {model} model back to {saved['before']}")
+        print(f"{deploy} now runs {deployed_version(model)}; autoscaler minimum back to {saved['minReplicas']}.")
+        return 0
+
+    if note:
+        sys.exit(f"{deploy} already has a canary: run 'canary promote' or 'canary abort' first.")
+    have = [m["version"] for m in review_get(f"/models/{model}")]
+    version = have[-1] if a.version == "latest" and have else a.version
+    if version not in have + [baked(model)]:
+        sys.exit(f"{version} is not in the registry for {model} (released: {have or 'none'}).")
+    before = deployed_version(model)
+    hpa = json.loads(kubectl("get", "hpa", deploy, "-n", NS, "-o", "json").stdout)
+    saved = {"version": version, "before": before, "minReplicas": hpa["spec"].get("minReplicas", 1),
+             "minReadySeconds": d["spec"].get("minReadySeconds", 0)}
+    pods = max(a.pods, saved["minReplicas"])
+
+    print(f"1. {deploy}: {pods} pods first (autoscaler minimum {saved['minReplicas']} -> {pods} during the canary)")
+    kubectl("patch", "hpa", deploy, "-n", NS, "--type=merge", "-p", json.dumps({"spec": {"minReplicas": pods}}))
+    if d["spec"].get("replicas", 1) < pods:
+        kubectl("scale", "deploy", deploy, "-n", NS, f"--replicas={pods}")
+    kubectl("rollout", "status", f"deployment/{deploy}", "-n", NS, "--timeout=300s", capture=False)
+
+    print(f"2. Canary: ONE new pod runs {version}; the {pods} others keep {before}")
+    kubectl("annotate", "deploy", deploy, "-n", NS, "--overwrite", f"{CANARY_NOTE}={json.dumps(saved)}",
+            f"kubernetes.io/change-cause=canary: {model} model {before} -> {version}")
+    kubectl("patch", "deploy", deploy, "-n", NS, "--type=merge", "-p", json.dumps({"spec": {"minReadySeconds": 3600}}))
+    kubectl("set", "env", f"deployment/{deploy}", "-n", NS,
+            "MODEL_VERSION-" if version == baked(model) else f"MODEL_VERSION={version}")
+    deadline = time.monotonic() + 240
+    while time.monotonic() < deadline:
+        st = deploy_json(deploy)["status"]
+        if st.get("updatedReplicas", 0) >= 1 and st.get("readyReplicas", 0) >= pods + 1:
+            break
+        time.sleep(2)
+    else:
+        print(f"The canary pod was not ready after 4 minutes: run 'canary abort --model {model}'.")
+        return 1
+    print(kubectl("get", "pods", "-n", NS, "-l", f"app={deploy}", "-o",
+                  "custom-columns=POD:.metadata.name,READY:.status.containerStatuses[0].ready,"
+                  "MODEL_VERSION:.spec.containers[0].env[?(@.name=='MODEL_VERSION')].value").stdout)
+    canary_watch(a, model, a.watch)
+    print(f"\nAbout 1 line in {pods + 1} went to {version}. Then decide:\n"
+          f"  python demo/tools/learning.py canary promote --model {model}   (every pod moves to {version})\n"
+          f"  python demo/tools/learning.py canary abort --model {model}     (back to {before})")
+    return 0
+
+
 def cmd_monitoring(a):
     folder = str(REPO / "demo" / "k8s" / "monitoring")
     if a.action == "down":
@@ -347,6 +460,13 @@ def main() -> int:
     p.add_argument("--during-call", action="store_true")
     p.add_argument("--url", default=DEFAULT_URL)
     p.set_defaults(fn=cmd_rollback)
+    p = sub.add_parser("canary")
+    p.add_argument("version", help="a version such as v5, 'latest', or 'promote' / 'abort' for a running canary")
+    p.add_argument("--model", choices=list(MODELS), required=True)
+    p.add_argument("--pods", type=int, default=3, help="old-version pods that keep serving next to the canary")
+    p.add_argument("--watch", type=int, default=30, help="seconds of test traffic to compare the versions")
+    p.add_argument("--url", default=DEFAULT_URL)
+    p.set_defaults(fn=cmd_canary)
     p = sub.add_parser("monitoring")
     p.add_argument("action", choices=["up", "down"])
     p.set_defaults(fn=cmd_monitoring)

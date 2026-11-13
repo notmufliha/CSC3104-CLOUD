@@ -50,7 +50,10 @@ store = Store(os.environ.get("REVIEW_DATA_DIR", "/data"), KEY.encode(),
               int(os.environ.get("REVIEW_RETENTION_DAYS", "30")))
 NAME_RE = re.compile(r"^[a-z]+_(en|zh)(_phone)?$")   # _phone: the on-device model (Workstream G.10)
 VERSION_RE = re.compile(r"^v\d{1,4}$")
-reports_received = {"scam": 0, "fine": 0}
+# (kind, what the app showed) -> count. app_verdict lets a dashboard see MISSED scams with no text at all:
+# "This was a scam" reports on calls the app called SAFE (gap review, H.2).
+APP_VERDICTS = ("SAFE", "UNSURE", "SCAM", "NOT CHECKED")
+reports_received = {(k, v): 0 for k in ("scam", "fine") for v in APP_VERDICTS + ("other",)}
 
 app = FastAPI(title="ScamGuard review service", docs_url=None, redoc_url=None)
 
@@ -92,7 +95,8 @@ def add_report(r: Report):
         raise HTTPException(400, "consent is required: nothing was stored")
     lines = [(l.seq, mask(l.text)) for l in r.lines]
     out = store.add_report(r.kind, r.app_verdict, r.language, lines, r.consent_version)
-    reports_received[r.kind] += 1
+    shown = r.app_verdict.strip().upper()
+    reports_received[(r.kind, shown if shown in APP_VERDICTS else "other")] += 1
     log.info("report %s stored: kind=%s lines=%d language=%s", out["report_id"], r.kind, len(lines), r.language)
     return out
 
@@ -235,7 +239,8 @@ def metrics():
     s = store.stats()
     out = ["# HELP review_reports_received_total Reports received since this pod started.",
            "# TYPE review_reports_received_total counter"]
-    out += [f'review_reports_received_total{{kind="{k}"}} {v}' for k, v in reports_received.items()]
+    out += [f'review_reports_received_total{{kind="{k}",app_verdict="{a}"}} {v}'
+            for (k, a), v in reports_received.items()]
     out += ["# HELP review_reports_stored Reports currently in the queue (before the 30-day deletion).",
             "# TYPE review_reports_stored gauge"]
     out += [f'review_reports_stored{{kind="{k}"}} {v}' for k, v in s["reports"].items()]

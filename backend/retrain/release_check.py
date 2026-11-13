@@ -9,6 +9,10 @@ The candidate must still recognise them (recall at its own threshold).
 
 PASS = on every check, the candidate is at least the current model's score minus TOLERANCE.
 TOLERANCE (default 0.005) only absorbs rounding-level noise from retraining; a real drop still fails.
+
+Floor: once a released version is the current one, the candidate is ALSO checked against the model baked into the
+worker image. Otherwise each release could lose up to TOLERANCE against the one before, and ten releases could
+quietly lose 10 x TOLERANCE against the model the team actually tested.
 """
 import pandas as pd
 from sklearn.metrics import f1_score, recall_score, roc_auc_score
@@ -32,7 +36,9 @@ def learned_recall(adapter, model, threshold: float, learned: list) -> float:
     return round(float((p >= threshold).mean()), 4)
 
 
-def compare(adapter, current, current_threshold, candidate, candidate_threshold, tolerance: float, learned=()) -> dict:
+def compare(adapter, current, current_threshold, candidate, candidate_threshold, tolerance: float, learned=(),
+            floor=None) -> dict:
+    """floor = (label, model, threshold) of the baked model, when the current model is a later release."""
     cur, cand = evaluate(adapter, current, current_threshold), evaluate(adapter, candidate, candidate_threshold)
     checks = []
 
@@ -43,6 +49,12 @@ def compare(adapter, current, current_threshold, candidate, candidate_threshold,
     for name in cur:
         for metric in ("roc_auc", "f1"):
             check(name, metric, cur[name][metric], cand[name][metric])
+    if floor is not None:
+        label, base_model, base_threshold = floor
+        base = evaluate(adapter, base_model, base_threshold)
+        for name in base:
+            for metric in ("roc_auc", "f1"):
+                check(f"{name} vs {label}", metric, base[name][metric], cand[name][metric])
     if learned:
         learned = list(learned)
         check(f"learned ({len(learned)} lines)", "recall", learned_recall(adapter, current, current_threshold, learned),
@@ -53,8 +65,8 @@ def compare(adapter, current, current_threshold, candidate, candidate_threshold,
 
 def print_table(result: dict, current_version: str, candidate_version: str) -> None:
     print(f"\nRelease check: {candidate_version} vs {current_version} (tolerance {result['tolerance']})")
-    print(f"{'test set':<22}{'metric':<9}{current_version:>10}{candidate_version:>12}   result")
+    print(f"{'test set':<28}{'metric':<9}{current_version:>10}{candidate_version:>12}   result")
     for c in result["checks"]:
-        print(f"{c['set']:<22}{c['metric']:<9}{c['current']:>10.4f}{c['candidate']:>12.4f}   "
+        print(f"{c['set']:<28}{c['metric']:<9}{c['current']:>10.4f}{c['candidate']:>12.4f}   "
               f"{'ok' if c['pass'] else 'BELOW BAR'}")
     print(f"=> {'PASS' if result['pass'] else 'BLOCKED'}\n")

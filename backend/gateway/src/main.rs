@@ -260,6 +260,7 @@ async fn aggregate(
                 fast_score: r.fast_score,
                 bert_score: r.bert_score,
                 bert_status: r.bert_status,
+                bert_model_version: r.bert_model_version,
                 call_ended: r.call_ended,
             })
         }
@@ -364,7 +365,7 @@ async fn utterance(state: web::Data<AppState>, body: web::Json<UtteranceRequest>
     let results = fan_out(&state, &call_id, lang, &req.text).await;
     let arrived: Vec<(&'static str, f32)> = results.iter().filter_map(|(s, p, _)| p.map(|p| (*s, p))).collect();
     let missing: Vec<&'static str> = results.iter().filter(|(_, p, _)| p.is_none()).map(|(s, _, _)| *s).collect();
-    let model_versions: BTreeMap<&'static str, String> =
+    let mut model_versions: BTreeMap<&'static str, String> =
         results.iter().filter(|(_, _, v)| !v.is_empty()).map(|(s, _, v)| (*s, v.clone())).collect();
 
     if arrived.is_empty() {
@@ -393,6 +394,9 @@ async fn utterance(state: web::Data<AppState>, body: web::Json<UtteranceRequest>
     state.calls.push_context(&call_id, &req.text, n);
     state.calls.set_answer(&call_id, answer.clone());
 
+    if !answer.bert_model_version.is_empty() {
+        model_versions.insert("bert", answer.bert_model_version.clone());
+    }
     let latency_ms = start.elapsed().as_millis() as u64;
     tracing::info!(target: "timing", stage = "request", call_id = %call_id, seq, lang, ms = latency_ms,
                    verdict = %answer.verdict, missing = missing.len());

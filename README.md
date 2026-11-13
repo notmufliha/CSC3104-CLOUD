@@ -27,9 +27,11 @@ Needs: Docker Desktop (8 GB memory for Docker is enough), Python 3.10+ for the h
 ```bash
 docker compose up -d --build            # gateway, aggregator, Redis, 6 workers, BERT, review, model-service, edge
 docker compose ps                       # wait until everything is Up
-python tools/gateway_test.py --no-stop  # end-to-end check: scam line -> SCAM, calm line -> SAFE
+python tools/gateway_test.py --no-stop  # end-to-end check: scam line -> warning, calm line -> SAFE
 python tools/testing/replay.py --only scam_en_11 --caller-only   # replay one scripted call, line by line
 ```
+- **The app in a browser: http://127.0.0.1:8088/** (web/: the Android app's cloud mode, no install needed;
+  Android Studio is only needed for the Android app and its on-device privacy levels).
 - The phone/emulator address is the **edge** (same job as the Kubernetes Ingress): `http://<laptop IP>:8088/api/`
   (emulator: `http://10.0.2.2:8088/api/`). `/models` and `/fl` (on-device model downloads and training uploads)
   are on the same address.
@@ -43,7 +45,8 @@ python tools/testing/replay.py --only scam_en_11 --caller-only   # replay one sc
 
 ```powershell
 demo\up.ps1        # builds 11 images, starts minikube, deploys everything to namespace scamguard (bash: demo/up.sh)
-demo\expose.ps1    # prints the phone's HTTPS address, https://<laptop IP>:8443/api/ (leave it running)
+demo\expose.ps1    # prints the phone's HTTPS address, https://<laptop IP>:8443/api/ (leave it running);
+                   # the web app is then at https://127.0.0.1:8443/
 python demo\tools\demo_flow.py      # reference run: 4 calls through the live cluster, verdict per line
 python demo\tools\load_sim.py       # load test; then demo\spread.ps1 shows the even spread over pods
 demo\watch.ps1                      # live pods + autoscalers; demo\chaos.ps1 kills pods during calls
@@ -55,9 +58,13 @@ Details: [demo/README.md](demo/README.md) (demo script, expected output, trouble
 [backend/federated/README.md](backend/federated/README.md) (federated learning, phone steps).
 On an 8 GB laptop `up.ps1` picks a "lite" profile automatically; always add `--make-room` to federated runs.
 
-### C. The Android app
+### C. The app (browser or Android)
 
-Open `android-app/` in Android Studio and press **Run** (a debug build). In the app: **Settings** -> paste the
+**Browser:** open http://127.0.0.1:8088/ (compose) or https://127.0.0.1:8443/ (Kubernetes with `expose`). Same
+screens as the Android app (Home / Dashboard / Settings tabs, live risk bar, warning, summary, report with consent,
+dashboard chart); calls are checked by the server (privacy level 1). History stays in the browser.
+
+**Android:** open `android-app/` in Android Studio and press **Run** (a debug build). In the app: **Settings** -> paste the
 address from A or B -> **Save** -> **Test connection** ("Connected: ok"). Debug builds already trust the
 laptop's demo HTTPS certificate (`demo/tls/ca.crt`, built in at build time), so nothing needs installing on the
 phone. Then **Home -> Choose a call script…**: `Bank OTP` / `Gov official` go red; `Clinic appointment` stays

@@ -180,8 +180,8 @@ data:
         {
           "id": 5,
           "type": "timeseries",
-          "title": "Verdict share per caller line",
-          "description": "Per line until Workstream B adds an end-of-call event; then per call.",
+          "title": "Verdict share per call (final verdict)",
+          "description": "Calls: the share of calls that ended SAFE / UNSURE / SCAM in the last hour. Lines: per caller line.",
           "gridPos": {
             "x": 0,
             "y": 5,
@@ -195,8 +195,17 @@ data:
           "targets": [
             {
               "refId": "A",
+              "expr": "sum by (verdict) (increase(scamguard_calls_final_total[1h])) / ignoring(verdict) group_left sum(increase(scamguard_calls_final_total[1h]))",
+              "legendFormat": "{{verdict}} (calls)",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              }
+            },
+            {
+              "refId": "B",
               "expr": "sum by (verdict) (rate(scamguard_lines_total[5m])) / ignoring(verdict) group_left sum(rate(scamguard_lines_total[5m]))",
-              "legendFormat": "{{verdict}}",
+              "legendFormat": "{{verdict}} (lines)",
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
@@ -209,10 +218,10 @@ data:
               "max": 1,
               "min": 0,
               "custom": {
-                "fillOpacity": 20,
+                "fillOpacity": 0,
                 "lineWidth": 2,
                 "stacking": {
-                  "mode": "normal"
+                  "mode": "none"
                 }
               }
             },
@@ -253,7 +262,7 @@ data:
             {
               "refId": "B",
               "expr": "avg_over_time(scamguard:unsure_share:short[1d] offset 1h)",
-              "legendFormat": "usual (1 day before)",
+              "legendFormat": "usual (1d before)",
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
@@ -309,6 +318,15 @@ data:
             },
             {
               "refId": "B",
+              "expr": "avg_over_time(scamguard:disagreement_rate:short[1d] offset 1h)",
+              "legendFormat": "usual (1d before)",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              }
+            },
+            {
+              "refId": "C",
               "expr": "sum by (direction) (rate(scamguard_disagreements_total[5m])) * 60",
               "legendFormat": "{{direction}} per min",
               "datasource": {
@@ -469,6 +487,61 @@ data:
               "refId": "C",
               "expr": "sum(review_labels_disputed)",
               "legendFormat": "disputed by a spot check",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "fillOpacity": 0,
+                "lineWidth": 2,
+                "stacking": {
+                  "mode": "none"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          }
+        },
+        {
+          "id": 11,
+          "type": "timeseries",
+          "title": "Missed scams reported by users",
+          "description": "\"This was a scam\" reports on calls the app did not turn red. A rising count is a new-scam signal that needs no text.",
+          "gridPos": {
+            "x": 0,
+            "y": 29,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(review_reports_received_total{kind=\"scam\",app_verdict=\"SAFE\"})",
+              "legendFormat": "app said SAFE",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              }
+            },
+            {
+              "refId": "B",
+              "expr": "sum(review_reports_received_total{kind=\"scam\",app_verdict=\"UNSURE\"})",
+              "legendFormat": "app said UNSURE",
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"

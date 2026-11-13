@@ -59,6 +59,8 @@ pub struct SecondOpinion<'a> {
     language: String,
     min_lines: usize,
     answer: Option<(Option<f32>, &'static str)>,
+    /// H.8: the model version BERT reported with its answer (empty if it did not answer).
+    version: String,
     pub ms: u64,
 }
 
@@ -81,7 +83,15 @@ impl<'a> SecondOpinion<'a> {
             })
             .filter(|l| !l.trim().is_empty())
             .collect();
-        SecondOpinion { client, lines, language: language.to_string(), min_lines: MIN_LINES, answer: None, ms: 0 }
+        SecondOpinion {
+            client,
+            lines,
+            language: language.to_string(),
+            min_lines: MIN_LINES,
+            answer: None,
+            version: String::new(),
+            ms: 0,
+        }
     }
 
     /// Fewest lines BERT is asked about. Only AGG_MODE=bert_only lowers it (to 1): with no workers to fall back
@@ -110,8 +120,10 @@ impl<'a> SecondOpinion<'a> {
                 self.ms = start.elapsed().as_millis() as u64;
                 match result {
                     Ok(Ok(reply)) => {
-                        let s = reply.into_inner().score;
+                        let reply = reply.into_inner();
+                        let s = reply.score;
                         if s.is_finite() {
+                            self.version = reply.model_version;
                             (Some(s.clamp(0.0, 1.0)), "ok")
                         } else {
                             (None, "error")
@@ -124,6 +136,11 @@ impl<'a> SecondOpinion<'a> {
         };
         self.answer = Some((score, status));
         score
+    }
+
+    /// BERT's model version when it answered, else "".
+    pub fn version(&self) -> &str {
+        &self.version
     }
 
     /// "ok" | "timeout" | "error" | "no_context" | "off" once asked; "skipped" if never asked ("off" if BERT

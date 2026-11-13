@@ -122,6 +122,8 @@ message AggregateResponse {
   // Workstream B.6: the call has already ended. This line was NOT scored or stored; the other fields are empty.
   // (14, not 12: Workstream A took 12 and 13 for live_alert / final_verdict.)
   bool call_ended = 14;
+  // H.8: BERT's model version when it answered this line (bert_status "ok"); empty otherwise.
+  string bert_model_version = 15;
 }
 
 // Workstream B: one caller line sent with the end message, for the end-of-call review. Passed through and

@@ -60,9 +60,12 @@ check("three scores, none missing", len([v for v in r.get("scores", {}).values()
 check("has a verdict", r.get("verdict") in ("SAFE", "UNSURE", "SCAM"), r.get("verdict"))
 check("aggregator fields present (reasons, action, warming_up, quorum_met, recent_scores)",
       all(k in r for k in ("reasons", "action", "warming_up", "quorum_met", "recent_scores")), str(list(r)))
-check("police + OTP line: SCAM with reasons and an action",
-      r.get("verdict") == "SCAM" and bool(r.get("reasons")) and bool(r.get("action")),
-      json.dumps(r.get("reasons"))[:120])
+# The aggregator's warm-up rule: the first caller lines of a call can warn (UNSURE) but not yet say SCAM, so one
+# alarming opening line can't turn a call red on its own. After warm-up the same line is SCAM.
+check("police + OTP line: a warning (UNSURE while warming up, else SCAM) with reasons and an action",
+      (r.get("verdict") == "SCAM" or (r.get("warming_up") and r.get("verdict") == "UNSURE"))
+      and bool(r.get("reasons")) and bool(r.get("action")),
+      f"{r.get('verdict')} warming_up={r.get('warming_up')} " + json.dumps(r.get("reasons"))[:100])
 first_verdict = r.get("verdict")
 
 print("\n2.2  receiver line -> last verdict, no workers called")
