@@ -560,14 +560,24 @@ spec:
           lifecycle:
             preStop:
               exec: {{ command: ["sleep", "5"] }}
-{resources_block(requests, limits, "          ")}          readinessProbe:
+{resources_block(requests, limits, "          ")}          # A pod that the HPA starts under heavy load loads its model slowly (CPU limit + a busy node). Measured
+          # 2026-11-14: without a startupProbe the 1 s liveness check killed such pods 3-4 times in a row (exit 137),
+          # so they never helped and their restarts kept the HPA scaled up. The startupProbe gives a new pod up to
+          # 2 minutes to answer before liveness starts; the probes also get a 3 s timeout instead of the 1 s default.
+          startupProbe:
             grpc: {{ port: 50051 }}
-            initialDelaySeconds: 3
             periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 24
+          readinessProbe:
+            grpc: {{ port: 50051 }}
+            periodSeconds: 5
+            timeoutSeconds: 3
           livenessProbe:
             grpc: {{ port: 50051 }}
-            initialDelaySeconds: 10
             periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
 ---
 # Headless: Envoy's cluster for this worker needs every pod IP (see make_envoy_config.py).
 apiVersion: v1
