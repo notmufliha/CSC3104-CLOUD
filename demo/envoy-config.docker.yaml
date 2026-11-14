@@ -444,12 +444,13 @@ static_resources:
             - endpoint:
                 address:
                   socket_address: { address: aggregator, port_value: 50052 }
+                health_check_config: { port_value: 8082 }
     health_checks:
       - timeout: 1s
         interval: 2s
         healthy_threshold: 1
         unhealthy_threshold: 2
-        grpc_health_check: {}
+        http_health_check: { path: /health }
     outlier_detection:
       consecutive_5xx: 2
       consecutive_gateway_failure: 2
