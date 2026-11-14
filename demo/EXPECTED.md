@@ -1,3 +1,5 @@
+> Measured 2026-10-26 on the older build. Newer results are in demo/FINAL_RESULTS.md.
+
 # EXPECTED.md — measured results, not assumptions
 
 Every number below came from an actual command run against actual code in this session, on 2026-10-26.
