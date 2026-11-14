@@ -80,7 +80,9 @@ AGGREGATOR_LIMITS = {"cpu": "500m", "memory": "256Mi"}
 GATEWAY_REQUESTS = {"cpu": "100m", "memory": "128Mi"}
 GATEWAY_LIMITS = {"cpu": "500m", "memory": "256Mi"}
 REDIS_REQUESTS = {"cpu": "50m", "memory": "32Mi"}
-REDIS_LIMITS = {"cpu": "250m", "memory": "128Mi"}
+# Redis CPU limit raised from 250m (2026-11-14): at 40 simulated users (~48 req/s) Redis was CPU-throttled
+# (cgroup: 899 of 7008 periods throttled) and the aggregator got "redis: timed out" on 2-4% of lines.
+REDIS_LIMITS = {"cpu": "1", "memory": "128Mi"}
 ENVOY_REQUESTS = {"cpu": "100m", "memory": "64Mi"}
 ENVOY_LIMITS = {"cpu": "500m", "memory": "256Mi"}
 
