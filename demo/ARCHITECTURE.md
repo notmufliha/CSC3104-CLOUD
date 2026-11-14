@@ -1,8 +1,8 @@
 # ScamGuard demo architecture
 
 This describes the Kubernetes demo in `demo/`, built on top of the existing `docker-compose.yml` stack
-(10 containers: redis, bert, aggregator, gateway, 6 workers — unchanged, still the known-good baseline for
-local dev and for Phase-1 Android-emulator testing). Everything below is new. **Kafka is not used anywhere
+(13 containers: redis, bert, aggregator, gateway, 6 workers, review, model-service, edge, plus 3 more with the
+`federated` profile — unchanged, still the known-good baseline for local dev and for Phase-1 Android-emulator testing). Everything below is new. **Kafka is not used anywhere
 in this repo** — if a diagram or slide shows Kafka, it is wrong; remove it.
 
 ## Components, ports, who calls whom
@@ -27,7 +27,7 @@ Android app (emulator/phone)   saved address: https://<laptop IP>:8443/api/  (de
    :50065 money-zh        -> money-zh-hl                :50051  x1-4 pods (HPA)
    :50066 impersonation-zh-> impersonation-zh-hl        :50051  x1-4 pods (HPA)
    :50067 aggregator      -> aggregator-hl   (headless) :50052  x2 pods
-   :50068 bert            -> bert-hl         (headless) :50051  x1-2 pods (HPA)
+   :50068 bert            -> bert-hl         (headless) :50051  x2-4 pods (HPA, min 2: losing one pod keeps BERT up)
    :9901  admin (stats, health, /clusters)
 
   aggregator  --gRPC, through Envoy :50068--> bert (second opinion, cascade only)
@@ -53,7 +53,8 @@ The fix needs no change to gateway/aggregator/worker code: put **Envoy** in fron
 service as a request-level load balancer, and give each such service a **headless Service**
 (`clusterIP: None`) so Envoy's own DNS resolution (`STRICT_DNS`, refreshed every 2s) sees every pod's IP
 individually, not one virtual IP. Envoy then round-robins **per request**, actively health-checks each
-pod over gRPC every 2s, and ejects a pod that starts erroring (`outlier_detection`). Measured effect on an
+pod every 2s (workers and BERT over gRPC; the aggregator over HTTP `GET /health` on :8082, because it has no
+gRPC health service), and ejects a pod that starts erroring (`outlier_detection`). Measured effect on an
 earlier version of this code with the same fix: 491/491/492 requests spread evenly across 3 pods; killing
 one pod mid-load produced 0 errors and 0 missing scores. **Re-measured on this version of the code in this
 session** — see `demo/EXPECTED.md` for the real numbers (an aggregator 458/459 split, an impersonation-en

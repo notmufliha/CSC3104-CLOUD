@@ -152,7 +152,7 @@ EC2 t3.large with an Elastic IP and a DNS name such as `scamguard.example.org`):
 
 1. `curl -sfL https://get.k3s.io | sh -s - --disable traefik`, then install ingress-nginx with its
    standard manifest (the Service becomes a LoadBalancer on the VM's own IP, ports 80/443).
-2. Build and push the 9 images to a registry (or `k3s ctr images import`), then `kubectl apply -f demo/k8s/`.
+2. Build and push the 11 images to a registry (or `k3s ctr images import`), then `kubectl apply -f demo/k8s/`.
 3. Replace the self-signed certificate with **Let's Encrypt** through cert-manager (an `ACME` Issuer and
    a `cert-manager.io/cluster-issuer` annotation on the Ingress). Phones trust it out of the box, so no CA
    install is needed and release builds work too.

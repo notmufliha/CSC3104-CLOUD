@@ -36,7 +36,7 @@ hand — just try running `up.sh`/`up.ps1` and follow what it says.
 `up.sh`/`up.ps1` look at what Docker itself reports (`docker info`) and pick sensible minikube/HPA settings
 automatically — you don't need to compute anything. Rough guide:
 
-- **Comfortable**: 6+ CPUs, 10+ GiB → full settings (HPA up to 4 replicas, BERT up to 2).
+- **Comfortable**: 6+ CPUs, 10+ GiB → full settings (HPA up to 4 replicas, BERT 2 to 4).
 - **Small laptop**: under 6 CPUs or under 10 GiB → the script switches to a "lite" profile on its own
   (HPA up to 2, BERT stays at 1, aggregator stays at 1 replica, fewer simulated load-test users) and tells
   you it did this.
@@ -59,7 +59,7 @@ automatically — you don't need to compute anything. Rough guide:
 .\demo\up.ps1          # Windows PowerShell
 ```
 
-This builds all 9 images (gateway, aggregator, 6 workers, BERT), starts minikube, loads the images into
+This builds all 11 images (gateway, aggregator, 6 workers, BERT, review, retrain), starts minikube, loads the images into
 it, and deploys everything. **The BERT image needs internet** (it downloads the real trained model from
 Hugging Face at build time — nothing to set up by hand, see `demo/ARCHITECTURE.md`). If that download
 fails (blocked network, Hugging Face down), the script tells you and gives options — see the
