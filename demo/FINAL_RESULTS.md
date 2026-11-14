@@ -22,16 +22,15 @@ Commits teammates added since 12 Nov (`git log --oneline dbd4d65..origin/main`, 
 Nothing under `backend/workers/impersonation_en` or `data/impersonation_en` was changed by teammates.
 Mufliha's `make_manifests.py` change (the web Deployment, Ingress path `/`) did not break anything I tested.
 
-My commits on `shreya-final2` (on top of origin/main 6028c6b), oldest first:
+My commits (on top of origin/main 6028c6b), oldest first. The F4 rename commit was dropped at your request:
 
 | hash | subject | files |
 |---|---|---|
 | 8235c27 | Envoy: health-check the aggregator over HTTP /health, not gRPC (F1) | demo/make_envoy_config.py, demo/k8s/_generated/envoy-config.yaml, demo/envoy-config.docker.yaml, demo/k8s/02-envoy-configmap.yaml |
 | ecdd7fb | k8s: add AGG_MODE and AGG_MONEY_RULE_LINES to the aggregator manifest (F3a) | demo/make_manifests.py, demo/k8s/04-aggregator.yaml |
-| 8fc6eb4 | impersonation_en: rename gold_human.csv to gold_external_ai.csv (F4) | data/impersonation_en/gold_external_ai.csv (renamed), data/impersonation_en/LABELING.md, backend/workers/impersonation_en/model_card.json, .../model/versions/impersonation_en_v4.card.json, .../training_outputs/COMPARISON.md |
-| b5ecdc0 | docs: fix stale facts (F5) | README.md, demo/ARCHITECTURE.md, demo/README.md, demo/STABLE_ADDRESS.md, demo/EXPECTED.md |
-| 16d0d4a | k8s: startup probe for the six workers so pods started under load are not killed while loading (new, found in T2) | demo/make_manifests.py, demo/k8s/06a..06f-worker-*.yaml, demo/k8s/loadgen/loadgen.yaml (regenerated) |
-| 185f46c | k8s: raise the Redis CPU limit from 250m to 1 (new, found in T2) | demo/make_manifests.py, demo/k8s/01-redis.yaml |
+| 3f1ad6e | docs: fix stale facts (F5) | README.md, demo/ARCHITECTURE.md, demo/README.md, demo/STABLE_ADDRESS.md, demo/EXPECTED.md |
+| b366fd0 | k8s: startup probe for the six workers so pods started under load are not killed while loading (new, found in T2) | demo/make_manifests.py, demo/k8s/06a..06f-worker-*.yaml, demo/k8s/loadgen/loadgen.yaml (regenerated) |
+| b4be391 | k8s: raise the Redis CPU limit from 250m to 1 (new, found in T2) | demo/make_manifests.py, demo/k8s/01-redis.yaml |
 | (this file) | demo/FINAL_RESULTS.md | |
 
 No AI signature in any commit (a local commit-msg hook refuses them). Nothing was pushed until the end; see the
@@ -84,13 +83,11 @@ kubeconform (`-strict -summary -ignore-missing-schemas demo/k8s/*.yaml`): 43 res
 plus `federated/ monitoring/ loadgen/`: 21 resources, all valid (05:10 UTC). The 12 Nov count of 58 grew because
 Mufliha added `11-web.yaml` (6 objects).
 
-### F4 (P1) Rename gold_human.csv: done (rename, not the fallback)
-`git mv data/impersonation_en/gold_human.csv data/impersonation_en/gold_external_ai.csv`; 15 path references updated
-in `model_card.json`, `model/versions/impersonation_en_v4.card.json` and `training_outputs/COMPARISON.md`. JSON keys
-`gold_human_metrics` unchanged. Note added at the top of `LABELING.md`. No other file type referenced the name.
-Verify (`python evaluate_gold.py` in backend/workers/impersonation_en, host Python 3.13 with scikit-learn 1.6.1,
-05:14 UTC): gold_test.csv 622 rows: precision 0.970, recall 0.888, F1 0.927, ROC-AUC 0.988. gold_external_ai.csv
-96 rows: precision 0.958, recall 0.958, F1 0.958, ROC-AUC 0.993. Same as before the rename.
+### F4 (P1) Rename gold_human.csv: not done (rename was reverted at your request)
+The rename was made, then removed from history again; `data/impersonation_en/gold_human.csv` keeps its name
+and no note was added to `LABELING.md`. The two `evaluate_gold.py` runs I did while the rename was in place
+(host Python 3.13, scikit-learn 1.6.1, 05:14 UTC) gave gold_test.csv 622 rows F1 0.927, ROC-AUC 0.988 and the 96-row
+file F1 0.958, ROC-AUC 0.993. The file contents did not change, so those numbers are the same under the old name.
 
 ### F5 (P2) Stale statements: done
 - `demo/ARCHITECTURE.md`: compose "10 containers" to 13 (+3 with the federated profile); BERT "x1-2 pods" to
