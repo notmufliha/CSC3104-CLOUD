@@ -104,14 +104,14 @@ file F1 0.958, ROC-AUC 0.993. The file contents did not change, so those numbers
   doc mentions it), "checks every pod's health" for the aggregator (no such sentence).
 
 ### New fixes found during T2 (not in FIX_AND_TEST.md, both in my files)
-- Worker startup probe (16d0d4a). During the first 40-user run the HPA started new worker pods, which failed the 1 s
+- Worker startup probe (b366fd0). During the first 40-user run the HPA started new worker pods, which failed the 1 s
   gRPC liveness check while still loading their model (busy node, 500m CPU limit) and were killed with exit 137,
   restarting 3 to 4 times each (`kubectl get pods`: RESTARTS 3-4; `describe pod`: "Liveness probe failed: timeout:
   failed to connect service ... within 1s", "Container money-zh failed liveness probe, will be restarted"). Their
   restart CPU kept the HPA scaled up for minutes with no load. Fix: startupProbe (gRPC, every 5 s, up to 24 tries = 2
   minutes) before liveness starts, and `timeoutSeconds: 3` on all three probes. After the fix: 0 restarts in the next
   two heavy runs and two kill tests.
-- Redis CPU limit 250m to 1 (185f46c). In heavy runs 1 and 2 the aggregator logged `call memory update failed
+- Redis CPU limit 250m to 1 (b4be391). In heavy runs 1 and 2 the aggregator logged `call memory update failed
   error=redis: timed out` (137 and 84 lines) and the gateway returned 502 for those lines, all in the last 10 s of
   the run. Redis's cgroup `cpu.stat` showed 899 of 7008 periods throttled (86 s). After the fix heavy run 3 had 0
   errors and no throttling.
