@@ -99,6 +99,8 @@ if DEMO_LITE:
 
 # ---- Aggregator tunables (AGG_*), copied verbatim from docker-compose.yml's defaults ------------------
 AGG_ENV = {
+    # fast | bert_only | cascade (Workstream F). Switch live: kubectl -n scamguard set env deploy/aggregator AGG_MODE=fast
+    "AGG_MODE": "cascade",
     "AGG_W_URGENCY": "0.3333",
     "AGG_W_MONEY": "0.3333",
     "AGG_W_IMPERSONATION": "0.3333",
@@ -114,6 +116,8 @@ AGG_ENV = {
     "AGG_SCAM_STREAK": "2",
     "AGG_MONEY_RULE": "0.7",
     "AGG_MONEY_RULE_OTHER": "0.5",
+    # money and the other signal must both be within this many recent caller lines (6 = whole window, 1 = same line)
+    "AGG_MONEY_RULE_LINES": "6",
     "AGG_REASON_THRESHOLD": "0.5",
     "AGG_MIN_QUORUM": "2",
     "AGG_CALL_TTL_SECS": "3600",

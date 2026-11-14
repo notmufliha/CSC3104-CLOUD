@@ -28,6 +28,8 @@ spec:
               value: "0.0.0.0:8082"
             - name: REDIS_URL
               value: "redis://redis:6379"
+            - name: AGG_MODE
+              value: "cascade"
             - name: AGG_W_URGENCY
               value: "0.3333"
             - name: AGG_W_MONEY
@@ -58,6 +60,8 @@ spec:
               value: "0.7"
             - name: AGG_MONEY_RULE_OTHER
               value: "0.5"
+            - name: AGG_MONEY_RULE_LINES
+              value: "6"
             - name: AGG_REASON_THRESHOLD
               value: "0.5"
             - name: AGG_MIN_QUORUM
