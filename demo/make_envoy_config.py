@@ -46,6 +46,10 @@ ADMIN_PORT = 9901
 # Every scalable service's own gRPC port (what the pod itself listens on -- unchanged by Envoy).
 WORKER_UPSTREAM_PORT = 50051
 AGGREGATOR_UPSTREAM_PORT = 50052
+# The aggregator's small HTTP server (AGGREGATOR_HTTP_ADDR in docker-compose.yml). Envoy health-checks the
+# aggregator here with GET /health, because the aggregator does NOT serve the grpc.health.v1 service: a gRPC
+# health check gets UNIMPLEMENTED, Envoy marks both aggregator pods failed_active_hc and falls into panic mode.
+AGGREGATOR_HTTP_PORT = 8082
 BERT_UPSTREAM_PORT = 50051
 
 # Gateway's WORKER_TIMEOUT_MS / aggregator's AGGREGATOR_TIMEOUT_MS / BERT_TIMEOUT_MS from docker-compose.yml.
@@ -63,6 +67,7 @@ ENVOY_TIMEOUT_MARGIN_MS = 200  # how far above the caller's own timeout Envoy's 
 
 # Active health checks: how Envoy itself decides a pod is ready to receive traffic (independent of
 # Kubernetes readiness, since Envoy's own DNS cache / connection pool needs its own view).
+# Workers and BERT: gRPC health check. Aggregator: HTTP GET /health on port 8082 (see AGGREGATOR_HTTP_PORT).
 HEALTH_CHECK_INTERVAL_S = 2
 HEALTHY_THRESHOLD = 1      # 1 good check -> back in rotation (fast recovery for the demo)
 UNHEALTHY_THRESHOLD = 2    # 2 bad checks -> taken out of rotation
@@ -93,7 +98,29 @@ def route_timeout_s(caller_timeout_ms: int) -> str:
     return f"{(caller_timeout_ms + ENVOY_TIMEOUT_MARGIN_MS) / 1000:.2f}s"
 
 
-def cluster_yaml(name: str, host: str, port: int) -> str:
+def health_check_yaml(health: str) -> str:
+    """The one health_checks entry for a cluster. 'grpc' = the standard grpc.health.v1 check (the six workers
+    and BERT serve it). 'http' = GET /health on the aggregator's HTTP port (the aggregator has no gRPC health
+    service, so a gRPC check would always fail with UNIMPLEMENTED)."""
+    if health == "http":
+        check = "http_health_check: { path: /health }"
+    else:
+        check = "grpc_health_check: {}"
+    return f"""    health_checks:
+      - timeout: 1s
+        interval: {HEALTH_CHECK_INTERVAL_S}s
+        healthy_threshold: {HEALTHY_THRESHOLD}
+        unhealthy_threshold: {UNHEALTHY_THRESHOLD}
+        {check}
+"""
+
+
+def cluster_yaml(name: str, host: str, port: int, health: str = "grpc", health_port: int = 0) -> str:
+    # health_port: when the health check must go to a different port than the traffic (the aggregator:
+    # gRPC on 50052, HTTP /health on 8082), Envoy needs health_check_config on the endpoint.
+    hc_port = ""
+    if health_port:
+        hc_port = "\n                health_check_config: { port_value: %d }" % health_port
     return f"""  - name: {name}
     connect_timeout: 0.25s
     type: STRICT_DNS
@@ -111,14 +138,8 @@ def cluster_yaml(name: str, host: str, port: int) -> str:
         - lb_endpoints:
             - endpoint:
                 address:
-                  socket_address: {{ address: {host}, port_value: {port} }}
-    health_checks:
-      - timeout: 1s
-        interval: {HEALTH_CHECK_INTERVAL_S}s
-        healthy_threshold: {HEALTHY_THRESHOLD}
-        unhealthy_threshold: {UNHEALTHY_THRESHOLD}
-        grpc_health_check: {{}}
-    outlier_detection:
+                  socket_address: {{ address: {host}, port_value: {port} }}{hc_port}
+{health_check_yaml(health)}    outlier_detection:
       consecutive_5xx: {CONSECUTIVE_5XX}
       consecutive_gateway_failure: {CONSECUTIVE_GATEWAY_FAILURE}
       interval: 2s
@@ -177,7 +198,8 @@ def build(docker: bool) -> str:
     end_call_route = route_yaml(f'path: "{END_CALL_PATH}"', "aggregator", route_timeout_s(END_CALL_TIMEOUT_MS))
     listeners.append(listener_yaml("aggregator", AGGREGATOR_PORT, "aggregator", route_timeout_s(AGGREGATOR_TIMEOUT_MS),
                                    extra_routes=end_call_route))
-    clusters.append(cluster_yaml("aggregator", agg_host, AGGREGATOR_UPSTREAM_PORT))
+    clusters.append(cluster_yaml("aggregator", agg_host, AGGREGATOR_UPSTREAM_PORT,
+                                 health="http", health_port=AGGREGATOR_HTTP_PORT))
 
     bert_host = fqdn("bert", docker) if not docker else "bert"
     listeners.append(listener_yaml("bert", BERT_PORT, "bert", route_timeout_s(BERT_TIMEOUT_MS)))
