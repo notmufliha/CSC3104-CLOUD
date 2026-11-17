@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
@@ -73,8 +74,10 @@ internal fun Page(title: String, onBack: (() -> Unit)? = null, content: @Composa
             Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (onBack != null) Row { TextButton(onClick = onBack) { Text("‹ Back") } }
-            Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
+            if (onBack != null) Row {
+                TextButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("‹ Back", style = MaterialTheme.typography.bodyLarge) }
+            }
+            if (title.isNotEmpty()) Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
             content()
         }
     }
@@ -378,125 +381,4 @@ private val WARNING_LEVELS = setOf(Risk.Level.RED, Risk.Level.YELLOW)
 
 // 4.7 History -> replaced by the Room dashboard (Workstream B.7): DashboardScreens.kt
 
-// ---------------------------------------------------------------- 4.8 Settings
-
-@Composable
-fun SettingsScreen(
-    currentUrl: String,
-    onSave: (String) -> Unit,
-    onTest: suspend (String) -> String,
-    onBack: (() -> Unit)? = null,   // null: opened from the tab bar, so no Back link
-    privacyLevel: PrivacyLevel = PrivacyLevel.DEFAULT,
-    onPrivacyLevel: (PrivacyLevel) -> Unit = {},
-    mobileBertStatus: String = "",
-    modelStatus: String = "",
-    modelCheck: String = "",
-    onCheckModels: suspend () -> String = { "" },
-    trainResult: String = "",
-    onTrain: () -> Unit = {},
-) {
-    var url by remember(currentUrl) { mutableStateOf(currentUrl) }
-    var result by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
-
-    Page("Settings", onBack) {
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(
-                value = url, onValueChange = { url = it },
-                label = { Text("Gateway URL") }, singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            val encrypted = url.trim().startsWith("https://", ignoreCase = true)
-            Text(
-                if (encrypted) "Encrypted (HTTPS)" else "Not encrypted: transcripts are sent as plain text",
-                color = if (encrypted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.labelMedium
-            )
-            Text("Presets", fontWeight = FontWeight.SemiBold)
-            Row(
-                Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(onClick = { url = "https://10.0.2.2:8443/api/" }) { Text("Emulator (HTTPS)") }
-                OutlinedButton(onClick = { url = "https://192.168.1.23:8443/api/" }) { Text("Phone (HTTPS)") }
-                OutlinedButton(onClick = { url = "http://10.0.2.2:8080/" }) { Text("Emulator (HTTP)") }
-            }
-            Text(
-                "Kubernetes: run demo/expose on the laptop; it prints the address to save here " +
-                    "(https://<laptop Wi-Fi IP>:8443/api/). It stays the same when the cluster or the gateway restarts. " +
-                    "Emulator: 10.0.2.2 is your laptop. First time only: install demo/tls/ca.crt on this device. " +
-                    "HTTP: docker compose or demo/port-forward.",
-                style = MaterialTheme.typography.bodySmall
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { onSave(url); result = "Saved" }) { Text("Save") }
-                OutlinedButton(onClick = { scope.launch { result = "Testing…"; result = onTest(url) } }) {
-                    Text("Test connection")
-                }
-            }
-            result?.let { Text(it) }
-
-            PrivacyLevelPicker(privacyLevel, onPrivacyLevel, mobileBertStatus)
-
-            // Workstream G.10: which on-device models this phone runs, and a manual update check
-            HorizontalDivider()
-            Text("On-device models", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
-            Text(
-                "Used at privacy levels 2 and 3. Improved versions come from federated learning: phones train on " +
-                    "their own calls and share only model changes, never the calls. The app checks for new versions " +
-                    "when it starts.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Text(modelStatus, style = MaterialTheme.typography.bodyMedium)
-            OutlinedButton(onClick = { scope.launch { onCheckModels() } }) { Text("Check for model updates") }
-            if (modelCheck.isNotEmpty()) Text(
-                modelCheck, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary,
-            )
-
-            // Federated learning on this phone: train on its own labelled calls, upload only the model change
-            Text("Help train the models", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
-            Text(
-                "Trains the downloaded models on this phone's labelled calls (needs \"Help improve detection\" on), " +
-                    "then sends only the change to the models' numbers, clipped and with noise added. No call text, " +
-                    "labels or phone number leave the phone. It joins the next federated round.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            OutlinedButton(onClick = onTrain) { Text("Train on my calls and share the update") }
-            if (trainResult.isNotEmpty()) Text(
-                trainResult, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary,
-            )
-        }
-    }
-}
-
-/** Workstream G: the privacy level setting, one line of explanation per level. Applies from the next call. */
-@Composable
-private fun PrivacyLevelPicker(current: PrivacyLevel, onPick: (PrivacyLevel) -> Unit, mobileBertStatus: String) {
-    Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        HorizontalDivider()
-        Text("Privacy level", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
-        PrivacyLevel.entries.forEach { level ->
-            Row(
-                Modifier.fillMaxWidth()
-                    .selectable(selected = level == current, enabled = level.available, role = Role.RadioButton) { onPick(level) }
-                    .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.Top,
-            ) {
-                RadioButton(selected = level == current, onClick = null, enabled = level.available)
-                Column(Modifier.padding(start = 8.dp)) {
-                    Text(level.title, color = if (level.available) Color.Unspecified else NeutralGrey)
-                    Text(
-                        level.explanation + if (level.available) "" else " (Not available in this version yet.)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    // G.4: whether level 3 has its MobileBERT second opinion
-                    if (level == PrivacyLevel.ON_DEVICE && mobileBertStatus.isNotEmpty()) Text(
-                        mobileBertStatus, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
-        }
-        Text("A change applies from the next call.", style = MaterialTheme.typography.bodySmall)
-    }
-}
+// 4.8 Settings -> SettingsScreens.kt (grouped menu with one page per topic)

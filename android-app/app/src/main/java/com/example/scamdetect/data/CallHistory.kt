@@ -25,6 +25,16 @@ class CallHistory(context: Context, private val prefs: AppPrefs) {
     /** G.13: how many implicit labels this phone holds (shown next to the opt-in switch). */
     val labelCount: Flow<Int> = labelDao.labelCount()
 
+    /** Dashboard: every chart point and every label. */
+    val allPoints: Flow<List<ScorePoint>> = dao.allPoints()
+    val labels: Flow<List<ImplicitLabel>> = labelDao.labelsFlow()
+
+    /** Debug builds only: the made-up history from SampleHistory (ids "sample-…"). */
+    suspend fun insertSample(h: com.example.scamdetect.logic.SampleHistory.History) {
+        h.calls.forEach { c -> dao.insert(c, h.points.filter { it.callId == c.id }) }
+        h.labels.forEach { labelDao.insertLabel(it) }
+    }
+
     suspend fun save(call: CallRecord, points: List<ScorePoint>) = dao.insert(call, points)
 
     /** "Delete my history": every call and its chart points, plus G.12's labels and any stored sentences. */
