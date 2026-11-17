@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
+    <!-- ScamGuard purple, the same as the iOS app and ui/theme/Color.kt (Material 3 baseline purple). -->
+    <color name="scamguard_purple_40">#FF6650A4</color>
+    <color name="scamguard_purple_80">#FFD0BCFF</color>
+    <color name="scamguard_purple_30">#FF4F378B</color>
+    <color name="scamguard_on_purple_80">#FF381E72</color>
+    <color name="scamguard_purple_grey_40">#FF625B71</color>
+    <color name="scamguard_purple_grey_80">#FFCCC2DC</color>
+    <color name="scamguard_on_purple_grey_80">#FF332D41</color>
+    <color name="scamguard_background_light">#FFFFFBFE</color>
+    <color name="scamguard_background_dark">#FF141218</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>
