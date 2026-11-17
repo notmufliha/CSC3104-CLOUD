@@ -10,6 +10,15 @@
       "Base",
     ],
   },
+  "packages": [
+    {
+      "kind": "remote",
+      "repository": "https://github.com/microsoft/onnxruntime-swift-package-manager",
+      "version": {
+        "version-range": "1.24.2..<2.0.0",
+      },
+    },
+  ],
   "files": [
     { "kind": "folder", "path": "ScamGuard", "target-membership": [ "ScamGuard" ] },
     { "kind": "folder", "path": "ScamGuardTests", "target-membership": [ "ScamGuardTests" ] },
@@ -22,21 +31,26 @@
       ],
     },
   ],
-  "packages": [
-    { "kind": "remote", "repository": "https://github.com/microsoft/onnxruntime-swift-package-manager", "version": { "version-range-min": "1.24.2", "version-range-max": "2.0.0" } },
-  ],
   "targets": [
     {
       "name": "ScamGuard",
       "id": "26F96B2730ABFFF400EDAEBE",
       "product": "Products/ScamGuard.app",
       "product-type": "application",
-      "dependencies": [ { "kind": "package", "product-name": "onnxruntime", "package": "onnxruntime-swift-package-manager" } ],
-      "package-product-members": [ { "package": "onnxruntime-swift-package-manager", "product-name": "onnxruntime", "build-phase": { "build-phase": "frameworks" } } ],
+      "dependencies": [
+        { "kind": "package", "package": "onnxruntime-swift-package-manager", "product-name": "onnxruntime" },
+      ],
       "build-phases": [
         "compile-sources",
         "frameworks",
         "resources",
+      ],
+      "package-product-members": [
+        {
+          "package": "onnxruntime-swift-package-manager",
+          "product-name": "onnxruntime",
+          "build-phase": { "build-phase": "frameworks" },
+        },
       ],
       "build-settings": {
         "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
@@ -69,14 +83,15 @@
         "SWIFT_VERSION": "5.0",
         "TARGETED_DEVICE_FAMILY": "1,2",
       },
-    },
-    {
+    }, {
       "name": "ScamGuardTests",
       "id": "26F96B2730ABFFF400EDAEC1",
       "product": "Products/ScamGuardTests.xctest",
       "product-type": "bundle.unit-test",
-      "dependencies": [ "ScamGuard" ],
       "test-host-target": "ScamGuard",
+      "dependencies": [
+        "ScamGuard",
+      ],
       "build-phases": [
         "compile-sources",
         "frameworks",

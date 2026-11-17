@@ -31,6 +31,8 @@ final class CallViewModel {
     private(set) var modelStatus = ""
     private(set) var modelCheck = ""
     private(set) var mobileBertStatus = "Checking MobileBERT…"
+    /// Settings: the server's state from the last check (true = connected, false = can't reach), nil = not checked yet.
+    private(set) var connection: Bool?
 
     // ------------------------------------------------------------ per-call bookkeeping
     private var playTask: Task<Void, Never>?
@@ -495,12 +497,32 @@ final class CallViewModel {
     // ------------------------------------------------------------ settings + history
 
     func saveGatewayUrl(_ url: String) {
+        if GatewayClient.normalize(url) != prefs.gatewayUrl { connection = nil }
         prefs.gatewayUrl = url
         gatewayUrl = prefs.gatewayUrl
     }
 
     /// GET /healthz on the given URL; returns a short message for the Settings screen.
     func testConnection(_ url: String) async -> String {
+        let msg = await checkConnection(url)
+        if GatewayClient.normalize(url) == prefs.gatewayUrl { connection = msg.hasPrefix("Connected") }
+        return msg
+    }
+
+    /// Quiet GET /healthz on the saved address, for the Settings list.
+    func refreshConnection() async { _ = await testConnection(prefs.gatewayUrl) }
+
+    #if DEBUG
+    /// Debug builds only (Help & about): sample history for demos and screenshots.
+    func loadSampleHistory() {
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        let todayStart = Int64(Calendar.current.startOfDay(for: Date()).timeIntervalSince1970 * 1000)
+        store.insertSample(SampleHistory.generate(nowMs: now, todayStartMs: todayStart))
+        historyVersion += 1
+    }
+    #endif
+
+    private func checkConnection(_ url: String) async -> String {
         guard let api = try? GatewayClient(baseUrl: url, session: session) else { return "Not a valid address" }
         do {
             let resp = try await api.health()

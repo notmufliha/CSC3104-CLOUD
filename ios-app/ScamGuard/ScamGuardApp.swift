@@ -33,6 +33,8 @@ struct RootView: View {
     @Environment(CallViewModel.self) private var vm
     @State private var tab: Tab = .home
     @State private var homePath: [HomeRoute] = []
+    @State private var dashboardPath: [DashboardRoute] = []
+    @State private var settingsPath: [SettingsRoute] = []
 
     var body: some View {
         TabView(selection: $tab) {
@@ -48,11 +50,11 @@ struct RootView: View {
             .tabItem { Label("Home", systemImage: "house") }
             .tag(Tab.home)
 
-            NavigationStack { DashboardView() }
+            NavigationStack(path: $dashboardPath) { DashboardView(goHome: { dashboardPath = []; tab = .home }) }
                 .tabItem { Label("Dashboard", systemImage: "list.bullet") }
                 .tag(Tab.dashboard)
 
-            NavigationStack { SettingsView() }
+            NavigationStack(path: $settingsPath) { SettingsView() }
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(Tab.settings)
         }
@@ -77,8 +79,25 @@ struct RootView: View {
     /// Debug builds only, for screenshots from the command line:
     ///   xcrun simctl launch booted com.rhaylene.ScamGuard -demoTab dashboard
     ///   xcrun simctl launch booted com.rhaylene.ScamGuard -demoScript scam_en_11_bank_otp.json [-demoRingOnly YES]
+    ///   -demoDeleteHistory YES / -demoLoadSample YES, -demoSettings privacy|server|models|data|help,
+    ///   -demoDetail YES (opens the newest call), -demoDashboard insights|history, -dashboardPeriod week|month|all
     private func demo() {
         let d = UserDefaults.standard
+        if d.bool(forKey: "demoDeleteHistory") { vm.deleteHistory() }
+        if d.bool(forKey: "demoLoadSample") { vm.loadSampleHistory() }
+        if let page = d.string(forKey: "demoSettings").flatMap(SettingsRoute.init(rawValue:)) {
+            tab = .settings
+            settingsPath = [page]
+        }
+        if d.bool(forKey: "demoDetail"), let first = vm.store.calls().first {
+            tab = .dashboard
+            dashboardPath = [.call(first.id)]
+        }
+        switch d.string(forKey: "demoDashboard") {   // -demoDashboard insights|history
+        case "insights": tab = .dashboard; dashboardPath = [.insights]
+        case "history": tab = .dashboard; dashboardPath = [.history]
+        default: break
+        }
         switch d.string(forKey: "demoTab") {
         case "dashboard": tab = .dashboard
         case "settings": tab = .settings

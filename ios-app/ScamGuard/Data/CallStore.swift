@@ -146,6 +146,23 @@ final class CallStore {
 
     func pointCount() -> Int { (try? context.fetchCount(FetchDescriptor<ScorePoint>())) ?? 0 }
 
+    /// Every call's chart points, for the dashboard's sparklines.
+    func allPoints() -> [PointRow] {
+        let d = FetchDescriptor<ScorePoint>(sortBy: [SortDescriptor(\.callId), SortDescriptor(\.seq)])
+        return ((try? context.fetch(d)) ?? []).map(\.row)
+    }
+
+    /// Every label, for the dashboard ("You marked N warnings as fine").
+    func labelRows() -> [LabelRow] {
+        labels().map { LabelRow(callId: $0.callId, label: $0.label, source: $0.source, time: $0.time) }
+    }
+
+    /// Debug builds only: the made-up history from SampleHistory (ids "sample-…").
+    func insertSample(_ h: SampleHistory.History) {
+        for c in h.calls { save(c, points: h.points.filter { $0.callId == c.id }) }
+        for l in h.labels { insertLabel(callId: l.callId, label: l.label, source: l.source, time: l.time) }
+    }
+
     /// "Save the riskiest sentence" turned off: forget the ones already saved too.
     func forgetSentences() {
         for c in (try? context.fetch(FetchDescriptor<CallRecord>())) ?? [] where c.riskiestSentence != nil {
