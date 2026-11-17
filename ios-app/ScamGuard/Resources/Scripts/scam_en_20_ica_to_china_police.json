@@ -1,0 +1,72 @@
+[
+  {
+    "speaker": "caller",
+    "text": "Good afternoon, this is Officer Lim from the Immigration and Checkpoints Authority.",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "Oh, hello. What is this about?",
+    "delay_ms": 4935
+  },
+  {
+    "speaker": "caller",
+    "text": "Our records show your passport details were used to register a SIM card in Shanghai last month.",
+    "delay_ms": 2550
+  },
+  {
+    "speaker": "receiver",
+    "text": "Shanghai? I have never been to Shanghai.",
+    "delay_ms": 5475
+  },
+  {
+    "speaker": "caller",
+    "text": "That number was used in a money laundering case, so the Chinese authorities have issued a notice under your name.",
+    "delay_ms": 3000
+  },
+  {
+    "speaker": "receiver",
+    "text": "That can't be right. What should I do?",
+    "delay_ms": 6285
+  },
+  {
+    "speaker": "caller",
+    "text": "I will transfer you now to Inspector Zhang from the Shanghai Public Security Bureau. Please stay on the line.",
+    "delay_ms": 2910
+  },
+  {
+    "speaker": "receiver",
+    "text": "Okay, I'm waiting.",
+    "delay_ms": 6105
+  },
+  {
+    "speaker": "caller",
+    "text": "This is Inspector Zhang. If you do not cooperate today, a warrant will be issued and you can be arrested at the airport.",
+    "delay_ms": 2010
+  },
+  {
+    "speaker": "receiver",
+    "text": "Please, I didn't do anything wrong.",
+    "delay_ms": 6600
+  },
+  {
+    "speaker": "caller",
+    "text": "To clear your name, you must move all your savings into a supervision account so we can check the money is clean.",
+    "delay_ms": 2775
+  },
+  {
+    "speaker": "receiver",
+    "text": "All of it? How do I do that?",
+    "delay_ms": 6285
+  },
+  {
+    "speaker": "caller",
+    "text": "Go to the bank now and transfer it. Do not tell the bank staff or your family, this is a confidential investigation.",
+    "delay_ms": 2460
+  },
+  {
+    "speaker": "receiver",
+    "text": "I need to think about this first.",
+    "delay_ms": 6420
+  }
+]

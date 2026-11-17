@@ -1,0 +1,105 @@
+{
+  "version": "mobilebert-v1-20261112",
+  "max_len": 128,
+  "temperature": 1.2908,
+  "scam_index": 1,
+  "max_turns": 5,
+  "lower_case": true,
+  "model_file": "model.onnx",
+  "base_model": "google/mobilebert-uncased",
+  "quantization": "int8",
+  "model_sha256": "9f88a24e9ba00bf2497ba2dec5e09891fe43dc50aebaa9a1821ea8d6150afbf7",
+  "int8_agreement_05": 1.0,
+  "int8_agreement_06": 0.9993,
+  "trained_on": [
+    "hard_en",
+    "multi-agent-scam-conversation",
+    "scam-dialogue",
+    "single-agent-scam-conversations"
+  ],
+  "train_windows": 13646,
+  "first_scam_line": 3,
+  "hard_repeat": 4,
+  "lr": 5e-05,
+  "epochs": 4,
+  "metrics": [
+    {
+      "set": "val",
+      "n": 1562,
+      "pos": 811,
+      "auc": 1.0,
+      "P": 1.0,
+      "R": 0.999,
+      "F1": 0.999,
+      "F2": 0.999,
+      "brier": 0.0008
+    },
+    {
+      "set": "test (all)",
+      "n": 1552,
+      "pos": 741,
+      "auc": 1.0,
+      "P": 0.995,
+      "R": 0.997,
+      "F1": 0.996,
+      "F2": 0.997,
+      "brier": 0.0029
+    },
+    {
+      "set": "test: hard_en",
+      "n": 28,
+      "pos": 16,
+      "auc": 1.0,
+      "P": 1.0,
+      "R": 0.938,
+      "F1": 0.968,
+      "F2": 0.949,
+      "brier": 0.0189
+    },
+    {
+      "set": "test: multi-agent-scam-conversation",
+      "n": 745,
+      "pos": 376,
+      "auc": 1.0,
+      "P": 0.995,
+      "R": 0.997,
+      "F1": 0.996,
+      "F2": 0.997,
+      "brier": 0.0026
+    },
+    {
+      "set": "test: scam-dialogue",
+      "n": 563,
+      "pos": 319,
+      "auc": 1.0,
+      "P": 1.0,
+      "R": 1.0,
+      "F1": 1.0,
+      "F2": 1.0,
+      "brier": 0.0004
+    },
+    {
+      "set": "test: single-agent-scam-conversations",
+      "n": 216,
+      "pos": 30,
+      "auc": 1.0,
+      "P": 0.938,
+      "R": 1.0,
+      "F1": 0.968,
+      "F2": 0.987,
+      "brier": 0.0083
+    },
+    {
+      "set": "EN robocall sentences (urgency label)",
+      "n": 200,
+      "pos": 87,
+      "auc": 0.69,
+      "P": 0.573,
+      "R": 0.586,
+      "F1": 0.58,
+      "F2": 0.584,
+      "brier": 0.3142
+    }
+  ],
+  "date": "2026-11-12"
+}

@@ -1,0 +1,62 @@
+[
+  {
+    "speaker": "caller",
+    "text": "Hello, I'm calling from Singtel customer service about a second mobile line registered under your NRIC.",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "I only have one line. I didn't register another one.",
+    "delay_ms": 5835
+  },
+  {
+    "speaker": "caller",
+    "text": "This second line has been sending phishing messages, and many people have complained to us.",
+    "delay_ms": 3540
+  },
+  {
+    "speaker": "receiver",
+    "text": "That's not me. Someone must have used my details.",
+    "delay_ms": 5295
+  },
+  {
+    "speaker": "caller",
+    "text": "I understand. Because it involves fraud, I have to connect you to an officer from the Monetary Authority of Singapore.",
+    "delay_ms": 3405
+  },
+  {
+    "speaker": "receiver",
+    "text": "The Monetary Authority? Okay.",
+    "delay_ms": 6510
+  },
+  {
+    "speaker": "caller",
+    "text": "This is Officer Tan from MAS. Your bank accounts are linked to the fraud and will be frozen within the hour.",
+    "delay_ms": 2505
+  },
+  {
+    "speaker": "receiver",
+    "text": "Frozen? I need that money for my bills.",
+    "delay_ms": 6060
+  },
+  {
+    "speaker": "caller",
+    "text": "To protect it, transfer your balance to a MAS safety account now. You will get it back after the investigation.",
+    "delay_ms": 2955
+  },
+  {
+    "speaker": "receiver",
+    "text": "Can I call the bank first?",
+    "delay_ms": 6195
+  },
+  {
+    "speaker": "caller",
+    "text": "No, the bank staff may be involved. Stay on the line with me while you do the transfer.",
+    "delay_ms": 2370
+  },
+  {
+    "speaker": "receiver",
+    "text": "Hmm, this doesn't sound right to me.",
+    "delay_ms": 5115
+  }
+]
