@@ -136,6 +136,35 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     val labelCount: StateFlow<Int> =
         callHistory.labelCount.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
+    /** Dashboard: every chart point (sparklines) and every label ("you marked N warnings as fine"). */
+    val allPoints: StateFlow<List<ScorePoint>> =
+        callHistory.allPoints.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val labels: StateFlow<List<com.example.scamdetect.data.db.ImplicitLabel>> =
+        callHistory.labels.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Debug builds only (Help & about): sample history for demos and screenshots. */
+    val isDebugBuild: Boolean =
+        (app.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+
+    fun loadSampleHistory() {
+        if (!isDebugBuild) return
+        viewModelScope.launch {
+            val zone = java.time.ZoneId.systemDefault()
+            val now = System.currentTimeMillis()
+            val todayStart = java.time.LocalDate.now(zone).atStartOfDay(zone).toInstant().toEpochMilli()
+            callHistory.insertSample(com.example.scamdetect.logic.SampleHistory.generate(now, todayStart))
+        }
+    }
+
+    /** Settings: the server's state from the last check ("Connected" / "Can't reach"), null = not checked yet. */
+    private val _connection = MutableStateFlow<Boolean?>(null)
+    val connection: StateFlow<Boolean?> = _connection.asStateFlow()
+
+    /** Quiet GET /healthz on the saved address, for the Settings list. */
+    fun refreshConnection() {
+        viewModelScope.launch { _connection.value = testConnection(prefs.gatewayUrl).startsWith("Connected") }
+    }
+
     init {
         if (prefs.privacyLevel.scoresOnPhone) preloadModels()
     }
@@ -663,12 +692,17 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------------------------------------------------------- settings + history
 
     fun saveGatewayUrl(url: String) {
+        if (GatewayClient.normalize(url) != prefs.gatewayUrl) _connection.value = null
         prefs.gatewayUrl = url
         _gatewayUrl.value = prefs.gatewayUrl
     }
 
     /** GET /healthz on the given URL; returns a short message for the Settings screen. */
-    suspend fun testConnection(url: String): String = try {
+    suspend fun testConnection(url: String): String = checkConnection(url).also {
+        if (GatewayClient.normalize(url) == prefs.gatewayUrl) _connection.value = it.startsWith("Connected")
+    }
+
+    private suspend fun checkConnection(url: String): String = try {
         val resp = GatewayClient.get(url).health()
         val status = resp.body()?.get("status")
         when {

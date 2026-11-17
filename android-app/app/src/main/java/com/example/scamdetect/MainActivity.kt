@@ -36,17 +36,33 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.scamdetect.ui.CallViewModel
 import com.example.scamdetect.ui.CallDetailScreen
 import com.example.scamdetect.ui.DashboardScreen
+import com.example.scamdetect.ui.HistoryScreen
 import com.example.scamdetect.ui.HomeScreen
+import com.example.scamdetect.ui.InsightsScreen
 import com.example.scamdetect.ui.InCallScreen
 import com.example.scamdetect.ui.IncomingCallScreen
 import com.example.scamdetect.ui.PasteTextScreen
 import com.example.scamdetect.ui.Phase
 import com.example.scamdetect.ui.ScriptPickerScreen
-import com.example.scamdetect.ui.SettingsScreen
+import com.example.scamdetect.ui.DataPage
+import com.example.scamdetect.ui.HelpPage
+import com.example.scamdetect.ui.ModelsPage
+import com.example.scamdetect.ui.PrivacyPage
+import com.example.scamdetect.ui.ServerPage
+import com.example.scamdetect.ui.SettingsMenuScreen
+import com.example.scamdetect.ui.SettingsPage
 import com.example.scamdetect.ui.SummaryScreen
 import com.example.scamdetect.ui.theme.ScamDetectTheme
 
-enum class Screen { HOME, PICK, CALL, PASTE, DASHBOARD, CALL_DETAIL, SETTINGS }
+enum class Screen {
+    HOME, PICK, CALL, PASTE, DASHBOARD, CALL_DETAIL, SETTINGS,
+    SETTINGS_PRIVACY, SETTINGS_SERVER, SETTINGS_MODELS, SETTINGS_DATA, SETTINGS_HELP,
+    INSIGHTS, HISTORY,
+}
+
+private val SETTINGS_PAGES = setOf(
+    Screen.SETTINGS_PRIVACY, Screen.SETTINGS_SERVER, Screen.SETTINGS_MODELS, Screen.SETTINGS_DATA, Screen.SETTINGS_HELP,
+)
 
 /** The three top-level screens, reached from the bottom tab bar. The app opens on HOME. */
 private enum class Tab(val screen: Screen, val label: String, val icon: ImageVector) {
@@ -78,16 +94,24 @@ class MainActivity : ComponentActivity() {
 fun ScamGuardApp(vm: CallViewModel = viewModel()) {
     var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
     var openCallId by rememberSaveable { mutableStateOf<String?>(null) }
+    /** Where the call detail page goes back to (Dashboard or History). */
+    var detailBack by rememberSaveable { mutableStateOf(Screen.DASHBOARD) }
+    var period by rememberSaveable { mutableStateOf(com.example.scamdetect.logic.DashboardStats.Period.WEEK) }
 
     BackHandler(enabled = screen != Screen.HOME) {
         if (screen == Screen.CALL) vm.discard()   // B.5: during a call, tells the server; no summary, nothing saved
-        screen = if (screen == Screen.CALL_DETAIL) Screen.DASHBOARD else Screen.HOME
+        screen = when (screen) {
+            Screen.CALL_DETAIL -> detailBack
+            Screen.INSIGHTS, Screen.HISTORY -> Screen.DASHBOARD
+            in SETTINGS_PAGES -> Screen.SETTINGS
+            else -> Screen.HOME
+        }
     }
 
     val tab = Tab.entries.firstOrNull { it.screen == screen }
     if (tab == null) {
         // Calls, the script picker, paste text and call details take the whole screen, without the tab bar.
-        ScreenContent(screen, vm, { screen = it }, openCallId, { openCallId = it })
+        ScreenContent(screen, vm, { screen = it }, openCallId, { id -> detailBack = if (screen == Screen.HISTORY) Screen.HISTORY else Screen.DASHBOARD; openCallId = id }, period, { period = it }, detailBack)
         return
     }
     Scaffold(
@@ -105,7 +129,7 @@ fun ScamGuardApp(vm: CallViewModel = viewModel()) {
         },
     ) { inner ->
         Box(Modifier.fillMaxSize().padding(inner).consumeWindowInsets(inner)) {
-            ScreenContent(screen, vm, { screen = it }, openCallId, { openCallId = it })
+            ScreenContent(screen, vm, { screen = it }, openCallId, { id -> detailBack = if (screen == Screen.HISTORY) Screen.HISTORY else Screen.DASHBOARD; openCallId = id }, period, { period = it }, detailBack)
         }
     }
 }
@@ -117,6 +141,9 @@ private fun ScreenContent(
     go: (Screen) -> Unit,
     openCallId: String?,
     setOpenCallId: (String) -> Unit,
+    period: com.example.scamdetect.logic.DashboardStats.Period,
+    setPeriod: (com.example.scamdetect.logic.DashboardStats.Period) -> Unit,
+    detailBack: Screen,
 ) {
     val state by vm.state.collectAsState()
     val calls by vm.calls.collectAsState()
@@ -128,7 +155,12 @@ private fun ScreenContent(
     val mobileBertStatus by vm.mobileBertStatus.collectAsState()
     val modelStatus by vm.modelStatus.collectAsState()
     val modelCheck by vm.modelCheck.collectAsState()
-    val trainResult by vm.trainResult.collectAsState()
+    val allPoints by vm.allPoints.collectAsState()
+    val labels by vm.labels.collectAsState()
+    val connection by vm.connection.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "1.0" }
+    fun back() = go(Screen.SETTINGS)
 
     fun ringKind(kind: String) {
         vm.randomScript(kind)?.let { vm.ring(it); go(Screen.CALL) }
@@ -173,34 +205,59 @@ private fun ScreenContent(
 
         Screen.DASHBOARD -> DashboardScreen(
             calls = calls,
-            saveSentence = saveSentence,
-            onSaveSentence = vm::setSaveSentence,
-            onDeleteHistory = vm::deleteHistory,
+            labels = labels,
+            period = period,
+            onPeriod = setPeriod,
             onOpen = { setOpenCallId(it); go(Screen.CALL_DETAIL) },
-            helpImprove = helpImprove,
-            onHelpImprove = vm::setHelpImprove,
-            labelCount = labelCount,
+            onInsights = { go(Screen.INSIGHTS) },
+            onHistory = { go(Screen.HISTORY) },
+            onGoHome = { go(Screen.HOME) },
+        )
+
+        Screen.INSIGHTS -> InsightsScreen(calls, labels, period, setPeriod, onBack = { go(Screen.DASHBOARD) })
+
+        Screen.HISTORY -> HistoryScreen(
+            calls = calls,
+            points = allPoints,
+            onOpen = { setOpenCallId(it); go(Screen.CALL_DETAIL) },
+            onBack = { go(Screen.DASHBOARD) },
+            onGoHome = { go(Screen.HOME) },
         )
 
         Screen.CALL_DETAIL -> {
             val id = openCallId.orEmpty()
             val call by remember(id) { vm.call(id) }.collectAsState(initial = null)
             val points by remember(id) { vm.points(id) }.collectAsState(initial = emptyList())
-            CallDetailScreen(call, points, onBack = { go(Screen.DASHBOARD) })
+            CallDetailScreen(call, points, onBack = { go(detailBack) })
         }
 
-        Screen.SETTINGS -> SettingsScreen(
-            currentUrl = gatewayUrl,
-            onSave = vm::saveGatewayUrl,
-            onTest = { vm.testConnection(it) },
+        Screen.SETTINGS -> SettingsMenuScreen(
             privacyLevel = privacyLevel,
-            onPrivacyLevel = vm::setPrivacyLevel,
-            mobileBertStatus = mobileBertStatus,
-            modelStatus = modelStatus,
-            modelCheck = modelCheck,
-            onCheckModels = { vm.checkModelUpdates() },
-            trainResult = trainResult,
-            onTrain = vm::trainOnPhone,
+            connection = connection,
+            modelsValue = if ("federated" in modelStatus) "Updated" else "Built-in",
+            callCount = calls.size,
+            version = version,
+            onRefresh = vm::refreshConnection,
+            onOpen = { page ->
+                go(when (page) {
+                    SettingsPage.PRIVACY -> Screen.SETTINGS_PRIVACY
+                    SettingsPage.SERVER -> Screen.SETTINGS_SERVER
+                    SettingsPage.MODELS -> Screen.SETTINGS_MODELS
+                    SettingsPage.DATA -> Screen.SETTINGS_DATA
+                    SettingsPage.HELP -> Screen.SETTINGS_HELP
+                })
+            },
         )
+
+        Screen.SETTINGS_PRIVACY -> PrivacyPage(privacyLevel, vm::setPrivacyLevel, ::back)
+        Screen.SETTINGS_SERVER -> ServerPage(gatewayUrl, connection, vm::saveGatewayUrl, { vm.testConnection(it) }, ::back)
+        Screen.SETTINGS_MODELS -> ModelsPage(modelStatus, mobileBertStatus, modelCheck, { vm.checkModelUpdates() }, ::back)
+        Screen.SETTINGS_DATA -> DataPage(
+            saveSentence = saveSentence, onSaveSentence = vm::setSaveSentence,
+            helpImprove = helpImprove, onHelpImprove = vm::setHelpImprove,
+            labelCount = labelCount, callCount = calls.size,
+            onDelete = vm::deleteHistory, onBack = ::back,
+        )
+        Screen.SETTINGS_HELP -> HelpPage(version, modelStatus, mobileBertStatus, vm.isDebugBuild, vm::loadSampleHistory, ::back)
     }
 }
