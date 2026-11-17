@@ -1,0 +1,57 @@
+[
+  {
+    "speaker": "caller",
+    "text": "Hello, good afternoon. My name is Amelia, I'm calling from a financial advisory firm. Do you have a minute?",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "I'm a bit busy, but go ahead.",
+    "delay_ms": 6950
+  },
+  {
+    "speaker": "caller",
+    "text": "We have a new hospitalisation plan for young working adults. I would like to explain the benefits briefly.",
+    "delay_ms": 3400
+  },
+  {
+    "speaker": "receiver",
+    "text": "I already have an insurance plan through my company.",
+    "delay_ms": 6650
+  },
+  {
+    "speaker": "caller",
+    "text": "That's great. Many people find employer coverage ends when they change jobs, so a personal plan can be a good backup.",
+    "delay_ms": 4050
+  },
+  {
+    "speaker": "receiver",
+    "text": "How much is the premium?",
+    "delay_ms": 7650
+  },
+  {
+    "speaker": "caller",
+    "text": "It starts from about thirty dollars a month, depending on your age and the ward type.",
+    "delay_ms": 2750
+  },
+  {
+    "speaker": "receiver",
+    "text": "Hmm, I'd need to think about it.",
+    "delay_ms": 6000
+  },
+  {
+    "speaker": "caller",
+    "text": "Of course. This promotion ends at the end of the month, but there's no obligation. May I send you the brochure by email?",
+    "delay_ms": 3400
+  },
+  {
+    "speaker": "receiver",
+    "text": "Sure, you can email it. Please don't call again.",
+    "delay_ms": 8300
+  },
+  {
+    "speaker": "caller",
+    "text": "Understood, thank you for your time.",
+    "delay_ms": 4050
+  }
+]

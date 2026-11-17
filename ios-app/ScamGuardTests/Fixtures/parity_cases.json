@@ -1,0 +1,5077 @@
+{
+ "tolerance": 0.01,
+ "cases": [
+  {
+   "source": "script:normal_en_10_bank_reminder",
+   "text": "Good morning, this is a reminder call from your bank's card services.",
+   "urgency": {
+    "clean": "good morning this is a reminder call from your bank's card services",
+    "score": 0.489836
+   },
+   "money": {
+    "clean": "good morning this is a reminder call from your banks card services",
+    "score": 0.000385
+   },
+   "impersonation": {
+    "clean": "good morning, this is a reminder call from your bank's card services.",
+    "score": 0.022961
+   }
+  },
+  {
+   "source": "script:normal_en_10_bank_reminder",
+   "text": "Not at all. Your credit card payment of two hundred and forty dollars is due on the twenty-fifth.",
+   "urgency": {
+    "clean": "not at all your credit card payment of two hundred and forty dollars is due on the twenty fifth",
+    "score": 0.376354
+   },
+   "money": {
+    "clean": "not at all your credit card payment of moneytoken is due on the twenty fifth",
+    "score": 0.337026
+   },
+   "impersonation": {
+    "clean": "not at all. your credit card payment of two hundred and forty dollars is due on the twenty-fifth.",
+    "score": 0.008192
+   }
+  },
+  {
+   "source": "script:normal_en_10_bank_reminder",
+   "text": "You can pay through the mobile app, internet banking, or GIRO if you have set it up.",
+   "urgency": {
+    "clean": "you can pay through the mobile app internet banking or giro if you have set it up",
+    "score": 0.374213
+   },
+   "money": {
+    "clean": "you can pay through the mobile app internet banking or giro if you have set it up",
+    "score": 0.945585
+   },
+   "impersonation": {
+    "clean": "you can pay through the mobile app, internet banking, or giro if you have set it up.",
+    "score": 0.001272
+   }
+  },
+  {
+   "source": "script:normal_en_10_bank_reminder",
+   "text": "Sure. And please remember, the bank will never ask you for your OTP or password over the phone.",
+   "urgency": {
+    "clean": "sure and please remember the bank will never ask you for your otp or password over the phone",
+    "score": 0.341416
+   },
+   "money": {
+    "clean": "sure and please remember the bank will never ask you for your otp or password over the phone",
+    "score": 0.010176
+   },
+   "impersonation": {
+    "clean": "sure. and please remember, the bank will never ask you for your otp or password over the phone.",
+    "score": 0.005944
+   }
+  },
+  {
+   "source": "script:normal_en_10_bank_reminder",
+   "text": "No problem. If you have any questions, call the number printed on the back of your card.",
+   "urgency": {
+    "clean": "no problem if you have any questions call the number printed on the back of your card",
+    "score": 0.502888
+   },
+   "money": {
+    "clean": "no problem if you have any questions call the number printed on the back of your card",
+    "score": 0.829799
+   },
+   "impersonation": {
+    "clean": "no problem. if you have any questions, call the number printed on the back of your card.",
+    "score": 0.00284
+   }
+  },
+  {
+   "source": "script:normal_en_10_bank_reminder",
+   "text": "Thank you, have a good day.",
+   "urgency": {
+    "clean": "thank you have a good day",
+    "score": 0.045818
+   },
+   "money": {
+    "clean": "thank you have a good day",
+    "score": 0.000351
+   },
+   "impersonation": {
+    "clean": "thank you, have a good day.",
+    "score": 0.003719
+   }
+  },
+  {
+   "source": "script:normal_en_11_clinic_appointment",
+   "text": "Hello, this is the clinic calling to confirm your appointment tomorrow at ten thirty.",
+   "urgency": {
+    "clean": "hello this is the clinic calling to confirm your appointment tomorrow at ten thirty",
+    "score": 0.427042
+   },
+   "money": {
+    "clean": "hello this is the clinic calling to confirm your appointment tomorrow at ten thirty",
+    "score": 0.000246
+   },
+   "impersonation": {
+    "clean": "hello, this is the clinic calling to confirm your appointment tomorrow at ten thirty.",
+    "score": 0.000222
+   }
+  },
+  {
+   "source": "script:normal_en_11_clinic_appointment",
+   "text": "Great. Please bring your NRIC and any medication you are currently taking.",
+   "urgency": {
+    "clean": "great please bring your nric and any medication you are currently taking",
+    "score": 0.235438
+   },
+   "money": {
+    "clean": "great please bring your nric and any medication you are currently taking",
+    "score": 0.008346
+   },
+   "impersonation": {
+    "clean": "great. please bring your nric and any medication you are currently taking.",
+    "score": 0.006402
+   }
+  },
+  {
+   "source": "script:normal_en_11_clinic_appointment",
+   "text": "Yes, no food for eight hours before the blood test, but you can drink plain water.",
+   "urgency": {
+    "clean": "yes no food for eight hours before the blood test but you can drink plain water",
+    "score": 0.317325
+   },
+   "money": {
+    "clean": "yes no food for eight hours before the blood test but you can drink plain water",
+    "score": 0.04995
+   },
+   "impersonation": {
+    "clean": "yes, no food for eight hours before the blood test, but you can drink plain water.",
+    "score": 0.001078
+   }
+  },
+  {
+   "source": "script:normal_en_11_clinic_appointment",
+   "text": "About thirty minutes. Please arrive ten minutes early to register at the counter.",
+   "urgency": {
+    "clean": "about thirty minutes please arrive ten minutes early to register at the counter",
+    "score": 0.470778
+   },
+   "money": {
+    "clean": "about thirty minutes please arrive ten minutes early to register at the counter",
+    "score": 0.02511
+   },
+   "impersonation": {
+    "clean": "about thirty minutes. please arrive ten minutes early to register at the counter.",
+    "score": 3.4e-05
+   }
+  },
+  {
+   "source": "script:normal_en_11_clinic_appointment",
+   "text": "Yes, there is a carpark behind the building. The consultation fee can be paid at the counter after your visit.",
+   "urgency": {
+    "clean": "yes there is a carpark behind the building the consultation fee can be paid at the counter after your visit",
+    "score": 0.329874
+   },
+   "money": {
+    "clean": "yes there is a carpark behind the building the consultation fee can be paid at the counter after your visit",
+    "score": 0.0101
+   },
+   "impersonation": {
+    "clean": "yes, there is a carpark behind the building. the consultation fee can be paid at the counter after your visit.",
+    "score": 0.000753
+   }
+  },
+  {
+   "source": "script:normal_en_11_clinic_appointment",
+   "text": "See you tomorrow. Take care.",
+   "urgency": {
+    "clean": "see you tomorrow take care",
+    "score": 0.43191
+   },
+   "money": {
+    "clean": "see you tomorrow take care",
+    "score": 0.442213
+   },
+   "impersonation": {
+    "clean": "see you tomorrow. take care.",
+    "score": 0.003597
+   }
+  },
+  {
+   "source": "script:normal_en_12_delivery_driver",
+   "text": "Hi, I'm the delivery driver. I'm downstairs at your block now with your order.",
+   "urgency": {
+    "clean": "hi i'm the delivery driver i'm downstairs at your block now with your order",
+    "score": 0.325935
+   },
+   "money": {
+    "clean": "hi im the delivery driver im downstairs at your block now with your order",
+    "score": 0.008359
+   },
+   "impersonation": {
+    "clean": "hi, i'm the delivery driver. i'm downstairs at your block now with your order.",
+    "score": 0.005474
+   }
+  },
+  {
+   "source": "script:normal_en_12_delivery_driver",
+   "text": "I'm at the lobby near the letterboxes. Blue jacket.",
+   "urgency": {
+    "clean": "i'm at the lobby near the letterboxes blue jacket",
+    "score": 0.259881
+   },
+   "money": {
+    "clean": "im at the lobby near the letterboxes blue jacket",
+    "score": 0.047812
+   },
+   "impersonation": {
+    "clean": "i'm at the lobby near the letterboxes. blue jacket.",
+    "score": 3.1e-05
+   }
+  },
+  {
+   "source": "script:normal_en_12_delivery_driver",
+   "text": "No problem. Can you confirm the unit number? The app shows number twelve.",
+   "urgency": {
+    "clean": "no problem can you confirm the unit number the app shows number twelve",
+    "score": 0.18506
+   },
+   "money": {
+    "clean": "no problem can you confirm the unit number the app shows number twelve",
+    "score": 0.940518
+   },
+   "impersonation": {
+    "clean": "no problem. can you confirm the unit number? the app shows number twelve.",
+    "score": 0.392835
+   }
+  },
+  {
+   "source": "script:normal_en_12_delivery_driver",
+   "text": "The total is twenty-three dollars fifty. It's cash on delivery, or you can PayNow me.",
+   "urgency": {
+    "clean": "the total is twenty three dollars fifty it's cash on delivery or you can paynow me",
+    "score": 0.194375
+   },
+   "money": {
+    "clean": "the total is moneytoken fifty its cash on delivery or you can payapp me",
+    "score": 0.38617
+   },
+   "impersonation": {
+    "clean": "the total is twenty-three dollars fifty. it's cash on delivery, or you can paynow me.",
+    "score": 0.000643
+   }
+  },
+  {
+   "source": "script:normal_en_12_delivery_driver",
+   "text": "Yes, no problem.",
+   "urgency": {
+    "clean": "yes no problem",
+    "score": 0.093949
+   },
+   "money": {
+    "clean": "yes no problem",
+    "score": 0.010261
+   },
+   "impersonation": {
+    "clean": "yes, no problem.",
+    "score": 0.112075
+   }
+  },
+  {
+   "source": "script:normal_en_13_insurance_sales",
+   "text": "Hello, good afternoon. My name is Amelia, I'm calling from a financial advisory firm. Do you have a minute?",
+   "urgency": {
+    "clean": "hello good afternoon my name is amelia i'm calling from a financial advisory firm do you have a minute",
+    "score": 0.185832
+   },
+   "money": {
+    "clean": "hello good afternoon my name is amelia im calling from a financial advisory firm do you have a minute",
+    "score": 0.038349
+   },
+   "impersonation": {
+    "clean": "hello, good afternoon. my name is amelia, i'm calling from a financial advisory firm. do you have a minute?",
+    "score": 0.026557
+   }
+  },
+  {
+   "source": "script:normal_en_13_insurance_sales",
+   "text": "We have a new hospitalisation plan for young working adults. I would like to explain the benefits briefly.",
+   "urgency": {
+    "clean": "we have a new hospitalisation plan for young working adults i would like to explain the benefits briefly",
+    "score": 0.175276
+   },
+   "money": {
+    "clean": "we have a new hospitalisation plan for young working adults i would like to explain the benefits briefly",
+    "score": 0.01388
+   },
+   "impersonation": {
+    "clean": "we have a new hospitalisation plan for young working adults. i would like to explain the benefits briefly.",
+    "score": 0.002017
+   }
+  },
+  {
+   "source": "script:normal_en_13_insurance_sales",
+   "text": "That's great. Many people find employer coverage ends when they change jobs, so a personal plan can be a good backup.",
+   "urgency": {
+    "clean": "that's great many people find employer coverage ends when they change jobs so a personal plan can be a good backup",
+    "score": 0.178423
+   },
+   "money": {
+    "clean": "thats great many people find employer coverage ends when they change jobs so a personal plan can be a good backup",
+    "score": 0.00568
+   },
+   "impersonation": {
+    "clean": "that's great. many people find employer coverage ends when they change jobs, so a personal plan can be a good backup.",
+    "score": 0.000255
+   }
+  },
+  {
+   "source": "script:normal_en_13_insurance_sales",
+   "text": "It starts from about thirty dollars a month, depending on your age and the ward type.",
+   "urgency": {
+    "clean": "it starts from about thirty dollars a month depending on your age and the ward type",
+    "score": 0.209916
+   },
+   "money": {
+    "clean": "it starts from about moneytoken a month depending on your age and the ward type",
+    "score": 0.096549
+   },
+   "impersonation": {
+    "clean": "it starts from about thirty dollars a month, depending on your age and the ward type.",
+    "score": 0.020032
+   }
+  },
+  {
+   "source": "script:normal_en_13_insurance_sales",
+   "text": "Of course. This promotion ends at the end of the month, but there's no obligation. May I send you the brochure by email?",
+   "urgency": {
+    "clean": "of course this promotion ends at the end of the month but there's no obligation may i send you the brochure by email",
+    "score": 0.403526
+   },
+   "money": {
+    "clean": "of course this promotion ends at the end of the month but theres no obligation may i send you the brochure by email",
+    "score": 0.205709
+   },
+   "impersonation": {
+    "clean": "of course. this promotion ends at the end of the month, but there's no obligation. may i send you the brochure by email?",
+    "score": 0.000368
+   }
+  },
+  {
+   "source": "script:normal_en_13_insurance_sales",
+   "text": "Understood, thank you for your time.",
+   "urgency": {
+    "clean": "understood thank you for your time",
+    "score": 0.192912
+   },
+   "money": {
+    "clean": "understood thank you for your time",
+    "score": 0.000628
+   },
+   "impersonation": {
+    "clean": "understood, thank you for your time.",
+    "score": 0.00313
+   }
+  },
+  {
+   "source": "script:normal_en_14_family_call",
+   "text": "Hello, it's Mum. Are you free this weekend?",
+   "urgency": {
+    "clean": "hello it's mum are you free this weekend",
+    "score": 0.247859
+   },
+   "money": {
+    "clean": "hello its mum are you free this weekend",
+    "score": 0.006946
+   },
+   "impersonation": {
+    "clean": "hello, it's mum. are you free this weekend?",
+    "score": 8e-05
+   }
+  },
+  {
+   "source": "script:normal_en_14_family_call",
+   "text": "Ah Ma's birthday is on Sunday. Your aunt booked the restaurant for twelve o'clock.",
+   "urgency": {
+    "clean": "ah ma's birthday is on sunday your aunt booked the restaurant for twelve o'clock",
+    "score": 0.18684
+   },
+   "money": {
+    "clean": "ah mas birthday is on sunday your aunt booked the restaurant for twelve oclock",
+    "score": 0.026518
+   },
+   "impersonation": {
+    "clean": "ah ma's birthday is on sunday. your aunt booked the restaurant for twelve o'clock.",
+    "score": 0.000978
+   }
+  },
+  {
+   "source": "script:normal_en_14_family_call",
+   "text": "Can you pick up the cake on the way? I'll PayNow you back after dinner.",
+   "urgency": {
+    "clean": "can you pick up the cake on the way i'll paynow you back after dinner",
+    "score": 0.212948
+   },
+   "money": {
+    "clean": "can you pick up the cake on the way ill payapp you back after dinner",
+    "score": 0.092734
+   },
+   "impersonation": {
+    "clean": "can you pick up the cake on the way? i'll paynow you back after dinner.",
+    "score": 2.8e-05
+   }
+  },
+  {
+   "source": "script:normal_en_14_family_call",
+   "text": "The one near your office. Please remember to ask them to write her name on it.",
+   "urgency": {
+    "clean": "the one near your office please remember to ask them to write her name on it",
+    "score": 0.353313
+   },
+   "money": {
+    "clean": "the one near your office please remember to ask them to write her name on it",
+    "score": 0.358706
+   },
+   "impersonation": {
+    "clean": "the one near your office. please remember to ask them to write her name on it.",
+    "score": 0.035512
+   }
+  },
+  {
+   "source": "script:normal_en_14_family_call",
+   "text": "Come by eleven thirty, so we can all walk in together.",
+   "urgency": {
+    "clean": "come by eleven thirty so we can all walk in together",
+    "score": 0.388489
+   },
+   "money": {
+    "clean": "come by eleven thirty so we can all walk in together",
+    "score": 0.052963
+   },
+   "impersonation": {
+    "clean": "come by eleven thirty, so we can all walk in together.",
+    "score": 0.004103
+   }
+  },
+  {
+   "source": "script:normal_en_14_family_call",
+   "text": "Bye bye. Take care and eat properly ah.",
+   "urgency": {
+    "clean": "bye bye take care and eat properly ah",
+    "score": 0.296818
+   },
+   "money": {
+    "clean": "bye bye take care and eat properly ah",
+    "score": 0.17644
+   },
+   "impersonation": {
+    "clean": "bye bye. take care and eat properly ah.",
+    "score": 0.130091
+   }
+  },
+  {
+   "source": "script:scam_en_10_gov_official",
+   "text": "Good afternoon, this is the fraud prevention unit calling about your bank account.",
+   "urgency": {
+    "clean": "good afternoon this is the fraud prevention unit calling about your bank account",
+    "score": 0.419346
+   },
+   "money": {
+    "clean": "good afternoon this is the fraud prevention unit calling about your bank account",
+    "score": 0.011886
+   },
+   "impersonation": {
+    "clean": "good afternoon, this is the fraud prevention unit calling about your bank account.",
+    "score": 0.803407
+   }
+  },
+  {
+   "source": "script:scam_en_10_gov_official",
+   "text": "We detected a credit card opened under your NRIC that was used for money laundering.",
+   "urgency": {
+    "clean": "we detected a credit card opened under your nric that was used for money laundering",
+    "score": 0.246465
+   },
+   "money": {
+    "clean": "we detected a credit card opened under your nric that was used for money laundering",
+    "score": 0.02998
+   },
+   "impersonation": {
+    "clean": "we detected a credit card opened under your nric that was used for money laundering.",
+    "score": 0.999471
+   }
+  },
+  {
+   "source": "script:scam_en_10_gov_official",
+   "text": "I understand. Because this is a serious case, I will transfer you to the Singapore Police Force now.",
+   "urgency": {
+    "clean": "i understand because this is a serious case i will transfer you to the singapore police force now",
+    "score": 0.664773
+   },
+   "money": {
+    "clean": "i understand because this is a serious case i will transfer you to the orgpolice now",
+    "score": 0.012907
+   },
+   "impersonation": {
+    "clean": "i understand. because this is a serious case, i will transfer you to the orgpolice now.",
+    "score": 0.999482
+   }
+  },
+  {
+   "source": "script:scam_en_10_gov_official",
+   "text": "I am Inspector Tan from the Singapore Police Force, badge number two zero four seven.",
+   "urgency": {
+    "clean": "i am inspector tan from the singapore police force badge number two zero four seven",
+    "score": 0.210243
+   },
+   "money": {
+    "clean": "i am inspector tan from the orgpolice badge number two zero four seven",
+    "score": 0.010296
+   },
+   "impersonation": {
+    "clean": "i am inspector tan from the orgpolice, badge number two zero four seven.",
+    "score": 0.854353
+   }
+  },
+  {
+   "source": "script:scam_en_10_gov_official",
+   "text": "Your name is linked to a criminal case and you may be arrested today if you do not cooperate.",
+   "urgency": {
+    "clean": "your name is linked to a criminal case and you may be arrested today if you do not cooperate",
+    "score": 0.609709
+   },
+   "money": {
+    "clean": "your name is linked to a criminal case and you may be arrested today if you do not cooperate",
+    "score": 0.009447
+   },
+   "impersonation": {
+    "clean": "your name is linked to a criminal case and you may be arrested today if you do not cooperate.",
+    "score": 0.97585
+   }
+  },
+  {
+   "source": "script:scam_en_10_gov_official",
+   "text": "You must not tell anyone, not your family and not your bank. This investigation is confidential.",
+   "urgency": {
+    "clean": "you must not tell anyone not your family and not your bank this investigation is confidential",
+    "score": 0.557656
+   },
+   "money": {
+    "clean": "you must not tell anyone not your family and not your bank this investigation is confidential",
+    "score": 0.032188
+   },
+   "impersonation": {
+    "clean": "you must not tell anyone, not your family and not your bank. this investigation is confidential.",
+    "score": 0.999934
+   }
+  },
+  {
+   "source": "script:scam_en_10_gov_official",
+   "text": "To prove your innocence, we need to check your funds. Transfer your savings into a safety account that we provide.",
+   "urgency": {
+    "clean": "to prove your innocence we need to check your funds transfer your savings into a safety account that we provide",
+    "score": 0.716793
+   },
+   "money": {
+    "clean": "to prove your innocence we need to check your funds transfer your savings into a safety account that we provide",
+    "score": 0.54612
+   },
+   "impersonation": {
+    "clean": "to prove your innocence, we need to check your funds. transfer your savings into a safety account that we provide.",
+    "score": 0.978574
+   }
+  },
+  {
+   "source": "script:scam_en_10_gov_official",
+   "text": "Do it right now, within the next thirty minutes, or a warrant will be issued.",
+   "urgency": {
+    "clean": "do it right now within the next thirty minutes or a warrant will be issued",
+    "score": 0.679959
+   },
+   "money": {
+    "clean": "do it right now within the next thirty minutes or a warrant will be issued",
+    "score": 0.113967
+   },
+   "impersonation": {
+    "clean": "do it right now, within the next thirty minutes, or a warrant will be issued.",
+    "score": 0.421758
+   }
+  },
+  {
+   "source": "script:scam_en_10_gov_official",
+   "text": "Open your banking app and send all the money to this account number. Read me the OTP when the bank sends it.",
+   "urgency": {
+    "clean": "open your banking app and send all the money to this account number read me the otp when the bank sends it",
+    "score": 0.378857
+   },
+   "money": {
+    "clean": "open your banking app and send all the money to this account number read me the otp when the bank sends it",
+    "score": 0.999572
+   },
+   "impersonation": {
+    "clean": "open your banking app and send all the money to this account number. read me the otp when the bank sends it.",
+    "score": 0.596373
+   }
+  },
+  {
+   "source": "script:scam_en_10_gov_official",
+   "text": "Stay on the line. Do not hang up until the transfer is done.",
+   "urgency": {
+    "clean": "stay on the line do not hang up until the transfer is done",
+    "score": 0.295524
+   },
+   "money": {
+    "clean": "stay on the line do not hang up until the transfer is done",
+    "score": 0.120925
+   },
+   "impersonation": {
+    "clean": "stay on the line. do not hang up until the transfer is done.",
+    "score": 0.569816
+   }
+  },
+  {
+   "source": "script:scam_en_11_bank_otp",
+   "text": "Hello, this is the security department of your bank. Is this the account holder?",
+   "urgency": {
+    "clean": "hello this is the security department of your bank is this the account holder",
+    "score": 0.557789
+   },
+   "money": {
+    "clean": "hello this is the security department of your bank is this the account holder",
+    "score": 0.058972
+   },
+   "impersonation": {
+    "clean": "hello, this is the security department of your bank. is this the account holder?",
+    "score": 0.998778
+   }
+  },
+  {
+   "source": "script:scam_en_11_bank_otp",
+   "text": "We noticed a suspicious payment of three thousand two hundred dollars from your account to an overseas merchant.",
+   "urgency": {
+    "clean": "we noticed a suspicious payment of three thousand two hundred dollars from your account to an overseas merchant",
+    "score": 0.564579
+   },
+   "money": {
+    "clean": "we noticed a suspicious payment of moneytoken from your account to an overseas merchant",
+    "score": 0.248199
+   },
+   "impersonation": {
+    "clean": "we noticed a suspicious payment of three thousand two hundred dollars from your account to an overseas merchant.",
+    "score": 0.989567
+   }
+  },
+  {
+   "source": "script:scam_en_11_bank_otp",
+   "text": "Don't worry, I can cancel it, but I need to verify your identity quickly.",
+   "urgency": {
+    "clean": "don't worry i can cancel it but i need to verify your identity quickly",
+    "score": 0.366213
+   },
+   "money": {
+    "clean": "do not worry i can cancel it but i need to verify your identity quickly",
+    "score": 0.176623
+   },
+   "impersonation": {
+    "clean": "don't worry, i can cancel it, but i need to verify your identity quickly.",
+    "score": 0.993906
+   }
+  },
+  {
+   "source": "script:scam_en_11_bank_otp",
+   "text": "The transaction will go through in five minutes, so we must act immediately.",
+   "urgency": {
+    "clean": "the transaction will go through in five minutes so we must act immediately",
+    "score": 0.82165
+   },
+   "money": {
+    "clean": "the transaction will go through in five minutes so we must act immediately",
+    "score": 0.171207
+   },
+   "impersonation": {
+    "clean": "the transaction will go through in five minutes, so we must act immediately.",
+    "score": 0.908773
+   }
+  },
+  {
+   "source": "script:scam_en_11_bank_otp",
+   "text": "I am sending a six-digit code to your phone now. Please read it out to me.",
+   "urgency": {
+    "clean": "i am sending a six digit code to your phone now please read it out to me",
+    "score": 0.380235
+   },
+   "money": {
+    "clean": "i am sending a six digit code to your phone now please read it out to me",
+    "score": 0.857301
+   },
+   "impersonation": {
+    "clean": "i am sending a six-digit code to your phone now. please read it out to me.",
+    "score": 0.998703
+   }
+  },
+  {
+   "source": "script:scam_en_11_bank_otp",
+   "text": "Yes, that is normal, it is part of the cancellation process. Just tell me the numbers.",
+   "urgency": {
+    "clean": "yes that is normal it is part of the cancellation process just tell me the numbers",
+    "score": 0.179963
+   },
+   "money": {
+    "clean": "yes that is normal it is part of the cancellation process just tell me the numbers",
+    "score": 0.997779
+   },
+   "impersonation": {
+    "clean": "yes, that is normal, it is part of the cancellation process. just tell me the numbers.",
+    "score": 0.176937
+   }
+  },
+  {
+   "source": "script:scam_en_11_bank_otp",
+   "text": "Also give me your card number and the three digits at the back so I can block it.",
+   "urgency": {
+    "clean": "also give me your card number and the three digits at the back so i can block it",
+    "score": 0.13811
+   },
+   "money": {
+    "clean": "also give me your card number and the three digits at the back so i can block it",
+    "score": 0.999223
+   },
+   "impersonation": {
+    "clean": "also give me your card number and the three digits at the back so i can block it.",
+    "score": 0.881476
+   }
+  },
+  {
+   "source": "script:scam_en_12_parcel_customs",
+   "text": "Hello, this is the courier service. We have a parcel under your name that is held at customs.",
+   "urgency": {
+    "clean": "hello this is the courier service we have a parcel under your name that is held at customs",
+    "score": 0.406956
+   },
+   "money": {
+    "clean": "hello this is the courier service we have a parcel under your name that is held at customs",
+    "score": 0.000589
+   },
+   "impersonation": {
+    "clean": "hello, this is the courier service. we have a parcel under your name that is held at customs.",
+    "score": 0.777765
+   }
+  },
+  {
+   "source": "script:scam_en_12_parcel_customs",
+   "text": "It was sent from overseas and the declared contents do not match, so customs has flagged it.",
+   "urgency": {
+    "clean": "it was sent from overseas and the declared contents do not match so customs has flagged it",
+    "score": 0.159916
+   },
+   "money": {
+    "clean": "it was sent from overseas and the declared contents do not match so customs has flagged it",
+    "score": 0.078887
+   },
+   "impersonation": {
+    "clean": "it was sent from overseas and the declared contents do not match, so customs has flagged it.",
+    "score": 0.998095
+   }
+  },
+  {
+   "source": "script:scam_en_12_parcel_customs",
+   "text": "I will connect you to the customs enforcement officer. Please hold.",
+   "urgency": {
+    "clean": "i will connect you to the customs enforcement officer please hold",
+    "score": 0.390498
+   },
+   "money": {
+    "clean": "i will connect you to the customs enforcement officer please hold",
+    "score": 0.040799
+   },
+   "impersonation": {
+    "clean": "i will connect you to the customs enforcement officer. please hold.",
+    "score": 0.99235
+   }
+  },
+  {
+   "source": "script:scam_en_12_parcel_customs",
+   "text": "Good afternoon, I am Officer Lim from Singapore Customs. You are being investigated for importing prohibited items.",
+   "urgency": {
+    "clean": "good afternoon i am officer lim from singapore customs you are being investigated for importing prohibited items",
+    "score": 0.225618
+   },
+   "money": {
+    "clean": "good afternoon i am officer lim from orggovt you are being investigated for importing prohibited items",
+    "score": 0.007412
+   },
+   "impersonation": {
+    "clean": "good afternoon, i am officer lim from orggovt. you are being investigated for importing prohibited items.",
+    "score": 0.934168
+   }
+  },
+  {
+   "source": "script:scam_en_12_parcel_customs",
+   "text": "If you do not resolve this today, we will refer your case to the police and the parcel will be destroyed.",
+   "urgency": {
+    "clean": "if you do not resolve this today we will refer your case to the police and the parcel will be destroyed",
+    "score": 0.878256
+   },
+   "money": {
+    "clean": "if you do not resolve this today we will refer your case to the police and the parcel will be destroyed",
+    "score": 0.134955
+   },
+   "impersonation": {
+    "clean": "if you do not resolve this today, we will refer your case to the police and the parcel will be destroyed.",
+    "score": 0.989251
+   }
+  },
+  {
+   "source": "script:scam_en_12_parcel_customs",
+   "text": "You need to pay a release fee of four hundred and eighty dollars through PayNow.",
+   "urgency": {
+    "clean": "you need to pay a release fee of four hundred and eighty dollars through paynow",
+    "score": 0.366332
+   },
+   "money": {
+    "clean": "you need to pay a release fee of moneytoken through payapp",
+    "score": 0.99653
+   },
+   "impersonation": {
+    "clean": "you need to pay a release fee of four hundred and eighty dollars through paynow.",
+    "score": 0.020679
+   }
+  },
+  {
+   "source": "script:scam_en_12_parcel_customs",
+   "text": "I will send you the number now. Pay within one hour, otherwise the fine will double.",
+   "urgency": {
+    "clean": "i will send you the number now pay within one hour otherwise the fine will double",
+    "score": 0.459041
+   },
+   "money": {
+    "clean": "i will send you the number now pay within one hour otherwise the fine will double",
+    "score": 0.908599
+   },
+   "impersonation": {
+    "clean": "i will send you the number now. pay within one hour, otherwise the fine will double.",
+    "score": 0.99506
+   }
+  },
+  {
+   "source": "script:scam_en_12_parcel_customs",
+   "text": "After you pay, take a screenshot of the receipt and send it to me on WhatsApp.",
+   "urgency": {
+    "clean": "after you pay take a screenshot of the receipt and send it to me on whatsapp",
+    "score": 0.273208
+   },
+   "money": {
+    "clean": "after you pay take a screenshot of the receipt and send it to me on whatsapp",
+    "score": 0.895948
+   },
+   "impersonation": {
+    "clean": "after you pay, take a screenshot of the receipt and send it to me on whatsapp.",
+    "score": 0.244386
+   }
+  },
+  {
+   "source": "script:scam_en_13_tech_support",
+   "text": "Good morning, I am calling from the technical support team of your internet provider.",
+   "urgency": {
+    "clean": "good morning i am calling from the technical support team of your internet provider",
+    "score": 0.259751
+   },
+   "money": {
+    "clean": "good morning i am calling from the technical support team of your internet provider",
+    "score": 0.013513
+   },
+   "impersonation": {
+    "clean": "good morning, i am calling from the technical support team of your internet provider.",
+    "score": 0.981785
+   }
+  },
+  {
+   "source": "script:scam_en_13_tech_support",
+   "text": "Yes, our system shows your router has been hacked and your computer is sending out viruses.",
+   "urgency": {
+    "clean": "yes our system shows your router has been hacked and your computer is sending out viruses",
+    "score": 0.3264
+   },
+   "money": {
+    "clean": "yes our system shows your router has been hacked and your computer is sending out viruses",
+    "score": 0.000393
+   },
+   "impersonation": {
+    "clean": "yes, our system shows your router has been hacked and your computer is sending out viruses.",
+    "score": 0.96977
+   }
+  },
+  {
+   "source": "script:scam_en_13_tech_support",
+   "text": "It is very serious. Hackers may already have access to your personal files.",
+   "urgency": {
+    "clean": "it is very serious hackers may already have access to your personal files",
+    "score": 0.370277
+   },
+   "money": {
+    "clean": "it is very serious hackers may already have access to your personal files",
+    "score": 0.005998
+   },
+   "impersonation": {
+    "clean": "it is very serious. hackers may already have access to your personal files.",
+    "score": 0.042936
+   }
+  },
+  {
+   "source": "script:scam_en_13_tech_support",
+   "text": "Please turn on your computer and open the web browser. I will guide you to download a support app.",
+   "urgency": {
+    "clean": "please turn on your computer and open the web browser i will guide you to download a support app",
+    "score": 0.348869
+   },
+   "money": {
+    "clean": "please turn on your computer and open the web browser i will guide you to download a support app",
+    "score": 0.020755
+   },
+   "impersonation": {
+    "clean": "please turn on your computer and open the web browser. i will guide you to download a support app.",
+    "score": 0.915403
+   }
+  },
+  {
+   "source": "script:scam_en_13_tech_support",
+   "text": "Yes, give me the nine-digit code on the screen so I can connect and clean your computer.",
+   "urgency": {
+    "clean": "yes give me the nine digit code on the screen so i can connect and clean your computer",
+    "score": 0.193601
+   },
+   "money": {
+    "clean": "yes give me the nine digit code on the screen so i can connect and clean your computer",
+    "score": 0.953376
+   },
+   "impersonation": {
+    "clean": "yes, give me the nine-digit code on the screen so i can connect and clean your computer.",
+    "score": 0.999479
+   }
+  },
+  {
+   "source": "script:scam_en_13_tech_support",
+   "text": "Now I can see your screen. The virus has reached your banking. Please log in to your internet banking so I can check.",
+   "urgency": {
+    "clean": "now i can see your screen the virus has reached your banking please log in to your internet banking so i can check",
+    "score": 0.324837
+   },
+   "money": {
+    "clean": "now i can see your screen the virus has reached your banking please log in to your internet banking so i can check",
+    "score": 0.850155
+   },
+   "impersonation": {
+    "clean": "now i can see your screen. the virus has reached your banking. please log in to your internet banking so i can check.",
+    "score": 0.806211
+   }
+  },
+  {
+   "source": "script:scam_en_13_tech_support",
+   "text": "Yes, we must move your money to a protected account before the hackers take it. Please do it right now.",
+   "urgency": {
+    "clean": "yes we must move your money to a protected account before the hackers take it please do it right now",
+    "score": 0.640179
+   },
+   "money": {
+    "clean": "yes we must move your money to a protected account before the hackers take it please do it right now",
+    "score": 0.887827
+   },
+   "impersonation": {
+    "clean": "yes, we must move your money to a protected account before the hackers take it. please do it right now.",
+    "score": 0.999294
+   }
+  },
+  {
+   "source": "script:scam_en_13_tech_support",
+   "text": "The cleaning service also costs two hundred dollars. Please pay with gift cards from any convenience store.",
+   "urgency": {
+    "clean": "the cleaning service also costs two hundred dollars please pay with gift cards from any convenience store",
+    "score": 0.358627
+   },
+   "money": {
+    "clean": "the cleaning service also costs moneytoken please pay with gift cards from any convenience store",
+    "score": 0.303991
+   },
+   "impersonation": {
+    "clean": "the cleaning service also costs two hundred dollars. please pay with gift cards from any convenience store.",
+    "score": 0.000284
+   }
+  },
+  {
+   "source": "script:scam_en_14_friend_in_trouble",
+   "text": "Hello Auntie, it's me! Guess who this is?",
+   "urgency": {
+    "clean": "hello auntie it's me guess who this is",
+    "score": 0.483051
+   },
+   "money": {
+    "clean": "hello auntie its me guess who this is",
+    "score": 0.009032
+   },
+   "impersonation": {
+    "clean": "hello auntie, it's me! guess who this is?",
+    "score": 0.00117
+   }
+  },
+  {
+   "source": "script:scam_en_14_friend_in_trouble",
+   "text": "Yes yes, it's Jason! Sorry, I changed my number, my old phone fell into the water.",
+   "urgency": {
+    "clean": "yes yes it's jason sorry i changed my number my old phone fell into the water",
+    "score": 0.152395
+   },
+   "money": {
+    "clean": "yes yes its jason sorry i changed my number my old phone fell into the water",
+    "score": 0.023649
+   },
+   "impersonation": {
+    "clean": "yes yes, it's jason! sorry, i changed my number, my old phone fell into the water.",
+    "score": 0.000504
+   }
+  },
+  {
+   "source": "script:scam_en_14_friend_in_trouble",
+   "text": "Auntie, I'm in a bit of trouble. I was in a car accident and the police are holding me at the station.",
+   "urgency": {
+    "clean": "auntie i'm in a bit of trouble i was in a car accident and the police are holding me at the station",
+    "score": 0.236105
+   },
+   "money": {
+    "clean": "auntie im in a bit of trouble i was in a car accident and the police are holding me at the station",
+    "score": 0.162015
+   },
+   "impersonation": {
+    "clean": "auntie, i'm in a bit of trouble. i was in a car accident and the police are holding me at the station.",
+    "score": 0.001983
+   }
+  },
+  {
+   "source": "script:scam_en_14_friend_in_trouble",
+   "text": "I'm fine, but I need to pay the other driver's repair cost and bail today or they will charge me.",
+   "urgency": {
+    "clean": "i'm fine but i need to pay the other driver's repair cost and bail today or they will charge me",
+    "score": 0.537424
+   },
+   "money": {
+    "clean": "im fine but i need to pay the other drivers repair cost and bail today or they will charge me",
+    "score": 0.944773
+   },
+   "impersonation": {
+    "clean": "i'm fine, but i need to pay the other driver's repair cost and bail today or they will charge me.",
+    "score": 0.038501
+   }
+  },
+  {
+   "source": "script:scam_en_14_friend_in_trouble",
+   "text": "Five thousand five hundred dollars. Please don't tell Mum, she will be so worried.",
+   "urgency": {
+    "clean": "five thousand five hundred dollars please don't tell mum she will be so worried",
+    "score": 0.662795
+   },
+   "money": {
+    "clean": "moneytoken please do not tell mum she will be so worried",
+    "score": 0.216239
+   },
+   "impersonation": {
+    "clean": "five thousand five hundred dollars. please don't tell mum, she will be so worried.",
+    "score": 0.01989
+   }
+  },
+  {
+   "source": "script:scam_en_14_friend_in_trouble",
+   "text": "Can you PayNow it now? I'll give you the number. It's really urgent, they are waiting.",
+   "urgency": {
+    "clean": "can you paynow it now i'll give you the number it's really urgent they are waiting",
+    "score": 0.2908
+   },
+   "money": {
+    "clean": "can you payapp it now ill give you the number its really urgent they are waiting",
+    "score": 0.572292
+   },
+   "impersonation": {
+    "clean": "can you paynow it now? i'll give you the number. it's really urgent, they are waiting.",
+    "score": 0.002603
+   }
+  },
+  {
+   "source": "script:scam_en_14_friend_in_trouble",
+   "text": "Thank you Auntie, I'll pay you back next week, I promise. Please hurry.",
+   "urgency": {
+    "clean": "thank you auntie i'll pay you back next week i promise please hurry",
+    "score": 0.569769
+   },
+   "money": {
+    "clean": "thank you auntie ill pay you back next week i promise please hurry",
+    "score": 0.641907
+   },
+   "impersonation": {
+    "clean": "thank you auntie, i'll pay you back next week, i promise. please hurry.",
+    "score": 2.8e-05
+   }
+  },
+  {
+   "source": "script:scam_en_90_new_scam_test_A_report_this",
+   "text": "Good evening, our recruiter saw your profile and has a work from home role for you.",
+   "urgency": {
+    "clean": "good evening our recruiter saw your profile and has a work from home role for you",
+    "score": 0.167398
+   },
+   "money": {
+    "clean": "good evening our recruiter saw your profile and has a work from home role for you",
+    "score": 0.001251
+   },
+   "impersonation": {
+    "clean": "good evening, our recruiter saw your profile and has a work from home role for you.",
+    "score": 0.126769
+   }
+  },
+  {
+   "source": "script:scam_en_90_new_scam_test_A_report_this",
+   "text": "You just rate products on our platform and earn commission each day.",
+   "urgency": {
+    "clean": "you just rate products on our platform and earn commission each day",
+    "score": 0.161991
+   },
+   "money": {
+    "clean": "you just rate products on our platform and earn commission each day",
+    "score": 0.069053
+   },
+   "impersonation": {
+    "clean": "you just rate products on our platform and earn commission each day.",
+    "score": 0.016702
+   }
+  },
+  {
+   "source": "script:scam_en_90_new_scam_test_A_report_this",
+   "text": "The first task needs a small top up in USDT which comes back with your commission.",
+   "urgency": {
+    "clean": "the first task needs a small top up in usdt which comes back with your commission",
+    "score": 0.195726
+   },
+   "money": {
+    "clean": "the first task needs a small top up in usdt which comes back with your commission",
+    "score": 0.50548
+   },
+   "impersonation": {
+    "clean": "the first task needs a small top up in usdt which comes back with your commission.",
+    "score": 0.008972
+   }
+  },
+  {
+   "source": "script:scam_en_90_new_scam_test_A_report_this",
+   "text": "I will add you to the Telegram group where the mentor shows you the steps.",
+   "urgency": {
+    "clean": "i will add you to the telegram group where the mentor shows you the steps",
+    "score": 0.30108
+   },
+   "money": {
+    "clean": "i will add you to the telegram group where the mentor shows you the steps",
+    "score": 0.019883
+   },
+   "impersonation": {
+    "clean": "i will add you to the telegram group where the mentor shows you the steps.",
+    "score": 0.182316
+   }
+  },
+  {
+   "source": "script:scam_en_90_new_scam_test_A_report_this",
+   "text": "Top up again today to unlock the next task or your commission stays frozen.",
+   "urgency": {
+    "clean": "top up again today to unlock the next task or your commission stays frozen",
+    "score": 0.437462
+   },
+   "money": {
+    "clean": "top up again today to unlock the next task or your commission stays frozen",
+    "score": 0.844407
+   },
+   "impersonation": {
+    "clean": "top up again today to unlock the next task or your commission stays frozen.",
+    "score": 0.068364
+   }
+  },
+  {
+   "source": "script:scam_en_90_new_scam_test_A_report_this",
+   "text": "Slots fill up fast so please decide tonight.",
+   "urgency": {
+    "clean": "slots fill up fast so please decide tonight",
+    "score": 0.298854
+   },
+   "money": {
+    "clean": "slots fill up fast so please decide tonight",
+    "score": 0.227622
+   },
+   "impersonation": {
+    "clean": "slots fill up fast so please decide tonight.",
+    "score": 0.008699
+   }
+  },
+  {
+   "source": "script:scam_en_91_new_scam_test_B_same_scam_new_words",
+   "text": "Hi, our hiring team found your resume and we have a part time online job for you.",
+   "urgency": {
+    "clean": "hi our hiring team found your resume and we have a part time online job for you",
+    "score": 0.207505
+   },
+   "money": {
+    "clean": "hi our hiring team found your resume and we have a part time online job for you",
+    "score": 0.001754
+   },
+   "impersonation": {
+    "clean": "hi, our hiring team found your resume and we have a part time online job for you.",
+    "score": 0.074062
+   }
+  },
+  {
+   "source": "script:scam_en_91_new_scam_test_B_same_scam_new_words",
+   "text": "All you do is rate products on the platform and your commission builds up.",
+   "urgency": {
+    "clean": "all you do is rate products on the platform and your commission builds up",
+    "score": 0.257143
+   },
+   "money": {
+    "clean": "all you do is rate products on the platform and your commission builds up",
+    "score": 0.035473
+   },
+   "impersonation": {
+    "clean": "all you do is rate products on the platform and your commission builds up.",
+    "score": 0.011687
+   }
+  },
+  {
+   "source": "script:scam_en_91_new_scam_test_B_same_scam_new_words",
+   "text": "Task one needs a small USDT top up, which is returned together with your commission.",
+   "urgency": {
+    "clean": "task one needs a small usdt top up which is returned together with your commission",
+    "score": 0.201581
+   },
+   "money": {
+    "clean": "task one needs a small usdt top up which is returned together with your commission",
+    "score": 0.102301
+   },
+   "impersonation": {
+    "clean": "task one needs a small usdt top up, which is returned together with your commission.",
+    "score": 0.099131
+   }
+  },
+  {
+   "source": "script:scam_en_91_new_scam_test_B_same_scam_new_words",
+   "text": "Our mentor in the Telegram group explains each step.",
+   "urgency": {
+    "clean": "our mentor in the telegram group explains each step",
+    "score": 0.25386
+   },
+   "money": {
+    "clean": "our mentor in the telegram group explains each step",
+    "score": 0.018153
+   },
+   "impersonation": {
+    "clean": "our mentor in the telegram group explains each step.",
+    "score": 0.010744
+   }
+  },
+  {
+   "source": "script:scam_en_91_new_scam_test_B_same_scam_new_words",
+   "text": "One more top up today unlocks the next task, if not your commission stays frozen.",
+   "urgency": {
+    "clean": "one more top up today unlocks the next task if not your commission stays frozen",
+    "score": 0.44981
+   },
+   "money": {
+    "clean": "one more top up today unlocks the next task if not your commission stays frozen",
+    "score": 0.721517
+   },
+   "impersonation": {
+    "clean": "one more top up today unlocks the next task, if not your commission stays frozen.",
+    "score": 0.057823
+   }
+  },
+  {
+   "source": "script:scam_en_91_new_scam_test_B_same_scam_new_words",
+   "text": "Places are filling up fast, so decide tonight.",
+   "urgency": {
+    "clean": "places are filling up fast so decide tonight",
+    "score": 0.22052
+   },
+   "money": {
+    "clean": "places are filling up fast so decide tonight",
+    "score": 0.047793
+   },
+   "impersonation": {
+    "clean": "places are filling up fast, so decide tonight.",
+    "score": 0.002365
+   }
+  },
+  {
+   "source": "robocall:1",
+   "text": "So if you want to know about this case just press 1.",
+   "urgency": {
+    "clean": "so if you want to know about this case just press numtoken",
+    "score": 0.332568
+   },
+   "money": {
+    "clean": "so if you want to know about this case just press numtoken",
+    "score": 0.104814
+   },
+   "impersonation": {
+    "clean": "so if you want to know about this case just press 1.",
+    "score": 0.08729
+   }
+  },
+  {
+   "source": "robocall:2",
+   "text": "Thanks to your good payment history and good credit score, you have been qualified finally for an interest rate reduction between 0 to 5 percent.",
+   "urgency": {
+    "clean": "thanks to your good payment history and good credit score you have been qualified finally for an interest rate reduction between numtoken to numtoken percent",
+    "score": 0.289137
+   },
+   "money": {
+    "clean": "thanks to your good payment history and good credit score you have been qualified finally for an interest rate reduction between numtoken to numtoken percent",
+    "score": 0.004888
+   },
+   "impersonation": {
+    "clean": "thanks to your good payment history and good credit score, you have been qualified finally for an interest rate reduction between 0 to 5 percent.",
+    "score": 0.000736
+   }
+  },
+  {
+   "source": "robocall:3",
+   "text": "Your social security number has been used for some kind of fraudulent activities in the south border of Texas.",
+   "urgency": {
+    "clean": "your social security number has been used for some kind of fraudulent activities in the south border of texas",
+    "score": 0.24171
+   },
+   "money": {
+    "clean": "your social security number has been used for some kind of fraudulent activities in the south border of texas",
+    "score": 0.000258
+   },
+   "impersonation": {
+    "clean": "your social security number has been used for some kind of fraudulent activities in the south border of texas.",
+    "score": 0.88217
+   }
+  },
+  {
+   "source": "robocall:4",
+   "text": "Call the number on your caller ID now for this amazing deal.",
+   "urgency": {
+    "clean": "call the number on your caller id now for this amazing deal",
+    "score": 0.424613
+   },
+   "money": {
+    "clean": "call the number on your caller id now for this amazing deal",
+    "score": 0.008875
+   },
+   "impersonation": {
+    "clean": "call the number on your caller id now for this amazing deal.",
+    "score": 0.026136
+   }
+  },
+  {
+   "source": "robocall:5",
+   "text": "This is a disconnection notice from your electric company.",
+   "urgency": {
+    "clean": "this is a disconnection notice from your electric company",
+    "score": 0.69055
+   },
+   "money": {
+    "clean": "this is a disconnection notice from your electric company",
+    "score": 0.000509
+   },
+   "impersonation": {
+    "clean": "this is a disconnection notice from your electric company.",
+    "score": 0.03858
+   }
+  },
+  {
+   "source": "robocall:6",
+   "text": "Now, you should have received something in the mail about this warranty and since we haven't gotten a response, we are giving you a final courtesy call before we close out your file.",
+   "urgency": {
+    "clean": "now you should have received something in the mail about this warranty and since we haven't gotten a response we are giving you a final courtesy call before we close out your file",
+    "score": 0.813557
+   },
+   "money": {
+    "clean": "now you should have received something in the mail about this warranty and since we have not gotten a response we are giving you a final courtesy call before we close out your file",
+    "score": 0.009731
+   },
+   "impersonation": {
+    "clean": "now, you should have received something in the mail about this warranty and since we haven't gotten a response, we are giving you a final courtesy call before we close out your file.",
+    "score": 0.001482
+   }
+  },
+  {
+   "source": "robocall:7",
+   "text": "I don't know what you're referring to.",
+   "urgency": {
+    "clean": "i don't know what you're referring to",
+    "score": 0.206636
+   },
+   "money": {
+    "clean": "i do not know what youre referring to",
+    "score": 0.016679
+   },
+   "impersonation": {
+    "clean": "i don't know what you're referring to.",
+    "score": 0.040472
+   }
+  },
+  {
+   "source": "robocall:8",
+   "text": "Hi, we've been trying to reach you concerning your vehicle's extended warranty.",
+   "urgency": {
+    "clean": "hi we've been trying to reach you concerning your vehicle's extended warranty",
+    "score": 0.483281
+   },
+   "money": {
+    "clean": "hi weve been trying to reach you concerning your vehicles extended warranty",
+    "score": 0.003934
+   },
+   "impersonation": {
+    "clean": "hi, we've been trying to reach you concerning your vehicle's extended warranty.",
+    "score": 0.061525
+   }
+  },
+  {
+   "source": "robocall:9",
+   "text": "Serious allegations have been filed against your name, due to which you will be taken into federal custody for further investigation.",
+   "urgency": {
+    "clean": "serious allegations have been filed against your name due to which you will be taken into federal custody for further investigation",
+    "score": 0.529535
+   },
+   "money": {
+    "clean": "serious allegations have been filed against your name due to which you will be taken into federal custody for further investigation",
+    "score": 0.002545
+   },
+   "impersonation": {
+    "clean": "serious allegations have been filed against your name, due to which you will be taken into federal custody for further investigation.",
+    "score": 0.969563
+   }
+  },
+  {
+   "source": "robocall:10",
+   "text": "We have gone through your account, and we found that your Amazon account has been used for shopping purpose, as we can see multiple orders placed from your Amazon account.",
+   "urgency": {
+    "clean": "we have gone through your account and we found that your amazon account has been used for shopping purpose as we can see multiple orders placed from your amazon account",
+    "score": 0.423724
+   },
+   "money": {
+    "clean": "we have gone through your account and we found that your orgtech account has been used for shopping purpose as we can see multiple orders placed from your orgtech account",
+    "score": 0.019664
+   },
+   "impersonation": {
+    "clean": "we have gone through your account, and we found that your orgtech account has been used for shopping purpose, as we can see multiple orders placed from your orgtech account.",
+    "score": 0.918624
+   }
+  },
+  {
+   "source": "robocall:11",
+   "text": "Placed for Apple, I fund 12 Pro using your Amazon account.",
+   "urgency": {
+    "clean": "placed for apple i fund numtoken pro using your amazon account",
+    "score": 0.262156
+   },
+   "money": {
+    "clean": "placed for orgtech i fund numtoken pro using your orgtech account",
+    "score": 0.176403
+   },
+   "impersonation": {
+    "clean": "placed for orgtech, i fund 12 pro using your orgtech account.",
+    "score": 0.835302
+   }
+  },
+  {
+   "source": "robocall:12",
+   "text": "Hi, my name is Jennifer Kelly.",
+   "urgency": {
+    "clean": "hi my name is jennifer kelly",
+    "score": 0.150827
+   },
+   "money": {
+    "clean": "hi my name is jennifer kelly",
+    "score": 0.000364
+   },
+   "impersonation": {
+    "clean": "hi, my name is jennifer kelly.",
+    "score": 0.062524
+   }
+  },
+  {
+   "source": "robocall:13",
+   "text": "Very good day to you.",
+   "urgency": {
+    "clean": "very good day to you",
+    "score": 0.210112
+   },
+   "money": {
+    "clean": "very good day to you",
+    "score": 0.004315
+   },
+   "impersonation": {
+    "clean": "very good day to you.",
+    "score": 0.030938
+   }
+  },
+  {
+   "source": "robocall:14",
+   "text": "Discover has made some big changes on your credit card accounts and you are now eligible for a complete debt elimination on all of your credit cards.",
+   "urgency": {
+    "clean": "discover has made some big changes on your credit card accounts and you are now eligible for a complete debt elimination on all of your credit cards",
+    "score": 0.221245
+   },
+   "money": {
+    "clean": "discover has made some big changes on your credit card accounts and you are now eligible for a complete debt elimination on all of your credit cards",
+    "score": 0.060663
+   },
+   "impersonation": {
+    "clean": "discover has made some big changes on your credit card accounts and you are now eligible for a complete debt elimination on all of your credit cards.",
+    "score": 0.248258
+   }
+  },
+  {
+   "source": "robocall:15",
+   "text": "If you have a debit balance of your loan, you will have to resume paying back.",
+   "urgency": {
+    "clean": "if you have a debit balance of your loan you will have to resume paying back",
+    "score": 0.730932
+   },
+   "money": {
+    "clean": "if you have a debit balance of your loan you will have to resume paying back",
+    "score": 0.263156
+   },
+   "impersonation": {
+    "clean": "if you have a debit balance of your loan, you will have to resume paying back.",
+    "score": 0.006723
+   }
+  },
+  {
+   "source": "robocall:16",
+   "text": "And if you do not authorize this order, press 1 or 0.",
+   "urgency": {
+    "clean": "and if you do not authorize this order press numtoken or numtoken",
+    "score": 0.631615
+   },
+   "money": {
+    "clean": "and if you do not authorize this order press numtoken or numtoken",
+    "score": 0.035083
+   },
+   "impersonation": {
+    "clean": "and if you do not authorize this order, press 1 or 0.",
+    "score": 0.989625
+   }
+  },
+  {
+   "source": "robocall:17",
+   "text": "your case and take necessary action on this matter.",
+   "urgency": {
+    "clean": "your case and take necessary action on this matter",
+    "score": 0.729882
+   },
+   "money": {
+    "clean": "your case and take necessary action on this matter",
+    "score": 0.001808
+   },
+   "impersonation": {
+    "clean": "your case and take necessary action on this matter.",
+    "score": 0.627069
+   }
+  },
+  {
+   "source": "robocall:18",
+   "text": "The reason you receive this phone call from our department is to inform you that there's a legal enforcement action filed on your social security number for fraudulent activities.",
+   "urgency": {
+    "clean": "the reason you receive this phone call from our department is to inform you that there's a legal enforcement action filed on your social security number for fraudulent activities",
+    "score": 0.371949
+   },
+   "money": {
+    "clean": "the reason you receive this phone call from our department is to inform you that theres a legal enforcement action filed on your social security number for fraudulent activities",
+    "score": 0.000526
+   },
+   "impersonation": {
+    "clean": "the reason you receive this phone call from our department is to inform you that there's a legal enforcement action filed on your social security number for fraudulent activities.",
+    "score": 0.910448
+   }
+  },
+  {
+   "source": "robocall:19",
+   "text": "It's urgent that you return my call today to complete your application.",
+   "urgency": {
+    "clean": "it's urgent that you return my call today to complete your application",
+    "score": 0.746576
+   },
+   "money": {
+    "clean": "its urgent that you return my call today to complete your application",
+    "score": 0.077804
+   },
+   "impersonation": {
+    "clean": "it's urgent that you return my call today to complete your application.",
+    "score": 0.004027
+   }
+  },
+  {
+   "source": "robocall:20",
+   "text": "So if you want to cancel the payment and want to talk our customer service, please press one.",
+   "urgency": {
+    "clean": "so if you want to cancel the payment and want to talk our customer service please press one",
+    "score": 0.507922
+   },
+   "money": {
+    "clean": "so if you want to cancel the payment and want to talk our customer service please press one",
+    "score": 0.160923
+   },
+   "impersonation": {
+    "clean": "so if you want to cancel the payment and want to talk our customer service, please press one.",
+    "score": 0.2612
+   }
+  },
+  {
+   "source": "robocall:21",
+   "text": "You can say things like responding to a text or returning a phone call.",
+   "urgency": {
+    "clean": "you can say things like responding to a text or returning a phone call",
+    "score": 0.371545
+   },
+   "money": {
+    "clean": "you can say things like responding to a text or returning a phone call",
+    "score": 0.082628
+   },
+   "impersonation": {
+    "clean": "you can say things like responding to a text or returning a phone call.",
+    "score": 0.000142
+   }
+  },
+  {
+   "source": "robocall:22",
+   "text": "We go ahead and proceed that parcel to you, sir.",
+   "urgency": {
+    "clean": "we go ahead and proceed that parcel to you sir",
+    "score": 0.373296
+   },
+   "money": {
+    "clean": "we go ahead and proceed that parcel to you sir",
+    "score": 0.242225
+   },
+   "impersonation": {
+    "clean": "we go ahead and proceed that parcel to you, sir.",
+    "score": 0.973217
+   }
+  },
+  {
+   "source": "robocall:23",
+   "text": "This number is registered to our Amazon, and this number has been purchased an iPhone XS from our Amazon.",
+   "urgency": {
+    "clean": "this number is registered to our amazon and this number has been purchased an iphone xs from our amazon",
+    "score": 0.348587
+   },
+   "money": {
+    "clean": "this number is registered to our orgtech and this number has been purchased an iphone xs from our orgtech",
+    "score": 0.001164
+   },
+   "impersonation": {
+    "clean": "this number is registered to our orgtech, and this number has been purchased an iphone xs from our orgtech.",
+    "score": 0.849896
+   }
+  },
+  {
+   "source": "robocall:24",
+   "text": "My state assigned phone number is 855-228-4781 and this call has been marked complete by state agent Mary Marcello, agent number 5568.",
+   "urgency": {
+    "clean": "my state assigned phone number is phonetoken and this call has been marked complete by state agent mary marcello agent number numtoken",
+    "score": 0.405622
+   },
+   "money": {
+    "clean": "my state assigned phone number is phonetoken and this call has been marked complete by state agent mary marcello agent number numtoken",
+    "score": 0.000796
+   },
+   "impersonation": {
+    "clean": "my state assigned phone number is 855-228-longnumber and this call has been marked complete by state agent mary marcello, agent number longnumber.",
+    "score": 0.052197
+   }
+  },
+  {
+   "source": "robocall:25",
+   "text": "To connect the call press 1, I repeat to avoid any kind of legal consequences or a non-available arrest warrant, you need to talk to the concerned officer immediately.",
+   "urgency": {
+    "clean": "to connect the call press numtoken i repeat to avoid any kind of legal consequences or a non available arrest warrant you need to talk to the concerned officer immediately",
+    "score": 0.744267
+   },
+   "money": {
+    "clean": "to connect the call press numtoken i repeat to avoid any kind of legal consequences or a non available arrest warrant you need to talk to the concerned officer immediately",
+    "score": 0.026653
+   },
+   "impersonation": {
+    "clean": "to connect the call press 1, i repeat to avoid any kind of legal consequences or a non-available arrest warrant, you need to talk to the concerned officer immediately.",
+    "score": 0.808972
+   }
+  },
+  {
+   "source": "robocall:26",
+   "text": "The amount charged is $149.",
+   "urgency": {
+    "clean": "the amount charged is moneytoken",
+    "score": 0.284866
+   },
+   "money": {
+    "clean": "the amount charged is moneytoken",
+    "score": 0.267434
+   },
+   "impersonation": {
+    "clean": "the amount charged is $149.",
+    "score": 0.0345
+   }
+  },
+  {
+   "source": "robocall:27",
+   "text": "Because we are thinking of a database.",
+   "urgency": {
+    "clean": "because we are thinking of a database",
+    "score": 0.320196
+   },
+   "money": {
+    "clean": "because we are thinking of a database",
+    "score": 0.001002
+   },
+   "impersonation": {
+    "clean": "because we are thinking of a database.",
+    "score": 0.002447
+   }
+  },
+  {
+   "source": "robocall:28",
+   "text": "So, it's a reminder call to you.",
+   "urgency": {
+    "clean": "so it's a reminder call to you",
+    "score": 0.376715
+   },
+   "money": {
+    "clean": "so its a reminder call to you",
+    "score": 0.005432
+   },
+   "impersonation": {
+    "clean": "so, it's a reminder call to you.",
+    "score": 0.000578
+   }
+  },
+  {
+   "source": "robocall:29",
+   "text": "to your account before the next billing cycle.",
+   "urgency": {
+    "clean": "to your account before the next billing cycle",
+    "score": 0.667477
+   },
+   "money": {
+    "clean": "to your account before the next billing cycle",
+    "score": 0.545034
+   },
+   "impersonation": {
+    "clean": "to your account before the next billing cycle.",
+    "score": 0.034629
+   }
+  },
+  {
+   "source": "robocall:30",
+   "text": "The state has now set aside $1.3 billion.",
+   "urgency": {
+    "clean": "the state has now set aside moneytoken billion",
+    "score": 0.212829
+   },
+   "money": {
+    "clean": "the state has now set aside moneytoken",
+    "score": 0.002
+   },
+   "impersonation": {
+    "clean": "the state has now set aside $1.3 billion.",
+    "score": 0.328546
+   }
+  },
+  {
+   "source": "robocall:31",
+   "text": "The reason of this call is to inform you about a package has been seized under your name by U.S.",
+   "urgency": {
+    "clean": "the reason of this call is to inform you about a package has been seized under your name by u s",
+    "score": 0.439237
+   },
+   "money": {
+    "clean": "the reason of this call is to inform you about a package has been seized under your name by u s",
+    "score": 0.000303
+   },
+   "impersonation": {
+    "clean": "the reason of this call is to inform you about a package has been seized under your name by u.s.",
+    "score": 0.026672
+   }
+  },
+  {
+   "source": "robocall:32",
+   "text": "The very second you receive this message you need to leave your work aside, so that we can discuss about your case and take necessary action on this matter in order to connect.",
+   "urgency": {
+    "clean": "the very second you receive this message you need to leave your work aside so that we can discuss about your case and take necessary action on this matter in order to connect",
+    "score": 0.689341
+   },
+   "money": {
+    "clean": "the very second you receive this message you need to leave your work aside so that we can discuss about your case and take necessary action on this matter in order to connect",
+    "score": 0.004893
+   },
+   "impersonation": {
+    "clean": "the very second you receive this message you need to leave your work aside, so that we can discuss about your case and take necessary action on this matter in order to connect.",
+    "score": 0.176148
+   }
+  },
+  {
+   "source": "robocall:33",
+   "text": "Please press 1 to contact Fraud Department for dispute.",
+   "urgency": {
+    "clean": "please press numtoken to contact fraud department for dispute",
+    "score": 0.280213
+   },
+   "money": {
+    "clean": "please press numtoken to contact fraud department for dispute",
+    "score": 0.012846
+   },
+   "impersonation": {
+    "clean": "please press 1 to contact fraud department for dispute.",
+    "score": 0.684326
+   }
+  },
+  {
+   "source": "robocall:34",
+   "text": "So it will be showing you after 12 hours, sir, because the order is now going to shipping mode.",
+   "urgency": {
+    "clean": "so it will be showing you after numtoken hours sir because the order is now going to shipping mode",
+    "score": 0.349356
+   },
+   "money": {
+    "clean": "so it will be showing you after numtoken hours sir because the order is now going to shipping mode",
+    "score": 0.002308
+   },
+   "impersonation": {
+    "clean": "so it will be showing you after 12 hours, sir, because the order is now going to shipping mode.",
+    "score": 0.542465
+   }
+  },
+  {
+   "source": "robocall:35",
+   "text": "Your telephone number has been pre-selected to receive a complimentary stay in one of our five-star hotels.",
+   "urgency": {
+    "clean": "your telephone number has been pre selected to receive a complimentary stay in one of our five star hotels",
+    "score": 0.263758
+   },
+   "money": {
+    "clean": "your telephone number has been pre selected to receive a complimentary stay in one of our five star hotels",
+    "score": 0.002055
+   },
+   "impersonation": {
+    "clean": "your telephone number has been pre-selected to receive a complimentary stay in one of our five-star hotels.",
+    "score": 0.025117
+   }
+  },
+  {
+   "source": "robocall:36",
+   "text": "You have been officially notified.",
+   "urgency": {
+    "clean": "you have been officially notified",
+    "score": 0.204781
+   },
+   "money": {
+    "clean": "you have been officially notified",
+    "score": 0.001358
+   },
+   "impersonation": {
+    "clean": "you have been officially notified.",
+    "score": 0.000941
+   }
+  },
+  {
+   "source": "robocall:37",
+   "text": "Since we have not gotten a response, we are giving you a final courtesy call before you close out your file.",
+   "urgency": {
+    "clean": "since we have not gotten a response we are giving you a final courtesy call before you close out your file",
+    "score": 0.808946
+   },
+   "money": {
+    "clean": "since we have not gotten a response we are giving you a final courtesy call before you close out your file",
+    "score": 0.000636
+   },
+   "impersonation": {
+    "clean": "since we have not gotten a response, we are giving you a final courtesy call before you close out your file.",
+    "score": 0.030863
+   }
+  },
+  {
+   "source": "robocall:38",
+   "text": "We are monitoring your payment history and you have been qualified to drop down your interest rate below 6% on your credit cards.",
+   "urgency": {
+    "clean": "we are monitoring your payment history and you have been qualified to drop down your interest rate below numtoken on your credit cards",
+    "score": 0.495995
+   },
+   "money": {
+    "clean": "we are monitoring your payment history and you have been qualified to drop down your interest rate below numtoken on your credit cards",
+    "score": 0.026614
+   },
+   "impersonation": {
+    "clean": "we are monitoring your payment history and you have been qualified to drop down your interest rate below 6% on your credit cards.",
+    "score": 0.014619
+   }
+  },
+  {
+   "source": "robocall:39",
+   "text": "call is to inform you about a package has been seized under your name by U.S.",
+   "urgency": {
+    "clean": "call is to inform you about a package has been seized under your name by u s",
+    "score": 0.348369
+   },
+   "money": {
+    "clean": "call is to inform you about a package has been seized under your name by u s",
+    "score": 0.00017
+   },
+   "impersonation": {
+    "clean": "call is to inform you about a package has been seized under your name by u.s.",
+    "score": 0.018552
+   }
+  },
+  {
+   "source": "robocall:40",
+   "text": "This has been an important call regarding legal enforcement action being executed under your name for suspicious and fraudulent activities carried out using your identity.",
+   "urgency": {
+    "clean": "this has been an important call regarding legal enforcement action being executed under your name for suspicious and fraudulent activities carried out using your identity",
+    "score": 0.616642
+   },
+   "money": {
+    "clean": "this has been an important call regarding legal enforcement action being executed under your name for suspicious and fraudulent activities carried out using your identity",
+    "score": 0.000147
+   },
+   "impersonation": {
+    "clean": "this has been an important call regarding legal enforcement action being executed under your name for suspicious and fraudulent activities carried out using your identity.",
+    "score": 0.998294
+   }
+  },
+  {
+   "source": "robocall:41",
+   "text": "aside, so that we can discuss about your case and take necessary action on this matter.",
+   "urgency": {
+    "clean": "aside so that we can discuss about your case and take necessary action on this matter",
+    "score": 0.674514
+   },
+   "money": {
+    "clean": "aside so that we can discuss about your case and take necessary action on this matter",
+    "score": 0.002178
+   },
+   "impersonation": {
+    "clean": "aside, so that we can discuss about your case and take necessary action on this matter.",
+    "score": 0.375737
+   }
+  },
+  {
+   "source": "robocall:42",
+   "text": "There is one pre-authorized order placed for Apple MacBook Pro and AirPod Pro for a total amount of $1499 it will be deducted from your account soon.",
+   "urgency": {
+    "clean": "there is one pre authorized order placed for apple macbook pro and airpod pro for a total amount of moneytoken it will be deducted from your account soon",
+    "score": 0.701956
+   },
+   "money": {
+    "clean": "there is one pre authorized order placed for orgtech macbook pro and airpod pro for a total amount of moneytoken it will be deducted from your account soon",
+    "score": 0.156669
+   },
+   "impersonation": {
+    "clean": "there is one pre-authorized order placed for orgtech macbook pro and airpod pro for a total amount of $longnumber it will be deducted from your account soon.",
+    "score": 0.324392
+   }
+  },
+  {
+   "source": "robocall:43",
+   "text": "your work aside so that we can discuss about your case and take necessary action on this matter.",
+   "urgency": {
+    "clean": "your work aside so that we can discuss about your case and take necessary action on this matter",
+    "score": 0.655175
+   },
+   "money": {
+    "clean": "your work aside so that we can discuss about your case and take necessary action on this matter",
+    "score": 0.001933
+   },
+   "impersonation": {
+    "clean": "your work aside so that we can discuss about your case and take necessary action on this matter.",
+    "score": 0.346474
+   }
+  },
+  {
+   "source": "robocall:44",
+   "text": "If you did not authorize this transaction, please press 1 to connect with Fraud Specialist immediately.",
+   "urgency": {
+    "clean": "if you did not authorize this transaction please press numtoken to connect with fraud specialist immediately",
+    "score": 0.712289
+   },
+   "money": {
+    "clean": "if you did not authorize this transaction please press numtoken to connect with fraud specialist immediately",
+    "score": 0.009361
+   },
+   "impersonation": {
+    "clean": "if you did not authorize this transaction, please press 1 to connect with fraud specialist immediately.",
+    "score": 0.999476
+   }
+  },
+  {
+   "source": "robocall:45",
+   "text": "I see my Amazon account.",
+   "urgency": {
+    "clean": "i see my amazon account",
+    "score": 0.28256
+   },
+   "money": {
+    "clean": "i see my orgtech account",
+    "score": 0.060918
+   },
+   "impersonation": {
+    "clean": "i see my orgtech account.",
+    "score": 0.67536
+   }
+  },
+  {
+   "source": "robocall:46",
+   "text": "payment of $469 for your recent purchase.",
+   "urgency": {
+    "clean": "payment of moneytoken for your recent purchase",
+    "score": 0.26903
+   },
+   "money": {
+    "clean": "payment of moneytoken for your recent purchase",
+    "score": 0.258338
+   },
+   "impersonation": {
+    "clean": "payment of $469 for your recent purchase.",
+    "score": 0.002887
+   }
+  },
+  {
+   "source": "robocall:47",
+   "text": "If you approve this transaction, please press 2.",
+   "urgency": {
+    "clean": "if you approve this transaction please press numtoken",
+    "score": 0.611992
+   },
+   "money": {
+    "clean": "if you approve this transaction please press numtoken",
+    "score": 0.264407
+   },
+   "impersonation": {
+    "clean": "if you approve this transaction, please press 2.",
+    "score": 0.384701
+   }
+  },
+  {
+   "source": "robocall:48",
+   "text": "This is an effort from this administration as part of their financial relief program to help Americans recover financially from the virus outbreak.",
+   "urgency": {
+    "clean": "this is an effort from this administration as part of their financial relief program to help americans recover financially from the virus outbreak",
+    "score": 0.50159
+   },
+   "money": {
+    "clean": "this is an effort from this administration as part of their financial relief program to help americans recover financially from the virus outbreak",
+    "score": 0.001934
+   },
+   "impersonation": {
+    "clean": "this is an effort from this administration as part of their financial relief program to help americans recover financially from the virus outbreak.",
+    "score": 0.139834
+   }
+  },
+  {
+   "source": "robocall:49",
+   "text": "Thank you for choosing Hilton Hotels.",
+   "urgency": {
+    "clean": "thank you for choosing hilton hotels",
+    "score": 0.076564
+   },
+   "money": {
+    "clean": "thank you for choosing hilton hotels",
+    "score": 0.000376
+   },
+   "impersonation": {
+    "clean": "thank you for choosing hilton hotels.",
+    "score": 0.000351
+   }
+  },
+  {
+   "source": "robocall:50",
+   "text": "been seized under your name by U.S.",
+   "urgency": {
+    "clean": "been seized under your name by u s",
+    "score": 0.299107
+   },
+   "money": {
+    "clean": "been seized under your name by u s",
+    "score": 0.004825
+   },
+   "impersonation": {
+    "clean": "been seized under your name by u.s.",
+    "score": 0.816413
+   }
+  },
+  {
+   "source": "robocall:51",
+   "text": "You have been qualified to drop down your entry straight below 6 on your credit card.",
+   "urgency": {
+    "clean": "you have been qualified to drop down your entry straight below numtoken on your credit card",
+    "score": 0.261723
+   },
+   "money": {
+    "clean": "you have been qualified to drop down your entry straight below numtoken on your credit card",
+    "score": 0.032751
+   },
+   "impersonation": {
+    "clean": "you have been qualified to drop down your entry straight below 6 on your credit card.",
+    "score": 0.017006
+   }
+  },
+  {
+   "source": "robocall:52",
+   "text": "Someone order an iPhone X from your Amazon account, which will charge you $899.",
+   "urgency": {
+    "clean": "someone order an iphone x from your amazon account which will charge you moneytoken",
+    "score": 0.373841
+   },
+   "money": {
+    "clean": "someone order an iphone x from your orgtech account which will charge you moneytoken",
+    "score": 0.048473
+   },
+   "impersonation": {
+    "clean": "someone order an iphone x from your orgtech account, which will charge you $899.",
+    "score": 0.912817
+   }
+  },
+  {
+   "source": "robocall:53",
+   "text": "You now qualify for 0% interest rate on all your credit card account.",
+   "urgency": {
+    "clean": "you now qualify for numtoken interest rate on all your credit card account",
+    "score": 0.252943
+   },
+   "money": {
+    "clean": "you now qualify for numtoken interest rate on all your credit card account",
+    "score": 0.06583
+   },
+   "impersonation": {
+    "clean": "you now qualify for 0% interest rate on all your credit card account.",
+    "score": 0.697077
+   }
+  },
+  {
+   "source": "robocall:54",
+   "text": "own call is to inform you that we will be suspending your social security number because we found some suspicious activities on your social security.",
+   "urgency": {
+    "clean": "own call is to inform you that we will be suspending your social security number because we found some suspicious activities on your social security",
+    "score": 0.475351
+   },
+   "money": {
+    "clean": "own call is to inform you that we will be suspending your social security number because we found some suspicious activities on your social security",
+    "score": 8.3e-05
+   },
+   "impersonation": {
+    "clean": "own call is to inform you that we will be suspending your social security number because we found some suspicious activities on your social security.",
+    "score": 0.982068
+   }
+  },
+  {
+   "source": "robocall:55",
+   "text": "Is that okay with you?",
+   "urgency": {
+    "clean": "is that okay with you",
+    "score": 0.085493
+   },
+   "money": {
+    "clean": "is that okay with you",
+    "score": 0.005
+   },
+   "impersonation": {
+    "clean": "is that okay with you?",
+    "score": 0.015189
+   }
+  },
+  {
+   "source": "robocall:56",
+   "text": "Press 1 if you did not do this.",
+   "urgency": {
+    "clean": "press numtoken if you did not do this",
+    "score": 0.583835
+   },
+   "money": {
+    "clean": "press numtoken if you did not do this",
+    "score": 0.003029
+   },
+   "impersonation": {
+    "clean": "press 1 if you did not do this.",
+    "score": 0.898481
+   }
+  },
+  {
+   "source": "robocall:57",
+   "text": "Let me explain to you, sir.",
+   "urgency": {
+    "clean": "let me explain to you sir",
+    "score": 0.176826
+   },
+   "money": {
+    "clean": "let me explain to you sir",
+    "score": 0.019344
+   },
+   "impersonation": {
+    "clean": "let me explain to you, sir.",
+    "score": 0.107039
+   }
+  },
+  {
+   "source": "robocall:58",
+   "text": "We have seen a recent order number, AMZ0987, of iPhone 11 Pro on your account, which is billed on your card attached to your Amazon account.",
+   "urgency": {
+    "clean": "we have seen a recent order number numtoken of iphone numtoken pro on your account which is billed on your card attached to your amazon account",
+    "score": 0.316518
+   },
+   "money": {
+    "clean": "we have seen a recent order number amz numtoken of iphone numtoken pro on your account which is billed on your card attached to your orgtech account",
+    "score": 0.19479
+   },
+   "impersonation": {
+    "clean": "we have seen a recent order number, amzlongnumber, of iphone 11 pro on your account, which is billed on your card attached to your orgtech account.",
+    "score": 0.951266
+   }
+  },
+  {
+   "source": "robocall:59",
+   "text": "fraudulent and suspicious activity in the state of Texas.",
+   "urgency": {
+    "clean": "fraudulent and suspicious activity in the state of texas",
+    "score": 0.178538
+   },
+   "money": {
+    "clean": "fraudulent and suspicious activity in the state of texas",
+    "score": 0.011488
+   },
+   "impersonation": {
+    "clean": "fraudulent and suspicious activity in the state of texas.",
+    "score": 0.957289
+   }
+  },
+  {
+   "source": "robocall:60",
+   "text": "Only recommend please do not access your account on your device for security reason until your account will not get fixed.",
+   "urgency": {
+    "clean": "only recommend please do not access your account on your device for security reason until your account will not get fixed",
+    "score": 0.556995
+   },
+   "money": {
+    "clean": "only recommend please do not access your account on your device for security reason until your account will not get fixed",
+    "score": 0.075886
+   },
+   "impersonation": {
+    "clean": "only recommend please do not access your account on your device for security reason until your account will not get fixed.",
+    "score": 0.991512
+   }
+  },
+  {
+   "source": "robocall:61",
+   "text": "In order to connect to federal agent press one and you will be connected to the concerned department.",
+   "urgency": {
+    "clean": "in order to connect to federal agent press one and you will be connected to the concerned department",
+    "score": 0.424457
+   },
+   "money": {
+    "clean": "in order to connect to federal agent press one and you will be connected to the concerned department",
+    "score": 0.045053
+   },
+   "impersonation": {
+    "clean": "in order to connect to federal agent press one and you will be connected to the concerned department.",
+    "score": 0.977593
+   }
+  },
+  {
+   "source": "robocall:62",
+   "text": "Thank you for connecting with Amazon.",
+   "urgency": {
+    "clean": "thank you for connecting with amazon",
+    "score": 0.087895
+   },
+   "money": {
+    "clean": "thank you for connecting with orgtech",
+    "score": 0.001492
+   },
+   "impersonation": {
+    "clean": "thank you for connecting with orgtech.",
+    "score": 0.133279
+   }
+  },
+  {
+   "source": "robocall:63",
+   "text": "calling you from the legal department to inform you that, due to some suspicious activities related to your name, we are trying to reach you, but unfortunately we missed your answer.",
+   "urgency": {
+    "clean": "calling you from the legal department to inform you that due to some suspicious activities related to your name we are trying to reach you but unfortunately we missed your answer",
+    "score": 0.539604
+   },
+   "money": {
+    "clean": "calling you from the legal department to inform you that due to some suspicious activities related to your name we are trying to reach you but unfortunately we missed your answer",
+    "score": 0.003818
+   },
+   "impersonation": {
+    "clean": "calling you from the legal department to inform you that, due to some suspicious activities related to your name, we are trying to reach you, but unfortunately we missed your answer.",
+    "score": 0.955394
+   }
+  },
+  {
+   "source": "robocall:64",
+   "text": "Call our 800 number at 833-304-1447, UST 456.",
+   "urgency": {
+    "clean": "call our numtoken number at phonetoken ust numtoken",
+    "score": 0.311075
+   },
+   "money": {
+    "clean": "call our numtoken number at phonetoken ust numtoken",
+    "score": 0.001663
+   },
+   "impersonation": {
+    "clean": "call our 800 number at 833-304-longnumber, ust 456.",
+    "score": 0.015323
+   }
+  },
+  {
+   "source": "robocall:65",
+   "text": "This is an emergency call from your tech support company.",
+   "urgency": {
+    "clean": "this is an emergency call from your tech support company",
+    "score": 0.752886
+   },
+   "money": {
+    "clean": "this is an emergency call from your tech support company",
+    "score": 0.000402
+   },
+   "impersonation": {
+    "clean": "this is an emergency call from your tech support company.",
+    "score": 0.400888
+   }
+  },
+  {
+   "source": "robocall:66",
+   "text": "You need to be simply just verify that cancellation form by your site.",
+   "urgency": {
+    "clean": "you need to be simply just verify that cancellation form by your site",
+    "score": 0.444861
+   },
+   "money": {
+    "clean": "you need to be simply just verify that cancellation form by your site",
+    "score": 0.236019
+   },
+   "impersonation": {
+    "clean": "you need to be simply just verify that cancellation form by your site.",
+    "score": 0.635603
+   }
+  },
+  {
+   "source": "robocall:67",
+   "text": "Press 1 to get the refund.",
+   "urgency": {
+    "clean": "press numtoken to get the refund",
+    "score": 0.202894
+   },
+   "money": {
+    "clean": "press numtoken to get the refund",
+    "score": 0.040667
+   },
+   "impersonation": {
+    "clean": "press 1 to get the refund.",
+    "score": 0.018533
+   }
+  },
+  {
+   "source": "robocall:68",
+   "text": "So sorry if you're busy.",
+   "urgency": {
+    "clean": "so sorry if you're busy",
+    "score": 0.272558
+   },
+   "money": {
+    "clean": "so sorry if youre busy",
+    "score": 0.025077
+   },
+   "impersonation": {
+    "clean": "so sorry if you're busy.",
+    "score": 0.078059
+   }
+  },
+  {
+   "source": "robocall:69",
+   "text": "Hello, this is Mary Marcello regarding your COVID-19 relief payment and you can reach me at my state assigned phone number, 855-228-4781.",
+   "urgency": {
+    "clean": "hello this is mary marcello regarding your covid numtoken relief payment and you can reach me at my state assigned phone number phonetoken",
+    "score": 0.398343
+   },
+   "money": {
+    "clean": "hello this is mary marcello regarding your covid numtoken relief payment and you can reach me at my state assigned phone number phonetoken",
+    "score": 0.0174
+   },
+   "impersonation": {
+    "clean": "hello, this is mary marcello regarding your covid-19 relief payment and you can reach me at my state assigned phone number, 855-228-longnumber.",
+    "score": 0.003851
+   }
+  },
+  {
+   "source": "robocall:70",
+   "text": "in charge for the payment of $469 for your recent purchase.",
+   "urgency": {
+    "clean": "in charge for the payment of moneytoken for your recent purchase",
+    "score": 0.281956
+   },
+   "money": {
+    "clean": "in charge for the payment of moneytoken for your recent purchase",
+    "score": 0.127999
+   },
+   "impersonation": {
+    "clean": "in charge for the payment of $469 for your recent purchase.",
+    "score": 0.001536
+   }
+  },
+  {
+   "source": "robocall:71",
+   "text": "Hi, this is Officer Sarah Schulz calling you from the Department of Social Security Administration.",
+   "urgency": {
+    "clean": "hi this is officer sarah schulz calling you from the department of social security administration",
+    "score": 0.432877
+   },
+   "money": {
+    "clean": "hi this is officer sarah schulz calling you from the department of social security administration",
+    "score": 0.001019
+   },
+   "impersonation": {
+    "clean": "hi, this is officer sarah schulz calling you from the department of social security administration.",
+    "score": 0.901514
+   }
+  },
+  {
+   "source": "robocall:72",
+   "text": "I would call soon so you don't miss the cutoff.",
+   "urgency": {
+    "clean": "i would call soon so you don't miss the cutoff",
+    "score": 0.601052
+   },
+   "money": {
+    "clean": "i would call soon so you do not miss the cutoff",
+    "score": 0.020596
+   },
+   "impersonation": {
+    "clean": "i would call soon so you don't miss the cutoff.",
+    "score": 0.002856
+   }
+  },
+  {
+   "source": "robocall:73",
+   "text": "Press 2 to be put on our do not call list or press 1 to speak to someone about possibly extending or reinstating your car's warranty.",
+   "urgency": {
+    "clean": "press numtoken to be put on our do not call list or press numtoken to speak to someone about possibly extending or reinstating your car's warranty",
+    "score": 0.308484
+   },
+   "money": {
+    "clean": "press numtoken to be put on our do not call list or press numtoken to speak to someone about possibly extending or reinstating your cars warranty",
+    "score": 0.002514
+   },
+   "impersonation": {
+    "clean": "press 2 to be put on our do not call list or press 1 to speak to someone about possibly extending or reinstating your car's warranty.",
+    "score": 0.421621
+   }
+  },
+  {
+   "source": "robocall:74",
+   "text": "We strongly recommend please don't access your account on your device for security reason until your account will not get fixed for more support.",
+   "urgency": {
+    "clean": "we strongly recommend please don't access your account on your device for security reason until your account will not get fixed for more support",
+    "score": 0.632596
+   },
+   "money": {
+    "clean": "we strongly recommend please do not access your account on your device for security reason until your account will not get fixed for more support",
+    "score": 0.04248
+   },
+   "impersonation": {
+    "clean": "we strongly recommend please don't access your account on your device for security reason until your account will not get fixed for more support.",
+    "score": 0.898044
+   }
+  },
+  {
+   "source": "robocall:75",
+   "text": "Hello, this is Alex with American Benefits on a recorded line.",
+   "urgency": {
+    "clean": "hello this is alex with american benefits on a recorded line",
+    "score": 0.354008
+   },
+   "money": {
+    "clean": "hello this is alex with american benefits on a recorded line",
+    "score": 0.000139
+   },
+   "impersonation": {
+    "clean": "hello, this is alex with american benefits on a recorded line.",
+    "score": 0.604598
+   }
+  },
+  {
+   "source": "robocall:76",
+   "text": "You are now qualified for a complete debt elimination on all of your credit cards.",
+   "urgency": {
+    "clean": "you are now qualified for a complete debt elimination on all of your credit cards",
+    "score": 0.20005
+   },
+   "money": {
+    "clean": "you are now qualified for a complete debt elimination on all of your credit cards",
+    "score": 0.095206
+   },
+   "impersonation": {
+    "clean": "you are now qualified for a complete debt elimination on all of your credit cards.",
+    "score": 0.068246
+   }
+  },
+  {
+   "source": "robocall:77",
+   "text": "your electric service will be disconnected within the next 30 minutes due to non-payment.",
+   "urgency": {
+    "clean": "your electric service will be disconnected within the next numtoken minutes due to non payment",
+    "score": 0.902574
+   },
+   "money": {
+    "clean": "your electric service will be disconnected within the next numtoken minutes due to non payment",
+    "score": 0.036601
+   },
+   "impersonation": {
+    "clean": "your electric service will be disconnected within the next 30 minutes due to non-payment.",
+    "score": 0.020366
+   }
+  },
+  {
+   "source": "robocall:78",
+   "text": "Which computer you are using right now at the moment?",
+   "urgency": {
+    "clean": "which computer you are using right now at the moment",
+    "score": 0.30484
+   },
+   "money": {
+    "clean": "which computer you are using right now at the moment",
+    "score": 0.011544
+   },
+   "impersonation": {
+    "clean": "which computer you are using right now at the moment?",
+    "score": 0.074528
+   }
+  },
+  {
+   "source": "robocall:79",
+   "text": "And it's my job to make you aware that because you qualified for a relief payment, you also qualify for the new debt relief program.",
+   "urgency": {
+    "clean": "and it's my job to make you aware that because you qualified for a relief payment you also qualify for the new debt relief program",
+    "score": 0.212353
+   },
+   "money": {
+    "clean": "and its my job to make you aware that because you qualified for a relief payment you also qualify for the new debt relief program",
+    "score": 0.029911
+   },
+   "impersonation": {
+    "clean": "and it's my job to make you aware that because you qualified for a relief payment, you also qualify for the new debt relief program.",
+    "score": 0.000171
+   }
+  },
+  {
+   "source": "robocall:80",
+   "text": "And we just suspended your social security number.",
+   "urgency": {
+    "clean": "and we just suspended your social security number",
+    "score": 0.320999
+   },
+   "money": {
+    "clean": "and we just suspended your social security number",
+    "score": 0.002376
+   },
+   "impersonation": {
+    "clean": "and we just suspended your social security number.",
+    "score": 0.987601
+   }
+  },
+  {
+   "source": "robocall:81",
+   "text": "I repeat press 1 to get more details.",
+   "urgency": {
+    "clean": "i repeat press numtoken to get more details",
+    "score": 0.170277
+   },
+   "money": {
+    "clean": "i repeat press numtoken to get more details",
+    "score": 0.065662
+   },
+   "impersonation": {
+    "clean": "i repeat press 1 to get more details.",
+    "score": 0.015565
+   }
+  },
+  {
+   "source": "robocall:82",
+   "text": "This is the Notifications Department with Jersey Central Power and Light, you have an automatic interruption of service in the next 30 to 45 minutes due to request a discontinue of the service or delinquent account status.",
+   "urgency": {
+    "clean": "this is the notifications department with jersey central power and light you have an automatic interruption of service in the next numtoken to numtoken minutes due to request a discontinue of the service or delinquent account status",
+    "score": 0.821836
+   },
+   "money": {
+    "clean": "this is the notifications department with jersey central power and light you have an automatic interruption of service in the next numtoken to numtoken minutes due to request a discontinue of the service or delinquent account status",
+    "score": 0.024153
+   },
+   "impersonation": {
+    "clean": "this is the notifications department with jersey central power and light, you have an automatic interruption of service in the next 30 to 45 minutes due to request a discontinue of the service or delinquent account status.",
+    "score": 0.016903
+   }
+  },
+  {
+   "source": "robocall:83",
+   "text": "a disconnection of service today within 30 minutes due to non-payment on the account.",
+   "urgency": {
+    "clean": "a disconnection of service today within numtoken minutes due to non payment on the account",
+    "score": 0.908992
+   },
+   "money": {
+    "clean": "a disconnection of service today within numtoken minutes due to non payment on the account",
+    "score": 0.121207
+   },
+   "impersonation": {
+    "clean": "a disconnection of service today within 30 minutes due to non-payment on the account.",
+    "score": 0.330386
+   }
+  },
+  {
+   "source": "robocall:84",
+   "text": "Hi, this is an automated message from the Disconnection Department of Pacific Gas and Electric, Electricity Company.",
+   "urgency": {
+    "clean": "hi this is an automated message from the disconnection department of pacific gas and electric electricity company",
+    "score": 0.398031
+   },
+   "money": {
+    "clean": "hi this is an automated message from the disconnection department of pacific gas and electric electricity company",
+    "score": 0.003923
+   },
+   "impersonation": {
+    "clean": "hi, this is an automated message from the disconnection department of pacific gas and electric, electricity company.",
+    "score": 0.035987
+   }
+  },
+  {
+   "source": "robocall:85",
+   "text": "resident, you are now able to take advantage of alternative federal student loan repayment options and hardship programs.",
+   "urgency": {
+    "clean": "resident you are now able to take advantage of alternative federal student loan repayment options and hardship programs",
+    "score": 0.334226
+   },
+   "money": {
+    "clean": "resident you are now able to take advantage of alternative federal student loan repayment options and hardship programs",
+    "score": 0.012416
+   },
+   "impersonation": {
+    "clean": "resident, you are now able to take advantage of alternative federal student loan repayment options and hardship programs.",
+    "score": 0.598485
+   }
+  },
+  {
+   "source": "robocall:86",
+   "text": "Again, this is the Notifications Department with Jersey Central Power and Light, you have an automatic interruption of service in the next 30 to 45 minutes due to request a discontinue of the service or delinquent account status.",
+   "urgency": {
+    "clean": "again this is the notifications department with jersey central power and light you have an automatic interruption of service in the next numtoken to numtoken minutes due to request a discontinue of the service or delinquent account status",
+    "score": 0.815623
+   },
+   "money": {
+    "clean": "again this is the notifications department with jersey central power and light you have an automatic interruption of service in the next numtoken to numtoken minutes due to request a discontinue of the service or delinquent account status",
+    "score": 0.017345
+   },
+   "impersonation": {
+    "clean": "again, this is the notifications department with jersey central power and light, you have an automatic interruption of service in the next 30 to 45 minutes due to request a discontinue of the service or delinquent account status.",
+    "score": 0.023672
+   }
+  },
+  {
+   "source": "robocall:87",
+   "text": "Or to talk to our customer care please press 3.",
+   "urgency": {
+    "clean": "or to talk to our customer care please press numtoken",
+    "score": 0.380848
+   },
+   "money": {
+    "clean": "or to talk to our customer care please press numtoken",
+    "score": 0.074781
+   },
+   "impersonation": {
+    "clean": "or to talk to our customer care please press 3.",
+    "score": 0.481284
+   }
+  },
+  {
+   "source": "robocall:88",
+   "text": "In order to connect our legal department press 1 so that we can discuss about your case file and take necessary action on this matter.",
+   "urgency": {
+    "clean": "in order to connect our legal department press numtoken so that we can discuss about your case file and take necessary action on this matter",
+    "score": 0.638816
+   },
+   "money": {
+    "clean": "in order to connect our legal department press numtoken so that we can discuss about your case file and take necessary action on this matter",
+    "score": 0.002449
+   },
+   "impersonation": {
+    "clean": "in order to connect our legal department press 1 so that we can discuss about your case file and take necessary action on this matter.",
+    "score": 0.995063
+   }
+  },
+  {
+   "source": "robocall:89",
+   "text": "you that there is an order placed for Apple iPhone 11 Pro using your Amazon account.",
+   "urgency": {
+    "clean": "you that there is an order placed for apple iphone numtoken pro using your amazon account",
+    "score": 0.215421
+   },
+   "money": {
+    "clean": "you that there is an order placed for orgtech iphone numtoken pro using your orgtech account",
+    "score": 0.04034
+   },
+   "impersonation": {
+    "clean": "you that there is an order placed for orgtech iphone 11 pro using your orgtech account.",
+    "score": 0.721295
+   }
+  },
+  {
+   "source": "robocall:90",
+   "text": "Now, you should have received something in the mail about that warranty.",
+   "urgency": {
+    "clean": "now you should have received something in the mail about that warranty",
+    "score": 0.210614
+   },
+   "money": {
+    "clean": "now you should have received something in the mail about that warranty",
+    "score": 0.246833
+   },
+   "impersonation": {
+    "clean": "now, you should have received something in the mail about that warranty.",
+    "score": 3.3e-05
+   }
+  },
+  {
+   "source": "robocall:91",
+   "text": "This call is regarding your purchase of $999 for iPhone 13 Pro Max.",
+   "urgency": {
+    "clean": "this call is regarding your purchase of moneytoken for iphone numtoken pro max",
+    "score": 0.387598
+   },
+   "money": {
+    "clean": "this call is regarding your purchase of moneytoken for iphone numtoken pro max",
+    "score": 0.002678
+   },
+   "impersonation": {
+    "clean": "this call is regarding your purchase of $999 for iphone 13 pro max.",
+    "score": 0.004769
+   }
+  },
+  {
+   "source": "robocall:92",
+   "text": "I look forward to speaking with you today.",
+   "urgency": {
+    "clean": "i look forward to speaking with you today",
+    "score": 0.226922
+   },
+   "money": {
+    "clean": "i look forward to speaking with you today",
+    "score": 0.196186
+   },
+   "impersonation": {
+    "clean": "i look forward to speaking with you today.",
+    "score": 0.699972
+   }
+  },
+  {
+   "source": "robocall:93",
+   "text": "Drop down your injure straight below 6 on your credit card.",
+   "urgency": {
+    "clean": "drop down your injure straight below numtoken on your credit card",
+    "score": 0.276398
+   },
+   "money": {
+    "clean": "drop down your injure straight below numtoken on your credit card",
+    "score": 0.108203
+   },
+   "impersonation": {
+    "clean": "drop down your injure straight below 6 on your credit card.",
+    "score": 0.133094
+   }
+  },
+  {
+   "source": "robocall:94",
+   "text": "I repeat press 1 to get more information.",
+   "urgency": {
+    "clean": "i repeat press numtoken to get more information",
+    "score": 0.140843
+   },
+   "money": {
+    "clean": "i repeat press numtoken to get more information",
+    "score": 0.031967
+   },
+   "impersonation": {
+    "clean": "i repeat press 1 to get more information.",
+    "score": 0.002269
+   }
+  },
+  {
+   "source": "robocall:95",
+   "text": "We encounter a serious issue coming out of your computer.",
+   "urgency": {
+    "clean": "we encounter a serious issue coming out of your computer",
+    "score": 0.506001
+   },
+   "money": {
+    "clean": "we encounter a serious issue coming out of your computer",
+    "score": 0.004531
+   },
+   "impersonation": {
+    "clean": "we encounter a serious issue coming out of your computer.",
+    "score": 0.760671
+   }
+  },
+  {
+   "source": "robocall:96",
+   "text": "And if you don't respond, Bank of America will cancel this promotion.",
+   "urgency": {
+    "clean": "and if you don't respond bank of america will cancel this promotion",
+    "score": 0.83988
+   },
+   "money": {
+    "clean": "and if you do not respond bank of america will cancel this promotion",
+    "score": 0.045266
+   },
+   "impersonation": {
+    "clean": "and if you don't respond, bank of america will cancel this promotion.",
+    "score": 0.845221
+   }
+  },
+  {
+   "source": "robocall:97",
+   "text": "On your excellent payment history, you now qualify for a 0% interest rate on all your credit card accounts.",
+   "urgency": {
+    "clean": "on your excellent payment history you now qualify for a numtoken interest rate on all your credit card accounts",
+    "score": 0.269291
+   },
+   "money": {
+    "clean": "on your excellent payment history you now qualify for a numtoken interest rate on all your credit card accounts",
+    "score": 0.092775
+   },
+   "impersonation": {
+    "clean": "on your excellent payment history, you now qualify for a 0% interest rate on all your credit card accounts.",
+    "score": 0.70134
+   }
+  },
+  {
+   "source": "robocall:98",
+   "text": "of PSE&G New Jersey, Electricity Company.",
+   "urgency": {
+    "clean": "of pse g new jersey electricity company",
+    "score": 0.180198
+   },
+   "money": {
+    "clean": "of pse g new jersey electricity company",
+    "score": 0.00184
+   },
+   "impersonation": {
+    "clean": "of pse&g new jersey, electricity company.",
+    "score": 0.002475
+   }
+  },
+  {
+   "source": "robocall:99",
+   "text": "FedEx International Express will inform you for the last time that you have a parcel that has been delivered twice and no one has signed for it.",
+   "urgency": {
+    "clean": "fedex international express will inform you for the last time that you have a parcel that has been delivered twice and no one has signed for it",
+    "score": 0.231473
+   },
+   "money": {
+    "clean": "orgcourier international express will inform you for the last time that you have a parcel that has been delivered twice and no one has signed for it",
+    "score": 0.001661
+   },
+   "impersonation": {
+    "clean": "orgcourier international express will inform you for the last time that you have a parcel that has been delivered twice and no one has signed for it.",
+    "score": 0.005094
+   }
+  },
+  {
+   "source": "robocall:100",
+   "text": "Now is your chance to get into a program so that you can qualify for the $10,000 debt elimination.",
+   "urgency": {
+    "clean": "now is your chance to get into a program so that you can qualify for the moneytoken debt elimination",
+    "score": 0.375718
+   },
+   "money": {
+    "clean": "now is your chance to get into a program so that you can qualify for the moneytoken debt elimination",
+    "score": 0.052367
+   },
+   "impersonation": {
+    "clean": "now is your chance to get into a program so that you can qualify for the $10,000 debt elimination.",
+    "score": 0.052388
+   }
+  },
+  {
+   "source": "robocall:101",
+   "text": "by third party supplier, you will be receiving $50 reward along with 30% discount on your electric and gas bill, please press 1 and get your $50 reward card.",
+   "urgency": {
+    "clean": "by third party supplier you will be receiving moneytoken reward along with numtoken discount on your electric and gas bill please press numtoken and get your moneytoken reward card",
+    "score": 0.385008
+   },
+   "money": {
+    "clean": "by third party supplier you will be receiving moneytoken reward along with numtoken discount on your electric and gas bill please press numtoken and get your moneytoken reward card",
+    "score": 0.06903
+   },
+   "impersonation": {
+    "clean": "by third party supplier, you will be receiving $50 reward along with 30% discount on your electric and gas bill, please press 1 and get your $50 reward card.",
+    "score": 0.033765
+   }
+  },
+  {
+   "source": "robocall:102",
+   "text": "If you are interested in renewing your auto warranty now, please press 5 now or press 9 to be removed from our list.",
+   "urgency": {
+    "clean": "if you are interested in renewing your auto warranty now please press numtoken now or press numtoken to be removed from our list",
+    "score": 0.347552
+   },
+   "money": {
+    "clean": "if you are interested in renewing your auto warranty now please press numtoken now or press numtoken to be removed from our list",
+    "score": 0.025414
+   },
+   "impersonation": {
+    "clean": "if you are interested in renewing your auto warranty now, please press 5 now or press 9 to be removed from our list.",
+    "score": 0.935951
+   }
+  },
+  {
+   "source": "robocall:103",
+   "text": "To repeat this message please press 4.",
+   "urgency": {
+    "clean": "to repeat this message please press numtoken",
+    "score": 0.344395
+   },
+   "money": {
+    "clean": "to repeat this message please press numtoken",
+    "score": 0.019082
+   },
+   "impersonation": {
+    "clean": "to repeat this message please press 4.",
+    "score": 0.005253
+   }
+  },
+  {
+   "source": "robocall:104",
+   "text": "If you find this to be an error or would like to stop the interruption, please press 1 to speak with the billing department.",
+   "urgency": {
+    "clean": "if you find this to be an error or would like to stop the interruption please press numtoken to speak with the billing department",
+    "score": 0.435801
+   },
+   "money": {
+    "clean": "if you find this to be an error or would like to stop the interruption please press numtoken to speak with the billing department",
+    "score": 0.035636
+   },
+   "impersonation": {
+    "clean": "if you find this to be an error or would like to stop the interruption, please press 1 to speak with the billing department.",
+    "score": 0.917633
+   }
+  },
+  {
+   "source": "robocall:105",
+   "text": "By this call you have been officially notified.",
+   "urgency": {
+    "clean": "by this call you have been officially notified",
+    "score": 0.525947
+   },
+   "money": {
+    "clean": "by this call you have been officially notified",
+    "score": 0.000457
+   },
+   "impersonation": {
+    "clean": "by this call you have been officially notified.",
+    "score": 0.003161
+   }
+  },
+  {
+   "source": "robocall:106",
+   "text": "citizens on our state list that have tax debt about the new zero-tax owed tax debt relief program that was recently put into effect by the Biden administration and is open for enrollment.",
+   "urgency": {
+    "clean": "citizens on our state list that have tax debt about the new zero tax owed tax debt relief program that was recently put into effect by the biden administration and is open for enrollment",
+    "score": 0.170747
+   },
+   "money": {
+    "clean": "citizens on our state list that have tax debt about the new zero tax owed tax debt relief program that was recently put into effect by the biden administration and is open for enrollment",
+    "score": 0.003219
+   },
+   "impersonation": {
+    "clean": "citizens on our state list that have tax debt about the new zero-tax owed tax debt relief program that was recently put into effect by the biden administration and is open for enrollment.",
+    "score": 0.00157
+   }
+  },
+  {
+   "source": "robocall:107",
+   "text": "From suspicious activity from your account we have found an unauthorized login attempt.",
+   "urgency": {
+    "clean": "from suspicious activity from your account we have found an unauthorized login attempt",
+    "score": 0.424614
+   },
+   "money": {
+    "clean": "from suspicious activity from your account we have found an unauthorized login attempt",
+    "score": 0.010507
+   },
+   "impersonation": {
+    "clean": "from suspicious activity from your account we have found an unauthorized login attempt.",
+    "score": 0.997356
+   }
+  },
+  {
+   "source": "robocall:108",
+   "text": "Department of the Social Security Administration.",
+   "urgency": {
+    "clean": "department of the social security administration",
+    "score": 0.295266
+   },
+   "money": {
+    "clean": "department of the social security administration",
+    "score": 0.001194
+   },
+   "impersonation": {
+    "clean": "department of the social security administration.",
+    "score": 0.894504
+   }
+  },
+  {
+   "source": "robocall:109",
+   "text": "It's a Visa card What's a Visa card?",
+   "urgency": {
+    "clean": "it's a visa card what's a visa card",
+    "score": 0.146261
+   },
+   "money": {
+    "clean": "its a visa card whats a visa card",
+    "score": 0.102888
+   },
+   "impersonation": {
+    "clean": "it's a visa card what's a visa card?",
+    "score": 0.065238
+   }
+  },
+  {
+   "source": "robocall:110",
+   "text": "If you do not authorize this order to cancel press 1.",
+   "urgency": {
+    "clean": "if you do not authorize this order to cancel press numtoken",
+    "score": 0.70943
+   },
+   "money": {
+    "clean": "if you do not authorize this order to cancel press numtoken",
+    "score": 0.013068
+   },
+   "impersonation": {
+    "clean": "if you do not authorize this order to cancel press 1.",
+    "score": 0.99512
+   }
+  },
+  {
+   "source": "robocall:111",
+   "text": "The reason you have received this phone call from our department is to inform you that there's legal enforcement actions filed on your social security number for fraudulent activities.",
+   "urgency": {
+    "clean": "the reason you have received this phone call from our department is to inform you that there's legal enforcement actions filed on your social security number for fraudulent activities",
+    "score": 0.305228
+   },
+   "money": {
+    "clean": "the reason you have received this phone call from our department is to inform you that theres legal enforcement actions filed on your social security number for fraudulent activities",
+    "score": 0.001645
+   },
+   "impersonation": {
+    "clean": "the reason you have received this phone call from our department is to inform you that there's legal enforcement actions filed on your social security number for fraudulent activities.",
+    "score": 0.843642
+   }
+  },
+  {
+   "source": "robocall:112",
+   "text": "Have a great day, sir.",
+   "urgency": {
+    "clean": "have a great day sir",
+    "score": 0.080178
+   },
+   "money": {
+    "clean": "have a great day sir",
+    "score": 0.00346
+   },
+   "impersonation": {
+    "clean": "have a great day, sir.",
+    "score": 0.001263
+   }
+  },
+  {
+   "source": "robocall:113",
+   "text": "My direct phone number is 714-406-4370.",
+   "urgency": {
+    "clean": "my direct phone number is phonetoken",
+    "score": 0.143428
+   },
+   "money": {
+    "clean": "my direct phone number is phonetoken",
+    "score": 0.001971
+   },
+   "impersonation": {
+    "clean": "my direct phone number is 714-406-longnumber.",
+    "score": 0.040229
+   }
+  },
+  {
+   "source": "robocall:114",
+   "text": "Hello, this is Sarah from Discover.",
+   "urgency": {
+    "clean": "hello this is sarah from discover",
+    "score": 0.423771
+   },
+   "money": {
+    "clean": "hello this is sarah from discover",
+    "score": 0.000391
+   },
+   "impersonation": {
+    "clean": "hello, this is sarah from discover.",
+    "score": 0.075262
+   }
+  },
+  {
+   "source": "robocall:115",
+   "text": "Well, what can I do about it?",
+   "urgency": {
+    "clean": "well what can i do about it",
+    "score": 0.081912
+   },
+   "money": {
+    "clean": "well what can i do about it",
+    "score": 0.049579
+   },
+   "impersonation": {
+    "clean": "well, what can i do about it?",
+    "score": 0.000813
+   }
+  },
+  {
+   "source": "robocall:116",
+   "text": "Otherwise, please press 2 to speak with the billing department.",
+   "urgency": {
+    "clean": "otherwise please press numtoken to speak with the billing department",
+    "score": 0.235024
+   },
+   "money": {
+    "clean": "otherwise please press numtoken to speak with the billing department",
+    "score": 0.017699
+   },
+   "impersonation": {
+    "clean": "otherwise, please press 2 to speak with the billing department.",
+    "score": 0.983404
+   }
+  },
+  {
+   "source": "robocall:117",
+   "text": "We've been trying to reach you concerning your car's extended warranty.",
+   "urgency": {
+    "clean": "we've been trying to reach you concerning your car's extended warranty",
+    "score": 0.479513
+   },
+   "money": {
+    "clean": "weve been trying to reach you concerning your cars extended warranty",
+    "score": 0.004434
+   },
+   "impersonation": {
+    "clean": "we've been trying to reach you concerning your car's extended warranty.",
+    "score": 0.097361
+   }
+  },
+  {
+   "source": "robocall:118",
+   "text": "The very second you receive this message, you need to leave your work aside so that we can discuss about your case and take necessary action on this matter in order to connect.",
+   "urgency": {
+    "clean": "the very second you receive this message you need to leave your work aside so that we can discuss about your case and take necessary action on this matter in order to connect",
+    "score": 0.689341
+   },
+   "money": {
+    "clean": "the very second you receive this message you need to leave your work aside so that we can discuss about your case and take necessary action on this matter in order to connect",
+    "score": 0.004893
+   },
+   "impersonation": {
+    "clean": "the very second you receive this message, you need to leave your work aside so that we can discuss about your case and take necessary action on this matter in order to connect.",
+    "score": 0.182579
+   }
+  },
+  {
+   "source": "robocall:119",
+   "text": "So please in order, go ahead, get more information to speak with officer press one.",
+   "urgency": {
+    "clean": "so please in order go ahead get more information to speak with officer press one",
+    "score": 0.257332
+   },
+   "money": {
+    "clean": "so please in order go ahead get more information to speak with officer press one",
+    "score": 0.297335
+   },
+   "impersonation": {
+    "clean": "so please in order, go ahead, get more information to speak with officer press one.",
+    "score": 0.794282
+   }
+  },
+  {
+   "source": "robocall:120",
+   "text": "suspicious, and fraudulent activities carried out using your identities.",
+   "urgency": {
+    "clean": "suspicious and fraudulent activities carried out using your identities",
+    "score": 0.283173
+   },
+   "money": {
+    "clean": "suspicious and fraudulent activities carried out using your identities",
+    "score": 0.012786
+   },
+   "impersonation": {
+    "clean": "suspicious, and fraudulent activities carried out using your identities.",
+    "score": 0.984609
+   }
+  },
+  {
+   "source": "robocall:121",
+   "text": "that your social security number has been used for some kind of fraudulent activities in the south border of Texas, so please in order go ahead get more information.",
+   "urgency": {
+    "clean": "that your social security number has been used for some kind of fraudulent activities in the south border of texas so please in order go ahead get more information",
+    "score": 0.243134
+   },
+   "money": {
+    "clean": "that your social security number has been used for some kind of fraudulent activities in the south border of texas so please in order go ahead get more information",
+    "score": 0.004364
+   },
+   "impersonation": {
+    "clean": "that your social security number has been used for some kind of fraudulent activities in the south border of texas, so please in order go ahead get more information.",
+    "score": 0.528547
+   }
+  },
+  {
+   "source": "robocall:122",
+   "text": "Due to non-payment on the account, please press 1 to speak with a representative.",
+   "urgency": {
+    "clean": "due to non payment on the account please press numtoken to speak with a representative",
+    "score": 0.583736
+   },
+   "money": {
+    "clean": "due to non payment on the account please press numtoken to speak with a representative",
+    "score": 0.096965
+   },
+   "impersonation": {
+    "clean": "due to non-payment on the account, please press 1 to speak with a representative.",
+    "score": 0.785026
+   }
+  },
+  {
+   "source": "robocall:123",
+   "text": "Greetings, this is an automated message from the Disconnection Department of the Marva Power and Light to inform you that you will be experiencing a disconnection of service today within 30 minutes.",
+   "urgency": {
+    "clean": "greetings this is an automated message from the disconnection department of the marva power and light to inform you that you will be experiencing a disconnection of service today within numtoken minutes",
+    "score": 0.834135
+   },
+   "money": {
+    "clean": "greetings this is an automated message from the disconnection department of the marva power and light to inform you that you will be experiencing a disconnection of service today within numtoken minutes",
+    "score": 0.007582
+   },
+   "impersonation": {
+    "clean": "greetings, this is an automated message from the disconnection department of the marva power and light to inform you that you will be experiencing a disconnection of service today within 30 minutes.",
+    "score": 0.068665
+   }
+  },
+  {
+   "source": "robocall:124",
+   "text": "Hello, this call is from Microsoft Help Center.",
+   "urgency": {
+    "clean": "hello this call is from microsoft help center",
+    "score": 0.341036
+   },
+   "money": {
+    "clean": "hello this call is from orgtech help center",
+    "score": 0.00076
+   },
+   "impersonation": {
+    "clean": "hello, this call is from orgtech help center.",
+    "score": 0.537443
+   }
+  },
+  {
+   "source": "robocall:125",
+   "text": "Press 1 now to speak to our qualification department and complete the enrollment process.",
+   "urgency": {
+    "clean": "press numtoken now to speak to our qualification department and complete the enrollment process",
+    "score": 0.309438
+   },
+   "money": {
+    "clean": "press numtoken now to speak to our qualification department and complete the enrollment process",
+    "score": 0.019477
+   },
+   "impersonation": {
+    "clean": "press 1 now to speak to our qualification department and complete the enrollment process.",
+    "score": 0.993603
+   }
+  },
+  {
+   "source": "robocall:126",
+   "text": "Using our automated approval technology, you are now able to obtain enrollment information based on your current financial status.",
+   "urgency": {
+    "clean": "using our automated approval technology you are now able to obtain enrollment information based on your current financial status",
+    "score": 0.266814
+   },
+   "money": {
+    "clean": "using our automated approval technology you are now able to obtain enrollment information based on your current financial status",
+    "score": 0.012948
+   },
+   "impersonation": {
+    "clean": "using our automated approval technology, you are now able to obtain enrollment information based on your current financial status.",
+    "score": 0.013055
+   }
+  },
+  {
+   "source": "robocall:127",
+   "text": "It's my job to remind you.",
+   "urgency": {
+    "clean": "it's my job to remind you",
+    "score": 0.265684
+   },
+   "money": {
+    "clean": "its my job to remind you",
+    "score": 0.001184
+   },
+   "impersonation": {
+    "clean": "it's my job to remind you.",
+    "score": 1.8e-05
+   }
+  },
+  {
+   "source": "robocall:128",
+   "text": "Press 1 and you will be connected to the concerned CBP officer.",
+   "urgency": {
+    "clean": "press numtoken and you will be connected to the concerned cbp officer",
+    "score": 0.468438
+   },
+   "money": {
+    "clean": "press numtoken and you will be connected to the concerned cbp officer",
+    "score": 0.099719
+   },
+   "impersonation": {
+    "clean": "press 1 and you will be connected to the concerned cbp officer.",
+    "score": 0.928239
+   }
+  },
+  {
+   "source": "robocall:129",
+   "text": "The reason you have received this phone call from our department is to inform you that there's a legal enforcement actions filed on your name for fraudulent activities.",
+   "urgency": {
+    "clean": "the reason you have received this phone call from our department is to inform you that there's a legal enforcement actions filed on your name for fraudulent activities",
+    "score": 0.252004
+   },
+   "money": {
+    "clean": "the reason you have received this phone call from our department is to inform you that theres a legal enforcement actions filed on your name for fraudulent activities",
+    "score": 0.006371
+   },
+   "impersonation": {
+    "clean": "the reason you have received this phone call from our department is to inform you that there's a legal enforcement actions filed on your name for fraudulent activities.",
+    "score": 0.454698
+   }
+  },
+  {
+   "source": "robocall:130",
+   "text": "Due to some suspicious activities related to your social security number, we are forced to suspend your social security number with immediate effect.",
+   "urgency": {
+    "clean": "due to some suspicious activities related to your social security number we are forced to suspend your social security number with immediate effect",
+    "score": 0.621629
+   },
+   "money": {
+    "clean": "due to some suspicious activities related to your social security number we are forced to suspend your social security number with immediate effect",
+    "score": 0.000154
+   },
+   "impersonation": {
+    "clean": "due to some suspicious activities related to your social security number, we are forced to suspend your social security number with immediate effect.",
+    "score": 0.991808
+   }
+  },
+  {
+   "source": "robocall:131",
+   "text": "So when you get this message, kindly press 1 to connect with the next available officer.",
+   "urgency": {
+    "clean": "so when you get this message kindly press numtoken to connect with the next available officer",
+    "score": 0.430241
+   },
+   "money": {
+    "clean": "so when you get this message kindly press numtoken to connect with the next available officer",
+    "score": 0.040377
+   },
+   "impersonation": {
+    "clean": "so when you get this message, kindly press 1 to connect with the next available officer.",
+    "score": 0.073203
+   }
+  },
+  {
+   "source": "robocall:132",
+   "text": "that we will be suspending your social security number because we found some suspicious activities on your social security.",
+   "urgency": {
+    "clean": "that we will be suspending your social security number because we found some suspicious activities on your social security",
+    "score": 0.449031
+   },
+   "money": {
+    "clean": "that we will be suspending your social security number because we found some suspicious activities on your social security",
+    "score": 0.000101
+   },
+   "impersonation": {
+    "clean": "that we will be suspending your social security number because we found some suspicious activities on your social security.",
+    "score": 0.998319
+   }
+  },
+  {
+   "source": "robocall:133",
+   "text": "receive this message you need to leave your work aside so that we can discuss about your case and take necessary action on this matter in order to connect.",
+   "urgency": {
+    "clean": "receive this message you need to leave your work aside so that we can discuss about your case and take necessary action on this matter in order to connect",
+    "score": 0.698827
+   },
+   "money": {
+    "clean": "receive this message you need to leave your work aside so that we can discuss about your case and take necessary action on this matter in order to connect",
+    "score": 0.005815
+   },
+   "impersonation": {
+    "clean": "receive this message you need to leave your work aside so that we can discuss about your case and take necessary action on this matter in order to connect.",
+    "score": 0.211151
+   }
+  },
+  {
+   "source": "robocall:134",
+   "text": "By this call, you have been officially notified.",
+   "urgency": {
+    "clean": "by this call you have been officially notified",
+    "score": 0.525947
+   },
+   "money": {
+    "clean": "by this call you have been officially notified",
+    "score": 0.000457
+   },
+   "impersonation": {
+    "clean": "by this call, you have been officially notified.",
+    "score": 0.003122
+   }
+  },
+  {
+   "source": "robocall:135",
+   "text": "If you find this to be an error or would like to stop the disjoin, please press 1 to start your claim, otherwise press 2 to speak with the billing department.",
+   "urgency": {
+    "clean": "if you find this to be an error or would like to stop the disjoin please press numtoken to start your claim otherwise press numtoken to speak with the billing department",
+    "score": 0.40728
+   },
+   "money": {
+    "clean": "if you find this to be an error or would like to stop the disjoin please press numtoken to start your claim otherwise press numtoken to speak with the billing department",
+    "score": 0.053444
+   },
+   "impersonation": {
+    "clean": "if you find this to be an error or would like to stop the disjoin, please press 1 to start your claim, otherwise press 2 to speak with the billing department.",
+    "score": 0.90642
+   }
+  },
+  {
+   "source": "robocall:136",
+   "text": "To speak with Officer press 1.",
+   "urgency": {
+    "clean": "to speak with officer press numtoken",
+    "score": 0.309235
+   },
+   "money": {
+    "clean": "to speak with officer press numtoken",
+    "score": 0.016159
+   },
+   "impersonation": {
+    "clean": "to speak with officer press 1.",
+    "score": 0.999773
+   }
+  },
+  {
+   "source": "robocall:137",
+   "text": "found some suspicious activity in your Amazon account.",
+   "urgency": {
+    "clean": "found some suspicious activity in your amazon account",
+    "score": 0.218949
+   },
+   "money": {
+    "clean": "found some suspicious activity in your orgtech account",
+    "score": 0.023449
+   },
+   "impersonation": {
+    "clean": "found some suspicious activity in your orgtech account.",
+    "score": 0.993421
+   }
+  },
+  {
+   "source": "robocall:138",
+   "text": "This was just passed by the Biden administration, actively known as BidenCare.",
+   "urgency": {
+    "clean": "this was just passed by the biden administration actively known as bidencare",
+    "score": 0.374259
+   },
+   "money": {
+    "clean": "this was just passed by the biden administration actively known as bidencare",
+    "score": 0.008047
+   },
+   "impersonation": {
+    "clean": "this was just passed by the biden administration, actively known as bidencare.",
+    "score": 0.078983
+   }
+  },
+  {
+   "source": "robocall:139",
+   "text": "Department of Social Security Administration, the reason you have received this phone call from our department is to inform you that there's a legal enforcement action held on your social security number for fraudulent activities.",
+   "urgency": {
+    "clean": "department of social security administration the reason you have received this phone call from our department is to inform you that there's a legal enforcement action held on your social security number for fraudulent activities",
+    "score": 0.344543
+   },
+   "money": {
+    "clean": "department of social security administration the reason you have received this phone call from our department is to inform you that theres a legal enforcement action held on your social security number for fraudulent activities",
+    "score": 0.000741
+   },
+   "impersonation": {
+    "clean": "department of social security administration, the reason you have received this phone call from our department is to inform you that there's a legal enforcement action held on your social security number for fraudulent activities.",
+    "score": 0.94536
+   }
+  },
+  {
+   "source": "robocall:140",
+   "text": "For more information, press 1 and hold for the next developmental officer.",
+   "urgency": {
+    "clean": "for more information press numtoken and hold for the next developmental officer",
+    "score": 0.209932
+   },
+   "money": {
+    "clean": "for more information press numtoken and hold for the next developmental officer",
+    "score": 0.040251
+   },
+   "impersonation": {
+    "clean": "for more information, press 1 and hold for the next developmental officer.",
+    "score": 0.00331
+   }
+  },
+  {
+   "source": "robocall:141",
+   "text": "You have a parcel that has been delivered twice, and no one has signed for it.",
+   "urgency": {
+    "clean": "you have a parcel that has been delivered twice and no one has signed for it",
+    "score": 0.137473
+   },
+   "money": {
+    "clean": "you have a parcel that has been delivered twice and no one has signed for it",
+    "score": 0.001115
+   },
+   "impersonation": {
+    "clean": "you have a parcel that has been delivered twice, and no one has signed for it.",
+    "score": 0.005297
+   }
+  },
+  {
+   "source": "robocall:142",
+   "text": "My Capital One card Capital One, I got you.",
+   "urgency": {
+    "clean": "my capital one card capital one i got you",
+    "score": 0.120635
+   },
+   "money": {
+    "clean": "my capital one card capital one i got you",
+    "score": 0.152024
+   },
+   "impersonation": {
+    "clean": "my capital one card capital one, i got you.",
+    "score": 0.533917
+   }
+  },
+  {
+   "source": "robocall:143",
+   "text": "This call is also recorded online with our security purpose.",
+   "urgency": {
+    "clean": "this call is also recorded online with our security purpose",
+    "score": 0.335418
+   },
+   "money": {
+    "clean": "this call is also recorded online with our security purpose",
+    "score": 0.000157
+   },
+   "impersonation": {
+    "clean": "this call is also recorded online with our security purpose.",
+    "score": 0.899948
+   }
+  },
+  {
+   "source": "robocall:144",
+   "text": "This call is all about your parcel, sir.",
+   "urgency": {
+    "clean": "this call is all about your parcel sir",
+    "score": 0.45558
+   },
+   "money": {
+    "clean": "this call is all about your parcel sir",
+    "score": 0.000492
+   },
+   "impersonation": {
+    "clean": "this call is all about your parcel, sir.",
+    "score": 0.01137
+   }
+  },
+  {
+   "source": "robocall:145",
+   "text": "With contraband of drugs and cash.",
+   "urgency": {
+    "clean": "with contraband of drugs and cash",
+    "score": 0.150541
+   },
+   "money": {
+    "clean": "with contraband of drugs and cash",
+    "score": 0.16802
+   },
+   "impersonation": {
+    "clean": "with contraband of drugs and cash.",
+    "score": 0.223954
+   }
+  },
+  {
+   "source": "robocall:146",
+   "text": "If you would like to keep coverage or extend it, press 8 to speak to a customer service agent and go over options.",
+   "urgency": {
+    "clean": "if you would like to keep coverage or extend it press numtoken to speak to a customer service agent and go over options",
+    "score": 0.358278
+   },
+   "money": {
+    "clean": "if you would like to keep coverage or extend it press numtoken to speak to a customer service agent and go over options",
+    "score": 0.016076
+   },
+   "impersonation": {
+    "clean": "if you would like to keep coverage or extend it, press 8 to speak to a customer service agent and go over options.",
+    "score": 0.830379
+   }
+  },
+  {
+   "source": "robocall:147",
+   "text": "Press two to be put on our do not call list.",
+   "urgency": {
+    "clean": "press two to be put on our do not call list",
+    "score": 0.21935
+   },
+   "money": {
+    "clean": "press two to be put on our do not call list",
+    "score": 0.001023
+   },
+   "impersonation": {
+    "clean": "press two to be put on our do not call list.",
+    "score": 0.099986
+   }
+  },
+  {
+   "source": "robocall:148",
+   "text": "If it's not fixed right away then your computer will become obsolete and all of your credential information may got compromised.",
+   "urgency": {
+    "clean": "if it's not fixed right away then your computer will become obsolete and all of your credential information may got compromised",
+    "score": 0.665995
+   },
+   "money": {
+    "clean": "if its not fixed right away then your computer will become obsolete and all of your credential information may got compromised",
+    "score": 0.023035
+   },
+   "impersonation": {
+    "clean": "if it's not fixed right away then your computer will become obsolete and all of your credential information may got compromised.",
+    "score": 0.07288
+   }
+  },
+  {
+   "source": "robocall:149",
+   "text": "If you did not authorize this order, then press 1 for Amazon support.",
+   "urgency": {
+    "clean": "if you did not authorize this order then press numtoken for amazon support",
+    "score": 0.53902
+   },
+   "money": {
+    "clean": "if you did not authorize this order then press numtoken for orgtech support",
+    "score": 0.008269
+   },
+   "impersonation": {
+    "clean": "if you did not authorize this order, then press 1 for orgtech support.",
+    "score": 0.963896
+   }
+  },
+  {
+   "source": "robocall:150",
+   "text": "After two failed attempts, I am calling you for the last time.",
+   "urgency": {
+    "clean": "after two failed attempts i am calling you for the last time",
+    "score": 0.301379
+   },
+   "money": {
+    "clean": "after two failed attempts i am calling you for the last time",
+    "score": 0.001336
+   },
+   "impersonation": {
+    "clean": "after two failed attempts, i am calling you for the last time.",
+    "score": 0.001529
+   }
+  },
+  {
+   "source": "robocall:151",
+   "text": "below 6 on your credit card, so please press 1 to speak with live operator and get the confirmation number.",
+   "urgency": {
+    "clean": "below numtoken on your credit card so please press numtoken to speak with live operator and get the confirmation number",
+    "score": 0.259315
+   },
+   "money": {
+    "clean": "below numtoken on your credit card so please press numtoken to speak with live operator and get the confirmation number",
+    "score": 0.430138
+   },
+   "impersonation": {
+    "clean": "below 6 on your credit card, so please press 1 to speak with live operator and get the confirmation number.",
+    "score": 0.984244
+   }
+  },
+  {
+   "source": "robocall:152",
+   "text": "So sorry if you're busy, I just had some fantastic news.",
+   "urgency": {
+    "clean": "so sorry if you're busy i just had some fantastic news",
+    "score": 0.134967
+   },
+   "money": {
+    "clean": "so sorry if youre busy i just had some fantastic news",
+    "score": 0.013501
+   },
+   "impersonation": {
+    "clean": "so sorry if you're busy, i just had some fantastic news.",
+    "score": 0.00139
+   }
+  },
+  {
+   "source": "robocall:153",
+   "text": "And thank you for connecting, sir.",
+   "urgency": {
+    "clean": "and thank you for connecting sir",
+    "score": 0.101066
+   },
+   "money": {
+    "clean": "and thank you for connecting sir",
+    "score": 0.001187
+   },
+   "impersonation": {
+    "clean": "and thank you for connecting, sir.",
+    "score": 0.043459
+   }
+  },
+  {
+   "source": "robocall:154",
+   "text": "And you can reach me at my state-assigned phone number, 844-877-0123.",
+   "urgency": {
+    "clean": "and you can reach me at my state assigned phone number phonetoken",
+    "score": 0.199664
+   },
+   "money": {
+    "clean": "and you can reach me at my state assigned phone number phonetoken",
+    "score": 0.0604
+   },
+   "impersonation": {
+    "clean": "and you can reach me at my state-assigned phone number, 844-877-longnumber.",
+    "score": 0.005301
+   }
+  },
+  {
+   "source": "robocall:155",
+   "text": "Nadine Smith calling in from the processing department.",
+   "urgency": {
+    "clean": "nadine smith calling in from the processing department",
+    "score": 0.325836
+   },
+   "money": {
+    "clean": "nadine smith calling in from the processing department",
+    "score": 0.025647
+   },
+   "impersonation": {
+    "clean": "nadine smith calling in from the processing department.",
+    "score": 0.506966
+   }
+  },
+  {
+   "source": "robocall:156",
+   "text": "Customer, this is Molly from Amazon.",
+   "urgency": {
+    "clean": "customer this is molly from amazon",
+    "score": 0.472016
+   },
+   "money": {
+    "clean": "customer this is molly from orgtech",
+    "score": 0.001892
+   },
+   "impersonation": {
+    "clean": "customer, this is molly from orgtech.",
+    "score": 0.490506
+   }
+  },
+  {
+   "source": "robocall:157",
+   "text": "A petition is set to be filed on your behalf to extend the suspension of payments indefinitely, meaning you would have a permanent zero-dollar balance.",
+   "urgency": {
+    "clean": "a petition is set to be filed on your behalf to extend the suspension of payments indefinitely meaning you would have a permanent zero dollar balance",
+    "score": 0.34575
+   },
+   "money": {
+    "clean": "a petition is set to be filed on your behalf to extend the suspension of payments indefinitely meaning you would have a permanent zero dollar balance",
+    "score": 0.003679
+   },
+   "impersonation": {
+    "clean": "a petition is set to be filed on your behalf to extend the suspension of payments indefinitely, meaning you would have a permanent zero-dollar balance.",
+    "score": 0.023279
+   }
+  },
+  {
+   "source": "robocall:158",
+   "text": "Press 4 if you want to be added in DNC list.",
+   "urgency": {
+    "clean": "press numtoken if you want to be added in dnc list",
+    "score": 0.366189
+   },
+   "money": {
+    "clean": "press numtoken if you want to be added in dnc list",
+    "score": 0.074593
+   },
+   "impersonation": {
+    "clean": "press 4 if you want to be added in dnc list.",
+    "score": 0.005832
+   }
+  },
+  {
+   "source": "robocall:159",
+   "text": "that you have been charged for the payment of $469 for your recent purchase.",
+   "urgency": {
+    "clean": "that you have been charged for the payment of moneytoken for your recent purchase",
+    "score": 0.262424
+   },
+   "money": {
+    "clean": "that you have been charged for the payment of moneytoken for your recent purchase",
+    "score": 0.104847
+   },
+   "impersonation": {
+    "clean": "that you have been charged for the payment of $469 for your recent purchase.",
+    "score": 0.001717
+   }
+  },
+  {
+   "source": "robocall:160",
+   "text": "11 Pro using your Amazon account.",
+   "urgency": {
+    "clean": "numtoken pro using your amazon account",
+    "score": 0.365076
+   },
+   "money": {
+    "clean": "numtoken pro using your orgtech account",
+    "score": 0.209408
+   },
+   "impersonation": {
+    "clean": "11 pro using your orgtech account.",
+    "score": 0.981678
+   }
+  },
+  {
+   "source": "robocall:161",
+   "text": "Dear customer, this is David from Amazon.",
+   "urgency": {
+    "clean": "dear customer this is david from amazon",
+    "score": 0.362817
+   },
+   "money": {
+    "clean": "dear customer this is david from orgtech",
+    "score": 0.002158
+   },
+   "impersonation": {
+    "clean": "dear customer, this is david from orgtech.",
+    "score": 0.356696
+   }
+  },
+  {
+   "source": "robocall:162",
+   "text": "you to let you know that your social security number has been used for some kind of fraudulent activities in the south border of Texas.",
+   "urgency": {
+    "clean": "you to let you know that your social security number has been used for some kind of fraudulent activities in the south border of texas",
+    "score": 0.233459
+   },
+   "money": {
+    "clean": "you to let you know that your social security number has been used for some kind of fraudulent activities in the south border of texas",
+    "score": 0.000289
+   },
+   "impersonation": {
+    "clean": "you to let you know that your social security number has been used for some kind of fraudulent activities in the south border of texas.",
+    "score": 0.795844
+   }
+  },
+  {
+   "source": "robocall:163",
+   "text": "You will be charged $600, sir.",
+   "urgency": {
+    "clean": "you will be charged moneytoken sir",
+    "score": 0.440325
+   },
+   "money": {
+    "clean": "you will be charged moneytoken sir",
+    "score": 0.004023
+   },
+   "impersonation": {
+    "clean": "you will be charged $600, sir.",
+    "score": 0.320108
+   }
+  },
+  {
+   "source": "robocall:164",
+   "text": "So you want to cancel that parcel and stop that payment, right, sir?",
+   "urgency": {
+    "clean": "so you want to cancel that parcel and stop that payment right sir",
+    "score": 0.382768
+   },
+   "money": {
+    "clean": "so you want to cancel that parcel and stop that payment right sir",
+    "score": 0.222467
+   },
+   "impersonation": {
+    "clean": "so you want to cancel that parcel and stop that payment, right, sir?",
+    "score": 0.88458
+   }
+  },
+  {
+   "source": "robocall:165",
+   "text": "This is an automated message from the Disconnection Department of Dominion Energy Electricity Company to inform you that you will be experiencing a disconnection of service today within 30 minutes due to non-payment on the account.",
+   "urgency": {
+    "clean": "this is an automated message from the disconnection department of dominion energy electricity company to inform you that you will be experiencing a disconnection of service today within numtoken minutes due to non payment on the account",
+    "score": 0.918186
+   },
+   "money": {
+    "clean": "this is an automated message from the disconnection department of dominion energy electricity company to inform you that you will be experiencing a disconnection of service today within numtoken minutes due to non payment on the account",
+    "score": 0.022184
+   },
+   "impersonation": {
+    "clean": "this is an automated message from the disconnection department of dominion energy electricity company to inform you that you will be experiencing a disconnection of service today within 30 minutes due to non-payment on the account.",
+    "score": 0.060466
+   }
+  },
+  {
+   "source": "robocall:166",
+   "text": "I repeat, press 1 and do not apply for it.",
+   "urgency": {
+    "clean": "i repeat press numtoken and do not apply for it",
+    "score": 0.209128
+   },
+   "money": {
+    "clean": "i repeat press numtoken and do not apply for it",
+    "score": 0.019008
+   },
+   "impersonation": {
+    "clean": "i repeat, press 1 and do not apply for it.",
+    "score": 0.520643
+   }
+  },
+  {
+   "source": "robocall:167",
+   "text": "So we have put in hold to this transaction.",
+   "urgency": {
+    "clean": "so we have put in hold to this transaction",
+    "score": 0.484646
+   },
+   "money": {
+    "clean": "so we have put in hold to this transaction",
+    "score": 0.095795
+   },
+   "impersonation": {
+    "clean": "so we have put in hold to this transaction.",
+    "score": 0.036415
+   }
+  },
+  {
+   "source": "robocall:168",
+   "text": "Instead of talking to you, I will simply go ahead and run away.",
+   "urgency": {
+    "clean": "instead of talking to you i will simply go ahead and run away",
+    "score": 0.390954
+   },
+   "money": {
+    "clean": "instead of talking to you i will simply go ahead and run away",
+    "score": 0.060554
+   },
+   "impersonation": {
+    "clean": "instead of talking to you, i will simply go ahead and run away.",
+    "score": 0.103345
+   }
+  },
+  {
+   "source": "robocall:169",
+   "text": "If you do not authorize this order, press 1 to speak to our representative, or press 2 to authorize.",
+   "urgency": {
+    "clean": "if you do not authorize this order press numtoken to speak to our representative or press numtoken to authorize",
+    "score": 0.448178
+   },
+   "money": {
+    "clean": "if you do not authorize this order press numtoken to speak to our representative or press numtoken to authorize",
+    "score": 0.01633
+   },
+   "impersonation": {
+    "clean": "if you do not authorize this order, press 1 to speak to our representative, or press 2 to authorize.",
+    "score": 0.998565
+   }
+  },
+  {
+   "source": "robocall:170",
+   "text": "And when is the Capital One card going to be expired?",
+   "urgency": {
+    "clean": "and when is the capital one card going to be expired",
+    "score": 0.197357
+   },
+   "money": {
+    "clean": "and when is the capital one card going to be expired",
+    "score": 0.074645
+   },
+   "impersonation": {
+    "clean": "and when is the capital one card going to be expired?",
+    "score": 0.005721
+   }
+  },
+  {
+   "source": "robocall:171",
+   "text": "activity in the state of Texas.",
+   "urgency": {
+    "clean": "activity in the state of texas",
+    "score": 0.203623
+   },
+   "money": {
+    "clean": "activity in the state of texas",
+    "score": 0.014377
+   },
+   "impersonation": {
+    "clean": "activity in the state of texas.",
+    "score": 0.02031
+   }
+  },
+  {
+   "source": "robocall:172",
+   "text": "This is your number, sir, 4 0 8 8 8 4 1 4 4 5.",
+   "urgency": {
+    "clean": "this is your number sir phonetoken",
+    "score": 0.650523
+   },
+   "money": {
+    "clean": "this is your number sir numtoken",
+    "score": 0.003864
+   },
+   "impersonation": {
+    "clean": "this is your number, sir, 4 0 8 8 8 4 1 4 4 5.",
+    "score": 0.885272
+   }
+  },
+  {
+   "source": "robocall:173",
+   "text": "So when you get this message kindly press one to connect with the next available officer.",
+   "urgency": {
+    "clean": "so when you get this message kindly press one to connect with the next available officer",
+    "score": 0.46938
+   },
+   "money": {
+    "clean": "so when you get this message kindly press one to connect with the next available officer",
+    "score": 0.039981
+   },
+   "impersonation": {
+    "clean": "so when you get this message kindly press one to connect with the next available officer.",
+    "score": 0.123208
+   }
+  },
+  {
+   "source": "robocall:174",
+   "text": "The very second you read this message you need to leave your work aside so that we can discuss about your case and take necessary action.",
+   "urgency": {
+    "clean": "the very second you read this message you need to leave your work aside so that we can discuss about your case and take necessary action",
+    "score": 0.617671
+   },
+   "money": {
+    "clean": "the very second you read this message you need to leave your work aside so that we can discuss about your case and take necessary action",
+    "score": 0.04344
+   },
+   "impersonation": {
+    "clean": "the very second you read this message you need to leave your work aside so that we can discuss about your case and take necessary action.",
+    "score": 0.143573
+   }
+  },
+  {
+   "source": "robocall:175",
+   "text": "We would like to inform you that your telephone number was qualified by our booking system to receive an all-inclusive complimentary stay.",
+   "urgency": {
+    "clean": "we would like to inform you that your telephone number was qualified by our booking system to receive an all inclusive complimentary stay",
+    "score": 0.257968
+   },
+   "money": {
+    "clean": "we would like to inform you that your telephone number was qualified by our booking system to receive an all inclusive complimentary stay",
+    "score": 0.002592
+   },
+   "impersonation": {
+    "clean": "we would like to inform you that your telephone number was qualified by our booking system to receive an all-inclusive complimentary stay.",
+    "score": 0.009361
+   }
+  },
+  {
+   "source": "robocall:176",
+   "text": "Call your car at 800-833-304-1447.",
+   "urgency": {
+    "clean": "call your car at phonetoken",
+    "score": 0.424125
+   },
+   "money": {
+    "clean": "call your car at cardtoken",
+    "score": 0.000288
+   },
+   "impersonation": {
+    "clean": "call your car at 800-833-304-longnumber.",
+    "score": 0.00326
+   }
+  },
+  {
+   "source": "robocall:177",
+   "text": "And as you know, there have been some pretty big changes to the federal student loan programs recently.",
+   "urgency": {
+    "clean": "and as you know there have been some pretty big changes to the federal student loan programs recently",
+    "score": 0.213055
+   },
+   "money": {
+    "clean": "and as you know there have been some pretty big changes to the federal student loan programs recently",
+    "score": 0.00317
+   },
+   "impersonation": {
+    "clean": "and as you know, there have been some pretty big changes to the federal student loan programs recently.",
+    "score": 0.001832
+   }
+  },
+  {
+   "source": "robocall:178",
+   "text": "Since the student loan payment delay is about to come to an end, you can reach us directly to discuss your options at 833-631-7911.",
+   "urgency": {
+    "clean": "since the student loan payment delay is about to come to an end you can reach us directly to discuss your options at phonetoken",
+    "score": 0.616497
+   },
+   "money": {
+    "clean": "since the student loan payment delay is about to come to an end you can reach us directly to discuss your options at phonetoken",
+    "score": 0.001881
+   },
+   "impersonation": {
+    "clean": "since the student loan payment delay is about to come to an end, you can reach us directly to discuss your options at 833-631-longnumber.",
+    "score": 0.003029
+   }
+  },
+  {
+   "source": "robocall:179",
+   "text": "Otherwise, please press 2 to speak with the disconnection department.",
+   "urgency": {
+    "clean": "otherwise please press numtoken to speak with the disconnection department",
+    "score": 0.257662
+   },
+   "money": {
+    "clean": "otherwise please press numtoken to speak with the disconnection department",
+    "score": 0.027711
+   },
+   "impersonation": {
+    "clean": "otherwise, please press 2 to speak with the disconnection department.",
+    "score": 0.997277
+   }
+  },
+  {
+   "source": "robocall:180",
+   "text": "To confirm this order, please press 1, or to cancel, please press 2.",
+   "urgency": {
+    "clean": "to confirm this order please press numtoken or to cancel please press numtoken",
+    "score": 0.391582
+   },
+   "money": {
+    "clean": "to confirm this order please press numtoken or to cancel please press numtoken",
+    "score": 0.019743
+   },
+   "impersonation": {
+    "clean": "to confirm this order, please press 1, or to cancel, please press 2.",
+    "score": 0.769852
+   }
+  },
+  {
+   "source": "robocall:181",
+   "text": "And the purpose of the call, we are trying to reach you to let you know that your Social Security number has been used for some kind of fraudulent activities in the south border of Texas.",
+   "urgency": {
+    "clean": "and the purpose of the call we are trying to reach you to let you know that your social security number has been used for some kind of fraudulent activities in the south border of texas",
+    "score": 0.337717
+   },
+   "money": {
+    "clean": "and the purpose of the call we are trying to reach you to let you know that your social security number has been used for some kind of fraudulent activities in the south border of texas",
+    "score": 0.000508
+   },
+   "impersonation": {
+    "clean": "and the purpose of the call, we are trying to reach you to let you know that your social security number has been used for some kind of fraudulent activities in the south border of texas.",
+    "score": 0.566111
+   }
+  },
+  {
+   "source": "robocall:182",
+   "text": "We would like to inform you that this order has been placed from your account.",
+   "urgency": {
+    "clean": "we would like to inform you that this order has been placed from your account",
+    "score": 0.472262
+   },
+   "money": {
+    "clean": "we would like to inform you that this order has been placed from your account",
+    "score": 0.002027
+   },
+   "impersonation": {
+    "clean": "we would like to inform you that this order has been placed from your account.",
+    "score": 0.020339
+   }
+  },
+  {
+   "source": "robocall:183",
+   "text": "Please be aware that your electric service will be disconnected within the next 30 minutes due to non-payment.",
+   "urgency": {
+    "clean": "please be aware that your electric service will be disconnected within the next numtoken minutes due to non payment",
+    "score": 0.883541
+   },
+   "money": {
+    "clean": "please be aware that your electric service will be disconnected within the next numtoken minutes due to non payment",
+    "score": 0.035456
+   },
+   "impersonation": {
+    "clean": "please be aware that your electric service will be disconnected within the next 30 minutes due to non-payment.",
+    "score": 0.010563
+   }
+  },
+  {
+   "source": "robocall:184",
+   "text": "Thank you for choosing PSE&G New Jersey.",
+   "urgency": {
+    "clean": "thank you for choosing pse g new jersey",
+    "score": 0.082774
+   },
+   "money": {
+    "clean": "thank you for choosing pse g new jersey",
+    "score": 0.000375
+   },
+   "impersonation": {
+    "clean": "thank you for choosing pse&g new jersey.",
+    "score": 0.000305
+   }
+  },
+  {
+   "source": "robocall:185",
+   "text": "In order to avail the discount, kindly call us back at 888-604-0734 from 8am to 5pm Pacific Standard Time.",
+   "urgency": {
+    "clean": "in order to avail the discount kindly call us back at phonetoken from timetoken to timetoken pacific standard time",
+    "score": 0.66877
+   },
+   "money": {
+    "clean": "in order to avail the discount kindly call us back at phonetoken from timetoken to timetoken pacific standard time",
+    "score": 0.004768
+   },
+   "impersonation": {
+    "clean": "in order to avail the discount, kindly call us back at 888-604-longnumber from 8am to 5pm pacific standard time.",
+    "score": 0.000528
+   }
+  },
+  {
+   "source": "robocall:186",
+   "text": "Dear customer, this is a disconnection notice from your electric company.",
+   "urgency": {
+    "clean": "dear customer this is a disconnection notice from your electric company",
+    "score": 0.659172
+   },
+   "money": {
+    "clean": "dear customer this is a disconnection notice from your electric company",
+    "score": 0.00057
+   },
+   "impersonation": {
+    "clean": "dear customer, this is a disconnection notice from your electric company.",
+    "score": 0.044947
+   }
+  },
+  {
+   "source": "robocall:187",
+   "text": "Power and Light, you have an automatic interruption of service in the next 30 to 45 minutes due to request a discontinue of the service or delinquent account status.",
+   "urgency": {
+    "clean": "power and light you have an automatic interruption of service in the next numtoken to numtoken minutes due to request a discontinue of the service or delinquent account status",
+    "score": 0.817159
+   },
+   "money": {
+    "clean": "power and light you have an automatic interruption of service in the next numtoken to numtoken minutes due to request a discontinue of the service or delinquent account status",
+    "score": 0.092193
+   },
+   "impersonation": {
+    "clean": "power and light, you have an automatic interruption of service in the next 30 to 45 minutes due to request a discontinue of the service or delinquent account status.",
+    "score": 0.000946
+   }
+  },
+  {
+   "source": "robocall:188",
+   "text": "Press one and you will be connected to the concerned department.",
+   "urgency": {
+    "clean": "press one and you will be connected to the concerned department",
+    "score": 0.405391
+   },
+   "money": {
+    "clean": "press one and you will be connected to the concerned department",
+    "score": 0.03447
+   },
+   "impersonation": {
+    "clean": "press one and you will be connected to the concerned department.",
+    "score": 0.962033
+   }
+  },
+  {
+   "source": "robocall:189",
+   "text": "In order to connect federal agents, press 1 and you will be connected to the concerned department.",
+   "urgency": {
+    "clean": "in order to connect federal agents press numtoken and you will be connected to the concerned department",
+    "score": 0.424067
+   },
+   "money": {
+    "clean": "in order to connect federal agents press numtoken and you will be connected to the concerned department",
+    "score": 0.042529
+   },
+   "impersonation": {
+    "clean": "in order to connect federal agents, press 1 and you will be connected to the concerned department.",
+    "score": 0.943051
+   }
+  },
+  {
+   "source": "robocall:190",
+   "text": "of fraudulent activities in the south border of Texas, so please in order go ahead get more information.",
+   "urgency": {
+    "clean": "of fraudulent activities in the south border of texas so please in order go ahead get more information",
+    "score": 0.238956
+   },
+   "money": {
+    "clean": "of fraudulent activities in the south border of texas so please in order go ahead get more information",
+    "score": 0.283181
+   },
+   "impersonation": {
+    "clean": "of fraudulent activities in the south border of texas, so please in order go ahead get more information.",
+    "score": 0.02441
+   }
+  },
+  {
+   "source": "robocall:191",
+   "text": "Well, I don't see that iPhone in my Amazon orders.",
+   "urgency": {
+    "clean": "well i don't see that iphone in my amazon orders",
+    "score": 0.268593
+   },
+   "money": {
+    "clean": "well i do not see that iphone in my orgtech orders",
+    "score": 0.001784
+   },
+   "impersonation": {
+    "clean": "well, i don't see that iphone in my orgtech orders.",
+    "score": 0.044929
+   }
+  },
+  {
+   "source": "robocall:192",
+   "text": "Dear customer, thank you for your purchase from Amazon Shopping.",
+   "urgency": {
+    "clean": "dear customer thank you for your purchase from amazon shopping",
+    "score": 0.113004
+   },
+   "money": {
+    "clean": "dear customer thank you for your purchase from orgtech shopping",
+    "score": 0.009839
+   },
+   "impersonation": {
+    "clean": "dear customer, thank you for your purchase from orgtech shopping.",
+    "score": 0.041773
+   }
+  },
+  {
+   "source": "robocall:193",
+   "text": "We've been trying to reach you as your eligibility for rate reduction is about to expire.",
+   "urgency": {
+    "clean": "we've been trying to reach you as your eligibility for rate reduction is about to expire",
+    "score": 0.646648
+   },
+   "money": {
+    "clean": "weve been trying to reach you as your eligibility for rate reduction is about to expire",
+    "score": 0.004864
+   },
+   "impersonation": {
+    "clean": "we've been trying to reach you as your eligibility for rate reduction is about to expire.",
+    "score": 0.003573
+   }
+  },
+  {
+   "source": "robocall:194",
+   "text": "This is a payment confirmation call for your order ID, AMC 284U49, for a refurbishment book Pro 12, worth $497, for which your card, attached with your Amazon account, has been charged.",
+   "urgency": {
+    "clean": "this is a payment confirmation call for your order id amc numtoken for a refurbishment book pro numtoken worth moneytoken for which your card attached with your amazon account has been charged",
+    "score": 0.320521
+   },
+   "money": {
+    "clean": "this is a payment confirmation call for your order id amc numtoken u numtoken for a refurbishment book pro numtoken worth moneytoken for which your card attached with your orgtech account has been charged",
+    "score": 0.008647
+   },
+   "impersonation": {
+    "clean": "this is a payment confirmation call for your order id, amc 284u49, for a refurbishment book pro 12, worth $497, for which your card, attached with your orgtech account, has been charged.",
+    "score": 0.218837
+   }
+  },
+  {
+   "source": "robocall:195",
+   "text": "Sir, I need your opinion, sir, because the money is going to your account.",
+   "urgency": {
+    "clean": "sir i need your opinion sir because the money is going to your account",
+    "score": 0.524826
+   },
+   "money": {
+    "clean": "sir i need your opinion sir because the money is going to your account",
+    "score": 0.39717
+   },
+   "impersonation": {
+    "clean": "sir, i need your opinion, sir, because the money is going to your account.",
+    "score": 0.451671
+   }
+  },
+  {
+   "source": "robocall:196",
+   "text": "Our department is to inform you that there is a legal enforcement action filed on your social security number for fraudulent activities.",
+   "urgency": {
+    "clean": "our department is to inform you that there is a legal enforcement action filed on your social security number for fraudulent activities",
+    "score": 0.339819
+   },
+   "money": {
+    "clean": "our department is to inform you that there is a legal enforcement action filed on your social security number for fraudulent activities",
+    "score": 0.000296
+   },
+   "impersonation": {
+    "clean": "our department is to inform you that there is a legal enforcement action filed on your social security number for fraudulent activities.",
+    "score": 0.996801
+   }
+  },
+  {
+   "source": "robocall:197",
+   "text": "Press 1 to speak with a live operator and get the confirmation code.",
+   "urgency": {
+    "clean": "press numtoken to speak with a live operator and get the confirmation code",
+    "score": 0.304135
+   },
+   "money": {
+    "clean": "press numtoken to speak with a live operator and get the confirmation code",
+    "score": 0.076009
+   },
+   "impersonation": {
+    "clean": "press 1 to speak with a live operator and get the confirmation code.",
+    "score": 0.961947
+   }
+  },
+  {
+   "source": "robocall:198",
+   "text": "If you haven't missed payment on the bill for the last three months, get a 25% discount.",
+   "urgency": {
+    "clean": "if you haven't missed payment on the bill for the last three months get a numtoken discount",
+    "score": 0.518391
+   },
+   "money": {
+    "clean": "if you have not missed payment on the bill for the last three months get a numtoken discount",
+    "score": 0.100578
+   },
+   "impersonation": {
+    "clean": "if you haven't missed payment on the bill for the last three months, get a 25% discount.",
+    "score": 0.000493
+   }
+  },
+  {
+   "source": "robocall:199",
+   "text": "with Wells Fargo is on hold due to suspicious activities.",
+   "urgency": {
+    "clean": "with wells fargo is on hold due to suspicious activities",
+    "score": 0.452651
+   },
+   "money": {
+    "clean": "with wells fargo is on hold due to suspicious activities",
+    "score": 0.000546
+   },
+   "impersonation": {
+    "clean": "with wells fargo is on hold due to suspicious activities.",
+    "score": 0.568967
+   }
+  },
+  {
+   "source": "robocall:200",
+   "text": "Well, DirecTV is offering 50% discount to all of its existing customers.",
+   "urgency": {
+    "clean": "well directv is offering numtoken discount to all of its existing customers",
+    "score": 0.180172
+   },
+   "money": {
+    "clean": "well directv is offering numtoken discount to all of its existing customers",
+    "score": 0.00254
+   },
+   "impersonation": {
+    "clean": "well, directv is offering 50% discount to all of its existing customers.",
+    "score": 0.006013
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Transfer $5,000.50 to the safe account now.",
+   "urgency": {
+    "clean": "transfer moneytoken to the safe account now",
+    "score": 0.494908
+   },
+   "money": {
+    "clean": "transfer moneytoken to the safe account now",
+    "score": 0.556879
+   },
+   "impersonation": {
+    "clean": "transfer $5,000.50 to the safe account now.",
+    "score": 0.866456
+   }
+  },
+  {
+   "source": "edge",
+   "text": "You owe S$1,200 in unpaid fines, pay 300 dollars today",
+   "urgency": {
+    "clean": "you owe s moneytoken in unpaid fines pay moneytoken today",
+    "score": 0.434585
+   },
+   "money": {
+    "clean": "you owe moneytoken in unpaid fines pay moneytoken today",
+    "score": 0.801978
+   },
+   "impersonation": {
+    "clean": "you owe s$1,200 in unpaid fines, pay 300 dollars today",
+    "score": 0.173691
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Pay USD 49.99 or SGD 2k by 5pm tomorrow!",
+   "urgency": {
+    "clean": "pay usd timetoken or sgd numtoken k by timetoken tomorrow",
+    "score": 0.588758
+   },
+   "money": {
+    "clean": "pay moneytoken or moneytoken by timetoken tomorrow",
+    "score": 0.929096
+   },
+   "impersonation": {
+    "clean": "pay usd 49.99 or sgd 2k by 5pm tomorrow!",
+    "score": 0.000166
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Call me back at +65 9123 4567 or 6123-4567 within 24hrs.",
+   "urgency": {
+    "clean": "call me back at phonetoken or phonetoken within numtoken hours",
+    "score": 0.797898
+   },
+   "money": {
+    "clean": "call me back at numtoken phonetoken or numtoken within numtoken hrs",
+    "score": 0.008997
+   },
+   "impersonation": {
+    "clean": "call me back at +65 longnumber longnumber or longnumber-longnumber within 24hrs.",
+    "score": 0.002229
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Your NRIC S1234567D was used to open account 1234-5678-9012-3456.",
+   "urgency": {
+    "clean": "your nric numtoken was used to open account numtoken numtoken numtoken numtoken",
+    "score": 0.377955
+   },
+   "money": {
+    "clean": "your nric s numtoken d was used to open account cardtoken",
+    "score": 0.004534
+   },
+   "impersonation": {
+    "clean": "your nric slongnumberd was used to open account longnumber-longnumber-longnumber-longnumber.",
+    "score": 0.656958
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Read me the 6-digit OTP sent to your phone, it expires in 12 mins.",
+   "urgency": {
+    "clean": "read me the numtoken digit otp sent to your phone it expires in numtoken minutes",
+    "score": 0.442499
+   },
+   "money": {
+    "clean": "read me the numtoken digit otp sent to your phone it expires in numtoken mins",
+    "score": 0.998844
+   },
+   "impersonation": {
+    "clean": "read me the 6-digit otp sent to your phone, it expires in 12 mins.",
+    "score": 0.440566
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Meet me on 15th March 2024 at 3:30 p.m., or 2024-03-15 at 10am.",
+   "urgency": {
+    "clean": "meet me on numtoken march numtoken at timetoken or timetoken at timetoken",
+    "score": 0.239374
+   },
+   "money": {
+    "clean": "meet me on datetoken at timetoken or datetoken at timetoken",
+    "score": 0.000468
+   },
+   "impersonation": {
+    "clean": "meet me on 15th march longnumber at 3:30 p.m., or longnumber-03-15 at 10am.",
+    "score": 0.005839
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Visit www.dbs-secure.com/login or email help@bank.sg for a refund.",
+   "urgency": {
+    "clean": "visit urltoken or email emailtoken for a refund",
+    "score": 0.209088
+   },
+   "money": {
+    "clean": "visit linktoken or email linktoken for a refund",
+    "score": 0.001359
+   },
+   "impersonation": {
+    "clean": "visit www.orgbank-secure.com/login or email help@bank.sg for a refund.",
+    "score": 0.008034
+   }
+  },
+  {
+   "source": "edge",
+   "text": "[MONEY_AMOUNT] must be paid to [PERSON_NAME] at [PHONE_NUMBER] before [DATE].",
+   "urgency": {
+    "clean": "moneytoken must be paid to at phonetoken before timetoken",
+    "score": 0.674093
+   },
+   "money": {
+    "clean": "moneytoken must be paid to nametoken at phonetoken before datetoken",
+    "score": 0.000677
+   },
+   "impersonation": {
+    "clean": "must be paid to at before .",
+    "score": 0.048484
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Caller: This is Officer Tan from SPF. Receiver: Oh no, what happened?",
+   "urgency": {
+    "clean": "this is officer tan from spf receiver oh no what happened",
+    "score": 0.667658
+   },
+   "money": {
+    "clean": "caller this is officer tan from orgpolice receiver oh no what happened",
+    "score": 0.024067
+   },
+   "impersonation": {
+    "clean": "this is officer tan from orgpolice.",
+    "score": 0.983559
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Person A: you won't get another chance, can't wait, don't hang up",
+   "urgency": {
+    "clean": "you won't get another chance can't wait don't hang up",
+    "score": 0.535287
+   },
+   "money": {
+    "clean": "person a you will not get another chance cannot wait do not hang up",
+    "score": 0.004825
+   },
+   "impersonation": {
+    "clean": "you won't get another chance, can't wait, don't hang up",
+    "score": 0.001243
+   }
+  },
+  {
+   "source": "edge",
+   "text": "I’m calling from the Ministry of Health — you’re under investigation.",
+   "urgency": {
+    "clean": "i'm calling from the ministry of health you're under investigation",
+    "score": 0.294157
+   },
+   "money": {
+    "clean": "im calling from the orggovt youre under investigation",
+    "score": 0.00379
+   },
+   "impersonation": {
+    "clean": "i’m calling from the orggovt — you’re under investigation.",
+    "score": 0.996831
+   }
+  },
+  {
+   "source": "edge",
+   "text": "This is DBS bank. This is OCBC. This is the Singapore Police Force. This is ICA.",
+   "urgency": {
+    "clean": "this is dbs bank this is ocbc this is the singapore police force this is ica",
+    "score": 0.77452
+   },
+   "money": {
+    "clean": "this is orgbank bank this is orgbank this is the orgpolice this is orggovt",
+    "score": 0.000997
+   },
+   "impersonation": {
+    "clean": "this is orgbank bank. this is orgbank. this is the orgpolice. this is orggovt.",
+    "score": 0.809935
+   }
+  },
+  {
+   "source": "edge",
+   "text": "done.Then transfer the money.Now please! Quickly? ok",
+   "urgency": {
+    "clean": "done then transfer the money now please quickly ok",
+    "score": 0.42437
+   },
+   "money": {
+    "clean": "done then transfer the money now please quickly ok",
+    "score": 0.933072
+   },
+   "impersonation": {
+    "clean": "done.then transfer the money.now please! quickly? ok",
+    "score": 0.017139
+   }
+  },
+  {
+   "source": "edge",
+   "text": "hello hello hello",
+   "urgency": {
+    "clean": "hello hello hello",
+    "score": 0.1553
+   },
+   "money": {
+    "clean": "hello hello hello",
+    "score": 0.002219
+   },
+   "impersonation": {
+    "clean": "hello hello hello",
+    "score": 0.008628
+   }
+  },
+  {
+   "source": "edge",
+   "text": "",
+   "urgency": {
+    "clean": "",
+    "score": 0.0
+   },
+   "money": {
+    "clean": "",
+    "score": 0.007979
+   },
+   "impersonation": {
+    "clean": "",
+    "score": 0.009697
+   }
+  },
+  {
+   "source": "edge",
+   "text": "   ",
+   "urgency": {
+    "clean": "",
+    "score": 0.0
+   },
+   "money": {
+    "clean": "",
+    "score": 0.007979
+   },
+   "impersonation": {
+    "clean": "",
+    "score": 0.009697
+   }
+  },
+  {
+   "source": "edge",
+   "text": "12345678",
+   "urgency": {
+    "clean": "phonetoken",
+    "score": 0.223183
+   },
+   "money": {
+    "clean": "numtoken",
+    "score": 0.050661
+   },
+   "impersonation": {
+    "clean": "longnumber",
+    "score": 0.01486
+   }
+  },
+  {
+   "source": "edge",
+   "text": "ok",
+   "urgency": {
+    "clean": "ok",
+    "score": 0.041118
+   },
+   "money": {
+    "clean": "ok",
+    "score": 0.019953
+   },
+   "impersonation": {
+    "clean": "ok",
+    "score": 0.00724
+   }
+  },
+  {
+   "source": "edge",
+   "text": "cb12lf 7t9k2b codes: 4491 and 0021",
+   "urgency": {
+    "clean": "numtoken numtoken codes numtoken and numtoken",
+    "score": 0.203527
+   },
+   "money": {
+    "clean": "cb numtoken lf numtoken t moneytoken numtoken b codes numtoken and numtoken",
+    "score": 0.214666
+   },
+   "impersonation": {
+    "clean": "cb12lf 7t9k2b codes: longnumber and longnumber",
+    "score": 0.064871
+   }
+  },
+  {
+   "source": "edge",
+   "text": "please listen carefully and do exactly what I say please listen carefully and do exactly what I say please listen carefully and do exactly what I say please listen carefully and do exactly what I say please listen carefully and do exactly what I say please listen carefully and do exactly what I say please listen carefully and do exactly what I say please listen carefully and do exactly what I say",
+   "urgency": {
+    "clean": "please listen carefully and do exactly what i say please listen carefully and do exactly what i say please listen carefully and do exactly what i say please listen carefully and do exactly what i say please listen carefully and do exactly what i say please listen carefully and do exactly what i say please listen carefully and do exactly what i say please listen carefully and do exactly what i say",
+    "score": 0.176883
+   },
+   "money": {
+    "clean": "please listen carefully and do exactly what i say please listen carefully and do exactly what i say please listen carefully and do exactly what i say please listen carefully and do exactly what i say please listen carefully and do exactly what i say please listen carefully and do exactly what i say please listen carefully and do exactly what i say please listen carefully and do exactly what i say",
+    "score": 0.414523
+   },
+   "impersonation": {
+    "clean": "please listen carefully and do exactly what i say please listen carefully and do exactly what i say please listen carefully and do exactly what i say please listen carefully and do exactly what i say please listen carefully and do exactly what i say please listen carefully and do exactly what i say please listen carefully and do exactly what i say please listen carefully and do exactly what i say",
+    "score": 0.335631
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Your Amazon parcel is held by customs, pay the clearance fee via PayNow immediately or it will be destroyed",
+   "urgency": {
+    "clean": "your amazon parcel is held by customs pay the clearance fee via paynow immediately or it will be destroyed",
+    "score": 0.762894
+   },
+   "money": {
+    "clean": "your orgtech parcel is held by customs pay the clearance fee via payapp immediately or it will be destroyed",
+    "score": 0.478367
+   },
+   "impersonation": {
+    "clean": "your orgtech parcel is held by customs, pay the clearance fee via paynow immediately or it will be destroyed",
+    "score": 0.987911
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Hi mum, my phone broke, this is my new number, can you lend me 800 for the rent?",
+   "urgency": {
+    "clean": "hi mum my phone broke this is my new number can you lend me numtoken for the rent",
+    "score": 0.21043
+   },
+   "money": {
+    "clean": "hi mum my phone broke this is my new number can you lend me numtoken for the rent",
+    "score": 0.284031
+   },
+   "impersonation": {
+    "clean": "hi mum, my phone broke, this is my new number, can you lend me 800 for the rent?",
+    "score": 8.8e-05
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Hey, are we still on for dinner at 7? I'll bring the cake.",
+   "urgency": {
+    "clean": "hey are we still on for dinner at numtoken i'll bring the cake",
+    "score": 0.235584
+   },
+   "money": {
+    "clean": "hey are we still on for dinner at numtoken ill bring the cake",
+    "score": 0.108186
+   },
+   "impersonation": {
+    "clean": "hey, are we still on for dinner at 7? i'll bring the cake.",
+    "score": 6.2e-05
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Your Singtel bill of $45.20 is due on 3rd Jan, pay via GIRO as usual.",
+   "urgency": {
+    "clean": "your singtel bill of moneytoken is due on numtoken jan pay via giro as usual",
+    "score": 0.643113
+   },
+   "money": {
+    "clean": "your orgtelco bill of moneytoken is due on datetoken pay via giro as usual",
+    "score": 0.008588
+   },
+   "impersonation": {
+    "clean": "your orgtelco bill of $45.20 is due on 3rd jan, pay via giro as usual.",
+    "score": 0.002896
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Grandma, it's me, I'm in trouble with the police and need bail money, don't tell mum.",
+   "urgency": {
+    "clean": "grandma it's me i'm in trouble with the police and need bail money don't tell mum",
+    "score": 0.453917
+   },
+   "money": {
+    "clean": "grandma its me im in trouble with the police and need bail money do not tell mum",
+    "score": 0.455641
+   },
+   "impersonation": {
+    "clean": "grandma, it's me, i'm in trouble with the police and need bail money, don't tell mum.",
+    "score": 0.001033
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Microsoft technical support here, your computer has a virus, give me remote access.",
+   "urgency": {
+    "clean": "microsoft technical support here your computer has a virus give me remote access",
+    "score": 0.28234
+   },
+   "money": {
+    "clean": "orgtech technical support here your computer has a virus give me remote access",
+    "score": 0.004787
+   },
+   "impersonation": {
+    "clean": "orgtech technical support here, your computer has a virus, give me remote access.",
+    "score": 0.999636
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Café résumé naïve – “quotes” ‘single’ £100 €50 ¥30",
+   "urgency": {
+    "clean": "caf r sum na ve quotes single moneytoken moneytoken moneytoken",
+    "score": 0.206239
+   },
+   "money": {
+    "clean": "cafe resume naive quotes single moneytoken",
+    "score": 0.055002
+   },
+   "impersonation": {
+    "clean": "café résumé naïve – “quotes” ‘single’ £100 €50 ¥30",
+    "score": 0.007992
+   }
+  },
+  {
+   "source": "edge",
+   "text": "ＡＢＣ １２３ full-width text, pay ＄５００",
+   "urgency": {
+    "clean": "abc numtoken full width text pay moneytoken",
+    "score": 0.266114
+   },
+   "money": {
+    "clean": "abc numtoken full width text pay numtoken",
+    "score": 0.935599
+   },
+   "impersonation": {
+    "clean": "ａｂｃ １２３ full-width text, pay ＄５００",
+    "score": 0.161077
+   }
+  },
+  {
+   "source": "edge",
+   "text": "line one\nline two with urgency now\r\nline three",
+   "urgency": {
+    "clean": "line one line two with urgency now line three",
+    "score": 0.302289
+   },
+   "money": {
+    "clean": "line one line two with urgency now line three",
+    "score": 0.064797
+   },
+   "impersonation": {
+    "clean": "line one line two with urgency now line three",
+    "score": 0.862237
+   }
+  },
+  {
+   "source": "edge",
+   "text": "This is the police.\n\nTransfer to the safe account.",
+   "urgency": {
+    "clean": "this is the police transfer to the safe account",
+    "score": 0.579209
+   },
+   "money": {
+    "clean": "this is the police transfer to the safe account",
+    "score": 0.229906
+   },
+   "impersonation": {
+    "clean": "this is the police. transfer to the safe account.",
+    "score": 0.961357
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Transfer fifty dollars to my PayNow, or two hundred and fifty SGD via PayLah! now",
+   "urgency": {
+    "clean": "transfer fifty dollars to my paynow or two hundred and fifty sgd via paylah now",
+    "score": 0.579986
+   },
+   "money": {
+    "clean": "transfer moneytoken to my payapp or moneytoken via payapp now",
+    "score": 0.64358
+   },
+   "impersonation": {
+    "clean": "transfer fifty dollars to my paynow, or two hundred and fifty sgd via paylah! now",
+    "score": 0.00731
+   }
+  },
+  {
+   "source": "edge",
+   "text": "This is DBS bank, use Grab Pay or GrabPay, the OCBC app or Standard Chartered Bank to pay 2k",
+   "urgency": {
+    "clean": "this is dbs bank use grab pay or grabpay the ocbc app or standard chartered bank to pay numtoken k",
+    "score": 0.703977
+   },
+   "money": {
+    "clean": "this is orgbank bank use payapp or payapp the orgbank app or orgbank to pay moneytoken",
+    "score": 0.794365
+   },
+   "impersonation": {
+    "clean": "this is orgbank bank, use orgshop pay or grabpay, the orgbank app or orgbank to pay 2k",
+    "score": 0.00786
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Send three thousand ringgit by Western Union or a grand in cash, apple pay also can",
+   "urgency": {
+    "clean": "send three thousand ringgit by western union or a grand in cash apple pay also can",
+    "score": 0.283816
+   },
+   "money": {
+    "clean": "send moneytoken by western union or moneytoken in cash payapp also can",
+    "score": 0.226538
+   },
+   "impersonation": {
+    "clean": "send three thousand ringgit by western union or a grand in cash, orgtech pay also can",
+    "score": 0.225825
+   }
+  },
+  {
+   "source": "edge",
+   "text": "Can you top up my GXS account with a hundred bucks? Then buy Google Play cards on Shopee or Carousell.",
+   "urgency": {
+    "clean": "can you top up my gxs account with a hundred bucks then buy google play cards on shopee or carousell",
+    "score": 0.359292
+   },
+   "money": {
+    "clean": "can you top up my orgbank account with moneytoken then buy orgtech play cards on orgshop or orgshop",
+    "score": 0.439057
+   },
+   "impersonation": {
+    "clean": "can you top up my gxs account with a hundred bucks? then buy orgtech play cards on orgshop or carousell.",
+    "score": 0.080428
+   }
+  },
+  {
+   "source": "edge",
+   "text": "My mom uses CPF and grab to work; Bank of China and ICBC are banks; Revolut, YouTrip, Alipay, WeChat Pay.",
+   "urgency": {
+    "clean": "my mom uses cpf and grab to work bank of china and icbc are banks revolut youtrip alipay wechat pay",
+    "score": 0.28616
+   },
+   "money": {
+    "clean": "my mom uses cpf and grab to work orgbank and orgbank are banks payapp payapp payapp payapp",
+    "score": 0.033616
+   },
+   "impersonation": {
+    "clean": "my orggovt uses orggovt and orgshop to work; bank of china and icbc are banks; revolut, youtrip, alipay, wechat pay.",
+    "score": 0.327236
+   }
+  }
+ ]
+}
