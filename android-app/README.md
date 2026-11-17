@@ -37,7 +37,7 @@ Android Studio → **File → Open** → select the **`android-app`** folder (no
 4. The phone must be on the same Wi-Fi as the laptop (or a hotspot). See "Pointing the app at the backend".
 
 ### 4. Run
-Select **`app`** and your device in the toolbar → press **Run ▶**. The app installs and opens as **ScamDetect**.
+Select **`app`** and your device in the toolbar → press **Run ▶**. The app installs and opens as **ScamGuard**.
 
 ### 5. First launch
 1. Tap **Allow** on the "nearby devices" (local network) prompt.
@@ -111,7 +111,7 @@ The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk` on both 
 
 ## Pointing the app at the backend
 
-**First launch (Android 17 / API 37 and newer):** the app asks for **local network access** (shown as a "nearby devices" prompt). Tap **Allow**. Android 17 blocks apps from reaching private addresses like `10.0.2.2` or `192.168.x.x` without it. If you refused it, every call shows "Could not check" and Test connection says "Could not connect: allow Local network access…". Turn it back on in Android Settings → Apps → ScamDetect → Permissions.
+**First launch (Android 17 / API 37 and newer):** the app asks for **local network access** (shown as a "nearby devices" prompt). Tap **Allow**. Android 17 blocks apps from reaching private addresses like `10.0.2.2` or `192.168.x.x` without it. If you refused it, every call shows "Could not check" and Test connection says "Could not connect: allow Local network access…". Turn it back on in Android Settings → Apps → ScamGuard → Permissions.
 
 Set the gateway URL in **Settings**, then press **Test connection**. "Connected: ok" means the gateway answered.
 
@@ -321,7 +321,7 @@ app/src/main/
 |---|---|
 | `CLEARTEXT communication not permitted` | `usesCleartextTraffic="true"` missing from the manifest |
 | Test connection: "Could not connect: SocketTimeoutException" or "ConnectException" | Wrong IP or port, port-forward closed, or firewall blocking 8080 |
-| Test connection: "Could not connect: allow Local network access…" (Android 17+) | Local network access was refused. Allow it in Android Settings → Apps → ScamDetect → Permissions |
+| Test connection: "Could not connect: allow Local network access…" (Android 17+) | Local network access was refused. Allow it in Android Settings → Apps → ScamGuard → Permissions |
 | Test connection shows "Connected: ok" but every call shows "Could not check" | The gateway is up but answers HTTP 503: workers still loading. Check `docker compose ps` or `kubectl -n scamguard get pods` |
 | Test connection: "Not a valid address" | Fix the URL in Settings, e.g. `http://10.0.2.2:8080/` |
 | No vibration | Normal on the emulator; test on a real phone |
