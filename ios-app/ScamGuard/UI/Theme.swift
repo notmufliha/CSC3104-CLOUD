@@ -15,6 +15,49 @@ nonisolated enum Theme {
             : UIColor(red: 0x66 / 255, green: 0x50 / 255, blue: 0xA4 / 255, alpha: 1)
     })
 
+    /// Dynamic colour from light / dark hex values (0xRRGGBB).
+    static func dynamic(_ light: UInt32, _ dark: UInt32) -> Color {
+        func ui(_ v: UInt32) -> UIColor {
+            UIColor(red: CGFloat((v >> 16) & 0xFF) / 255, green: CGFloat((v >> 8) & 0xFF) / 255,
+                    blue: CGFloat(v & 0xFF) / 255, alpha: 1)
+        }
+        return Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? ui(dark) : ui(light) })
+    }
+
+    // The Android app's Material 3 roles (android-app ui/theme/Color.kt), so both apps look the same.
+    /// Page background (M3 background).
+    static let background = dynamic(0xFFFBFE, 0x141218)
+    /// Card background (M3 surfaceContainer).
+    static let card = dynamic(0xF3EDF7, 0x211F26)
+    /// Empty bar track (M3 surfaceVariant).
+    static let track = dynamic(0xE7E0EC, 0x49454F)
+    /// Secondary text (M3 onSurfaceVariant).
+    static let muted = dynamic(0x49454F, 0xCAC4D0)
+    /// Selected card / icon circle (M3 primaryContainer).
+    static let brandContainer = dynamic(0xEADDFF, 0x4F378B)
+    /// Text on a brand-coloured fill (M3 onPrimary): white in light mode, dark purple in dark mode.
+    static let onBrand = dynamic(0xFFFFFF, 0x381E72)
+
+    /// Privacy-level colours (purple family), the same on Android.
+    static let privacyCloud = Color(red: 0x66 / 255, green: 0x50 / 255, blue: 0xA4 / 255)
+    static let privacyHybrid = Color(red: 0x9A / 255, green: 0x82 / 255, blue: 0xDB / 255)
+    static let privacyOnDevice = Color(red: 0xCD / 255, green: 0xB9 / 255, blue: 0xFF / 255)
+
+    static func privacyColor(_ id: String) -> Color {
+        switch id {
+        case "hybrid": return privacyHybrid
+        case "on_device": return privacyOnDevice
+        default: return privacyCloud
+        }
+    }
+
+    /// Signal line colours on the call detail chart (the same on Android).
+    static let urgencyLine = Color(red: 0xEF / 255, green: 0x6C / 255, blue: 0x00 / 255)
+    static let moneyLine = Color(red: 0x8E / 255, green: 0x24 / 255, blue: 0xAA / 255)
+    static let impersonationLine = Color(red: 0x1E / 255, green: 0x88 / 255, blue: 0xE5 / 255)
+
+    static func verdictWord(_ verdict: String) -> String { PlainWords.verdict(verdict) }
+
     static func levelColor(_ level: Risk.Level) -> Color {
         switch level {
         case .green: return safeGreen
