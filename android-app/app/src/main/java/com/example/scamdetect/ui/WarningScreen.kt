@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -107,7 +108,7 @@ fun WarningScreen(
         val animations = Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
         if (animations == 0f) return@LaunchedEffect
         repeat(3) {
-            flash.animateTo(0.28f, tween(300))
+            flash.animateTo(0.9f, tween(300))
             flash.animateTo(0f, tween(450))
             delay(250)
         }
@@ -166,8 +167,8 @@ fun WarningScreen(
                 }
             }
         }
-        // the flash sits on top but takes no touches
-        Box(Modifier.fillMaxSize().alpha(flash.value).background(Color.White))
+        // The flash is a white frame around the edge (it takes no touches), so the white text keeps its contrast.
+        Box(Modifier.fillMaxSize().alpha(flash.value).border(14.dp, Color.White))
     }
 }
 

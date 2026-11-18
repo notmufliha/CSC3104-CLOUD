@@ -229,7 +229,7 @@ fun EverydaySettings(
     onOpen: (SettingsPage) -> Unit, onReadAloud: (Boolean) -> Unit,
 ) {
     Group {
-        SettingsRow(Icons.Filled.Info, stringResource(R.string.set_text_size),
+        SettingsRow(AppIcons.TextSize, stringResource(R.string.set_text_size),
             stringResource(if (textSize == AppPrefs.TEXT_XLARGE) R.string.text_xlarge else R.string.text_large), tag = "rowTextSize") { onOpen(SettingsPage.TEXT_SIZE) }
         HorizontalDivider(Modifier.padding(start = 16.dp))
         ToggleRow(stringResource(R.string.set_read_aloud), stringResource(R.string.set_read_aloud_line), readAloud, onReadAloud)

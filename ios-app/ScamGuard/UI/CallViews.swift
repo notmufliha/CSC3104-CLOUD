@@ -114,7 +114,10 @@ struct InCallContent: View {
                 Spacer()
                 if !simple { PrivacyBadge(level: s.privacyLevel) }
             }
+            // Capped so the yellow or red message below stays on the first screen at the largest text sizes.
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             RiskBar(level: shown, score: s.combinedScore, showScore: !simple).tourTarget(.riskBar)
+                .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             if !simple { SignalChips(lit: s.lit).tourTarget(.warningChips) }
             switch shown {
             case .yellow: CarefulBanner(kind: s.warningKind)
