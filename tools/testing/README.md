@@ -48,12 +48,10 @@ Measured on 2026-11-13 (Kubernetes, `replay.py --caller-only --speed 4`):
 | `scam_en_23_bank_card_handover` | fake bank fraud team, courier collects card and PIN, ATM cash | 9 | 5 | red at 5 |
 | `scam_en_24_job_task_deposit` | job/task scam: top up to "unlock" commission | 9 | 7 | **MISSED** (UNSURE): no one is impersonated |
 | `normal_en_20_ica_passport_collection` | real ICA reminder, book in MyICA, "ICA never asks for money by phone" | never red | | SAFE |
-| `normal_en_21_bank_fraud_check` | real bank fraud team: one yes/no question, card blocked, "call the number on your card" | never red | | **FALSE ALARM** (red at 5) |
 | `normal_en_22_telco_contract_renewal` | real telco renewal offer, nothing to pay today | never red | | SAFE |
 
-The two misses are kept on purpose: the job scam is a new scam the models don't know yet, and the bank fraud check is
-a real false alarm. Both are what the learning loop (`demo/LEARNING_LOOP.md`) is for: report them ("This was a
-scam" / "This was fine"), label them on the review website, retrain, and replay to compare.
+The job-scam miss is kept on purpose: the models do not know this new pattern yet. Report it as a scam, label it on
+the review website, retrain, and replay to check whether the models learned it.
 
 ## Test it
 
