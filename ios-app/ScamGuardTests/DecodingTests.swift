@@ -153,7 +153,7 @@ final class DecodingTests: XCTestCase {
         XCTAssertEqual(scripts.filter { $0.kind == "normal" }.count, 10)
         let otp = try XCTUnwrap(scripts.first { $0.fileName == "scam_en_11_bank_otp.json" })
         XCTAssertEqual(otp.lang, "en")
-        XCTAssertEqual(otp.title, "Bank otp")
+        XCTAssertEqual(otp.title, "Bank OTP")
         XCTAssertTrue(otp.lines.first!.isCaller)
         XCTAssertEqual(otp.lines.first!.delayMs, 1500)
         XCTAssertEqual(scripts.first { $0.fileName == "normal_zh_14_family_call.json" }?.lang, "zh")

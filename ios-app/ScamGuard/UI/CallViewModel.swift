@@ -127,10 +127,10 @@ final class CallViewModel {
 
     // ------------------------------------------------------------ call lifecycle
 
-    /// A random script of this kind, avoiding the one picked last time when there is another to choose.
+    /// A random script of this kind (never a learning-loop test), avoiding the one picked last time when there is another.
     func randomScript(_ kind: String) -> CallScript? {
-        let pool = scripts.filter { $0.kind == kind }
-        let pick = pool.filter { $0.fileName != lastRandom }.randomElement() ?? pool.randomElement()
+        // never a learning-loop test call (they are meant to be missed, see ScriptTitles)
+        let pick = ScriptTitles.pickRandom(scripts, kind: kind, last: lastRandom)
         lastRandom = pick?.fileName
         return pick
     }
