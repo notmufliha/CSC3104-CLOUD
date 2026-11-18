@@ -1,0 +1,57 @@
+[
+  {
+    "speaker": "caller",
+    "text": "Hello, it's Mum. Are you free this weekend?",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "Hi Mum, I think so. What's happening?",
+    "delay_ms": 3350
+  },
+  {
+    "speaker": "caller",
+    "text": "Ah Ma's birthday is on Sunday. Your aunt booked the restaurant for twelve o'clock.",
+    "delay_ms": 3400
+  },
+  {
+    "speaker": "receiver",
+    "text": "Nice. Do you want me to bring anything?",
+    "delay_ms": 5300
+  },
+  {
+    "speaker": "caller",
+    "text": "Can you pick up the cake on the way? I'll PayNow you back after dinner.",
+    "delay_ms": 3750
+  },
+  {
+    "speaker": "receiver",
+    "text": "Sure, no problem. Which bakery?",
+    "delay_ms": 5650
+  },
+  {
+    "speaker": "caller",
+    "text": "The one near your office. Please remember to ask them to write her name on it.",
+    "delay_ms": 2750
+  },
+  {
+    "speaker": "receiver",
+    "text": "Okay, will do. What time should I reach?",
+    "delay_ms": 6000
+  },
+  {
+    "speaker": "caller",
+    "text": "Come by eleven thirty, so we can all walk in together.",
+    "delay_ms": 3750
+  },
+  {
+    "speaker": "receiver",
+    "text": "Got it. See you Sunday, Mum.",
+    "delay_ms": 4350
+  },
+  {
+    "speaker": "caller",
+    "text": "Bye bye. Take care and eat properly ah.",
+    "delay_ms": 3100
+  }
+]
