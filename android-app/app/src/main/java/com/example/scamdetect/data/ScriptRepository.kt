@@ -18,7 +18,7 @@ class ScriptRepository(private val context: Context) {
             ?.filter { it.endsWith(".json") }
             ?.sorted()
             .orEmpty()
-        return files.mapNotNull { name ->
+        val parsed = files.mapNotNull { name ->
             try {
                 parse(name)
             } catch (e: Exception) {
@@ -26,6 +26,7 @@ class ScriptRepository(private val context: Context) {
                 null
             }
         }
+        return com.example.scamdetect.logic.ScriptTitles.withTitles(parsed)   // display titles (files keep their names)
     }
 
     private fun parse(name: String): CallScript {
