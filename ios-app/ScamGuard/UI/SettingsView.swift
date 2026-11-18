@@ -6,14 +6,14 @@ import SwiftUI
 extension PrivacyLevel {
     var oneLine: String {
         switch self {
-        case .cloud: return "Checked by the ScamGuard server"
-        case .hybrid: return "Checked on this phone, server helps when unsure"
-        case .onDevice: return "Everything stays on this phone"
+        case .cloud: return L.s(.privacy_plain_cloud)
+        case .hybrid: return L.s(.privacy_plain_hybrid)
+        case .onDevice: return L.s(.privacy_plain_on_device)
         }
     }
 }
 
-func connectionLabel(_ c: Bool?) -> String { c == true ? "Connected" : c == false ? "Can't reach" : "Not checked" }
+func connectionLabel(_ c: Bool?) -> String { L.s(c == true ? .status_connected : c == false ? .status_cant_reach : .status_not_checked) }
 func connectionColor(_ c: Bool?) -> Color { c == true ? Theme.safeGreen : c == false ? Theme.scamRed : Theme.muted }
 
 private var appVersion: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0" }
@@ -48,34 +48,37 @@ private struct MenuRow: View {
     }
 }
 
-enum SettingsRoute: String, Hashable { case privacy, server, models, data, help }
+enum SettingsRoute: String, Hashable { case privacy, server, models, data, help, textSize, family, advanced, pin }
 
+/// Settings. Simple mode: the everyday rows, Help, and "Advanced settings" (PIN-protected if set). The full app:
+/// the everyday rows, everything Advanced settings holds, and Help.
 struct SettingsView: View {
     @Environment(CallViewModel.self) private var vm
 
     var body: some View {
-        let _ = vm.historyVersion
-        let calls = vm.store.calls().count
         List {
-            Section {
-                NavigationLink(value: SettingsRoute.privacy)  { MenuRow(icon: "lock.fill", title: "Privacy level", value: vm.privacyLevel.badge) }
-                    .tourTarget(.privacyRow)
-                NavigationLink(value: SettingsRoute.server) {
-                    MenuRow(icon: "server.rack", title: "Server", value: connectionLabel(vm.connection), valueColor: connectionColor(vm.connection))
+            EverydaySettings()
+            if vm.simpleMode {
+                Section {
+                    NavigationLink(value: SettingsRoute.help) { SettingsRowLabel(icon: "questionmark.circle.fill", title: L.s(.set_help)) }
+                        .accessibilityIdentifier("rowHelp")
+                    NavigationLink(value: SettingsRoute.advanced) {
+                        SettingsRowLabel(icon: vm.pinSet ? "lock.fill" : "gearshape.fill", title: L.s(.set_advanced), value: L.s(.set_advanced_line))
+                    }
+                    .accessibilityIdentifier("rowAdvanced")
                 }
-                NavigationLink(value: SettingsRoute.models) {
-                    MenuRow(icon: "cpu", title: "On-device models", value: vm.modelStatus.contains("federated") ? "Updated" : "Built-in")
+                .listRowBackground(Theme.card)
+            } else {
+                AdvancedSections(simple: false)
+                Section {
+                    NavigationLink(value: SettingsRoute.help) { SettingsRowLabel(icon: "questionmark.circle.fill", title: L.s(.set_help)) }
+                        .accessibilityIdentifier("rowHelp")
                 }
+                .listRowBackground(Theme.card)
             }
-            .listRowBackground(Theme.card)
-            Section {
-                NavigationLink(value: SettingsRoute.data)  { MenuRow(icon: "person.fill", title: "My data & history", value: "\(calls) call\(calls == 1 ? "" : "s")") }
-                NavigationLink(value: SettingsRoute.help)  { MenuRow(icon: "info", title: "Help & about", value: "v\(appVersion)") }
-            }
-            .listRowBackground(Theme.card)
         }
         .settingsList()
-        .navigationTitle("Settings")
+        .navigationTitle(L.s(.tab_settings))
         .navigationDestination(for: SettingsRoute.self) { route in
             switch route {
             case .privacy: PrivacyPage()
@@ -83,6 +86,10 @@ struct SettingsView: View {
             case .models: ModelsPage()
             case .data: DataPage()
             case .help: HelpPage()
+            case .textSize: TextSizePage()
+            case .family: FamilyPage()
+            case .advanced: AdvancedPage()
+            case .pin: PinSettingsPage()
             }
         }
         .task { await vm.refreshConnection() }
@@ -98,12 +105,12 @@ private struct InfoRow: View {
     var body: some View {
         Button { show = true } label: {
             HStack {
-                Text("What does this mean?").font(.body).foregroundStyle(Theme.brand)
+                Text(L.s(.what_does_this_mean)).font(.body).foregroundStyle(Theme.brand)
                 Spacer()
                 Image(systemName: "info.circle.fill").font(.title3).foregroundStyle(Theme.brand)
             }
         }
-        .accessibilityLabel("About \(title)")
+        .accessibilityLabel(L.s(.a11y_about, title))
         .sheet(isPresented: $show) { InfoSheet(title: title, text: text) }
     }
 }
@@ -112,38 +119,30 @@ private struct InfoRow: View {
 
 struct PrivacyPage: View {
     @Environment(CallViewModel.self) private var vm
+    @State private var info = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                InfoRow(title: "Privacy level", text: PrivacyLevel.allCases.map { "\($0.badge): \($0.explanation)" }.joined(separator: "\n\n"))
                 ForEach(PrivacyLevel.allCases) { level in
-                    let selected = level == vm.privacyLevel
-                    Button { vm.setPrivacyLevel(level) } label: {
-                        HStack(spacing: 14) {
-                            Image(systemName: selected ? "largecircle.fill.circle" : "circle")
-                                .font(.title2).foregroundStyle(selected ? Theme.brand : Theme.muted)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(level.badge + (level == .defaultLevel ? " (default)" : "")).font(.title3.weight(.semibold))
-                                Text(level.oneLine).font(.body).foregroundStyle(Theme.muted)
-                            }
-                            Spacer(minLength: 0)
-                        }
-                        .padding(18)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(selected ? Theme.brandContainer : Theme.card, in: RoundedRectangle(cornerRadius: 20))
-                        .overlay(RoundedRectangle(cornerRadius: 20).stroke(selected ? Theme.brand : .clear, lineWidth: 2))
+                    ChoiceCard(selected: level == vm.privacyLevel, title: level.choiceTitle(simple: vm.simpleMode),
+                               line: L.s(level.plainKey), id: "privacy_\(level.rawValue)") {
+                        if level.available { vm.setPrivacyLevel(level) }
                     }
-                    .buttonStyle(.plain)
-                    .disabled(!level.available)
-                    .accessibilityAddTraits(selected ? [.isSelected] : [])
                 }
-                Text("Applies from the next call.").font(.body).foregroundStyle(Theme.muted)
+                Text(L.s(.privacy_applies_next)).font(.body).foregroundStyle(Theme.muted)
+                Text(L.s(.privacy_english_only)).font(.body).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+                if !vm.simpleMode {
+                    BigButton(title: L.s(.setup_more_about), id: "privacyInfo", prominent: false) { info = true }
+                }
             }
             .padding(16)
         }
         .background(Theme.background)
-        .navigationTitle("Privacy level")
+        .navigationTitle(L.s(.set_how_checked))
+        .sheet(isPresented: $info) {
+            InfoSheet(title: L.s(.set_how_checked), text: PrivacyLevel.allCases.map { "\($0.badge): \($0.explanation)" }.joined(separator: "\n\n"))
+        }
     }
 }
 
@@ -166,21 +165,21 @@ struct ServerPage: View {
     var body: some View {
         List {
             Section {
-                InfoRow(title: "Server", text: "The address of the ScamGuard server. Simulator: localhost is the Mac running docker compose (:8080 = gateway, :8088/api/ = edge). iPhone: use the Mac's Wi-Fi IP instead of 192.168.1.23 (on the Mac: ipconfig getifaddr en0). HTTPS (Kubernetes, demo/expose): install demo/tls/ca.crt on the iPhone as a profile (Settings → General → VPN & Device Management), then trust it in General → About → Certificate Trust Settings. Without HTTPS, what callers say is sent as plain text.")
+                InfoRow(title: L.s(.srv_title), text: L.s(.srv_info_ios))
             }
             Section {
-                StatusChip(text: testing ? "Checking…" : connectionLabel(vm.connection), color: testing ? Theme.muted : connectionColor(vm.connection))
-                TextField("Server address", text: $url)
+                StatusChip(text: testing ? L.s(.status_checking) : connectionLabel(vm.connection), color: testing ? Theme.muted : connectionColor(vm.connection))
+                TextField(L.s(.field_server), text: $url)
                     .font(.body)
                     .keyboardType(.URL)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                 let encrypted = url.trimmingCharacters(in: .whitespaces).lowercased().hasPrefix("https://")
-                Label(encrypted ? "Encrypted" : "Not encrypted", systemImage: encrypted ? "lock.fill" : "exclamationmark.triangle.fill")
+                Label(L.s(encrypted ? .srv_encrypted : .srv_not_encrypted), systemImage: encrypted ? "lock.fill" : "exclamationmark.triangle.fill")
                     .font(.body).foregroundStyle(encrypted ? Theme.safeGreen : Theme.scamRed)
             }
             .listRowBackground(Theme.card)
-            Section("Presets") {
+            Section(L.s(.srv_presets)) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(Self.presets, id: \.0) { p in Button(p.0) { url = p.1 }.buttonStyle(.bordered).font(.body) }
@@ -190,8 +189,8 @@ struct ServerPage: View {
             .listRowBackground(Theme.card)
             Section {
                 HStack(spacing: 12) {
-                    Button { vm.saveGatewayUrl(url); url = vm.gatewayUrl; result = "Saved" } label: {
-                        Text("Save").frame(maxWidth: .infinity, minHeight: 36)
+                    Button { vm.saveGatewayUrl(url); url = vm.gatewayUrl; result = L.s(.saved) } label: {
+                        Text(L.s(.btn_save)).font(.title3.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 56)
                     }
                     .buttonStyle(.borderedProminent)
                     .foregroundStyle(Theme.onBrand)
@@ -199,7 +198,7 @@ struct ServerPage: View {
                         testing = true
                         let u = url
                         Task { result = await vm.testConnection(u); testing = false }
-                    } label: { Text("Test").frame(maxWidth: .infinity, minHeight: 36) }
+                    } label: { Text(L.s(.btn_test)).font(.title3.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 56) }
                     .buttonStyle(.bordered)
                 }
                 .font(.body)
@@ -208,7 +207,7 @@ struct ServerPage: View {
             .listRowBackground(Color.clear)
         }
         .settingsList()
-        .navigationTitle("Server")
+        .navigationTitle(L.s(.srv_title))
         .onAppear { if !loaded { url = vm.gatewayUrl; loaded = true } }
     }
 }
@@ -235,44 +234,44 @@ struct ModelsPage: View {
     var body: some View {
         List {
             Section {
-                InfoRow(title: "On-device models", text: "Used at privacy levels 2 and 3. Newer versions come from federated learning: phones train on their own calls and share only model changes, never the calls. The app checks for new versions when it starts (not at level 3, which makes no network traffic).")
+                InfoRow(title: L.s(.mdl_title), text: L.s(.mdl_info))
             }
             Section {
                 ForEach(vm.modelStatus.split(separator: "\n").map(String.init), id: \.self) { line in
                     let name = line.split(separator: ":").first.map { $0.prefix(1).uppercased() + $0.dropFirst() } ?? line
                     KeyValueRow(key: name == "Money" ? "Money / OTP" : name,
-                                value: line.contains("federated") ? "Updated " + (line.components(separatedBy: "federated ").last?.components(separatedBy: " (").first ?? "") : "Built-in")
+                                value: line.contains("federated") ? L.s(.mdl_updated_v, line.components(separatedBy: "federated ").last?.components(separatedBy: " (").first ?? "") : L.s(.models_built_in))
                 }
-                KeyValueRow(key: "MobileBERT", value: vm.mobileBertStatus.hasPrefix("MobileBERT installed") ? "Installed" : "Not installed")
+                KeyValueRow(key: "MobileBERT", value: L.s(vm.mobileBertStatus.hasPrefix("MobileBERT installed") ? .mdl_installed : .mdl_not_installed))
             }
             .listRowBackground(Theme.card)
             Section {
-                Button { Task { _ = await vm.checkModelUpdates() } } label: { Text("Check for updates").frame(maxWidth: .infinity, minHeight: 36) }
+                Button { Task { _ = await vm.checkModelUpdates() } } label: { Text(L.s(.mdl_check)).font(.title3.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 56) }
                     .buttonStyle(.borderedProminent)
                     .foregroundStyle(Theme.onBrand)
                 if !vm.modelCheck.isEmpty {
                     Text(friendlyModelCheck(vm.modelCheck)).font(.body).foregroundStyle(Theme.brand)
                         .accessibilityHint(vm.modelCheck)
                 }
-                Button {} label: { Text("Train on my calls").frame(maxWidth: .infinity, minHeight: 36) }
+                Button {} label: { Text(L.s(.mdl_train)).font(.title3.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 56) }
                     .buttonStyle(.bordered).disabled(true)
-                Text("Coming soon").font(.body).foregroundStyle(Theme.muted)
+                Text(L.s(.mdl_soon)).font(.body).foregroundStyle(Theme.muted)
             }
             .font(.body)
             .listRowBackground(Color.clear)
         }
         .settingsList()
-        .navigationTitle("On-device models")
+        .navigationTitle(L.s(.mdl_title))
     }
 }
 
 /// The update check's result in plain words (same wording on Android).
 func friendlyModelCheck(_ msg: String) -> String {
-    if msg.hasPrefix("Checking") { return "Checking…" }
-    if msg.hasPrefix("No model service") || msg.hasPrefix("Bad server address") { return "Can't reach the update service" }
-    if msg.hasPrefix("The registry has no phone models") { return "No updates yet" }
-    if msg.hasPrefix("Kept the current models") { return "Update failed, kept the current models" }
-    if msg.hasPrefix("Updated") { return "Models updated" }
+    if msg.hasPrefix("Checking") { return L.s(.mdl_res_checking) }
+    if msg.hasPrefix("No model service") || msg.hasPrefix("Bad server address") { return L.s(.mdl_res_unreachable) }
+    if msg.hasPrefix("The registry has no phone models") { return L.s(.mdl_res_none) }
+    if msg.hasPrefix("Kept the current models") { return L.s(.mdl_res_failed) }
+    if msg.hasPrefix("Updated") { return L.s(.mdl_res_updated) }
     return msg
 }
 
@@ -303,27 +302,27 @@ struct DataPage: View {
         let labels = vm.store.labelCount()
         List {
             Section {
-                InfoRow(title: "My data & history", text: "Save the riskiest sentence: keeps the one caller line that scored highest in calls that ended with a warning. Off: no words from your calls are kept, only verdicts and scores.\n\nHelp improve detection: the app keeps simple labels on this phone (for example, you hung up right after a warning, or tapped \"This was fine\"). On: the caller's lines of those calls are kept too, with numbers and names removed. Nothing is uploaded.\n\nYour history stays on this phone.")
+                InfoRow(title: L.s(.set_my_data), text: L.s(.data_info))
             }
             Section {
                 Toggle(isOn: Binding(get: { vm.saveSentence }, set: { vm.setSaveSentence($0) })) {
-                    ToggleLabel(title: "Save the riskiest sentence", line: "Keep one line from warned calls")
+                    ToggleLabel(title: L.s(.data_save_sentence), line: L.s(.data_save_sentence_line))
                 }
                 Toggle(isOn: Binding(get: { vm.helpImprove }, set: { vm.setHelpImprove($0) })) {
-                    ToggleLabel(title: "Help improve detection", line: "Keep labels on this phone")
+                    ToggleLabel(title: L.s(.data_help_improve), line: L.s(.data_help_improve_line))
                 }
             }
             .listRowBackground(Theme.card)
             Section {
-                KeyValueRow(key: "Calls saved", value: "\(calls)")
-                KeyValueRow(key: "Labels kept", value: "\(labels)")
+                KeyValueRow(key: L.s(.data_calls_saved), value: "\(calls)")
+                KeyValueRow(key: L.s(.data_labels_kept), value: "\(labels)")
             } footer: {
-                Text("Nothing here is uploaded.").font(.body).foregroundStyle(Theme.muted)
+                Text(L.s(.data_nothing_uploaded)).font(.body).foregroundStyle(Theme.muted)
             }
             .listRowBackground(Theme.card)
             Section {
                 Button(role: .destructive) { confirm = true } label: {
-                    Text("Delete my history").frame(maxWidth: .infinity, minHeight: 36)
+                    Text(L.s(.btn_delete_history)).font(.title3.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 56)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Theme.scamRed)
@@ -333,17 +332,15 @@ struct DataPage: View {
             .listRowBackground(Color.clear)
         }
         .settingsList()
-        .navigationTitle("My data & history")
-        .alert("Delete my history?", isPresented: $confirm) {
-            Button("Delete", role: .destructive) { vm.deleteHistory() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Deletes every saved call, chart, saved sentence and label on this phone. This can't be undone.")
+        .navigationTitle(L.s(.set_my_data))
+        .sheet(isPresented: $confirm) {
+            YesNoSheet(title: L.s(.delete_title), text: L.s(.delete_text), yes: L.s(.btn_yes_delete), no: L.s(.btn_no_keep),
+                       yesIsDanger: true, onYes: { confirm = false; vm.deleteHistory() }, onNo: { confirm = false })
         }
     }
 }
 
-private struct ToggleLabel: View {
+struct ToggleLabel: View {
     let title: String
     let line: String
 
@@ -364,59 +361,71 @@ struct HelpPage: View {
 
     var body: some View {
         List {
+            Section { PrivacyPromise() }
+                .listRowBackground(Color.clear)
+            Section {
+                ForEach([K.help_b1, .help_b2, .help_b3], id: \.self) { Bullet(text: L.s($0)) }
+            } header: { SectionTitle(text: L.s(.help_how)) }
+            .listRowBackground(Theme.card)
+            Section {
+                ColourRow(level: .green, name: L.s(.risk_safe), meaning: L.s(.help_safe_line))
+                ColourRow(level: .yellow, name: L.s(.risk_careful), meaning: L.s(.help_careful_line))
+                ColourRow(level: .red, name: L.s(.risk_scam), meaning: L.s(.help_scam_line))
+                ColourRow(level: .error, name: L.s(.risk_not_checked), meaning: L.s(.help_notchecked_line))
+            } header: { SectionTitle(text: L.s(.help_colours)) }
+            .listRowBackground(Theme.card)
             Section {
                 // The tour moves to Home itself.
-                Button { vm.startTour() } label: { Text("Replay tour").frame(maxWidth: .infinity, minHeight: 44) }
-                    .buttonStyle(.borderedProminent).foregroundStyle(Theme.onBrand).font(.body)
-                Button { vm.runSetupAgain() } label: { Text("Run setup again").frame(maxWidth: .infinity, minHeight: 44) }
-                    .buttonStyle(.bordered).font(.body)
-            } header: { SectionTitle(text: "Get started again") }
+                BigButton(title: L.s(.btn_replay_tour), id: "replayTour") { vm.startTour() }
+                BigButton(title: L.s(.btn_run_setup), id: "runSetup", prominent: false) { vm.runSetupAgain() }
+            } header: { SectionTitle(text: L.s(.help_again)) }
             .listRowBackground(Color.clear)
-            Section {
-                ForEach(["It listens to what the caller says.", "Each sentence is checked for scam signs.",
-                         "The bar turns yellow or red when it's risky.", "A red alert tells you to hang up."], id: \.self) { Bullet(text: $0) }
-            } header: { SectionTitle(text: "How ScamGuard works") }
-            .listRowBackground(Theme.card)
-            Section {
-                ColourRow(color: Theme.safeGreen, name: "Safe", meaning: "No warning signs")
-                ColourRow(color: Theme.warnYellow, name: "Warning", meaning: "Be careful")
-                ColourRow(color: Theme.scamRed, name: "Scam", meaning: "Hang up now")
-                ColourRow(color: Theme.neutralGrey, name: "Grey", meaning: "Couldn't check")
-            } header: { SectionTitle(text: "What the colours mean") }
-            .listRowBackground(Theme.card)
-            Section {
-                ForEach(PrivacyLevel.allCases) { l in
-                    Bullet(text: "\(l.badge): \(l.oneLine.prefix(1).lowercased() + l.oneLine.dropFirst())")
-                }
-            } header: { SectionTitle(text: "Privacy levels") }
-            .listRowBackground(Theme.card)
-            Section {
-                Button { openURL(scamShieldURL) } label: { Text("Open ScamShield").frame(maxWidth: .infinity, minHeight: 36) }
-                    .buttonStyle(.borderedProminent).tint(Theme.scamRed).font(.body)
-            } header: { SectionTitle(text: "Report a scam") }
-            .listRowBackground(Color.clear)
-            Section {
-                KeyValueRow(key: "Version", value: appVersion)
-                ForEach(vm.modelStatus.split(separator: "\n").map(String.init), id: \.self) { line in
-                    KeyValueRow(key: (line.split(separator: ":").first.map { $0.prefix(1).uppercased() + $0.dropFirst() } ?? "") + " model",
-                                value: line.contains("federated") ? (line.components(separatedBy: "federated ").last?.components(separatedBy: " (").first ?? "") : "built-in")
-                }
-                KeyValueRow(key: "MobileBERT", value: vm.mobileBertStatus.firstMatch(of: /\((mobilebert[^)]*)\)/).map { String($0.1) } ?? "not installed")
-            } header: { SectionTitle(text: "About") }
-            .listRowBackground(Theme.card)
+            AboutSection()
+            if !vm.simpleMode {
+                Section {
+                    ForEach(PrivacyLevel.allCases) { l in Bullet(text: "\(l.badge) (\(L.s(l.tagKey))): \(L.s(l.plainKey))") }
+                } header: { SectionTitle(text: L.s(.help_privacy_levels)) }
+                .listRowBackground(Theme.card)
+                Section {
+                    KeyValueRow(key: L.s(.about_version), value: appVersion)
+                    ForEach(vm.modelStatus.split(separator: "\n").map(String.init), id: \.self) { line in
+                        KeyValueRow(key: (line.split(separator: ":").first.map { $0.prefix(1).uppercased() + $0.dropFirst() } ?? "") + " model",
+                                    value: line.contains("federated") ? (line.components(separatedBy: "federated ").last?.components(separatedBy: " (").first ?? "") : "built-in")
+                    }
+                    KeyValueRow(key: "MobileBERT", value: vm.mobileBertStatus.firstMatch(of: /\((mobilebert[^)]*)\)/).map { String($0.1) } ?? "not installed")
+                } header: { SectionTitle(text: L.s(.about_versions)) }
+                .listRowBackground(Theme.card)
+            }
             #if DEBUG
             Section {
-                Button { vm.loadSampleHistory(); loaded = true } label: { Text("Load sample history").frame(maxWidth: .infinity, minHeight: 36) }
+                Button { vm.loadSampleHistory(); loaded = true } label: { Text("Load sample history").font(.title3.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 56) }
                     .buttonStyle(.bordered).font(.body)
                 if loaded { Text("Added about 60 sample calls.").font(.body) }
-                Button { vm.resetOnboarding() } label: { Text("Reset first-launch setup").frame(maxWidth: .infinity, minHeight: 44) }
+                Button { vm.resetOnboarding() } label: { Text("Reset first-launch setup").font(.title3.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 56) }
                     .buttonStyle(.bordered).font(.body)
             } header: { SectionTitle(text: "Debug build") }
             .listRowBackground(Color.clear)
             #endif
         }
         .settingsList()
-        .navigationTitle("Help & about")
+        .navigationTitle(L.s(.set_help))
+    }
+}
+
+/// Phase 6: who made the app, that it isn't a government app, and how to check a scam (1799, ScamShield).
+struct AboutSection: View {
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        Section {
+            Text(L.s(.about_who)).font(.body).fixedSize(horizontal: false, vertical: true)
+            Text(L.s(.about_not_gov)).font(.body.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+            Text(L.s(.about_verify)).font(.body).fixedSize(horizontal: false, vertical: true)
+            BigButton(title: L.s(.btn_call_1799), id: "about1799") { if let u = PhoneLinks.telURL(PhoneLinks.helpline) { openURL(u) } }
+            BigButton(title: L.s(.btn_open_scamshield), id: "aboutScamShield", prominent: false) { openURL(scamShieldURL) }
+            Text(L.s(.about_version) + " " + appVersion).font(.body).foregroundStyle(Theme.muted)
+        } header: { SectionTitle(text: L.s(.about_title)) }
+        .listRowBackground(Theme.card)
     }
 }
 
@@ -437,16 +446,18 @@ private struct Bullet: View {
 }
 
 private struct ColourRow: View {
-    let color: Color
+    let level: Risk.Level
     let name: String
     let meaning: String
 
     var body: some View {
-        HStack(spacing: 10) {
-            Circle().fill(color).frame(width: 18, height: 18)
-            Text(name).font(.headline)
-            Spacer()
-            Text(meaning).font(.body).foregroundStyle(Theme.muted)
+        HStack(spacing: 12) {
+            RiskIcon(level: level, size: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name).font(.headline)
+                Text(meaning).font(.body).foregroundStyle(Theme.muted)
+            }
+            Spacer(minLength: 0)
         }
         .accessibilityElement(children: .combine)
     }

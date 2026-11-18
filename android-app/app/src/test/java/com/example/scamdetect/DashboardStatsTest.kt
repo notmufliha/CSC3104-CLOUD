@@ -16,6 +16,9 @@ import java.time.ZoneOffset
  * (ios-app/ScamGuardTests/DashboardStatsTests.swift) on the same sample history, so both apps show the same numbers.
  */
 class DashboardStatsTest {
+    /** The English wording (string resources), as the app shows it in English. */
+    @org.junit.Before fun english() = TestStrings.install()
+
     private val now = 1795435200000L          // 2026-11-23 12:00 UTC
     private val todayStart = 1795392000000L   // 2026-11-23 00:00 UTC
     private val utc = ZoneOffset.UTC

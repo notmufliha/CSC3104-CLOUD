@@ -14,6 +14,9 @@ import java.time.ZoneOffset
  * (ios-app/ScamGuardTests/PlainWordsTests.swift) on the same sample history.
  */
 class PlainWordsTest {
+    /** The English wording (string resources), as the app shows it in English. */
+    @org.junit.Before fun english() = TestStrings.install()
+
     private val now = 1795435200000L
     private val h = SampleHistory.generate(now, 1795392000000L)
     private fun stats(p: Period) = DashboardStats.compute(h.calls, h.labels, p, now, ZoneOffset.UTC)
@@ -38,7 +41,7 @@ class PlainWordsTest {
         assertEquals("Risk is going down", PlainWords.trend(s))
         assertEquals("Most risky calls happen in the morning", PlainWords.hours(s))
         assertEquals("2 warnings turned out safe after a second look", PlainWords.doubleCheck(s))
-        assertEquals("Most calls were checked by the ScamGuard server", PlainWords.where(s))
+        assertEquals("Most calls were checked online", PlainWords.where(s))
         assertEquals("You marked 2 warnings as fine", PlainWords.answers(s))
         assertEquals("An average call lasted 1 min 37 s", PlainWords.length(s))
     }
@@ -71,8 +74,8 @@ class PlainWordsTest {
     @Test fun plainWordsForResultsAndPlaces() {
         assertEquals(listOf("Safe", "Be careful", "Scam", "Not checked"), listOf("SAFE", "UNSURE", "SCAM", "NOT CHECKED").map(PlainWords::verdict))
         assertEquals("Checked on this phone", PlainWords.checkedWhere("on_device"))
-        assertEquals("Checked on this phone with server help", PlainWords.checkedWhere("hybrid"))
-        assertEquals("Checked by the ScamGuard server", PlainWords.checkedWhere("cloud"))
+        assertEquals("Checked on this phone, online only when unsure", PlainWords.checkedWhere("hybrid"))
+        assertEquals("Checked online", PlainWords.checkedWhere("cloud"))
         assertEquals(listOf("morning", "afternoon", "evening", "night", "night"), listOf(8, 13, 19, 23, 3).map(PlainWords::partOfDay))
         assertEquals("Most warnings came from fake police, banks or officials", PlainWords.reasonSentence("impersonation"))
         assertEquals("Most warnings had several small warning signs", PlainWords.reasonSentence(null))

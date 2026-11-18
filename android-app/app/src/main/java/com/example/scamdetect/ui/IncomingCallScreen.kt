@@ -53,7 +53,7 @@ fun IncomingCallScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Incoming call",
+                text = com.example.scamdetect.logic.Tr.s(com.example.scamdetect.R.string.call_incoming),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -81,13 +81,13 @@ fun IncomingCallScreen(
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 CallActionButton(
-                    label = "Decline",
+                    label = com.example.scamdetect.logic.Tr.s(com.example.scamdetect.R.string.btn_decline),
                     icon = Icons.Filled.Close,
                     color = DeclineRed,
                     onClick = onDecline
                 )
                 CallActionButton(
-                    label = "Answer",
+                    label = com.example.scamdetect.logic.Tr.s(com.example.scamdetect.R.string.btn_answer),
                     icon = Icons.Filled.Call,
                     color = AnswerGreen,
                     onClick = onAnswer

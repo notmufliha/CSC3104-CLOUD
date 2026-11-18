@@ -16,6 +16,15 @@ nonisolated final class AppPrefs: OnboardingStore, @unchecked Sendable {
     static let keyFlPhoneId = "fl_phone_id"
     static let keyOnboardingCompleted = "onboarding_completed"
     static let keyOnboardingVersion = "onboarding_version"
+    static let keyTextSize = "text_size"
+    static let keyReadAloud = "read_aloud"
+    static let keyShowCareful = "show_be_careful"
+    static let keySimple = "simple_mode"
+    static let keySimpleOffered = "simple_mode_offered"
+    static let keyFamilyName = "family_name"
+    static let keyFamilyPhone = "family_phone"
+    static let textLarge = "large"
+    static let textXLarge = "xlarge"
     /// Keys an earlier version of the app could have saved: any of them means "not a new install".
     static let existingKeys = [keyURL, keySaveSentence, keyPrivacyLevel, keyHelpImprove, keyFlPhoneId]
 
@@ -62,6 +71,49 @@ nonisolated final class AppPrefs: OnboardingStore, @unchecked Sendable {
     var onboardingVersion: Int {
         get { defaults.integer(forKey: Self.keyOnboardingVersion) }
         set { defaults.set(newValue, forKey: Self.keyOnboardingVersion) }
+    }
+
+    // ---- elderly-friendly settings (new keys only; the same names and defaults on Android)
+
+    /// "large" (default) or "xlarge".
+    var textSize: String {
+        get { defaults.string(forKey: Self.keyTextSize) ?? Self.textLarge }
+        set { defaults.set(newValue, forKey: Self.keyTextSize) }
+    }
+
+    /// "Read warnings aloud". On by default.
+    var readAloud: Bool {
+        get { defaults.object(forKey: Self.keyReadAloud) == nil ? true : defaults.bool(forKey: Self.keyReadAloud) }
+        set { defaults.set(newValue, forKey: Self.keyReadAloud) }
+    }
+
+    /// "Show 'Be careful' warnings". On by default; off = only red warnings show (calls are still saved).
+    var showBeCareful: Bool {
+        get { defaults.object(forKey: Self.keyShowCareful) == nil ? true : defaults.bool(forKey: Self.keyShowCareful) }
+        set { defaults.set(newValue, forKey: Self.keyShowCareful) }
+    }
+
+    /// Simple mode; nil = never written (an install from before Simple mode: it keeps the full app).
+    var simpleMode: Bool? {
+        get { defaults.object(forKey: Self.keySimple) == nil ? nil : defaults.bool(forKey: Self.keySimple) }
+        set { if let newValue { defaults.set(newValue, forKey: Self.keySimple) } else { defaults.removeObject(forKey: Self.keySimple) } }
+    }
+
+    /// An existing user was offered Simple mode once (yes or no).
+    var simpleModeOffered: Bool {
+        get { defaults.bool(forKey: Self.keySimpleOffered) }
+        set { defaults.set(newValue, forKey: Self.keySimpleOffered) }
+    }
+
+    /// The trusted family contact, on this phone only. Empty = none.
+    var familyName: String {
+        get { defaults.string(forKey: Self.keyFamilyName) ?? "" }
+        set { defaults.set(newValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Self.keyFamilyName) }
+    }
+
+    var familyPhone: String {
+        get { defaults.string(forKey: Self.keyFamilyPhone) ?? "" }
+        set { defaults.set(newValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Self.keyFamilyPhone) }
     }
 
     func hasAnySetting() -> Bool { Self.existingKeys.contains { defaults.object(forKey: $0) != nil } }

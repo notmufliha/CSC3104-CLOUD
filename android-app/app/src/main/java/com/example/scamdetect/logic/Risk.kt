@@ -21,6 +21,13 @@ object Risk {
         else -> Level.LISTENING
     }
 
+    /**
+     * What the call screen shows for a level. With "Show 'Be careful' warnings" off, a yellow moment is shown as
+     * "Listening…": only red warnings reach the user (the call is still saved as "Be careful").
+     */
+    fun shown(level: Level, showCareful: Boolean): Level =
+        if (level == Level.YELLOW && !showCareful) Level.LISTENING else level
+
     fun litSignals(callScores: Map<String, Float>): List<String> =
         SIGNALS.filter { (callScores[it] ?: 0f) >= SIGNAL_ON }
 

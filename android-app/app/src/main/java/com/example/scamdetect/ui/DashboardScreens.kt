@@ -1,5 +1,8 @@
 package com.example.scamdetect.ui
 
+import com.example.scamdetect.R
+import com.example.scamdetect.logic.Tr
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -89,8 +92,8 @@ object Space {
 }
 
 private fun dayLabel(daysAgo: Int): String = when (daysAgo) {
-    0 -> "Today"
-    1 -> "Yesterday"
+    0 -> Tr.s(R.string.pw_today)
+    1 -> Tr.s(R.string.pw_yesterday)
     else -> LocalDate.now().minusDays(daysAgo.toLong()).format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()))
 }
 
@@ -105,9 +108,10 @@ fun whenText(endedAt: Long, now: Long = System.currentTimeMillis()): String {
 
 fun verdictWord(verdict: String) = PlainWords.verdict(verdict)
 
+/** A saved verdict as the risk icon (✓ / ! / ✕ / i in its colour), so it never relies on colour alone. */
 @Composable
 fun VerdictDot(verdict: String, size: Int = 14) {
-    Box(Modifier.size(size.dp).background(levelColor(Dashboard.level(verdict)), CircleShape))
+    RiskIcon(Dashboard.level(verdict), size.dp)
 }
 
 /** The one card style used everywhere. */
@@ -136,7 +140,7 @@ fun InfoSheet(title: String, text: String, onDismiss: () -> Unit) {
         Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             Text(text, style = MaterialTheme.typography.bodyLarge)
-            TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End).heightIn(min = 48.dp)) { Text("OK") }
+            TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End).heightIn(min = 56.dp)) { Text(Tr.s(R.string.btn_ok)) }
         }
     }
 }
@@ -151,12 +155,12 @@ fun PeriodSwitcher(period: Period, onPick: (Period) -> Unit) {
         Period.entries.forEach { p ->
             val selected = p == period
             Box(
-                Modifier.weight(1f).heightIn(min = 48.dp)
+                Modifier.weight(1f).heightIn(min = 56.dp)
                     .background(if (selected) MaterialTheme.colorScheme.surfaceBright else Color.Transparent, CircleShape)
                     .selectable(selected = selected, role = Role.Tab) { onPick(p) },
                 contentAlignment = Alignment.Center,
             ) {
-                Text(p.label, style = MaterialTheme.typography.bodyLarge,
+                Text(PlainWords.periodLabel(p), style = MaterialTheme.typography.bodyLarge,
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
             }
         }
@@ -167,7 +171,7 @@ fun PeriodSwitcher(period: Period, onPick: (Period) -> Unit) {
 @Composable
 fun PillChip(label: String, selected: Boolean, onClick: () -> Unit) {
     Box(
-        Modifier.heightIn(min = 48.dp)
+        Modifier.heightIn(min = 56.dp)
             .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer, CircleShape)
             .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .padding(horizontal = 18.dp),
@@ -186,8 +190,8 @@ fun EmptyState(text: String, onGoHome: (() -> Unit)? = null) {
             Icon(Icons.Filled.Phone, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(52.dp))
         }
         Text(text, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-        if (onGoHome != null) Button(onClick = onGoHome, modifier = Modifier.heightIn(min = 52.dp)) {
-            Text("Go to Home", style = MaterialTheme.typography.bodyLarge)
+        if (onGoHome != null) Button(onClick = onGoHome, modifier = Modifier.heightIn(min = 56.dp)) {
+            Text(Tr.s(R.string.btn_go_home), style = MaterialTheme.typography.bodyLarge)
         }
     }
 }
@@ -204,7 +208,7 @@ fun CallListRow(c: CallRecord, spark: List<Float>?, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        VerdictDot(c.finalVerdict, 16)
+        VerdictDot(c.finalVerdict, 28)
         if (big) {
             Column(Modifier.weight(1f)) {
                 Text(verdictWord(c.finalVerdict), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -230,7 +234,8 @@ private fun IconBadge(icon: ImageVector, color: Color) {
 }
 
 private fun resultSlices(s: DashboardStats.Stats) = listOf(
-    Slice("Safe", s.safe, SafeGreen), Slice("Be careful", s.unsure, WarnYellow), Slice("Scam", s.scam, ScamRed),
+    Slice(Tr.s(R.string.risk_safe), s.safe, SafeGreen, Risk.Level.GREEN), Slice(Tr.s(R.string.risk_careful), s.unsure, WarnYellow, Risk.Level.YELLOW),
+    Slice(Tr.s(R.string.risk_scam), s.scam, ScamRed, Risk.Level.RED),
 )
 
 // ---------------------------------------------------------------- main dashboard (4 cards)
@@ -245,12 +250,14 @@ fun DashboardScreen(
     onInsights: () -> Unit,
     onHistory: () -> Unit,
     onGoHome: () -> Unit,
+    /** Simple mode: this is the "For family" tab. */
+    simple: Boolean = false,
 ) {
     val now = System.currentTimeMillis()
     val stats = remember(calls, labels, period) { DashboardStats.compute(calls, labels, period, now, ZoneId.systemDefault()) }
-    Page("Dashboard") {
+    Page(Tr.s(if (simple) R.string.tab_family else R.string.dash_title)) {
         if (calls.isEmpty()) {
-            Box(Modifier.tourTarget(Tour.Target.DASHBOARD_HERO)) { EmptyState("No calls yet. Try a demo call from Home.", onGoHome) }
+            Box(Modifier.tourTarget(Tour.Target.DASHBOARD_HERO)) { EmptyState(Tr.s(R.string.dash_empty), onGoHome) }
             return@Page
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Space.gap)) {
@@ -260,11 +267,11 @@ fun DashboardScreen(
                 Text(PlainWords.hero(stats.scam, stats.total, period), style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                    Box(Modifier.size(112.dp)) { DonutChart(resultSlices(stats), "calls", size = 112.dp, compact = true) }
+                    Box(Modifier.size(112.dp)) { DonutChart(resultSlices(stats), Tr.s(R.string.dash_calls_center), size = 112.dp, compact = true) }
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         resultSlices(stats).forEach { s ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(Modifier.size(12.dp).background(s.color, CircleShape))
+                                SliceKey(s)
                                 Text("  ${s.value} ${s.label}", style = MaterialTheme.typography.bodyLarge)
                             }
                         }
@@ -274,10 +281,10 @@ fun DashboardScreen(
             // 2. recent calls
             AppCard(padding = 0.dp) {
                 Row(Modifier.fillMaxWidth().padding(start = Space.card, end = 8.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Recent calls", Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleLarge,
+                    Text(Tr.s(R.string.home_recent), Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold)
-                    TextButton(onClick = onHistory, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Text("See all", style = MaterialTheme.typography.bodyLarge)
+                    TextButton(onClick = onHistory, modifier = Modifier.heightIn(min = 56.dp)) {
+                        Text(Tr.s(R.string.btn_see_all), style = MaterialTheme.typography.bodyLarge)
                     }
                 }
                 Column(Modifier.padding(bottom = 8.dp)) {
@@ -290,10 +297,10 @@ fun DashboardScreen(
             // 3. top warning sign
             val top = PlainWords.topWarning(stats)
             AppCard(onClick = onInsights) {
-                Text("Top warning sign", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                Text(Tr.s(R.string.dash_top_sign), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     if (top != null) IconBadge(Icons.Filled.Warning, ScamRed) else IconBadge(Icons.Filled.CheckCircle, SafeGreen)
-                    Text(top ?: "No warning signs ${PlainWords.periodPhrase(period)}", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                    Text(top ?: Tr.s(R.string.dash_no_signs_period, PlainWords.periodPhrase(period)), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -301,7 +308,7 @@ fun DashboardScreen(
             AppCard(color = MaterialTheme.colorScheme.primaryContainer, onClick = onInsights) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     IconBadge(Icons.Filled.Star, MaterialTheme.colorScheme.primary)
-                    Text("See more insights", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge,
+                    Text(Tr.s(R.string.dash_more_insights), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
@@ -320,8 +327,8 @@ private fun InsightSection(title: String, takeaway: String, info: String, conten
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(title, Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            IconButton(onClick = { showInfo = true }) {
-                Icon(Icons.Filled.Info, contentDescription = "About $title", tint = MaterialTheme.colorScheme.primary)
+            IconButton(onClick = { showInfo = true }, modifier = Modifier.size(56.dp)) {
+                Icon(Icons.Filled.Info, contentDescription = Tr.s(R.string.a11y_about, title), tint = MaterialTheme.colorScheme.primary)
             }
         }
         Text(takeaway, style = MaterialTheme.typography.bodyLarge)
@@ -345,7 +352,7 @@ private fun Key(slices: List<Slice>) {
     androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         slices.forEach { s ->
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(12.dp).background(s.color, CircleShape))
+                SliceKey(s)
                 Text("  ${s.label}", style = MaterialTheme.typography.bodyLarge)
             }
         }
@@ -362,63 +369,58 @@ fun InsightsScreen(
 ) {
     val now = System.currentTimeMillis()
     val s = remember(calls, labels, period) { DashboardStats.compute(calls, labels, period, now, ZoneId.systemDefault()) }
-    Page("Insights", onBack) {
+    Page(Tr.s(R.string.ins_title), onBack) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(28.dp)) {
             PeriodSwitcher(period, onPeriod)
             if (s.isEmpty) {
-                EmptyState("No calls ${PlainWords.periodPhrase(period)}.")
+                EmptyState(Tr.s(R.string.ins_none_period, PlainWords.periodPhrase(period)))
                 return@Column
             }
             val first = dayLabel(s.buckets.first().daysAgo)
-            val last = if (s.weekly) "This week" else "Today"
-            InsightSection("Calls over time", PlainWords.overTime(s),
-                "Each bar is one ${if (s.weekly) "week" else "day"}. The colours show safe calls, calls that needed care, and scams.") {
+            val last = Tr.s(if (s.weekly) R.string.pw_this_week else R.string.pw_today)
+            InsightSection(Tr.s(R.string.ins_over_time), PlainWords.overTime(s),
+                Tr.s(if (s.weekly) R.string.ins_over_time_info_week else R.string.ins_over_time_info_day)) {
                 StackedBarChart(s.buckets.map {
-                    listOf(Slice("Safe", it.safe, SafeGreen), Slice("Be careful", it.unsure, WarnYellow),
-                        Slice("Scam", it.scam, ScamRed), Slice("Not checked", it.notChecked, NeutralGrey))
-                }, "Calls over time: " + s.buckets.joinToString { "${dayLabel(it.daysAgo)} ${it.total}" })
+                    listOf(Slice(Tr.s(R.string.risk_safe), it.safe, SafeGreen, Risk.Level.GREEN), Slice(Tr.s(R.string.risk_careful), it.unsure, WarnYellow, Risk.Level.YELLOW),
+                        Slice(Tr.s(R.string.risk_scam), it.scam, ScamRed, Risk.Level.RED), Slice(Tr.s(R.string.risk_not_checked), it.notChecked, NeutralGrey, Risk.Level.ERROR))
+                }, Tr.s(R.string.a11y_chart_list, Tr.s(R.string.ins_over_time), s.buckets.joinToString { "${dayLabel(it.daysAgo)} ${it.total}" }))
                 AxisEnds(first, last)
                 Key(resultSlices(s))
             }
-            if (s.reasons.isNotEmpty()) InsightSection("Why calls were flagged", PlainWords.reasons(s),
-                "The main reason behind each warning or scam, most common first.") {
-                HorizontalBars(s.reasons, ScamRed, "Why calls were flagged: " + s.reasons.joinToString { "${it.first} ${it.second}" })
+            if (s.reasons.isNotEmpty()) InsightSection(Tr.s(R.string.ins_why), PlainWords.reasons(s), Tr.s(R.string.ins_why_info)) {
+                val rows = s.reasons.map { Reasons.localized(it.first) to it.second }
+                HorizontalBars(rows, ScamRed, Tr.s(R.string.a11y_chart_list, Tr.s(R.string.ins_why), rows.joinToString { "${it.first} ${it.second}" }))
             }
-            InsightSection("Warning signs heard", PlainWords.signals(s),
-                "How many calls had each kind of warning sign. One call can have more than one.") {
+            InsightSection(Tr.s(R.string.ins_signs), PlainWords.signals(s), Tr.s(R.string.ins_signs_info)) {
                 val rows = s.signals.map { PlainWords.signalName(it.first) to it.second }
-                HorizontalBars(rows, MaterialTheme.colorScheme.primary, "Warning signs heard: " + rows.joinToString { "${it.first} ${it.second}" })
+                HorizontalBars(rows, MaterialTheme.colorScheme.primary, Tr.s(R.string.a11y_chart_list, Tr.s(R.string.ins_signs), rows.joinToString { "${it.first} ${it.second}" }))
             }
-            InsightSection("Risk trend", PlainWords.trend(s),
-                "The average risk of your calls over time. Above the yellow line needs care; above the red line looks like a scam.") {
-                RiskLineChart(s.buckets.map { it.avgRisk?.toFloat() }, "Average risk: " +
-                    s.buckets.joinToString { "${dayLabel(it.daysAgo)} ${it.avgRisk?.let { v -> "%.2f".format(v) } ?: "none"}" })
+            InsightSection(Tr.s(R.string.ins_trend), PlainWords.trend(s), Tr.s(R.string.ins_trend_info)) {
+                RiskLineChart(s.buckets.map { it.avgRisk?.toFloat() }, Tr.s(R.string.ins_trend) + ": " +
+                    s.buckets.joinToString { "${dayLabel(it.daysAgo)} ${it.avgRisk?.let { v -> "%.2f".format(v) } ?: Tr.s(R.string.a11y_none)}" })
                 AxisEnds(first, last)
             }
-            InsightSection("Time of day", PlainWords.hours(s), "When the calls that needed care, or were scams, came in.") {
-                HourChart(s.riskyHours, ScamRed, "Risky calls by hour: " +
+            InsightSection(Tr.s(R.string.ins_hours), PlainWords.hours(s), Tr.s(R.string.ins_hours_info)) {
+                HourChart(s.riskyHours, ScamRed, Tr.s(R.string.ins_hours) + ": " +
                     s.riskyHours.withIndex().filter { it.value > 0 }.joinToString { "${it.index}:00 ${it.value}" })
             }
-            InsightSection("Double-checked warnings", PlainWords.doubleCheck(s),
-                "When a call ends, ScamGuard checks the whole call once more. Some warnings turn out safe.") {
-                SegmentedBar(listOf(Slice("Confirmed", s.confirmed, ScamRed), Slice("Turned out safe", s.calmed, SafeGreen)),
-                    "Double-checked warnings: ${s.confirmed} confirmed, ${s.calmed} turned out safe")
+            InsightSection(Tr.s(R.string.ins_double), PlainWords.doubleCheck(s), Tr.s(R.string.ins_double_info)) {
+                SegmentedBar(listOf(Slice(Tr.s(R.string.ins_confirmed), s.confirmed, ScamRed, Risk.Level.RED), Slice(Tr.s(R.string.ins_turned_safe), s.calmed, SafeGreen, Risk.Level.GREEN)),
+                    Tr.s(R.string.a11y_double, s.confirmed.toString(), s.calmed.toString()))
             }
-            InsightSection("Checked where", PlainWords.where(s),
-                "Cloud: checked by the ScamGuard server. Hybrid: on this phone, with server help. On-device: only on this phone.") {
+            InsightSection(Tr.s(R.string.ins_where), PlainWords.where(s), Tr.s(R.string.ins_where_info)) {
                 val slices = s.privacy.map { (id, n) -> Slice(PrivacyLevel.badgeFor(id), n, privacyColor(id)) }
-                SegmentedBar(slices, "Checked where: " + slices.joinToString { "${it.label} ${it.value}" })
+                SegmentedBar(slices, Tr.s(R.string.a11y_chart_list, Tr.s(R.string.ins_where), slices.joinToString { "${it.label} ${it.value}" }))
             }
-            InsightSection("Your answers", PlainWords.answers(s), "What you told ScamGuard after calls. These stay on this phone.") {
+            InsightSection(Tr.s(R.string.ins_answers), PlainWords.answers(s), Tr.s(R.string.ins_answers_info)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    BigNumber(Modifier.weight(1f), "${s.markedFine}", "Marked as fine", SafeGreen)
-                    BigNumber(Modifier.weight(1f), "${s.hungUpAfterWarning}", "Hung up after a warning", ScamRed)
+                    BigNumber(Modifier.weight(1f), "${s.markedFine}", Tr.s(R.string.ins_marked_fine), SafeGreen)
+                    BigNumber(Modifier.weight(1f), "${s.hungUpAfterWarning}", Tr.s(R.string.ins_hung_up), ScamRed)
                 }
             }
-            if (s.lengthVsRisk.isNotEmpty()) InsightSection("Call length", PlainWords.length(s),
-                "Each dot is one call: further right is longer, higher up is riskier.") {
-                ScatterChart(s.lengthVsRisk, "Call length and risk: ${s.lengthVsRisk.size} calls")
-                AxisEnds("Short", "Long")
+            if (s.lengthVsRisk.isNotEmpty()) InsightSection(Tr.s(R.string.ins_length), PlainWords.length(s), Tr.s(R.string.ins_length_info)) {
+                ScatterChart(s.lengthVsRisk, Tr.s(R.string.a11y_length_chart, s.lengthVsRisk.size.toString()))
+                AxisEnds(Tr.s(R.string.ins_short), Tr.s(R.string.ins_long))
             }
             Spacer(Modifier.size(8.dp))
         }
@@ -443,23 +445,23 @@ fun HistoryScreen(calls: List<CallRecord>, points: List<ScorePoint>, onOpen: (St
     val zone = ZoneId.systemDefault()
     val shown = calls.filter { filter == null || it.finalVerdict == filter }
     val groups = shown.groupBy { PlainWords.historyGroup(DashboardStats.daysAgo(it.endedAt, now, zone)) }
-    Page("History", onBack) {
+    Page(Tr.s(R.string.hist_title), onBack) {
         if (calls.isEmpty()) {
-            Box(Modifier.tourTarget(Tour.Target.DASHBOARD_HERO)) { EmptyState("No calls yet. Try a demo call from Home.", onGoHome) }
+            Box(Modifier.tourTarget(Tour.Target.DASHBOARD_HERO)) { EmptyState(Tr.s(R.string.dash_empty), onGoHome) }
             return@Page
         }
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(listOf(null to "All", "SCAM" to "Scam", "UNSURE" to "Be careful", "SAFE" to "Safe")) { (v, label) ->
+                    items(listOf(null to Tr.s(R.string.pick_all), "SCAM" to Tr.s(R.string.risk_scam), "UNSURE" to Tr.s(R.string.risk_careful), "SAFE" to Tr.s(R.string.risk_safe))) { (v, label) ->
                         PillChip(label, filter == v) { filter = v }
                     }
                 }
             }
             if (shown.isEmpty()) item {
-                Text("No calls here.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(Tr.s(R.string.hist_none), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            listOf("Today", "This week", "Earlier").forEach { g ->
+            listOf(Tr.s(R.string.pw_today), Tr.s(R.string.pw_this_week), Tr.s(R.string.pw_earlier)).forEach { g ->
                 val list = groups[g] ?: return@forEach
                 item(key = "h-$g") {
                     Text(g, Modifier.padding(top = 8.dp).semantics { heading() }, style = MaterialTheme.typography.titleLarge,
@@ -484,11 +486,11 @@ fun HistoryScreen(calls: List<CallRecord>, points: List<ScorePoint>, onOpen: (St
 // ---------------------------------------------------------------- Call detail
 
 private fun reviewWords(review: String) = when (review) {
-    "bert" -> "Checked again at the end"
-    "fallback" -> "Final check not available"
-    "unavailable" -> "Server not reached at the end"
-    "on_device" -> "Checked on this phone"
-    "migrated" -> "From the old history"
+    "bert" -> Tr.s(R.string.det_rechecked)
+    "fallback" -> Tr.s(R.string.det_no_final)
+    "unavailable" -> Tr.s(R.string.det_not_reached)
+    "on_device" -> Tr.s(R.string.pw_checked_on_device)
+    "migrated" -> Tr.s(R.string.det_old)
     else -> review
 }
 
@@ -497,7 +499,7 @@ fun CallDetailScreen(call: CallRecord?, points: List<ScorePoint>, onBack: () -> 
     var details by rememberSaveable { mutableStateOf(false) }
     Page("", onBack) {
         if (call == null) {
-            Text("This call is no longer saved.", style = MaterialTheme.typography.bodyLarge)
+            Text(Tr.s(R.string.det_gone), style = MaterialTheme.typography.bodyLarge)
             return@Page
         }
         val sorted = points.sortedBy { it.seq }
@@ -508,22 +510,22 @@ fun CallDetailScreen(call: CallRecord?, points: List<ScorePoint>, onBack: () -> 
                 Text(verdictWord(call.finalVerdict), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold,
                     color = levelColor(Dashboard.level(call.finalVerdict)), modifier = Modifier.semantics { heading() })
             }
-            Text(DashboardStats.whatHappened(call.finalVerdict, call.liveVerdict, Reasons.display(call)), style = MaterialTheme.typography.titleLarge)
-            Text("${whenText(call.endedAt)} at ${clock(call.endedAt)}", style = MaterialTheme.typography.bodyLarge,
+            Text(DashboardStats.whatHappened(call.finalVerdict, call.liveVerdict, Reasons.localized(Reasons.display(call))), style = MaterialTheme.typography.titleLarge)
+            Text(Tr.s(R.string.det_when_at, whenText(call.endedAt), clock(call.endedAt)), style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             AppCard {
-                Text("Risk during the call", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                if (sorted.isEmpty()) Text("No scores were saved for this call.", style = MaterialTheme.typography.bodyLarge)
+                Text(Tr.s(R.string.det_risk), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                if (sorted.isEmpty()) Text(Tr.s(R.string.det_no_scores), style = MaterialTheme.typography.bodyLarge)
                 else {
                     RiskLineChart(sorted.map { it.combined },
                         "Risk during the call: ${sorted.size} points, highest ${"%.2f".format(sorted.mapNotNull { it.combined }.maxOrNull() ?: 0f)}",
                         marker = riskiest)
-                    if (riskiest != null) ChartCaption("The circle marks the riskiest moment")
+                    if (riskiest != null) ChartCaption(Tr.s(R.string.det_circle))
                 }
             }
             call.riskiestSentence?.let {
                 AppCard {
-                    Text("Riskiest sentence", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Text(Tr.s(R.string.det_sentence), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                     Text("“$it”", style = MaterialTheme.typography.bodyLarge)
                 }
             }
@@ -532,24 +534,24 @@ fun CallDetailScreen(call: CallRecord?, points: List<ScorePoint>, onBack: () -> 
                     Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(role = Role.Button) { details = !details }.padding(horizontal = Space.card),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Details", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Text(Tr.s(R.string.det_details), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                     Icon(if (details) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                        contentDescription = if (details) "Hide details" else "Show details")
+                        contentDescription = Tr.s(if (details) R.string.det_hide else R.string.det_show))
                 }
                 AnimatedVisibility(details) {
                     Column(Modifier.padding(start = Space.card, end = Space.card, bottom = Space.card), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        DetailRow("Length", DashboardStats.duration(((call.endedAt - call.startedAt) / 1000).coerceAtLeast(0).toInt()))
-                        DetailRow("Checked", PlainWords.checkedWhere(call.privacyLevel).removePrefix("Checked ").replaceFirstChar { it.uppercase() })
-                        DetailRow("During the call", call.liveVerdict?.let { verdictWord(it) } ?: "-")
-                        DetailRow("Final check", reviewWords(call.review))
+                        DetailRow(Tr.s(R.string.det_length), DashboardStats.duration(((call.endedAt - call.startedAt) / 1000).coerceAtLeast(0).toInt()))
+                        DetailRow(Tr.s(R.string.det_checked), PlainWords.checkedWhere(call.privacyLevel))
+                        DetailRow(Tr.s(R.string.det_during), call.liveVerdict?.let { verdictWord(it) } ?: "-")
+                        DetailRow(Tr.s(R.string.det_final), reviewWords(call.review))
                         if (sorted.isNotEmpty()) {
-                            Text("Warning signs (highest score out of 100)", style = MaterialTheme.typography.bodyLarge,
+                            Text(Tr.s(R.string.det_signs), style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             val rows = Risk.SIGNALS.map { s ->
                                 val v = sorted.mapNotNull { p -> when (s) { "urgency" -> p.urgency; "money" -> p.money; else -> p.impersonation } }.maxOrNull() ?: 0f
                                 PlainWords.signalName(s) to (v * 100).toInt()
                             }
-                            HorizontalBars(rows, MaterialTheme.colorScheme.primary, "Warning signs in this call: " + rows.joinToString { "${it.first} ${it.second}" })
+                            HorizontalBars(rows, MaterialTheme.colorScheme.primary, Tr.s(R.string.ins_signs) + ": " + rows.joinToString { "${it.first} ${it.second}" })
                         }
                     }
                 }

@@ -1,0 +1,18 @@
+{
+  "btn_ok": "OK",
+  "btn_back": "Back",
+  "btn_next": "Next",
+  "btn_done": "Done",
+  "btn_cancel": "Cancel",
+  "btn_save": "Save",
+  "btn_skip": "Skip",
+  "btn_yes": "Yes",
+  "btn_no": "No",
+  "btn_close": "Close",
+  "btn_try_again": "Try again",
+  "a11y_back": "Back",
+  "on": "On",
+  "off": "Off",
+  "app_name_text": "ScamGuard",
+  "summary_title": "Call summary"
+}

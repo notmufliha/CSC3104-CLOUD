@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -54,28 +55,56 @@ import com.example.scamdetect.ui.SettingsPage
 import com.example.scamdetect.ui.SummaryScreen
 import com.example.scamdetect.ui.theme.ScamDetectTheme
 import com.example.scamdetect.logic.Tour
+import com.example.scamdetect.logic.Tr
+import com.example.scamdetect.logic.Txt
 import com.example.scamdetect.ui.LocalTourTargets
 import com.example.scamdetect.ui.SetupFlow
 import com.example.scamdetect.ui.TourOverlay
 import com.example.scamdetect.ui.TourTargets
 import com.example.scamdetect.ui.leaveApp
 import com.example.scamdetect.ui.tourDemoCall
+import com.example.scamdetect.ui.SetupActions
+import com.example.scamdetect.ui.PinGate
+import com.example.scamdetect.ui.SimpleHomeScreen
+import com.example.scamdetect.ui.SimpleOfferCard
+import com.example.scamdetect.ui.SimpleSettingsMenu
+import com.example.scamdetect.ui.AdvancedPage
+import com.example.scamdetect.ui.AdvancedRows
+import com.example.scamdetect.ui.TextSizePage
+import com.example.scamdetect.ui.FamilyPage
+import com.example.scamdetect.ui.PinSettingsPage
+import com.example.scamdetect.ui.homeStatus
+import com.example.scamdetect.ui.WarningActions
+import com.example.scamdetect.ui.WarningScreen
+import com.example.scamdetect.ui.SCAMSHIELD_HELPLINE
+import com.example.scamdetect.ui.dial
+import com.example.scamdetect.ui.textMessage
 
 enum class Screen {
     HOME, PICK, CALL, PASTE, DASHBOARD, CALL_DETAIL, SETTINGS,
     SETTINGS_PRIVACY, SETTINGS_SERVER, SETTINGS_MODELS, SETTINGS_DATA, SETTINGS_HELP,
+    SETTINGS_TEXT, SETTINGS_FAMILY, SETTINGS_ADVANCED, SETTINGS_PIN,
     INSIGHTS, HISTORY,
 }
 
 private val SETTINGS_PAGES = setOf(
     Screen.SETTINGS_PRIVACY, Screen.SETTINGS_SERVER, Screen.SETTINGS_MODELS, Screen.SETTINGS_DATA, Screen.SETTINGS_HELP,
+    Screen.SETTINGS_TEXT, Screen.SETTINGS_FAMILY, Screen.SETTINGS_ADVANCED, Screen.SETTINGS_PIN,
 )
 
+/** Simple mode: the pages inside Advanced settings (Back goes to it, and the PIN guards them). */
+private val ADVANCED_PAGES = setOf(
+    Screen.SETTINGS_PRIVACY, Screen.SETTINGS_SERVER, Screen.SETTINGS_MODELS, Screen.SETTINGS_DATA, Screen.SETTINGS_PIN,
+)
+
+/** Simple mode with a PIN: these need it ("For family" and Advanced settings). */
+private val PIN_SCREENS = ADVANCED_PAGES + setOf(Screen.SETTINGS_ADVANCED, Screen.DASHBOARD, Screen.INSIGHTS, Screen.HISTORY, Screen.CALL_DETAIL)
+
 /** The three top-level screens, reached from the bottom tab bar. The app opens on HOME. */
-private enum class Tab(val screen: Screen, val label: String, val icon: ImageVector) {
-    HOME(Screen.HOME, "Home", Icons.Filled.Home),
-    DASHBOARD(Screen.DASHBOARD, "Dashboard", Icons.AutoMirrored.Filled.List),
-    SETTINGS(Screen.SETTINGS, "Settings", Icons.Filled.Settings),
+private enum class Tab(val screen: Screen, val label: Int, val simpleLabel: Int, val icon: ImageVector) {
+    HOME(Screen.HOME, R.string.tab_home, R.string.tab_home, Icons.Filled.Home),
+    DASHBOARD(Screen.DASHBOARD, R.string.tab_dashboard, R.string.tab_family, Icons.AutoMirrored.Filled.List),
+    SETTINGS(Screen.SETTINGS, R.string.tab_settings, R.string.tab_settings, Icons.Filled.Settings),
 }
 
 /** Runtime permission from Android 17 (API 37) to reach private addresses such as the demo gateway. */
@@ -86,10 +115,25 @@ class MainActivity : ComponentActivity() {
     // it is needed, not at start. If refused, requests fail and the app shows "Could not check" (never safe).
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyDebugTextSize()
+        // Code outside Compose (view model, logic) reads the app's wording through Tr.
+        Tr.txt = Txt { id, a -> applicationContext.getString(id, *a) }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { ScamDetectTheme { AppRoot() } }
+        setContent {
+            val vm: CallViewModel = viewModel()
+            val textSize by vm.textSize.collectAsState()
+            ScamDetectTheme(textScale = if (textSize == com.example.scamdetect.data.AppPrefs.TEXT_XLARGE) 1.15f else 1f) { AppRoot(vm) }
+        }
     }
+}
+
+/** Debug builds only: --es demoTextSize xlarge, saved before anything is drawn. */
+private fun MainActivity.applyDebugTextSize() {
+    if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE == 0) return
+    val size = intent?.getStringExtra("demoTextSize") ?: return
+    com.example.scamdetect.data.AppPrefs(this).textSize = size
+    intent.removeExtra("demoTextSize")
 }
 
 /** First-launch setup, or the app with the guided tour drawn over it. */
@@ -103,16 +147,14 @@ fun AppRoot(vm: CallViewModel = viewModel()) {
         CallViewModel.Gate.SETUP -> {
             val step by vm.setupStep.collectAsState()
             val choices by vm.setupChoices.collectAsState()
-            SetupFlow(
-                step = step,
-                choices = choices,
-                isReplay = vm.setupIsReplay,
+            SetupFlow(step, choices, vm.setupIsReplay, SetupActions(
                 onStep = vm::setSetupStep,
                 onChange = vm::updateSetup,
                 onTest = vm::testSetupServer,
                 onFinish = vm::finishSetup,
                 onLeave = { if (vm.setupIsReplay) vm.leaveSetup() else leaveApp(context) },
-            )
+                onTextSize = vm::setTextSize,
+            ))
         }
         CallViewModel.Gate.APP -> {
             val targets = remember { TourTargets() }
@@ -125,7 +167,7 @@ fun AppRoot(vm: CallViewModel = viewModel()) {
                     }
                     tour?.let { i ->
                         BackHandler { vm.tourBack() }
-                        TourOverlay(i, onNext = vm::tourNext, onSkip = vm::endTour)
+                        TourOverlay(Tour.steps(vm.tourSimple), i, onNext = vm::tourNext, onSkip = vm::endTour)
                     }
                 }
             }
@@ -138,6 +180,10 @@ fun AppRoot(vm: CallViewModel = viewModel()) {
  *   adb shell am start -n com.example.scamdetect/.MainActivity --es demoSetup PRIVACY   (open the setup at a screen)
  *   --es demoPrivacy on_device   --es demoServer connected|cantReach
  *   --ei demoTour 3   (start the tour at step 3, 0-based)   --ez demoReset true
+ *   --es demoWarning red|yellow (a pretend call with the red warning / yellow banner; nothing sent or saved)
+ *   --es demoFamily "Mei Ling|91234567"   --es demoConnection ok|fail
+ *   --es demoTextSize large|xlarge   --es demoSimple on|off   --ez demoSample true   --es demoPin 2468|off
+ *   --es demoScreen SETTINGS|SETTINGS_ADVANCED|DASHBOARD…   --es demoPath simple|custom|helper (with demoSetup)
  */
 @Composable
 private fun DebugLaunchOptions(vm: CallViewModel) {
@@ -146,6 +192,13 @@ private fun DebugLaunchOptions(vm: CallViewModel) {
         if (!vm.isDebugBuild) return@LaunchedEffect
         val i = activity.intent ?: return@LaunchedEffect
         if (i.getBooleanExtra("demoReset", false)) vm.resetOnboarding()
+        // --es demoSimple on|off: finish a pending setup and set Simple mode;  --ez demoSample true: sample history
+        i.getStringExtra("demoSimple")?.let { v ->
+            if (vm.gate.value != CallViewModel.Gate.APP) vm.finishSetup(startTour = false)
+            vm.setSimpleMode(v == "on")
+        }
+        if (i.getBooleanExtra("demoSample", false)) vm.loadSampleHistory()
+        i.getStringExtra("demoPin")?.let { p -> if (p.isEmpty() || p == "off") vm.clearPin() else vm.setPin(p) }
         i.getStringExtra("demoSetup")?.let { name ->
             vm.runSetupAgain()
             i.getStringExtra("demoPrivacy")?.let { id -> vm.updateSetup { it.copy(privacy = com.example.scamdetect.logic.PrivacyLevel.fromId(id)) } }
@@ -153,11 +206,22 @@ private fun DebugLaunchOptions(vm: CallViewModel) {
                 "connected" -> vm.updateSetup { it.copy(server = com.example.scamdetect.logic.Onboarding.Server.CONNECTED) }
                 "cantReach" -> vm.updateSetup { it.copy(server = com.example.scamdetect.logic.Onboarding.Server.CANT_REACH) }
             }
+            when (i.getStringExtra("demoPath")) {
+                "custom" -> vm.updateSetup { it.copy(path = com.example.scamdetect.logic.Onboarding.Path.CUSTOM) }
+                "helper" -> vm.updateSetup { it.copy(path = com.example.scamdetect.logic.Onboarding.Path.HELPER) }
+                else -> vm.updateSetup { it.copy(path = com.example.scamdetect.logic.Onboarding.Path.SIMPLE) }
+            }
             runCatching { com.example.scamdetect.logic.Onboarding.Step.valueOf(name) }.getOrNull()?.let(vm::setSetupStep)
         }
         if (i.hasExtra("demoTour")) vm.startTour(i.getIntExtra("demoTour", 0))
+        i.getStringExtra("demoFamily")?.let { f -> vm.setFamily(f.substringBefore("|"), f.substringAfter("|", "")) }
+        when (i.getStringExtra("demoConnection")) { "ok" -> vm.demoConnection(true); "fail" -> vm.demoConnection(false) }
+        when (i.getStringExtra("demoWarning")) { "red" -> vm.demoWarning(true); "yellow" -> vm.demoWarning(false) }
         // only once: a rotation re-creates the activity with the same intent
-        i.removeExtra("demoReset"); i.removeExtra("demoSetup"); i.removeExtra("demoTour")
+        i.removeExtra("demoReset"); i.removeExtra("demoSetup"); i.removeExtra("demoTour"); i.removeExtra("demoWarning")
+        i.removeExtra("demoFamily"); i.removeExtra("demoConnection"); i.removeExtra("demoSimple"); i.removeExtra("demoSample")
+        i.removeExtra("demoPin")
+        i.getStringExtra("demoScreen")?.let { vm.demoScreen.value = it; i.removeExtra("demoScreen") }
     }
 }
 
@@ -169,18 +233,34 @@ fun ScamGuardApp(vm: CallViewModel = viewModel(), tour: Int? = null) {
     var detailBack by rememberSaveable { mutableStateOf(Screen.DASHBOARD) }
     var period by rememberSaveable { mutableStateOf(com.example.scamdetect.logic.DashboardStats.Period.WEEK) }
 
+    // A call started anywhere (Home, the script picker, a debug launch) takes the whole screen.
+    val phase = vm.state.collectAsState().value.phase
+    LaunchedEffect(phase) { if (phase != Phase.IDLE && screen != Screen.CALL) screen = Screen.CALL }
+    val simple by vm.simpleMode.collectAsState()
+    val pinSet by vm.pinSet.collectAsState()
+    // Debug builds only: --es demoScreen opens a screen (screenshots).
+    val demoScreen by vm.demoScreen.collectAsState()
+    LaunchedEffect(demoScreen) {
+        demoScreen?.let { name -> runCatching { Screen.valueOf(name) }.getOrNull()?.let { screen = it }; vm.demoScreen.value = null }
+    }
+    /** Simple mode with a PIN: unlocked until the user goes back Home. */
+    var unlocked by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(screen) { if (screen == Screen.HOME) unlocked = false }
+
     BackHandler(enabled = screen != Screen.HOME) {
         if (screen == Screen.CALL) vm.discard()   // B.5: during a call, tells the server; no summary, nothing saved
         screen = when (screen) {
             Screen.CALL_DETAIL -> detailBack
             Screen.INSIGHTS, Screen.HISTORY -> Screen.DASHBOARD
+            in ADVANCED_PAGES -> if (simple) Screen.SETTINGS_ADVANCED else Screen.SETTINGS
             in SETTINGS_PAGES -> Screen.SETTINGS
             else -> Screen.HOME
         }
     }
 
     // The tour moves between tabs itself; its call steps show a pretend call (nothing starts, nothing is sent).
-    val tourPlace = tour?.let { Tour.steps[it].place }
+    val tourSteps = Tour.steps(vm.tourSimple)
+    val tourPlace = tour?.let { tourSteps.getOrNull(it)?.place }
     var tourWasOn by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(tour) {
         when (tourPlace) {
@@ -193,14 +273,32 @@ fun ScamGuardApp(vm: CallViewModel = viewModel(), tour: Int? = null) {
         tourWasOn = tour != null
     }
     if (tourPlace == Tour.Place.CALL) {
-        InCallScreen(tourDemoCall(redAlert = Tour.steps[tour!!].target == Tour.Target.RED_WARNING), onHangUp = {})
+        val target = tourSteps[tour!!].target
+        val demo = tourDemoCall(redAlert = target == Tour.Target.RED_WARNING || target == Tour.Target.WARNING_BUTTONS)
+        Box(Modifier.fillMaxSize()) {
+            InCallScreen(demo, onHangUp = {}, simple = vm.tourSimple)
+            if (demo.warningOpen) WarningScreen(demo.warningKind, callEnded = false, familyName = vm.family.collectAsState().value?.name,
+                actions = WarningActions(), demo = true)
+        }
         return
     }
 
+    val locked = simple && pinSet && !unlocked && screen in PIN_SCREENS
+    val gate: @Composable () -> Unit = {
+        PinGate(
+            onCheck = { pin -> vm.verifyPin(pin).also { if (it) unlocked = true } },
+            onForgot = { vm.clearPin(); unlocked = true },
+            onBack = if (screen == Screen.DASHBOARD) null else ({ screen = Screen.SETTINGS }),
+        )
+    }
+    val content: @Composable () -> Unit = {
+        if (locked) gate()
+        else ScreenContent(screen, vm, { screen = it }, openCallId, { id -> detailBack = if (screen == Screen.HISTORY) Screen.HISTORY else Screen.DASHBOARD; openCallId = id }, period, { period = it }, detailBack)
+    }
     val tab = Tab.entries.firstOrNull { it.screen == screen }
     if (tab == null) {
-        // Calls, the script picker, paste text and call details take the whole screen, without the tab bar.
-        ScreenContent(screen, vm, { screen = it }, openCallId, { id -> detailBack = if (screen == Screen.HISTORY) Screen.HISTORY else Screen.DASHBOARD; openCallId = id }, period, { period = it }, detailBack)
+        // Calls, the script picker, paste text, call details and settings pages take the whole screen.
+        content()
         return
     }
     Scaffold(
@@ -211,15 +309,18 @@ fun ScamGuardApp(vm: CallViewModel = viewModel(), tour: Int? = null) {
                         selected = t == tab,
                         onClick = { screen = t.screen },
                         icon = { Icon(t.icon, contentDescription = null) },
-                        label = { Text(t.label) },
+                        // Tab labels stay on one line: their size is capped (~23 sp) at the largest font sizes.
+                        label = {
+                            val fs = androidx.compose.ui.platform.LocalDensity.current.fontScale
+                            Text(androidx.compose.ui.res.stringResource(if (simple) t.simpleLabel else t.label),
+                                fontSize = (18f / maxOf(1f, fs / 1.3f)).sp, maxLines = 1, softWrap = false)
+                        },
                     )
                 }
             }
         },
     ) { inner ->
-        Box(Modifier.fillMaxSize().padding(inner).consumeWindowInsets(inner)) {
-            ScreenContent(screen, vm, { screen = it }, openCallId, { id -> detailBack = if (screen == Screen.HISTORY) Screen.HISTORY else Screen.DASHBOARD; openCallId = id }, period, { period = it }, detailBack)
-        }
+        Box(Modifier.fillMaxSize().padding(inner).consumeWindowInsets(inner)) { content() }
     }
 }
 
@@ -247,20 +348,54 @@ private fun ScreenContent(
     val allPoints by vm.allPoints.collectAsState()
     val labels by vm.labels.collectAsState()
     val connection by vm.connection.collectAsState()
+    val family by vm.family.collectAsState()
+    val showCareful by vm.showBeCareful.collectAsState()
+    val simple by vm.simpleMode.collectAsState()
+    val simpleOffer by vm.simpleOffer.collectAsState()
+    val pinSet by vm.pinSet.collectAsState()
+    val textSize by vm.textSize.collectAsState()
+    val readAloud by vm.readAloud.collectAsState()
+    var noPhoneApp by remember { mutableStateOf(false) }
+    if (noPhoneApp) androidx.compose.material3.AlertDialog(
+        onDismissRequest = { noPhoneApp = false },
+        text = { Text(androidx.compose.ui.res.stringResource(R.string.no_phone_app), style = MaterialTheme.typography.bodyLarge) },
+        confirmButton = { androidx.compose.material3.Button(onClick = { noPhoneApp = false }) { Text(androidx.compose.ui.res.stringResource(R.string.btn_ok)) } },
+    )
     val context = androidx.compose.ui.platform.LocalContext.current
     val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "1.0" }
     fun back() = go(Screen.SETTINGS)
+    /** Pages inside Advanced settings go back to it in Simple mode. */
+    fun backAdvanced() = go(if (simple) Screen.SETTINGS_ADVANCED else Screen.SETTINGS)
+    fun open(page: SettingsPage) = go(when (page) {
+        SettingsPage.PRIVACY -> Screen.SETTINGS_PRIVACY
+        SettingsPage.SERVER -> Screen.SETTINGS_SERVER
+        SettingsPage.MODELS -> Screen.SETTINGS_MODELS
+        SettingsPage.DATA -> Screen.SETTINGS_DATA
+        SettingsPage.HELP -> Screen.SETTINGS_HELP
+        SettingsPage.TEXT_SIZE -> Screen.SETTINGS_TEXT
+        SettingsPage.FAMILY -> Screen.SETTINGS_FAMILY
+        SettingsPage.ADVANCED -> Screen.SETTINGS_ADVANCED
+        SettingsPage.PIN -> Screen.SETTINGS_PIN
+    })
+    val modelsUpdated = "federated" in modelStatus
 
     fun ringKind(kind: String) {
         vm.randomScript(kind)?.let { vm.ring(it); go(Screen.CALL) }
     }
 
     when (screen) {
-        Screen.HOME -> HomeScreen(
+        Screen.HOME -> if (simple) SimpleHomeScreen(
+            status = homeStatus(privacyLevel, connection),
+            calls = calls,
+            onPractice = { ringKind("scam") },
+            onFix = { vm.testConnection(gatewayUrl).let { vm.connection.value == true } },
+            onRefresh = vm::refreshConnection,
+        ) else HomeScreen(
             onScamCall = { ringKind("scam") },
             onNormalCall = { ringKind("normal") },
             onPickScript = { go(Screen.PICK) },
             onPasteText = { go(Screen.PASTE) },
+            offer = if (simpleOffer) ({ SimpleOfferCard(onYes = { vm.setSimpleMode(true) }, onNo = vm::declineSimpleOffer) }) else null,
         )
 
         Screen.PICK -> ScriptPickerScreen(
@@ -274,22 +409,43 @@ private fun ScreenContent(
             onBack = { go(Screen.HOME) },
         )
 
-        Screen.CALL -> when (state.phase) {
-            Phase.RINGING -> IncomingCallScreen(
-                callerName = "Unknown caller",
-                callerNumber = "Private number",
-                onAnswer = vm::answer,
-                onDecline = { vm.decline(); go(Screen.HOME) },
-            )
-            Phase.IN_CALL -> InCallScreen(state, onHangUp = vm::hangUp)
-            Phase.ENDED -> SummaryScreen(
-                state,
-                reportPreview = { vm.reportPreview() },
-                onReport = { kind -> vm.sendReport(kind) },
-                onDone = { vm.reset(); go(Screen.HOME) },
-                onThisWasFine = vm::thisWasFine,
-            )
-            Phase.IDLE -> LaunchedEffect(Unit) { go(Screen.HOME) }
+        Screen.CALL -> Box(Modifier.fillMaxSize()) {
+            when (state.phase) {
+                Phase.RINGING -> IncomingCallScreen(
+                    callerName = androidx.compose.ui.res.stringResource(R.string.call_unknown_caller),
+                    callerNumber = androidx.compose.ui.res.stringResource(R.string.call_private_number),
+                    onAnswer = vm::answer,
+                    onDecline = { vm.decline(); go(Screen.HOME) },
+                )
+                Phase.IN_CALL -> InCallScreen(state, onHangUp = vm::hangUp, showCareful = showCareful, simple = simple)
+                Phase.ENDED -> SummaryScreen(
+                    state,
+                    reportPreview = { vm.reportPreview() },
+                    onReport = { kind -> vm.sendReport(kind) },
+                    onDone = { vm.reset(); go(Screen.HOME) },
+                    onThisWasFine = vm::thisWasFine,
+                    showCareful = showCareful,
+                    simple = simple,
+                )
+                Phase.IDLE -> LaunchedEffect(Unit) { go(Screen.HOME) }
+            }
+            // The red warning covers the call (and its summary, if the call ended first) until the user acts.
+            if (state.warningOpen && (state.phase == Phase.IN_CALL || state.phase == Phase.ENDED)) {
+                BackHandler { }   // only its buttons close it
+                val fam = family
+                WarningScreen(
+                    kind = state.warningKind,
+                    callEnded = state.phase == Phase.ENDED,
+                    familyName = fam?.name,
+                    actions = WarningActions(
+                        onHangUp = vm::hangUp,
+                        onCallFamily = { vm.leaveCallForHelp(); if (fam != null && !dial(context, fam.phone)) noPhoneApp = true },
+                        onCall1799 = { vm.leaveCallForHelp(); if (!dial(context, SCAMSHIELD_HELPLINE)) noPhoneApp = true },
+                        onTellFamily = { if (fam != null && !textMessage(context, fam.phone, vm.familyMessage())) noPhoneApp = true },
+                        onClose = vm::closeWarning,
+                    ),
+                )
+            }
         }
 
         Screen.DASHBOARD -> DashboardScreen(
@@ -301,6 +457,7 @@ private fun ScreenContent(
             onInsights = { go(Screen.INSIGHTS) },
             onHistory = { go(Screen.HISTORY) },
             onGoHome = { go(Screen.HOME) },
+            simple = simple,
         )
 
         Screen.INSIGHTS -> InsightsScreen(calls, labels, period, setPeriod, onBack = { go(Screen.DASHBOARD) })
@@ -320,38 +477,45 @@ private fun ScreenContent(
             CallDetailScreen(call, points, onBack = { go(detailBack) })
         }
 
-        Screen.SETTINGS -> SettingsMenuScreen(
+        Screen.SETTINGS -> if (simple) SimpleSettingsMenu(
+            textSize = textSize, readAloud = readAloud, familyName = family?.name, pinSet = pinSet,
+            onOpen = ::open, onReadAloud = vm::setReadAloud,
+        ) else SettingsMenuScreen(
             privacyLevel = privacyLevel,
             connection = connection,
-            modelsValue = if ("federated" in modelStatus) "Updated" else "Built-in",
+            modelsUpdated = modelsUpdated,
             callCount = calls.size,
-            version = version,
             onRefresh = vm::refreshConnection,
-            onOpen = { page ->
-                go(when (page) {
-                    SettingsPage.PRIVACY -> Screen.SETTINGS_PRIVACY
-                    SettingsPage.SERVER -> Screen.SETTINGS_SERVER
-                    SettingsPage.MODELS -> Screen.SETTINGS_MODELS
-                    SettingsPage.DATA -> Screen.SETTINGS_DATA
-                    SettingsPage.HELP -> Screen.SETTINGS_HELP
-                })
-            },
+            onOpen = ::open,
+            textSize = textSize, readAloud = readAloud, onReadAloud = vm::setReadAloud,
+            familyName = family?.name, showCareful = showCareful, onShowCareful = vm::setShowBeCareful,
+            onSimple = vm::setSimpleMode, pinSet = pinSet,
         )
 
-        Screen.SETTINGS_PRIVACY -> PrivacyPage(privacyLevel, vm::setPrivacyLevel, ::back)
-        Screen.SETTINGS_SERVER -> ServerPage(gatewayUrl, connection, vm::saveGatewayUrl, { vm.testConnection(it) }, ::back)
-        Screen.SETTINGS_MODELS -> ModelsPage(modelStatus, mobileBertStatus, modelCheck, { vm.checkModelUpdates() }, ::back)
+        Screen.SETTINGS_ADVANCED -> AdvancedPage({
+            AdvancedRows(true, showCareful, vm::setShowBeCareful, { on -> vm.setSimpleMode(on); if (!on) go(Screen.SETTINGS) },
+                pinSet, privacyLevel, connection, modelsUpdated, calls.size, ::open)
+        }, ::back)
+        Screen.SETTINGS_TEXT -> TextSizePage(textSize, vm::setTextSize, ::back)
+        Screen.SETTINGS_FAMILY -> FamilyPage(family?.name.orEmpty().takeIf { family?.name != family?.phone }.orEmpty(), family?.phone.orEmpty(),
+            vm::setFamily, ::back)
+        Screen.SETTINGS_PIN -> PinSettingsPage(pinSet, vm::setPin, vm::clearPin, ::backAdvanced)
+
+        Screen.SETTINGS_PRIVACY -> PrivacyPage(privacyLevel, vm::setPrivacyLevel, ::backAdvanced, simple)
+        Screen.SETTINGS_SERVER -> ServerPage(gatewayUrl, connection, vm::saveGatewayUrl, { vm.testConnection(it) }, ::backAdvanced)
+        Screen.SETTINGS_MODELS -> ModelsPage(modelStatus, mobileBertStatus, modelCheck, { vm.checkModelUpdates() }, ::backAdvanced)
         Screen.SETTINGS_DATA -> DataPage(
             saveSentence = saveSentence, onSaveSentence = vm::setSaveSentence,
             helpImprove = helpImprove, onHelpImprove = vm::setHelpImprove,
             labelCount = labelCount, callCount = calls.size,
-            onDelete = vm::deleteHistory, onBack = ::back,
+            onDelete = vm::deleteHistory, onBack = ::backAdvanced,
         )
         Screen.SETTINGS_HELP -> HelpPage(
             version, modelStatus, mobileBertStatus, vm.isDebugBuild, vm::loadSampleHistory, ::back,
             onReplayTour = { vm.startTour() },
             onRunSetup = vm::runSetupAgain,
             onResetSetup = vm::resetOnboarding,
+            simple = simple,
         )
     }
 }

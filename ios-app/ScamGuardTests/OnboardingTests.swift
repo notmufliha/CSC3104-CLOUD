@@ -34,7 +34,34 @@ final class OnboardingTests: XCTestCase {
             get { saved["onboarding_version"] as? Int ?? 0 }
             set { saved["onboarding_version"] = newValue }
         }
-        func hasAnySetting() -> Bool { saved.keys.contains { !$0.hasPrefix("onboarding") } }
+        var textSize: String {
+            get { saved["text_size"] as? String ?? "large" }
+            set { saved["text_size"] = newValue }
+        }
+        var readAloud: Bool {
+            get { saved["read_aloud"] as? Bool ?? true }
+            set { saved["read_aloud"] = newValue }
+        }
+        var simpleMode: Bool? {
+            get { saved["simple_mode"] as? Bool }
+            set { saved["simple_mode"] = newValue }
+        }
+        var simpleModeOffered: Bool {
+            get { saved["simple_mode_offered"] as? Bool ?? false }
+            set { saved["simple_mode_offered"] = newValue }
+        }
+        var familyName: String {
+            get { saved["family_name"] as? String ?? "" }
+            set { saved["family_name"] = newValue }
+        }
+        var familyPhone: String {
+            get { saved["family_phone"] as? String ?? "" }
+            set { saved["family_phone"] = newValue }
+        }
+        /// Only keys an earlier version could have saved (as AppPrefs.existingKeys).
+        func hasAnySetting() -> Bool {
+            saved.keys.contains { ["gateway_url", "save_riskiest_sentence", "privacy_level", "help_improve_detection"].contains($0) }
+        }
 
         func launch(hasHistory: Bool = false) -> Onboarding.Launch {
             Onboarding.atLaunch(completed: onboardingCompleted, hasSettings: hasAnySetting(), hasHistory: hasHistory)
@@ -142,46 +169,104 @@ final class OnboardingTests: XCTestCase {
 
     // ---- which screens
 
-    func testServerStepSkippedForOnDevice() {
-        XCTAssertEqual(Onboarding.steps(.cloud), [.welcome, .privacy, .server, .data, .done])
-        XCTAssertEqual(Onboarding.steps(.hybrid), [.welcome, .privacy, .server, .data, .done])
-        XCTAssertEqual(Onboarding.steps(.onDevice), [.welcome, .privacy, .data, .done])
-        XCTAssertEqual(Onboarding.next(.privacy, .onDevice), .data)
-        XCTAssertEqual(Onboarding.next(.privacy, .cloud), .server)
-        XCTAssertEqual(Onboarding.previous(.data, .onDevice), .privacy)
-        XCTAssertNil(Onboarding.previous(.welcome, .cloud))
-        XCTAssertNil(Onboarding.next(.done, .cloud))
-        XCTAssertEqual(Onboarding.progress(.data, .onDevice), "Step 3 of 4")
-        XCTAssertEqual(Onboarding.progress(.server, .hybrid), "Step 3 of 5")
+    private func c(_ path: Onboarding.Path, _ privacy: PrivacyLevel = .cloud) -> Onboarding.Choices {
+        var c = Onboarding.defaults(Self.defaultURL)
+        c.path = path
+        c.privacy = privacy
+        return c
+    }
+
+    func testSimpleSetupIsThreeScreens() {
+        XCTAssertEqual(Onboarding.steps(c(.simple)), [.welcome, .recommended, .family])
+        XCTAssertNil(Onboarding.next(.family, c(.simple)))
+        XCTAssertTrue(Onboarding.progress(.recommended, c(.simple)) == (2, 3))
+    }
+
+    func testChooseMyselfKeepsTheFullChoicesAndSkipsServerForOnDevice() {
+        XCTAssertEqual(Onboarding.steps(c(.custom)), [.welcome, .recommended, .privacy, .server, .data, .family, .done])
+        XCTAssertEqual(Onboarding.steps(c(.custom, .onDevice)), [.welcome, .recommended, .privacy, .data, .family, .done])
+        XCTAssertEqual(Onboarding.next(.privacy, c(.custom, .onDevice)), .data)
+        XCTAssertEqual(Onboarding.next(.privacy, c(.custom)), .server)
+        XCTAssertNil(Onboarding.previous(.welcome, c(.custom)))
+        XCTAssertTrue(Onboarding.progress(.data, c(.custom, .onDevice)) == (4, 6))
+    }
+
+    func testFamilyHelperSetup() {
+        XCTAssertEqual(Onboarding.steps(c(.helper)), [.welcome, .helper, .family, .pin, .done])
+        let s = FakeStore()
+        var h = c(.helper)
+        h.textSize = "xlarge"; h.simple = true; h.readAloud = false
+        h.familyName = " Mei Ling "; h.familyPhone = " 9123 4567 "; h.pin = "2468"
+        Onboarding.apply(h, s)
+        XCTAssertEqual(s.textSize, "xlarge")
+        XCTAssertEqual(s.simpleMode, true)
+        XCTAssertFalse(s.readAloud)
+        XCTAssertEqual(s.familyName, "Mei Ling")
+        XCTAssertEqual(s.familyPhone, "9123 4567")
+        XCTAssertFalse(s.saved.values.contains { ($0 as? String) == "2468" }, "the PIN is never kept with the settings")
+    }
+
+    func testRecommendedSettings() {
+        var x = c(.custom, .onDevice)
+        x.saveSentence = true; x.helpImprove = true; x.readAloud = false
+        let r = Onboarding.recommended(x)
+        XCTAssertEqual(r.privacy, .cloud)
+        XCTAssertFalse(r.saveSentence || r.helpImprove)
+        XCTAssertTrue(r.readAloud)
+        XCTAssertEqual(r.path, .simple)
+    }
+
+    // ---- Simple mode: on for new installs, never forced on existing ones
+
+    func testSimpleModeDefaults() {
+        let s = FakeStore()
+        Onboarding.apply(Onboarding.defaults(Self.defaultURL), s)       // a new install (finished or skipped)
+        XCTAssertEqual(s.simpleMode, true)
+        XCTAssertTrue(Onboarding.simpleModeAtLaunch(s.simpleMode))
+        XCTAssertFalse(Onboarding.offerSimpleMode(s.simpleMode, offered: s.simpleModeOffered))
+        XCTAssertTrue(Onboarding.defaults(Self.defaultURL).simple)
+        XCTAssertTrue(Onboarding.defaults(Self.defaultURL).readAloud)
+        XCTAssertEqual(Onboarding.defaults(Self.defaultURL).textSize, "large")
+    }
+
+    func testExistingUsersKeepTheirModeAndAreOfferedSimpleModeOnce() {
+        let s = FakeStore(["privacy_level": "hybrid"])                  // installed before Simple mode
+        XCTAssertEqual(s.launch(), .existingUser)
+        Onboarding.markCompleted(s)
+        XCTAssertNil(s.simpleMode)
+        XCTAssertFalse(Onboarding.simpleModeAtLaunch(s.simpleMode), "keeps the full app")
+        XCTAssertTrue(Onboarding.offerSimpleMode(s.simpleMode, offered: s.simpleModeOffered), "offered once")
+        s.simpleModeOffered = true                                        // "No, thanks"
+        XCTAssertFalse(Onboarding.offerSimpleMode(s.simpleMode, offered: s.simpleModeOffered))
+        XCTAssertFalse(Onboarding.simpleModeAtLaunch(s.simpleMode))
+        XCTAssertEqual(s.privacyLevel, .hybrid)
+        XCTAssertFalse(Onboarding.offerSimpleMode(false, offered: false))
+        XCTAssertFalse(Onboarding.simpleModeAtLaunch(false))
     }
 
     // ---- wording (identical on Android)
 
-    func testSummaryWording() {
-        var c = Onboarding.Choices(privacy: .cloud, serverUrl: Self.defaultURL, server: .connected, saveSentence: true)
-        let rows = Onboarding.summary(c)
-        XCTAssertEqual(rows.map(\.0), ["Privacy", "Server", "Save riskiest sentence", "Help improve detection"])
-        XCTAssertEqual(rows.map(\.1), ["Cloud", "Connected ✓", "On", "Off"])
-        c.server = .cantReach; XCTAssertEqual(Onboarding.serverLabel(c), "Can't reach")
-        c.server = .later; XCTAssertEqual(Onboarding.serverLabel(c), "Set up later")
-        c.server = .notChecked; XCTAssertEqual(Onboarding.serverLabel(c), "Not checked")
-        c.privacy = .onDevice; c.server = .connected; XCTAssertEqual(Onboarding.serverLabel(c), "Not needed")
-        XCTAssertEqual(Onboarding.line(.welcome), "ScamGuard warns you during calls if the caller might be a scammer.")
-        XCTAssertEqual(Onboarding.privacyTag(.onDevice), "Most private")
+    func testSetupWording() {
+        XCTAssertEqual(L.s(.setup_welcome_line), "ScamGuard warns you during calls if the caller might be a scammer.")
+        XCTAssertEqual(L.s(.privacy_promise), "Your calls stay private. We never record your voice.")
+        XCTAssertEqual(L.s(.privacy_tag_on_device), "Most private")
+        XCTAssertEqual(L.s(.setup_step, "2", "3"), "Step 2 of 3")
     }
 
-    func testTourStepsAreShortAndInOrder() {
-        XCTAssertEqual(Tour.steps.count, 7)
-        for s in Tour.steps {
-            XCTAssertLessThanOrEqual(s.title.split(separator: " ").count, 4, "title too long: \(s.title)")
-            XCTAssertFalse(s.line.contains("\n"))
-            for w in ["BERT", "verdict", "gateway"] { XCTAssertNil(s.line.range(of: w, options: .caseInsensitive)) }
+    func testToursAreShortAndInOrder() {
+        XCTAssertEqual(Tour.simpleSteps.map(\.target), [.practiceCall, .redWarning, .warningButtons])
+        XCTAssertEqual(Tour.simpleSteps.map(\.place), [.home, .call, .call])
+        XCTAssertEqual(Tour.fullSteps.map(\.place), [.home, .home, .call, .call, .call, .dashboard, .settings])
+        for s in Tour.simpleSteps + Tour.fullSteps {
+            let title = L.s(s.title), line = L.s(s.line)
+            XCTAssertLessThanOrEqual(title.split(separator: " ").count, 4, "title too long: \(title)")
+            XCTAssertFalse(line.contains("\n"))
+            for w in ["BERT", "verdict", "gateway", "server"] { XCTAssertNil(line.range(of: w, options: .caseInsensitive), line) }
         }
-        XCTAssertEqual(Tour.steps.map(\.place), [.home, .home, .call, .call, .call, .dashboard, .settings])
-        XCTAssertEqual(Tour.progress(1), "2 of 7")
-        XCTAssertEqual(Tour.nextLabel(5), "Next")
-        XCTAssertEqual(Tour.nextLabel(6), "Done")
-        XCTAssertEqual(Tour.steps[4].line, "Hang up when you see this.")
+        XCTAssertTrue(Tour.isLast(2, simple: true))
+        XCTAssertFalse(Tour.isLast(2, simple: false))
+        XCTAssertEqual(L.s(.tour_progress, "2", "3"), "2 of 3")
+        XCTAssertEqual(L.s(Tour.fullSteps[4].line), "Hang up when you see this.")
     }
 
     // ---- the view model (setup -> app -> tour)
@@ -192,17 +277,20 @@ final class OnboardingTests: XCTestCase {
         let d = UserDefaults(suiteName: suite)!
         defer { d.removePersistentDomain(forName: suite) }
         let vm = CallViewModel(prefs: AppPrefs(defaults: d), store: try CallStore(inMemory: true), scripts: [],
-                               startUp: false)
+                               pins: PinStore(service: "test.\(suite)"), startUp: false)
         XCTAssertEqual(vm.gate, .setup)
         vm.updateSetup { $0.privacy = .onDevice }
         vm.finishSetup(startTour: true)
         XCTAssertEqual(vm.gate, .app)
         XCTAssertEqual(vm.privacyLevel, .onDevice)
+        XCTAssertTrue(vm.simpleMode, "a new install is in Simple mode")
+        XCTAssertFalse(vm.simpleOffer)
         XCTAssertEqual(vm.tourStep, 0)
-        for _ in 0..<6 { vm.tourNext() }
-        XCTAssertEqual(vm.tourStep, 6)
+        XCTAssertTrue(vm.tourSimple)
+        for _ in 0..<2 { vm.tourNext() }
+        XCTAssertEqual(vm.tourStep, 2)
         vm.tourNext()
-        XCTAssertNil(vm.tourStep)
+        XCTAssertNil(vm.tourStep, "Simple mode's tour has 3 steps")
         // next start: straight into the app
         let again = CallViewModel(prefs: AppPrefs(defaults: d), store: try CallStore(inMemory: true), scripts: [],
                                   startUp: false)
@@ -222,8 +310,20 @@ final class OnboardingTests: XCTestCase {
         defer { d.removePersistentDomain(forName: suite) }
         d.set("http://192.168.1.23:8080/", forKey: AppPrefs.keyURL)
         let prefs = AppPrefs(defaults: d)
-        let vm = CallViewModel(prefs: prefs, store: try CallStore(inMemory: true), scripts: [], startUp: false)
+        let vm = CallViewModel(prefs: prefs, store: try CallStore(inMemory: true), scripts: [],
+                               pins: PinStore(service: "test.\(suite)"), startUp: false)
         XCTAssertEqual(vm.gate, .app)
         XCTAssertEqual(prefs.onboardingCompleted, true)
+        // upgrade: the full app stays, Simple mode is offered once
+        XCTAssertFalse(vm.simpleMode)
+        XCTAssertTrue(vm.simpleOffer)
+        vm.declineSimpleOffer()
+        XCTAssertFalse(vm.simpleOffer)
+        let again = CallViewModel(prefs: AppPrefs(defaults: d), store: try CallStore(inMemory: true), scripts: [],
+                                  pins: PinStore(service: "test.\(suite)"), startUp: false)
+        XCTAssertFalse(again.simpleMode)
+        XCTAssertFalse(again.simpleOffer, "asked only once")
+        again.setSimpleMode(true)
+        XCTAssertEqual(prefs.simpleMode, true)
     }
 }

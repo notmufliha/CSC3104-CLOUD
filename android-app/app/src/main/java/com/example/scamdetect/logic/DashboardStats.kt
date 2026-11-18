@@ -1,5 +1,7 @@
 package com.example.scamdetect.logic
 
+import com.example.scamdetect.R
+
 import com.example.scamdetect.data.db.CallRecord
 import com.example.scamdetect.data.db.ImplicitLabel
 import java.time.Instant
@@ -148,14 +150,15 @@ object DashboardStats {
     fun whatHappened(finalVerdict: String, liveVerdict: String?, reason: String): String {
         val r = reason.trim().trimEnd('.').replaceFirstChar { it.lowercase() }
         return when {
-            finalVerdict == "SCAM" -> if (r.isEmpty()) "Likely scam." else "Likely scam: $r."
-            finalVerdict == "UNSURE" -> if (r.isEmpty()) "Something seemed off." else "Something seemed off: $r."
-            finalVerdict == "SAFE" && liveVerdict in WARNINGS -> "A warning came up, but the final check found the call safe."
-            finalVerdict == "SAFE" -> "No warning signs in this call."
-            else -> "This call couldn't be checked."
+            finalVerdict == "SCAM" -> if (r.isEmpty()) Tr.s(R.string.ds_what_scam) else Tr.s(R.string.ds_what_scam_r, r)
+            finalVerdict == "UNSURE" -> if (r.isEmpty()) Tr.s(R.string.ds_what_off) else Tr.s(R.string.ds_what_off_r, r)
+            finalVerdict == "SAFE" && liveVerdict in WARNINGS -> Tr.s(R.string.ds_what_calmed)
+            finalVerdict == "SAFE" -> Tr.s(R.string.ds_what_safe)
+            else -> Tr.s(R.string.ds_what_unchecked)
         }
     }
 
     /** "1 min 24 s" / "45 s". */
-    fun duration(seconds: Int): String = if (seconds >= 60) "${seconds / 60} min ${seconds % 60} s" else "$seconds s"
+    fun duration(seconds: Int): String =
+        if (seconds >= 60) Tr.s(R.string.pw_dur_min, (seconds / 60).toString(), (seconds % 60).toString()) else Tr.s(R.string.pw_dur_s, seconds.toString())
 }

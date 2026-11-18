@@ -16,7 +16,9 @@ okhttp = "4.12.0"
 room = "2.8.5"
 ksp = "2.3.12"
 # Workstream G.4: ONNX Runtime for MobileBERT on the phone (only used when a model file is bundled)
-onnxruntime = "1.22.0"   # 1.22.0+: libonnxruntime4j_jni.so is 16 KB-page aligned (Android 15+ / Pixel 16 KB mode)
+onnxruntime = "1.22.0"
+# Elderly-friendly: the optional PIN's salted hash (data/PinStore.kt)
+datastore = "1.1.7"   # 1.22.0+: libonnxruntime4j_jni.so is 16 KB-page aligned (Android 15+ / Pixel 16 KB mode)
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -44,6 +46,7 @@ androidx-room-runtime = { group = "androidx.room", name = "room-runtime", versio
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 androidx-room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
+androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 onnxruntime-android = { group = "com.microsoft.onnxruntime", name = "onnxruntime-android", version.ref = "onnxruntime" }
 
 [plugins]

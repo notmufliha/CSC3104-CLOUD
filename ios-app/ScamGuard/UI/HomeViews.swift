@@ -9,30 +9,31 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Simulate a call and watch the scam check work live.")
-                    .foregroundStyle(.secondary)
+                if vm.simpleOffer { SimpleOfferCard() }
+                Text(L.s(.home_full_line))
+                    .foregroundStyle(Theme.muted)
                     .padding(.bottom, 4)
-                Button { ring("scam") } label: { wide("Simulate scam call") }
+                Button { ring("scam") } label: { wide(L.s(.btn_sim_scam)) }
                     .buttonStyle(.borderedProminent)
                     .tourTarget(.scamCall)
-                Button { ring("normal") } label: { wide("Simulate normal call") }
+                Button { ring("normal") } label: { wide(L.s(.btn_sim_normal)) }
                     .buttonStyle(.borderedProminent)
-                Button { path.append(.pick) } label: { wide("Choose a call script…") }
+                Button { path.append(.pick) } label: { wide(L.s(.btn_pick_script)) }
                     .buttonStyle(.bordered)
                     .tourTarget(.pickScript)
-                Button { path.append(.paste) } label: { wide("Paste text") }
+                Button { path.append(.paste) } label: { wide(L.s(.btn_paste_text)) }
                     .buttonStyle(.bordered)
                 if vm.scripts.isEmpty {
-                    Text("No call scripts are bundled with this build.").foregroundStyle(Theme.scamRed)
+                    Text(L.s(.pick_none)).foregroundStyle(Theme.warningInkAdaptive)
                 }
             }
             .padding(16)
         }
-        .navigationTitle("ScamGuard")
+        .navigationTitle(L.s(.app_name_text))
     }
 
     private func wide(_ s: String) -> some View {
-        Text(s).frame(maxWidth: .infinity, minHeight: 40)
+        Text(s).font(.title3.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 56)
     }
 
     private func ring(_ kind: String) {
@@ -44,8 +45,16 @@ struct ScriptPickerView: View {
     @Environment(CallViewModel.self) private var vm
 
     enum Sort: String, CaseIterable, Identifiable {
-        case type = "Type", title = "Title A–Z", language = "Language", length = "Shortest"
+        case type, title, language, length
         var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .type: return L.s(.pick_sort_type)
+            case .title: return L.s(.pick_sort_title)
+            case .language: return L.s(.pick_sort_lang)
+            case .length: return L.s(.pick_sort_short)
+            }
+        }
     }
 
     @State private var kind: String?          // nil = all
@@ -67,23 +76,23 @@ struct ScriptPickerView: View {
         List {
             Section {
                 DisclosureGroup(isExpanded: $filtersOpen) {
-                    Picker("Type", selection: $kind) {
-                        Text("All").tag(String?.none); Text("Scam").tag(String?.some("scam")); Text("Normal").tag(String?.some("normal"))
+                    Picker(L.s(.pick_type), selection: $kind) {
+                        Text(L.s(.pick_all)).tag(String?.none); Text(L.s(.pick_scam)).tag(String?.some("scam")); Text(L.s(.pick_normal)).tag(String?.some("normal"))
                     }
                     .pickerStyle(.segmented)
-                    Picker("Language", selection: $lang) {
-                        Text("All").tag(String?.none); Text("English").tag(String?.some("en")); Text("Chinese").tag(String?.some("zh"))
+                    Picker(L.s(.pick_language), selection: $lang) {
+                        Text(L.s(.pick_all)).tag(String?.none); Text(L.s(.pick_english)).tag(String?.some("en")); Text(L.s(.pick_chinese)).tag(String?.some("zh"))
                     }
                     .pickerStyle(.segmented)
-                    Picker("Sort", selection: $sort) {
-                        ForEach(Sort.allCases) { Text($0.rawValue).tag($0) }
+                    Picker(L.s(.pick_sort), selection: $sort) {
+                        ForEach(Sort.allCases) { Text($0.label).tag($0) }
                     }
                     .pickerStyle(.segmented)
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Filter & sort").fontWeight(.semibold)
+                        Text(L.s(.pick_filter)).fontWeight(.semibold)
                         // the header always says what is active, so nothing is hidden silently
-                        Text(activeSummary).font(.caption).foregroundStyle(.secondary)
+                        Text(activeSummary).font(.caption).foregroundStyle(Theme.muted)
                     }
                 }
             }
@@ -94,12 +103,12 @@ struct ScriptPickerView: View {
                 }
             }
         }
-        .navigationTitle("Call scripts")
+        .navigationTitle(L.s(.pick_title))
     }
 
     private var activeSummary: String {
-        let parts = [kind.map { $0.prefix(1).uppercased() + $0.dropFirst() }, lang.map(Theme.langLabel), sort.rawValue].compactMap { $0 }
-        return parts.joined(separator: " · ") + " · \(shown.count) of \(vm.scripts.count)"
+        let parts = [kind.map { $0 == "scam" ? L.s(.pick_scam) : L.s(.pick_normal) }, lang.map(Theme.langLabel), sort.label].compactMap { $0 }
+        return L.s(.pick_count, parts.joined(separator: " · "), "\(shown.count)", "\(vm.scripts.count)")
     }
 }
 
@@ -117,8 +126,8 @@ private struct ScriptRow: View {
                     .padding(.horizontal, 6).padding(.vertical, 2)
                     .background(color, in: RoundedRectangle(cornerRadius: 4))
                 Text(script.title).fontWeight(.semibold)
-                Text("\(Theme.langLabel(script.lang)) · \(script.lines.count) lines")
-                    .font(.caption).foregroundStyle(.secondary)
+                Text(L.s(.pick_lines, Theme.langLabel(script.lang), "\(script.lines.count)"))
+                    .font(.caption).foregroundStyle(Theme.muted)
             }
             Spacer(minLength: 0)
         }
@@ -134,7 +143,7 @@ struct PasteTextView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("What the caller said").font(.subheadline).foregroundStyle(.secondary)
+            Text(L.s(.paste_label)).font(.headline).foregroundStyle(Theme.muted)
             TextEditor(text: $text)
                 .frame(minHeight: 180)
                 .padding(6)
@@ -142,13 +151,13 @@ struct PasteTextView: View {
             Button {
                 vm.startPasted(text.trimmingCharacters(in: .whitespacesAndNewlines))
             } label: {
-                Text("Check").frame(maxWidth: .infinity, minHeight: 36)
+                Text(L.s(.btn_check)).font(.title3.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 56)
             }
             .buttonStyle(.borderedProminent)
             .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             Spacer()
         }
         .padding(16)
-        .navigationTitle("Paste text")
+        .navigationTitle(L.s(.paste_title))
     }
 }

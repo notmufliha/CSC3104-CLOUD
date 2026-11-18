@@ -35,6 +35,15 @@ nonisolated struct CallUiState: Equatable, Sendable {
     var privacyLevel: PrivacyLevel = .defaultLevel
     /// Level 1: the server's suggested action from the newest answer (policy.rs action_for).
     var serverAction: String?
+    /// The full-screen red warning is showing. Only the user closes it (a button), even after the call ends.
+    var warningOpen = false
+    /// The yellow "Be careful" tap was given in this call (once per call).
+    var carefulAlerted = false
+
+    /// What the red warning / yellow banner say (no scores): the strongest reason heard so far.
+    var warningKind: Warnings.Kind {
+        Warnings.kind(lit, flaggedTexts, reasonCode: Reasons.codeForText(finalReview?.reason))
+    }
 
     /// The live level: the in-call bar.
     var level: Risk.Level { Risk.level(verdict, gatewayError) }
@@ -83,10 +92,9 @@ nonisolated struct CallUiState: Equatable, Sendable {
 
     /// "During the call: <live>" plus how the end was checked.
     var duringCallLine: String {
-        let suffix: String
-        if finalReview?.onDevice == true { suffix = " · Checked on this phone" }
-        else if finalReview?.reviewed == true { suffix = "" }
-        else { suffix = " · Final review unavailable" }
-        return "During the call: " + Theme.levelLabel(level) + suffix
+        let live = Theme.levelLabel(level)
+        if finalReview?.onDevice == true { return L.s(.sum_during_phone, live) }
+        if finalReview?.reviewed == true { return L.s(.sum_during, live) }
+        return L.s(.sum_during_unavailable, live)
     }
 }
