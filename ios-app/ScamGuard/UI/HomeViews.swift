@@ -87,10 +87,25 @@ struct ScriptPickerView: View {
                     }
                 }
             }
+            // H's learning-loop test calls go last, in their own section (ScriptTitles): they are meant to be missed.
+            let groups = ScriptTitles.sections(shown)
             Section {
-                ForEach(shown) { s in
+                ForEach(groups.regular) { s in
                     Button { vm.ring(s) } label: { ScriptRow(script: s) }
                         .buttonStyle(.plain)
+                }
+            }
+            if !groups.tests.isEmpty {
+                Section {
+                    ForEach(groups.tests) { s in
+                        Button { vm.ring(s) } label: { ScriptRow(script: s) }
+                            .buttonStyle(.plain)
+                    }
+                } header: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(ScriptTitles.testSection).font(.headline).foregroundStyle(Color.primary).textCase(nil)
+                        Text(ScriptTitles.testSectionNote).font(.footnote).foregroundStyle(Color.primary.opacity(0.75)).textCase(nil)
+                    }
                 }
             }
         }

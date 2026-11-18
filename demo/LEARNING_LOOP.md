@@ -87,8 +87,10 @@ improvement, which a handful of new lines can't give).
 
 ## Test it on a phone
 
-The app has two test calls: **New scam test A report this** and **New scam test B same scam new words**. They are a
-fake job scam asking for USDT top-ups, which every model misses today. B says the same thing in different words and
+The app has two test calls: **Learning test A (new scam type)** and **Learning test B (same scam, new words)**
+(files `scam_en_90_new_scam_test_A_report_this.json` and `scam_en_91_new_scam_test_B_same_scam_new_words.json`). Find
+them at the bottom of the app's call list (Home → Choose a call script…), under **Test calls (learning loop)**;
+"Simulate scam call" never picks them. They are a fake job scam asking for USDT top-ups, which every model misses today. B says the same thing in different words and
 is never reported, so it shows the models learned the scam rather than the sentences.
 
 With `up` and `expose` running and the phone connected:

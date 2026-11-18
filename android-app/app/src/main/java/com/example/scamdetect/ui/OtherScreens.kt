@@ -61,6 +61,9 @@ import com.example.scamdetect.data.ReportLine
 import com.example.scamdetect.logic.PrivacyLevel
 import com.example.scamdetect.logic.Risk
 import com.example.scamdetect.logic.Tour
+import com.example.scamdetect.logic.ScriptTitles
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -196,29 +199,45 @@ fun ScriptPickerScreen(scripts: List<CallScript>, onPick: (CallScript) -> Unit, 
                 }
             }
         }
+        // H's learning-loop test calls go last, in their own section (ScriptTitles): they are meant to be missed.
+        val (regular, tests) = ScriptTitles.sections(shown)
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(shown, key = { it.fileName }) { s ->
-                val color = kindColor(s.kind)
-                Card(onClick = { onPick(s) }, modifier = Modifier.fillMaxWidth()) {
-                    Row(Modifier.height(IntrinsicSize.Min)) {
-                        Box(Modifier.width(6.dp).fillMaxHeight().background(color))
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                kindLabel(s.kind),
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.labelSmall,
-                                modifier = Modifier.background(color, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                            Text(s.title, fontWeight = FontWeight.SemiBold)
-                            Text(
-                                "${langLabel(s.lang)} · ${s.lines.size} lines",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+            items(regular, key = { it.fileName }) { s -> ScriptCard(s, onPick) }
+            if (tests.isNotEmpty()) {
+                item(key = "learning-tests-header") {
+                    Column(Modifier.padding(top = 16.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(ScriptTitles.TEST_SECTION, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.semantics { heading() })
+                        Text(ScriptTitles.TEST_SECTION_NOTE, style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
+                items(tests, key = { it.fileName }) { s -> ScriptCard(s, onPick) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScriptCard(s: CallScript, onPick: (CallScript) -> Unit) {
+    val color = kindColor(s.kind)
+    Card(onClick = { onPick(s) }, modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.height(IntrinsicSize.Min)) {
+            Box(Modifier.width(6.dp).fillMaxHeight().background(color))
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    kindLabel(s.kind),
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.background(color, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+                Text(s.title, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "${langLabel(s.lang)} · ${s.lines.size} lines",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
