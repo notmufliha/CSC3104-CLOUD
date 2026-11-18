@@ -50,6 +50,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.scamdetect.logic.PrivacyLevel
 import com.example.scamdetect.logic.Risk
+import com.example.scamdetect.logic.Tour
 import com.example.scamdetect.ui.theme.ScamDetectTheme
 
 val SafeGreen = Color(0xFF2E7D32)
@@ -92,8 +93,8 @@ fun InCallScreen(state: CallUiState, onHangUp: () -> Unit) {
                 )
                 PrivacyBadge(state.privacyLevel)
             }
-            RiskBar(state.level, state.combinedScore)
-            SignalChips(state.lit)
+            Box(Modifier.tourTarget(Tour.Target.RISK_BAR)) { RiskBar(state.level, state.combinedScore) }
+            Box(Modifier.tourTarget(Tour.Target.WARNING_CHIPS)) { SignalChips(state.lit) }
             // Yellow / grey banner lives in the layout; the red one is the pop-up below until it is dismissed.
             if (state.level != Risk.Level.RED || alertDismissed || !state.scamAlert) {
                 state.banner?.let { InfoBanner(it, levelColor(state.level)) }
@@ -114,7 +115,7 @@ fun InCallScreen(state: CallUiState, onHangUp: () -> Unit) {
         AnimatedVisibility(
             visible = state.scamAlert && !alertDismissed,
             enter = slideInVertically { -it } + fadeIn(),
-            modifier = Modifier.align(Alignment.TopCenter)
+            modifier = Modifier.align(Alignment.TopCenter).tourTarget(Tour.Target.RED_WARNING)
         ) {
             ScamAlert(
                 text = state.banner ?: "Likely scam.",
@@ -267,18 +268,7 @@ fun ChatBubble(line: ChatLine, riskyHere: Boolean = false) {
 fun InCallPreview() {
     ScamDetectTheme {
         InCallScreen(
-            CallUiState(
-                phase = Phase.IN_CALL,
-                verdict = "SCAM",
-                combinedScore = 0.79f,
-                callScores = mapOf("urgency" to 0.47f, "money" to 1f, "impersonation" to 0.9f),
-                lines = listOf(
-                    ChatLine(1, false, "Hello?"),
-                    ChatLine(2, true, "This is Officer Tan from the police.", listOf("impersonation")),
-                    ChatLine(3, true, "Read me the OTP you just received.", listOf("money")),
-                ),
-                scamAlert = true,
-            ),
+            tourDemoCall(redAlert = true),
             onHangUp = {}
         )
     }

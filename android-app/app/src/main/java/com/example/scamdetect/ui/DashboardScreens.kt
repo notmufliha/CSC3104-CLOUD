@@ -67,6 +67,7 @@ import com.example.scamdetect.logic.Dashboard
 import com.example.scamdetect.logic.DashboardStats
 import com.example.scamdetect.logic.DashboardStats.Period
 import com.example.scamdetect.logic.PlainWords
+import com.example.scamdetect.logic.Tour
 import com.example.scamdetect.logic.PrivacyLevel
 import com.example.scamdetect.logic.Reasons
 import com.example.scamdetect.logic.Risk
@@ -249,13 +250,13 @@ fun DashboardScreen(
     val stats = remember(calls, labels, period) { DashboardStats.compute(calls, labels, period, now, ZoneId.systemDefault()) }
     Page("Dashboard") {
         if (calls.isEmpty()) {
-            EmptyState("No calls yet. Try a demo call from Home.", onGoHome)
+            Box(Modifier.tourTarget(Tour.Target.DASHBOARD_HERO)) { EmptyState("No calls yet. Try a demo call from Home.", onGoHome) }
             return@Page
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Space.gap)) {
             PeriodSwitcher(period, onPeriod)
             // 1. hero
-            AppCard {
+            AppCard(Modifier.tourTarget(Tour.Target.DASHBOARD_HERO)) {
                 Text(PlainWords.hero(stats.scam, stats.total, period), style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
@@ -444,7 +445,7 @@ fun HistoryScreen(calls: List<CallRecord>, points: List<ScorePoint>, onOpen: (St
     val groups = shown.groupBy { PlainWords.historyGroup(DashboardStats.daysAgo(it.endedAt, now, zone)) }
     Page("History", onBack) {
         if (calls.isEmpty()) {
-            EmptyState("No calls yet. Try a demo call from Home.", onGoHome)
+            Box(Modifier.tourTarget(Tour.Target.DASHBOARD_HERO)) { EmptyState("No calls yet. Try a demo call from Home.", onGoHome) }
             return@Page
         }
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {

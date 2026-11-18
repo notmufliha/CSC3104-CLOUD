@@ -59,6 +59,7 @@ struct SettingsView: View {
         List {
             Section {
                 NavigationLink(value: SettingsRoute.privacy)  { MenuRow(icon: "lock.fill", title: "Privacy level", value: vm.privacyLevel.badge) }
+                    .tourTarget(.privacyRow)
                 NavigationLink(value: SettingsRoute.server) {
                     MenuRow(icon: "server.rack", title: "Server", value: connectionLabel(vm.connection), valueColor: connectionColor(vm.connection))
                 }
@@ -364,6 +365,14 @@ struct HelpPage: View {
     var body: some View {
         List {
             Section {
+                // The tour moves to Home itself.
+                Button { vm.startTour() } label: { Text("Replay tour").frame(maxWidth: .infinity, minHeight: 44) }
+                    .buttonStyle(.borderedProminent).foregroundStyle(Theme.onBrand).font(.body)
+                Button { vm.runSetupAgain() } label: { Text("Run setup again").frame(maxWidth: .infinity, minHeight: 44) }
+                    .buttonStyle(.bordered).font(.body)
+            } header: { SectionTitle(text: "Get started again") }
+            .listRowBackground(Color.clear)
+            Section {
                 ForEach(["It listens to what the caller says.", "Each sentence is checked for scam signs.",
                          "The bar turns yellow or red when it's risky.", "A red alert tells you to hang up."], id: \.self) { Bullet(text: $0) }
             } header: { SectionTitle(text: "How ScamGuard works") }
@@ -400,6 +409,8 @@ struct HelpPage: View {
                 Button { vm.loadSampleHistory(); loaded = true } label: { Text("Load sample history").frame(maxWidth: .infinity, minHeight: 36) }
                     .buttonStyle(.bordered).font(.body)
                 if loaded { Text("Added about 60 sample calls.").font(.body) }
+                Button { vm.resetOnboarding() } label: { Text("Reset first-launch setup").frame(maxWidth: .infinity, minHeight: 44) }
+                    .buttonStyle(.bordered).font(.body)
             } header: { SectionTitle(text: "Debug build") }
             .listRowBackground(Color.clear)
             #endif

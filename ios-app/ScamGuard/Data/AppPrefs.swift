@@ -1,7 +1,7 @@
 import Foundation
 
 /// Port of android-app data/AppPrefs.kt: settings in UserDefaults, same key names as Android's SharedPreferences.
-nonisolated final class AppPrefs: @unchecked Sendable {
+nonisolated final class AppPrefs: OnboardingStore, @unchecked Sendable {
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
@@ -14,6 +14,10 @@ nonisolated final class AppPrefs: @unchecked Sendable {
     static let keyPrivacyLevel = "privacy_level"
     static let keyHelpImprove = "help_improve_detection"
     static let keyFlPhoneId = "fl_phone_id"
+    static let keyOnboardingCompleted = "onboarding_completed"
+    static let keyOnboardingVersion = "onboarding_version"
+    /// Keys an earlier version of the app could have saved: any of them means "not a new install".
+    static let existingKeys = [keyURL, keySaveSentence, keyPrivacyLevel, keyHelpImprove, keyFlPhoneId]
 
     var gatewayUrl: String {
         get { defaults.string(forKey: Self.keyURL) ?? Self.defaultURL }
@@ -45,4 +49,20 @@ nonisolated final class AppPrefs: @unchecked Sendable {
         defaults.set(id, forKey: Self.keyFlPhoneId)
         return id
     }
+
+    /// First-launch setup finished (or skipped). nil = never written (a new install, or one from before the setup).
+    var onboardingCompleted: Bool? {
+        get { defaults.object(forKey: Self.keyOnboardingCompleted) == nil ? nil : defaults.bool(forKey: Self.keyOnboardingCompleted) }
+        set {
+            if let newValue { defaults.set(newValue, forKey: Self.keyOnboardingCompleted) }
+            else { defaults.removeObject(forKey: Self.keyOnboardingCompleted) }
+        }
+    }
+
+    var onboardingVersion: Int {
+        get { defaults.integer(forKey: Self.keyOnboardingVersion) }
+        set { defaults.set(newValue, forKey: Self.keyOnboardingVersion) }
+    }
+
+    func hasAnySetting() -> Bool { Self.existingKeys.contains { defaults.object(forKey: $0) != nil } }
 }
