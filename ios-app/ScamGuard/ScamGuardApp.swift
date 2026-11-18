@@ -94,6 +94,7 @@ struct RootView: View {
     @State private var homePath: [HomeRoute] = []
     @State private var dashboardPath: [DashboardRoute] = []
     @State private var settingsPath: [SettingsRoute] = []
+    @State private var keyboard = KeyboardState()
 
     var body: some View {
         let tourStep = vm.tourStep
@@ -139,6 +140,21 @@ struct RootView: View {
     }
 
     private var tabs: some View {
+        VStack(spacing: 0) {
+            tabPages
+            // The app's own tab bar (UI/TabBar.swift): readable at large text sizes. Hidden while typing.
+            if !keyboard.visible {
+                SeniorTabBar(items: [
+                    .init(tab: Tab.home, title: L.s(.tab_home), systemImage: "house", id: "tab.home"),
+                    .init(tab: Tab.dashboard, title: L.s(vm.simpleMode ? .tab_family : .tab_dashboard),
+                          systemImage: "list.bullet.rectangle", id: "tab.dashboard"),
+                    .init(tab: Tab.settings, title: L.s(.tab_settings), systemImage: "gearshape", id: "tab.settings"),
+                ], selection: $tab)
+            }
+        }
+    }
+
+    private var tabPages: some View {
         TabView(selection: $tab) {
             NavigationStack(path: $homePath) {
                 Group { if vm.simpleMode { SimpleHomeView() } else { HomeView(path: $homePath) } }
@@ -149,7 +165,7 @@ struct RootView: View {
                         }
                     }
             }
-            .tabItem { Label(L.s(.tab_home), systemImage: "house") }
+            .toolbar(.hidden, for: .tabBar)
             .tag(Tab.home)
 
             NavigationStack(path: $dashboardPath) {
@@ -157,11 +173,11 @@ struct RootView: View {
                 if vm.simpleMode && vm.pinSet && !unlock.open { PinGateView() }
                 else { DashboardView(goHome: { dashboardPath = []; tab = .home }) }
             }
-                .tabItem { Label(L.s(vm.simpleMode ? .tab_family : .tab_dashboard), systemImage: "list.bullet") }
+                .toolbar(.hidden, for: .tabBar)
                 .tag(Tab.dashboard)
 
             NavigationStack(path: $settingsPath) { SettingsView() }
-                .tabItem { Label(L.s(.tab_settings), systemImage: "gearshape") }
+                .toolbar(.hidden, for: .tabBar)
                 .tag(Tab.settings)
         }
         .fullScreenCover(isPresented: Binding(

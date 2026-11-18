@@ -30,60 +30,22 @@ struct WarningScreen: View {
         let doLine = L.s(Warnings.doLine(kind))
         ZStack {
             Theme.scamRed.ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 44, weight: .black))
-                            .foregroundStyle(Theme.warningInk)
-                            .frame(width: 84, height: 84)
-                            .background(Color.white, in: Circle())
-                            .accessibilityHidden(true)
-                        Text(title).font(.largeTitle.bold())
-                            .accessibilityAddTraits(.isHeader)
-                        Text(message).font(.title2)
-                        Text(doLine).font(.title2.bold())
-                        if callEnded { Text(L.s(.warn_call_ended)).font(.title3) }
+            // Everything fits: one page, Hang up first. Very large text: the page scrolls and Hang up stays pinned at
+            // the bottom, so the most important button is always on screen.
+            ViewThatFits(in: .vertical) {
+                page(title, message, doLine, hangUpInList: true)
+                ScrollView { page(title, message, doLine, hangUpInList: false) }
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        hangUp
+                            .frame(maxWidth: 560)
+                            .padding(.horizontal, 20).padding(.vertical, 12)
+                            .frame(maxWidth: .infinity)
+                            .background(Theme.scamRed.shadow(.drop(color: .black.opacity(0.25), radius: 6, y: -2)))
                     }
-                    .foregroundStyle(.white)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityElement(children: .combine)
-                    .tourTarget(.redWarning)
-                    VStack(spacing: 16) {
-                        WarningButton(label: L.s(.btn_hang_up), icon: "phone.down.fill", action: actions.onHangUp)
-                            .accessibilityIdentifier("warnHangUp")
-                        if let familyName {
-                            WarningButton(label: L.s(.btn_call_family), sub: familyName, icon: "phone.fill",
-                                          hint: L.s(.a11y_ends_call_first), action: actions.onCallFamily)
-                        }
-                        WarningButton(label: L.s(.btn_call_1799), icon: "phone.fill", hint: L.s(.a11y_ends_call_first),
-                                      action: actions.onCall1799)
-                        if let familyName {
-                            WarningButton(label: L.s(.btn_tell_family, familyName), icon: "paperplane.fill",
-                                          hint: L.s(.a11y_opens_messages), action: actions.onTellFamily)
-                        }
-                        Button(action: actions.onClose) {
-                            Text(L.s(.btn_close_warning))
-                                .font(.title3.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 16).padding(.vertical, 14)
-                                .frame(maxWidth: .infinity, minHeight: 64)
-                                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white, lineWidth: 2))
-                                .contentShape(RoundedRectangle(cornerRadius: 20))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .tourTarget(.warningButtons)
-                }
-                .frame(maxWidth: 560)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .frame(maxWidth: .infinity)
             }
-            // the flash sits on top but takes no touches
-            Color.white.opacity(flash).ignoresSafeArea().allowsHitTesting(false).accessibilityHidden(true)
+            // The flash is a white frame around the edge (it takes no touches), so the white text keeps its contrast.
+            RoundedRectangle(cornerRadius: 0).strokeBorder(Color.white, lineWidth: 14)
+                .opacity(flash).ignoresSafeArea().allowsHitTesting(false).accessibilityHidden(true)
         }
         .accessibilityAddTraits(.isModal)
         .task {
@@ -93,12 +55,71 @@ struct WarningScreen: View {
             // Reduce Motion.
             guard !reduceMotion else { return }
             for _ in 0..<3 {
-                withAnimation(.easeInOut(duration: 0.3)) { flash = 0.28 }
+                withAnimation(.easeInOut(duration: 0.3)) { flash = 0.9 }
                 try? await Task.sleep(for: .milliseconds(300))
                 withAnimation(.easeInOut(duration: 0.45)) { flash = 0 }
                 try? await Task.sleep(for: .milliseconds(700))
             }
         }
+    }
+}
+
+extension WarningScreen {
+    fileprivate var hangUp: some View {
+        WarningButton(label: L.s(.btn_hang_up), icon: "phone.down.fill", action: actions.onHangUp)
+            .accessibilityIdentifier("warnHangUp")
+    }
+
+    fileprivate func page(_ title: String, _ message: String, _ doLine: String, hangUpInList: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 12) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 44, weight: .black))
+                    .foregroundStyle(Theme.warningInk)
+                    .frame(width: 84, height: 84)
+                    .background(Color.white, in: Circle())
+                    .accessibilityHidden(true)
+                Text(title).font(.largeTitle.bold())
+                    .accessibilityAddTraits(.isHeader)
+                Text(message).font(.title2)
+                Text(doLine).font(.title2.bold())
+                if callEnded { Text(L.s(.warn_call_ended)).font(.title3) }
+            }
+            .foregroundStyle(.white)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+            .tourTarget(.redWarning)
+            VStack(spacing: 16) {
+                if hangUpInList { hangUp }
+                if let familyName {
+                    WarningButton(label: L.s(.btn_call_family), sub: familyName, icon: "phone.fill",
+                                  hint: L.s(.a11y_ends_call_first), action: actions.onCallFamily)
+                }
+                WarningButton(label: L.s(.btn_call_1799), icon: "phone.fill", hint: L.s(.a11y_ends_call_first),
+                              action: actions.onCall1799)
+                if let familyName {
+                    WarningButton(label: L.s(.btn_tell_family, familyName), icon: "paperplane.fill",
+                                  hint: L.s(.a11y_opens_messages), action: actions.onTellFamily)
+                }
+                Button(action: actions.onClose) {
+                    Text(L.s(.btn_close_warning))
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 16).padding(.vertical, 14)
+                        .frame(maxWidth: .infinity, minHeight: 64)
+                        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white, lineWidth: 2))
+                        .contentShape(RoundedRectangle(cornerRadius: 20))
+                }
+                .buttonStyle(.plain)
+            }
+            .tourTarget(.warningButtons)
+        }
+        .frame(maxWidth: 560)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .frame(maxWidth: .infinity)
     }
 }
 
