@@ -309,6 +309,23 @@
     "source": "https://www.police.gov.sg/Media-Hub/News/2026/09/20260925_advisory_on_scams_involving_the_immigration_checkpoints_authority_ica"
   },
   {
+    "name": "normal_en_21_bank_fraud_check",
+    "file": "normal_en_21_bank_fraud_check.json",
+    "lang": "en",
+    "lines": 11,
+    "type": "normal",
+    "scam_type": null,
+    "expected_verdict": "SAFE or UNSURE (never SCAM)",
+    "key_line": null,
+    "earliest_ok_line": null,
+    "latest_ok_line": null,
+    "key_sentence": null,
+    "why": "Hard negative for the bank card scam: a real fraud team asks only yes/no about one transaction, blocks the card itself and tells the customer to call back on the number on the card. 'Fraud', 'card' and 'block' appear, but no money or code is asked for.",
+    "known_result": "Measured 2026-11-13: FALSE ALARM, red at line 5 (bank + fraud + card words). A real false alarm to send back with \"This was fine\".",
+    "added": "2026-11, from SPF's 2026 scam advisories (dialogue written by the team)",
+    "source": "https://www.police.gov.sg/media-hub/news/2026/05/20260504_police_advisory_on_government_officials_impersonation_scams_involving_cash_transfers"
+  },
+  {
     "name": "normal_en_22_telco_contract_renewal",
     "file": "normal_en_22_telco_contract_renewal.json",
     "lang": "en",
