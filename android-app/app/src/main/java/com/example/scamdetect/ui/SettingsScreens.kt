@@ -60,12 +60,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.example.scamdetect.logic.PrivacyLevel
+import com.example.scamdetect.logic.Tour
 import kotlinx.coroutines.launch
 
 // Settings as a grouped menu; each row opens its own page. Same rows, wording and order as
 // ios-app/ScamGuard/UI/SettingsView.swift.
 
 enum class SettingsPage { PRIVACY, SERVER, MODELS, DATA, HELP }
+
+/** Server addresses offered as one-tap presets (Settings → Server, and the setup's server screen). */
+val SERVER_PRESETS = listOf(
+    "Emulator" to "http://10.0.2.2:8080/",
+    "Emulator HTTPS" to "https://10.0.2.2:8443/api/",
+    "Phone HTTPS" to "https://192.168.1.23:8443/api/",
+)
 
 /** One line per privacy level, for the cards and the menu. */
 fun PrivacyLevel.oneLine() = when (this) {
@@ -89,9 +97,9 @@ fun Group(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun MenuRow(icon: ImageVector, title: String, value: String, valueColor: Color? = null, onClick: () -> Unit) {
+private fun MenuRow(icon: ImageVector, title: String, value: String, valueColor: Color? = null, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp),
+        modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -118,7 +126,9 @@ fun SettingsMenuScreen(
     Page("Settings") {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Group {
-                MenuRow(Icons.Filled.Lock, "Privacy level", privacyLevel.shortTitle()) { onOpen(SettingsPage.PRIVACY) }
+                MenuRow(Icons.Filled.Lock, "Privacy level", privacyLevel.shortTitle(), modifier = Modifier.tourTarget(Tour.Target.PRIVACY_ROW)) {
+                    onOpen(SettingsPage.PRIVACY)
+                }
                 HorizontalDivider(Modifier.padding(start = 66.dp))
                 MenuRow(Icons.Filled.Share, "Server", connectionLabel(connection), connectionColor(connection)) { onOpen(SettingsPage.SERVER) }
                 HorizontalDivider(Modifier.padding(start = 66.dp))
@@ -220,8 +230,7 @@ fun ServerPage(
             style = MaterialTheme.typography.bodyLarge, color = if (encrypted) SafeGreen else ScamRed)
         Text("Presets", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Emulator" to "http://10.0.2.2:8080/", "Emulator HTTPS" to "https://10.0.2.2:8443/api/",
-                "Phone HTTPS" to "https://192.168.1.23:8443/api/").forEach { (label, u) ->
+            SERVER_PRESETS.forEach { (label, u) ->
                 OutlinedButton(onClick = { url = u }) { Text(label, style = MaterialTheme.typography.bodyLarge) }
             }
         }
@@ -229,7 +238,8 @@ fun ServerPage(
             Button(onClick = { onSave(url); result = "Saved" }, modifier = Modifier.weight(1f).height(52.dp)) {
                 Text("Save", style = MaterialTheme.typography.bodyLarge)
             }
-            OutlinedButton(onClick = { scope.launch { testing = true; result = onTest(url); testing = false } },
+            val test = withLocalNetwork { scope.launch { testing = true; result = onTest(url); testing = false } }
+            OutlinedButton(onClick = test,
                 modifier = Modifier.weight(1f).height(52.dp)) { Text("Test", style = MaterialTheme.typography.bodyLarge) }
         }
         result?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
@@ -346,7 +356,7 @@ fun DataPage(
 }
 
 @Composable
-private fun ToggleRow(title: String, line: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+internal fun ToggleRow(title: String, line: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
@@ -359,10 +369,30 @@ private fun ToggleRow(title: String, line: String, checked: Boolean, onChange: (
 // ---------------------------------------------------------------- Help & about
 
 @Composable
-fun HelpPage(version: String, modelStatus: String, mobileBertStatus: String, debug: Boolean, onLoadSample: () -> Unit, onBack: () -> Unit) {
+fun HelpPage(
+    version: String,
+    modelStatus: String,
+    mobileBertStatus: String,
+    debug: Boolean,
+    onLoadSample: () -> Unit,
+    onBack: () -> Unit,
+    onReplayTour: () -> Unit = {},
+    onRunSetup: () -> Unit = {},
+    onResetSetup: () -> Unit = {},
+) {
     val context = LocalContext.current
     var loaded by remember { mutableStateOf(false) }
     SubPage("Help & about", onBack) {
+        HelpSection("Get started again") {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Button(onClick = onReplayTour, modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                    Text("Replay tour", style = MaterialTheme.typography.bodyLarge)
+                }
+                OutlinedButton(onClick = onRunSetup, modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                    Text("Run setup again", style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+        }
         HelpSection("How ScamGuard works") {
             listOf(
                 "It listens to what the caller says.",
@@ -399,6 +429,9 @@ fun HelpPage(version: String, modelStatus: String, mobileBertStatus: String, deb
                 Text("Load sample history", style = MaterialTheme.typography.bodyLarge)
             }
             if (loaded) Text("Added about 60 sample calls.", style = MaterialTheme.typography.bodyLarge)
+            OutlinedButton(onClick = onResetSetup, modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                Text("Reset first-launch setup", style = MaterialTheme.typography.bodyLarge)
+            }
         }
         Spacer(Modifier.height(8.dp))
     }

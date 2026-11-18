@@ -34,6 +34,20 @@ final class CallViewModel {
     /// Settings: the server's state from the last check (true = connected, false = can't reach), nil = not checked yet.
     private(set) var connection: Bool?
 
+    // ------------------------------------------------------------ first-launch setup + guided tour
+
+    /// What the app shows: the setup, or the app itself.
+    enum Gate: Equatable { case setup, app }
+    private(set) var gate: Gate = .app
+    /// The setup screen showing, and the choices made so far.
+    private(set) var setupStep: Onboarding.Step = .welcome
+    private(set) var setupChoices: Onboarding.Choices
+    /// true = opened from Settings ("Run setup again"): leaving it goes back to the app without saving.
+    private(set) var setupIsReplay = false
+    /// The tour step showing (0-6), nil = no tour.
+    private(set) var tourStep: Int?
+    private let startUp: Bool
+
     // ------------------------------------------------------------ per-call bookkeeping
     private var playTask: Task<Void, Never>?
     private var sendTasks: [Task<Void, Never>] = []
@@ -82,18 +96,26 @@ final class CallViewModel {
         saveSentence = prefs.saveRiskiestSentence
         helpImprove = prefs.helpImproveDetection
         modelStatus = onDevice.updater.describe()
+        self.startUp = startUp
+        setupChoices = Onboarding.defaults(prefs.gatewayUrl)
         if startUp { startUpTasks() }
+        // First launch shows the setup; an install from before the setup (settings or history saved) never does.
+        let completed = prefs.onboardingCompleted
+        let hasSettings = prefs.hasAnySetting()
+        let hasHistory = completed == nil && !hasSettings && !store.calls().isEmpty
+        switch Onboarding.atLaunch(completed: completed, hasSettings: hasSettings, hasHistory: hasHistory) {
+        case .showSetup: gate = .setup
+        case .existingUser: Onboarding.markCompleted(prefs); openApp()
+        case .done: openApp()
+        }
     }
 
-    /// App start: preload the models if needed, read MobileBERT's status, and (except at level 3, which must make
-    /// no network traffic at all) quietly check for newer federated models.
+    /// App start: preload the models if needed and read MobileBERT's status (both stay on the phone). The network
+    /// check for newer models waits until the app opens (openApp), so the setup sends nothing.
     private func startUpTasks() {
         if privacyLevel.scoresOnPhone { preloadModels() }
         Task {
             mobileBertStatus = await onDevice.mobileBertStatusLine()
-        }
-        if privacyLevel != .onDevice {
-            Task { _ = await checkModelUpdates() }
         }
     }
 
@@ -586,6 +608,111 @@ final class CallViewModel {
         prefs.helpImproveDetection = on
         helpImprove = on
         if !on { store.forgetLabelSentences(); historyVersion += 1 }
+    }
+
+    // ------------------------------------------------------------ setup + tour actions (same as Android)
+
+    /// The app opens: now (not during the setup) it may use the network. G.10: quietly fetch newer federated models,
+    /// except at level 3, which makes no network traffic at all.
+    private func openApp() {
+        gate = .app
+        if startUp && prefs.privacyLevel != .onDevice { Task { _ = await checkModelUpdates() } }
+    }
+
+    func setSetupStep(_ step: Onboarding.Step) { setupStep = step }
+
+    func updateSetup(_ change: (inout Onboarding.Choices) -> Void) { change(&setupChoices) }
+
+    /// Setup's Test connection: tries the typed address without saving it.
+    func testSetupServer(_ url: String) async -> Bool { await checkConnection(url).hasPrefix("Connected") }
+
+    /// Skip, "Show me around" or "Skip tour": saves the choices (Skip = what is picked so far, defaults for the rest).
+    func finishSetup(startTour: Bool) {
+        let c = setupChoices
+        let urlBefore = prefs.gatewayUrl
+        Onboarding.apply(c, prefs)
+        privacyLevel = prefs.privacyLevel
+        gatewayUrl = prefs.gatewayUrl
+        if prefs.gatewayUrl != urlBefore { connection = nil }
+        saveSentence = c.saveSentence
+        helpImprove = c.helpImprove
+        if !c.saveSentence { store.forgetSentences() }
+        if !c.helpImprove { store.forgetLabelSentences() }
+        historyVersion += 1
+        if c.privacy.scoresOnPhone { preloadModels() }
+        let wasReplay = setupIsReplay
+        setupIsReplay = false
+        if wasReplay { gate = .app } else { openApp() }
+        tourStep = startTour ? 0 : nil
+    }
+
+    /// Leaving "Run setup again" from its first screen: nothing is saved.
+    func leaveSetup() {
+        setupIsReplay = false
+        gate = .app
+    }
+
+    /// Help & about: "Run setup again", starting from the current settings.
+    func runSetupAgain() {
+        setupChoices = Onboarding.fromSaved(prefs)
+        setupStep = .welcome
+        setupIsReplay = true
+        tourStep = nil
+        gate = .setup
+    }
+
+    #if DEBUG
+    /// Debug builds only: forget that the setup was done and show it as on a first launch.
+    func resetOnboarding() {
+        Onboarding.reset(prefs)
+        setupChoices = Onboarding.defaults(prefs.gatewayUrl)
+        setupStep = .welcome
+        setupIsReplay = false
+        tourStep = nil
+        gate = .setup
+    }
+
+    /// Debug builds only (-demoSetup): open the setup at one screen, for screenshots.
+    func demoSetup(_ step: Onboarding.Step, privacy: PrivacyLevel?, server: String?) {
+        if let privacy { setupChoices.privacy = privacy }
+        switch server {
+        case "connected": setupChoices.server = .connected
+        case "cantReach": setupChoices.server = .cantReach
+        default: break
+        }
+        setupStep = step
+        gate = .setup
+    }
+    #endif
+
+    func startTour(at: Int = 0) { tourStep = min(max(at, 0), Tour.steps.count - 1) }
+
+    func tourNext() {
+        guard let i = tourStep else { return }
+        tourStep = Tour.isLast(i) ? nil : i + 1
+    }
+
+    func tourBack() {
+        guard let i = tourStep else { return }
+        tourStep = i == 0 ? nil : i - 1
+    }
+
+    func endTour() { tourStep = nil }
+
+    /// The pretend call the tour's in-call steps show. Nothing is sent.
+    static func tourDemoCall(redAlert: Bool) -> CallUiState {
+        var s = CallUiState()
+        s.phase = .inCall
+        s.verdict = "SCAM"
+        s.combinedScore = 0.79
+        s.callScores = ["urgency": 0.47, "money": 1, "impersonation": 0.9]
+        s.lines = [
+            ChatLine(seq: 1, isCaller: false, text: "Hello?"),
+            ChatLine(seq: 2, isCaller: true, text: "This is Officer Tan from the police.", flags: ["impersonation"]),
+            ChatLine(seq: 3, isCaller: true, text: "Read me the OTP you just received.", flags: ["money"]),
+        ]
+        s.scamAlert = redAlert
+        return s
     }
 
     /// G.10: ask the model-download service for newer versions; also the Settings button.

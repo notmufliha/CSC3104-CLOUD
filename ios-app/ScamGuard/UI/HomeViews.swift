@@ -14,10 +14,12 @@ struct HomeView: View {
                     .padding(.bottom, 4)
                 Button { ring("scam") } label: { wide("Simulate scam call") }
                     .buttonStyle(.borderedProminent)
+                    .tourTarget(.scamCall)
                 Button { ring("normal") } label: { wide("Simulate normal call") }
                     .buttonStyle(.borderedProminent)
                 Button { path.append(.pick) } label: { wide("Choose a call script…") }
                     .buttonStyle(.bordered)
+                    .tourTarget(.pickScript)
                 Button { path.append(.paste) } label: { wide("Paste text") }
                     .buttonStyle(.bordered)
                 if vm.scripts.isEmpty {

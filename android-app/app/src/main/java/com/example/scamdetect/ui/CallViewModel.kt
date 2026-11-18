@@ -33,10 +33,12 @@ import com.example.scamdetect.logic.Dashboard
 import com.example.scamdetect.logic.FinalReview
 import com.example.scamdetect.logic.ImplicitLabels
 import com.example.scamdetect.logic.Mask
+import com.example.scamdetect.logic.Onboarding
 import com.example.scamdetect.logic.PrivacyLevel
 import com.example.scamdetect.logic.Reasons
 import com.example.scamdetect.logic.Risk
 import com.example.scamdetect.logic.Summary
+import com.example.scamdetect.logic.Tour
 import com.example.scamdetect.ondevice.MobileBert
 import com.example.scamdetect.ondevice.OnDeviceCall
 import com.example.scamdetect.ondevice.OnDeviceScorer
@@ -53,6 +55,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.joinAll
@@ -187,11 +190,6 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     val modelStatus: StateFlow<String> = _modelStatus.asStateFlow()
     private val _modelCheck = MutableStateFlow("")
     val modelCheck: StateFlow<String> = _modelCheck.asStateFlow()
-
-    init {
-        // G.10: on every app start, quietly fetch newer federated models (only model files come down).
-        viewModelScope.launch { checkModelUpdates() }
-    }
 
     /** G.10: ask the model-download service for newer versions; also the Settings button. */
     suspend fun checkModelUpdates(): String {
@@ -759,6 +757,124 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         _helpImprove.value = on
         if (!on) viewModelScope.launch { callHistory.forgetLabelSentences() }
     }
+
+    // ---------------------------------------------------------------- first-launch setup + guided tour
+    // Last in the class: the gate is decided in an init block, after every other property is set up.
+
+
+    /** What the app shows: nothing yet (checking for old history), the setup, or the app itself. */
+    enum class Gate { LOADING, SETUP, APP }
+
+    private val _gate = MutableStateFlow(Gate.LOADING)
+    val gate: StateFlow<Gate> = _gate.asStateFlow()
+
+    /** The setup screen showing, and the choices made so far. Kept here so a rotation keeps them. */
+    private val _setupStep = MutableStateFlow(Onboarding.Step.WELCOME)
+    val setupStep: StateFlow<Onboarding.Step> = _setupStep.asStateFlow()
+    private val _setupChoices = MutableStateFlow(Onboarding.defaults(prefs.gatewayUrl))
+    val setupChoices: StateFlow<Onboarding.Choices> = _setupChoices.asStateFlow()
+    /** true = opened from Settings ("Run setup again"): leaving it goes back to the app without saving. */
+    var setupIsReplay = false
+        private set
+
+    /** The tour step showing (0-6), null = no tour. */
+    private val _tourStep = MutableStateFlow<Int?>(null)
+    val tourStep: StateFlow<Int?> = _tourStep.asStateFlow()
+
+    init {
+        val completed = prefs.onboardingCompleted
+        if (completed != null || prefs.hasAnySetting()) {
+            decideGate(Onboarding.atLaunch(completed, prefs.hasAnySetting(), hasHistory = false))
+        } else {
+            // No flag and no settings: a new install, unless an older version left call history.
+            viewModelScope.launch {
+                val hasHistory = callHistory.calls.first().isNotEmpty()
+                decideGate(Onboarding.atLaunch(null, false, hasHistory))
+            }
+        }
+    }
+
+    private fun decideGate(launch: Onboarding.Launch) {
+        when (launch) {
+            Onboarding.Launch.SHOW_SETUP -> _gate.value = Gate.SETUP
+            Onboarding.Launch.EXISTING_USER -> { Onboarding.markCompleted(prefs); openApp() }
+            Onboarding.Launch.DONE -> openApp()
+        }
+    }
+
+    /** The app opens: now (not during the setup) it may use the network. */
+    private fun openApp() {
+        _gate.value = Gate.APP
+        // G.10: on every app start, quietly fetch newer federated models (only model files come down). Not at
+        // level 3, which makes no network traffic at all.
+        if (prefs.privacyLevel != PrivacyLevel.ON_DEVICE) viewModelScope.launch { checkModelUpdates() }
+    }
+
+    fun setSetupStep(step: Onboarding.Step) { _setupStep.value = step }
+
+    fun updateSetup(change: (Onboarding.Choices) -> Onboarding.Choices) { _setupChoices.value = change(_setupChoices.value) }
+
+    /** Setup's Test connection: tries the typed address without saving it. */
+    suspend fun testSetupServer(url: String): Boolean = checkConnection(url).startsWith("Connected")
+
+    /** Skip, "Show me around" or "Skip tour": saves the choices (Skip = what is picked so far, defaults for the rest). */
+    fun finishSetup(startTour: Boolean) {
+        val c = _setupChoices.value
+        val urlBefore = prefs.gatewayUrl
+        Onboarding.apply(c, prefs)
+        _privacyLevel.value = prefs.privacyLevel
+        _gatewayUrl.value = prefs.gatewayUrl
+        if (prefs.gatewayUrl != urlBefore) _connection.value = null
+        _saveSentence.value = c.saveSentence
+        _helpImprove.value = c.helpImprove
+        if (!c.saveSentence) viewModelScope.launch { callHistory.forgetSentences() }
+        if (!c.helpImprove) viewModelScope.launch { callHistory.forgetLabelSentences() }
+        if (c.privacy.scoresOnPhone) preloadModels()
+        val wasReplay = setupIsReplay
+        setupIsReplay = false
+        if (wasReplay) _gate.value = Gate.APP else openApp()
+        _tourStep.value = if (startTour) 0 else null
+    }
+
+    /** Back on the first screen of "Run setup again", confirmed: nothing is saved. */
+    fun leaveSetup() {
+        setupIsReplay = false
+        _gate.value = Gate.APP
+    }
+
+    /** Help & about: "Run setup again", starting from the current settings. */
+    fun runSetupAgain() {
+        _setupChoices.value = Onboarding.fromSaved(prefs)
+        _setupStep.value = Onboarding.Step.WELCOME
+        setupIsReplay = true
+        _tourStep.value = null
+        _gate.value = Gate.SETUP
+    }
+
+    /** Debug builds only: forget that the setup was done and show it as on a first launch. */
+    fun resetOnboarding() {
+        if (!isDebugBuild) return
+        Onboarding.reset(prefs)
+        _setupChoices.value = Onboarding.defaults(prefs.gatewayUrl)
+        _setupStep.value = Onboarding.Step.WELCOME
+        setupIsReplay = false
+        _tourStep.value = null
+        _gate.value = Gate.SETUP
+    }
+
+    fun startTour(at: Int = 0) { _tourStep.value = at.coerceIn(0, Tour.steps.size - 1) }
+
+    fun tourNext() {
+        val i = _tourStep.value ?: return
+        _tourStep.value = if (Tour.isLast(i)) null else i + 1
+    }
+
+    fun tourBack() {
+        val i = _tourStep.value ?: return
+        _tourStep.value = if (i == 0) null else i - 1
+    }
+
+    fun endTour() { _tourStep.value = null }
 
     companion object {
         private const val DEFAULT_DELAY_MS = 1_500L

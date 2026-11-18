@@ -47,10 +47,22 @@ struct IncomingCallView: View {
 /// 4.4 In-call screen: risk bar, chips, banner, live transcript. 4.5 red alert pops over the top.
 struct InCallView: View {
     @Environment(CallViewModel.self) private var vm
+
+    var body: some View {
+        InCallContent(state: vm.state, onHangUp: { vm.hangUp() }, onDiscard: { vm.discard() })
+    }
+}
+
+/// The in-call screen itself, for a real call or the tour's pretend one (demo: nothing can be tapped).
+struct InCallContent: View {
+    let state: CallUiState
+    let onHangUp: () -> Void
+    let onDiscard: () -> Void
+    var demo = false
     @State private var alertDismissed = false
 
     var body: some View {
-        let s = vm.state
+        let s = state
         ZStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
@@ -58,21 +70,21 @@ struct InCallView: View {
                     Spacer()
                     PrivacyBadge(level: s.privacyLevel)
                 }
-                RiskBar(level: s.level, score: s.combinedScore)
-                SignalChips(lit: s.lit)
+                RiskBar(level: s.level, score: s.combinedScore).tourTarget(.riskBar)
+                SignalChips(lit: s.lit).tourTarget(.warningChips)
                 // The yellow / grey banner lives in the layout; the red one is the pop-up until it is dismissed.
                 if s.level != .red || alertDismissed || !s.scamAlert, let b = s.banner {
                     InfoBanner(text: b, color: Theme.levelColor(s.level))
                 }
                 Transcript(lines: s.lines)
-                Button { vm.hangUp() } label: {
+                Button(action: onHangUp) {
                     Label("Hang up", systemImage: "phone.down.fill")
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Theme.scamRed)
                 // iOS has no Back button: Android's Back during a call = discard (not saved, nothing kept).
-                Button { vm.discard() } label: {
+                Button(action: onDiscard) {
                     Text("Discard call").frame(maxWidth: .infinity, minHeight: 30)
                 }
                 .buttonStyle(.bordered)
@@ -83,13 +95,15 @@ struct InCallView: View {
             .background(Color(.systemBackground))
 
             if s.scamAlert && !alertDismissed {
-                ScamAlert(text: s.banner ?? "Likely scam.", onHangUp: { vm.hangUp() }, onDismiss: {
+                ScamAlert(text: s.banner ?? "Likely scam.", onHangUp: onHangUp, onDismiss: {
                     withAnimation { alertDismissed = true }
                 })
+                .tourTarget(.redWarning)
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .animation(.easeOut(duration: 0.3), value: s.scamAlert)
+        .allowsHitTesting(!demo)
     }
 }
 

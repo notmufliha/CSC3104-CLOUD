@@ -194,9 +194,10 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: Space.gap) {
                 if calls.isEmpty {
                     EmptyState(text: "No calls yet. Try a demo call from Home.", goHome: goHome)
+                        .tourTarget(.dashboardHero)
                 } else {
                     PeriodSwitcher(periodRaw: $periodRaw)
-                    hero(stats, period)
+                    hero(stats, period).tourTarget(.dashboardHero)
                     recent(calls)
                     topWarning(stats, period)
                     NavigationLink(value: DashboardRoute.insights) {

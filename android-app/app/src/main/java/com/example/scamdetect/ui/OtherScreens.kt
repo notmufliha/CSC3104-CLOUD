@@ -60,6 +60,7 @@ import com.example.scamdetect.data.CallScript
 import com.example.scamdetect.data.ReportLine
 import com.example.scamdetect.logic.PrivacyLevel
 import com.example.scamdetect.logic.Risk
+import com.example.scamdetect.logic.Tour
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -95,9 +96,9 @@ fun HomeScreen(
     Page("ScamGuard") {
         Text("Simulate a call and watch the scam check work live.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         val wide = Modifier.fillMaxWidth().height(52.dp)
-        Button(onClick = onScamCall, modifier = wide) { Text("Simulate scam call") }
+        Button(onClick = onScamCall, modifier = wide.tourTarget(Tour.Target.SCAM_CALL)) { Text("Simulate scam call") }
         Button(onClick = onNormalCall, modifier = wide) { Text("Simulate normal call") }
-        OutlinedButton(onClick = onPickScript, modifier = wide) { Text("Choose a call script…") }
+        OutlinedButton(onClick = onPickScript, modifier = wide.tourTarget(Tour.Target.PICK_SCRIPT)) { Text("Choose a call script…") }
         OutlinedButton(onClick = onPasteText, modifier = wide) { Text("Paste text") }
     }
 }
