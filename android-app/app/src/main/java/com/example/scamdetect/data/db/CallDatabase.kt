@@ -131,6 +131,10 @@ interface CallDao {
     @Query("SELECT * FROM ScorePoint WHERE callId = :callId ORDER BY seq")
     fun points(callId: String): Flow<List<ScorePoint>>
 
+    /** Every call's chart points (dashboard sparklines). */
+    @Query("SELECT * FROM ScorePoint ORDER BY callId, seq")
+    fun allPoints(): Flow<List<ScorePoint>>
+
     /** Every call; their points go with them (ON DELETE CASCADE). Use CallDatabase.deleteHistory for the button. */
     @Query("DELETE FROM CallRecord")
     suspend fun deleteAll()
@@ -156,6 +160,10 @@ interface LabelDao {
 
     @Query("SELECT COUNT(*) FROM ImplicitLabel")
     fun labelCount(): Flow<Int>
+
+    /** Every label, for the dashboard ("You marked N warnings as fine"). */
+    @Query("SELECT * FROM ImplicitLabel ORDER BY time")
+    fun labelsFlow(): Flow<List<ImplicitLabel>>
 
     @Query("SELECT * FROM LabelSentence WHERE callId = :callId ORDER BY seq")
     suspend fun sentences(callId: String): List<LabelSentence>

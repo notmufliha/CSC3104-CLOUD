@@ -1,298 +1,567 @@
 package com.example.scamdetect.ui
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.scamdetect.data.db.CallRecord
+import com.example.scamdetect.data.db.ImplicitLabel
 import com.example.scamdetect.data.db.ScorePoint
 import com.example.scamdetect.logic.Dashboard
+import com.example.scamdetect.logic.DashboardStats
+import com.example.scamdetect.logic.DashboardStats.Period
+import com.example.scamdetect.logic.PlainWords
+import com.example.scamdetect.logic.Tour
 import com.example.scamdetect.logic.PrivacyLevel
 import com.example.scamdetect.logic.Reasons
 import com.example.scamdetect.logic.Risk
-import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 
-// Workstream B.7: the user dashboard. Everything here comes from the Room database on this phone; nothing is
-// uploaded. Replaces the old History screen.
+// Dashboard (one question: "Am I safe, and what happened recently?"), Insights (the detailed charts), History (every
+// call) and Call detail. Everything comes from the database on this phone; nothing is uploaded. Same layout, wording
+// and numbers as ios-app/ScamGuard/UI/DashboardViews.swift.
 
-private fun dateFormat() = SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault())
+/** Shared spacing, so every screen uses the same rhythm (the same values on iOS). */
+object Space {
+    val card = 20.dp
+    val gap = 16.dp
+    val corner = 24.dp
+}
+
+private fun dayLabel(daysAgo: Int): String = when (daysAgo) {
+    0 -> "Today"
+    1 -> "Yesterday"
+    else -> LocalDate.now().minusDays(daysAgo.toLong()).format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()))
+}
+
+private fun clock(ms: Long) = java.text.SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(ms))
+private fun date(ms: Long) = java.text.SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(ms))
+
+/** "12 min ago", "Yesterday", or the date for older calls. */
+fun whenText(endedAt: Long, now: Long = System.currentTimeMillis()): String {
+    val d = DashboardStats.daysAgo(endedAt, now, ZoneId.systemDefault())
+    return PlainWords.timeAgo(endedAt, now, d) ?: date(endedAt)
+}
+
+fun verdictWord(verdict: String) = PlainWords.verdict(verdict)
 
 @Composable
-private fun VerdictDot(verdict: String, size: Int = 12) {
+fun VerdictDot(verdict: String, size: Int = 14) {
     Box(Modifier.size(size.dp).background(levelColor(Dashboard.level(verdict)), CircleShape))
 }
+
+/** The one card style used everywhere. */
+@Composable
+fun AppCard(
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.surfaceContainer,
+    onClick: (() -> Unit)? = null,
+    padding: Dp = Space.card,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(Space.corner),
+        color = color,
+        modifier = modifier.fillMaxWidth().let { if (onClick != null) it.clickable(role = Role.Button, onClick = onClick) else it },
+    ) {
+        Column(Modifier.padding(padding), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+    }
+}
+
+/** The ⓘ sheet: 1-2 sentences. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun InfoSheet(title: String, text: String, onDismiss: () -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text(text, style = MaterialTheme.typography.bodyLarge)
+            TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End).heightIn(min = 48.dp)) { Text("OK") }
+        }
+    }
+}
+
+/** Pill-shaped segmented control (the same look as iOS's segmented picker). */
+@Composable
+fun PeriodSwitcher(period: Period, onPick: (Period) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape).padding(4.dp)
+            .selectableGroup(),
+    ) {
+        Period.entries.forEach { p ->
+            val selected = p == period
+            Box(
+                Modifier.weight(1f).heightIn(min = 48.dp)
+                    .background(if (selected) MaterialTheme.colorScheme.surfaceBright else Color.Transparent, CircleShape)
+                    .selectable(selected = selected, role = Role.Tab) { onPick(p) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(p.label, style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
+            }
+        }
+    }
+}
+
+/** A pill-shaped filter chip (the same look as iOS): filled purple when selected. */
+@Composable
+fun PillChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.heightIn(min = 48.dp)
+            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer, CircleShape)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 18.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge,
+            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+@Composable
+fun EmptyState(text: String, onGoHome: (() -> Unit)? = null) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 48.dp), horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Box(Modifier.size(104.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(Icons.Filled.Phone, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(52.dp))
+        }
+        Text(text, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        if (onGoHome != null) Button(onClick = onGoHome, modifier = Modifier.heightIn(min = 52.dp)) {
+            Text("Go to Home", style = MaterialTheme.typography.bodyLarge)
+        }
+    }
+}
+
+/** One call on one line: dot, Safe / Be careful / Scam, optional sparkline, when, chevron. At least 56 dp tall. */
+@Composable
+fun CallListRow(c: CallRecord, spark: List<Float>?, onClick: () -> Unit) {
+    // Very large text: no sparkline and no fixed time column, so the row never grows wider than the screen.
+    val big = androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.5f
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = Space.card, vertical = 8.dp)
+            .semantics(mergeDescendants = true) { contentDescription = "${verdictWord(c.finalVerdict)}, ${whenText(c.endedAt)}" },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        VerdictDot(c.finalVerdict, 16)
+        if (big) {
+            Column(Modifier.weight(1f)) {
+                Text(verdictWord(c.finalVerdict), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(whenText(c.endedAt), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            Text(verdictWord(c.finalVerdict), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
+            if (spark != null) Sparkline(spark)
+            Text(whenText(c.endedAt), Modifier.widthIn(min = 96.dp), maxLines = 1, style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End)
+        }
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** An icon in a soft circle of its colour. */
+@Composable
+private fun IconBadge(icon: ImageVector, color: Color) {
+    Box(Modifier.size(48.dp).background(color.copy(alpha = 0.16f), CircleShape), contentAlignment = Alignment.Center) {
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(26.dp))
+    }
+}
+
+private fun resultSlices(s: DashboardStats.Stats) = listOf(
+    Slice("Safe", s.safe, SafeGreen), Slice("Be careful", s.unsure, WarnYellow), Slice("Scam", s.scam, ScamRed),
+)
+
+// ---------------------------------------------------------------- main dashboard (4 cards)
 
 @Composable
 fun DashboardScreen(
     calls: List<CallRecord>,
-    saveSentence: Boolean,
-    onSaveSentence: (Boolean) -> Unit,
-    onDeleteHistory: () -> Unit,
+    labels: List<ImplicitLabel>,
+    period: Period,
+    onPeriod: (Period) -> Unit,
     onOpen: (String) -> Unit,
-    onBack: (() -> Unit)? = null,   // null: opened from the tab bar, so no Back link
-    helpImprove: Boolean = false,
-    onHelpImprove: (Boolean) -> Unit = {},
-    labelCount: Int = 0,
+    onInsights: () -> Unit,
+    onHistory: () -> Unit,
+    onGoHome: () -> Unit,
 ) {
-    val fmt = remember { dateFormat() }
-    var confirmDelete by remember { mutableStateOf(false) }
-    if (confirmDelete) {
-        AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            title = { Text("Delete my history?") },
-            text = {
-                Text(
-                    "Deletes every saved call on this phone: verdicts, charts, saved sentences, and the labels kept " +
-                        "for improving detection. This can't be undone."
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = { confirmDelete = false; onDeleteHistory() },
-                    colors = ButtonDefaults.buttonColors(containerColor = ScamRed, contentColor = Color.White),
-                ) { Text("Delete") }
-            },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
-        )
+    val now = System.currentTimeMillis()
+    val stats = remember(calls, labels, period) { DashboardStats.compute(calls, labels, period, now, ZoneId.systemDefault()) }
+    Page("Dashboard") {
+        if (calls.isEmpty()) {
+            Box(Modifier.tourTarget(Tour.Target.DASHBOARD_HERO)) { EmptyState("No calls yet. Try a demo call from Home.", onGoHome) }
+            return@Page
+        }
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Space.gap)) {
+            PeriodSwitcher(period, onPeriod)
+            // 1. hero
+            AppCard(Modifier.tourTarget(Tour.Target.DASHBOARD_HERO)) {
+                Text(PlainWords.hero(stats.scam, stats.total, period), style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                    Box(Modifier.size(112.dp)) { DonutChart(resultSlices(stats), "calls", size = 112.dp, compact = true) }
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        resultSlices(stats).forEach { s ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.size(12.dp).background(s.color, CircleShape))
+                                Text("  ${s.value} ${s.label}", style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
+                    }
+                }
+            }
+            // 2. recent calls
+            AppCard(padding = 0.dp) {
+                Row(Modifier.fillMaxWidth().padding(start = Space.card, end = 8.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Recent calls", Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold)
+                    TextButton(onClick = onHistory, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text("See all", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+                Column(Modifier.padding(bottom = 8.dp)) {
+                    calls.take(3).forEachIndexed { i, c ->
+                        if (i > 0) HorizontalDivider(Modifier.padding(start = 50.dp))
+                        CallListRow(c, null) { onOpen(c.id) }
+                    }
+                }
+            }
+            // 3. top warning sign
+            val top = PlainWords.topWarning(stats)
+            AppCard(onClick = onInsights) {
+                Text("Top warning sign", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    if (top != null) IconBadge(Icons.Filled.Warning, ScamRed) else IconBadge(Icons.Filled.CheckCircle, SafeGreen)
+                    Text(top ?: "No warning signs ${PlainWords.periodPhrase(period)}", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            // 4. insights
+            AppCard(color = MaterialTheme.colorScheme.primaryContainer, onClick = onInsights) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    IconBadge(Icons.Filled.Star, MaterialTheme.colorScheme.primary)
+                    Text("See more insights", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                }
+            }
+            Spacer(Modifier.size(8.dp))
+        }
     }
-    Page("Dashboard", onBack) {
-        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            item {
-                val top = Dashboard.topReasons(calls)
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Most common warning reasons", fontWeight = FontWeight.SemiBold)
-                        if (top.isEmpty()) Text("No warnings yet.", style = MaterialTheme.typography.bodySmall)
-                        top.forEach { (reason, n) ->
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(reason, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                                Text("$n×", fontWeight = FontWeight.SemiBold)
-                            }
-                        }
-                    }
-                }
+}
+
+// ---------------------------------------------------------------- Insights
+
+/** One Insights section: header + ⓘ, the takeaway sentence, then the chart in a card. */
+@Composable
+private fun InsightSection(title: String, takeaway: String, info: String, content: @Composable ColumnScope.() -> Unit) {
+    var showInfo by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            IconButton(onClick = { showInfo = true }) {
+                Icon(Icons.Filled.Info, contentDescription = "About $title", tint = MaterialTheme.colorScheme.primary)
             }
-            item { Text("Past calls (${calls.size})", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp)) }
-            if (calls.isEmpty()) item { Text("No calls yet.") }
-            // G.13: each row also says which privacy level the call ran at
-            items(calls, key = { it.id }) { c ->
-                Card(Modifier.fillMaxWidth().clickable { onOpen(c.id) }) {
-                    Row(
-                        Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        VerdictDot(c.finalVerdict)
-                        Column(Modifier.weight(1f)) {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(c.finalVerdict, color = levelColor(Dashboard.level(c.finalVerdict)), fontWeight = FontWeight.Bold)
-                                Text(fmt.format(Date(c.endedAt)), style = MaterialTheme.typography.labelMedium)
-                            }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(Reasons.display(c), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                                Text(
-                                    PrivacyLevel.badgeFor(c.privacyLevel),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(start = 8.dp),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            item {
-                Column(Modifier.padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    HorizontalDivider()
-                    Text("Privacy", fontWeight = FontWeight.SemiBold)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Save the riskiest sentence")
-                            Text(
-                                "Keeps the one caller line that scored highest in calls that ended with a warning. " +
-                                    "Off: no words from your calls are kept, only verdicts and scores.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(checked = saveSentence, onCheckedChange = onSaveSentence)
-                    }
-                    // G.13: opt-in, off by default
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Help improve detection (federated learning)")
-                            Text(
-                                "The app keeps simple labels on this phone (for example, you hung up right after a " +
-                                    "warning, or tapped \"This was fine\"). On: the caller's lines of those calls are kept " +
-                                    "too, with numbers and names removed, so a future update could learn from them on " +
-                                    "this phone. Nothing is uploaded. Off: labels only, no words.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                "Labels kept on this phone: $labelCount",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(checked = helpImprove, onCheckedChange = onHelpImprove)
-                    }
-                    Text(
-                        "Your history stays on this phone. Nothing on this screen is uploaded.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    OutlinedButton(
-                        onClick = { confirmDelete = true },
-                        enabled = calls.isNotEmpty() || labelCount > 0,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Delete my history") }
-                }
+        }
+        Text(takeaway, style = MaterialTheme.typography.bodyLarge)
+        AppCard(content = content)
+    }
+    if (showInfo) InfoSheet(title, info) { showInfo = false }
+}
+
+@Composable
+private fun AxisEnds(left: String, right: String) {
+    Row(Modifier.fillMaxWidth()) {
+        Text(left, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(right, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** A legend without counts (colour key only). */
+@Composable
+private fun Key(slices: List<Slice>) {
+    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        slices.forEach { s ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(12.dp).background(s.color, CircleShape))
+                Text("  ${s.label}", style = MaterialTheme.typography.bodyLarge)
             }
         }
     }
+}
+
+@Composable
+fun InsightsScreen(
+    calls: List<CallRecord>,
+    labels: List<ImplicitLabel>,
+    period: Period,
+    onPeriod: (Period) -> Unit,
+    onBack: () -> Unit,
+) {
+    val now = System.currentTimeMillis()
+    val s = remember(calls, labels, period) { DashboardStats.compute(calls, labels, period, now, ZoneId.systemDefault()) }
+    Page("Insights", onBack) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(28.dp)) {
+            PeriodSwitcher(period, onPeriod)
+            if (s.isEmpty) {
+                EmptyState("No calls ${PlainWords.periodPhrase(period)}.")
+                return@Column
+            }
+            val first = dayLabel(s.buckets.first().daysAgo)
+            val last = if (s.weekly) "This week" else "Today"
+            InsightSection("Calls over time", PlainWords.overTime(s),
+                "Each bar is one ${if (s.weekly) "week" else "day"}. The colours show safe calls, calls that needed care, and scams.") {
+                StackedBarChart(s.buckets.map {
+                    listOf(Slice("Safe", it.safe, SafeGreen), Slice("Be careful", it.unsure, WarnYellow),
+                        Slice("Scam", it.scam, ScamRed), Slice("Not checked", it.notChecked, NeutralGrey))
+                }, "Calls over time: " + s.buckets.joinToString { "${dayLabel(it.daysAgo)} ${it.total}" })
+                AxisEnds(first, last)
+                Key(resultSlices(s))
+            }
+            if (s.reasons.isNotEmpty()) InsightSection("Why calls were flagged", PlainWords.reasons(s),
+                "The main reason behind each warning or scam, most common first.") {
+                HorizontalBars(s.reasons, ScamRed, "Why calls were flagged: " + s.reasons.joinToString { "${it.first} ${it.second}" })
+            }
+            InsightSection("Warning signs heard", PlainWords.signals(s),
+                "How many calls had each kind of warning sign. One call can have more than one.") {
+                val rows = s.signals.map { PlainWords.signalName(it.first) to it.second }
+                HorizontalBars(rows, MaterialTheme.colorScheme.primary, "Warning signs heard: " + rows.joinToString { "${it.first} ${it.second}" })
+            }
+            InsightSection("Risk trend", PlainWords.trend(s),
+                "The average risk of your calls over time. Above the yellow line needs care; above the red line looks like a scam.") {
+                RiskLineChart(s.buckets.map { it.avgRisk?.toFloat() }, "Average risk: " +
+                    s.buckets.joinToString { "${dayLabel(it.daysAgo)} ${it.avgRisk?.let { v -> "%.2f".format(v) } ?: "none"}" })
+                AxisEnds(first, last)
+            }
+            InsightSection("Time of day", PlainWords.hours(s), "When the calls that needed care, or were scams, came in.") {
+                HourChart(s.riskyHours, ScamRed, "Risky calls by hour: " +
+                    s.riskyHours.withIndex().filter { it.value > 0 }.joinToString { "${it.index}:00 ${it.value}" })
+            }
+            InsightSection("Double-checked warnings", PlainWords.doubleCheck(s),
+                "When a call ends, ScamGuard checks the whole call once more. Some warnings turn out safe.") {
+                SegmentedBar(listOf(Slice("Confirmed", s.confirmed, ScamRed), Slice("Turned out safe", s.calmed, SafeGreen)),
+                    "Double-checked warnings: ${s.confirmed} confirmed, ${s.calmed} turned out safe")
+            }
+            InsightSection("Checked where", PlainWords.where(s),
+                "Cloud: checked by the ScamGuard server. Hybrid: on this phone, with server help. On-device: only on this phone.") {
+                val slices = s.privacy.map { (id, n) -> Slice(PrivacyLevel.badgeFor(id), n, privacyColor(id)) }
+                SegmentedBar(slices, "Checked where: " + slices.joinToString { "${it.label} ${it.value}" })
+            }
+            InsightSection("Your answers", PlainWords.answers(s), "What you told ScamGuard after calls. These stay on this phone.") {
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    BigNumber(Modifier.weight(1f), "${s.markedFine}", "Marked as fine", SafeGreen)
+                    BigNumber(Modifier.weight(1f), "${s.hungUpAfterWarning}", "Hung up after a warning", ScamRed)
+                }
+            }
+            if (s.lengthVsRisk.isNotEmpty()) InsightSection("Call length", PlainWords.length(s),
+                "Each dot is one call: further right is longer, higher up is riskier.") {
+                ScatterChart(s.lengthVsRisk, "Call length and risk: ${s.lengthVsRisk.size} calls")
+                AxisEnds("Short", "Long")
+            }
+            Spacer(Modifier.size(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun BigNumber(modifier: Modifier, value: String, label: String, color: Color) {
+    Column(modifier.semantics(mergeDescendants = true) {}) {
+        Text(value, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, color = color)
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+// ---------------------------------------------------------------- History
+
+@Composable
+fun HistoryScreen(calls: List<CallRecord>, points: List<ScorePoint>, onOpen: (String) -> Unit, onBack: () -> Unit, onGoHome: () -> Unit) {
+    var filter by rememberSaveable { mutableStateOf<String?>(null) }   // null = all, else the saved result
+    val byCall = remember(points) { points.groupBy { it.callId } }
+    val now = System.currentTimeMillis()
+    val zone = ZoneId.systemDefault()
+    val shown = calls.filter { filter == null || it.finalVerdict == filter }
+    val groups = shown.groupBy { PlainWords.historyGroup(DashboardStats.daysAgo(it.endedAt, now, zone)) }
+    Page("History", onBack) {
+        if (calls.isEmpty()) {
+            Box(Modifier.tourTarget(Tour.Target.DASHBOARD_HERO)) { EmptyState("No calls yet. Try a demo call from Home.", onGoHome) }
+            return@Page
+        }
+        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(listOf(null to "All", "SCAM" to "Scam", "UNSURE" to "Be careful", "SAFE" to "Safe")) { (v, label) ->
+                        PillChip(label, filter == v) { filter = v }
+                    }
+                }
+            }
+            if (shown.isEmpty()) item {
+                Text("No calls here.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            listOf("Today", "This week", "Earlier").forEach { g ->
+                val list = groups[g] ?: return@forEach
+                item(key = "h-$g") {
+                    Text(g, Modifier.padding(top = 8.dp).semantics { heading() }, style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold)
+                }
+                item(key = "c-$g") {
+                    AppCard(padding = 0.dp) {
+                        Column(Modifier.padding(vertical = 4.dp)) {
+                            list.forEachIndexed { i, c ->
+                                if (i > 0) HorizontalDivider(Modifier.padding(start = 50.dp))
+                                CallListRow(c, byCall[c.id].orEmpty().sortedBy { it.seq }.mapNotNull { it.combined }) { onOpen(c.id) }
+                            }
+                        }
+                    }
+                }
+            }
+            item { Spacer(Modifier.size(8.dp)) }
+        }
+    }
+}
+
+// ---------------------------------------------------------------- Call detail
+
+private fun reviewWords(review: String) = when (review) {
+    "bert" -> "Checked again at the end"
+    "fallback" -> "Final check not available"
+    "unavailable" -> "Server not reached at the end"
+    "on_device" -> "Checked on this phone"
+    "migrated" -> "From the old history"
+    else -> review
 }
 
 @Composable
 fun CallDetailScreen(call: CallRecord?, points: List<ScorePoint>, onBack: () -> Unit) {
-    Page("Call details", onBack) {
+    var details by rememberSaveable { mutableStateOf(false) }
+    Page("", onBack) {
         if (call == null) {
-            Text("This call is no longer saved.")
+            Text("This call is no longer saved.", style = MaterialTheme.typography.bodyLarge)
             return@Page
         }
-        val fmt = remember { dateFormat() }
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                VerdictDot(call.finalVerdict, 16)
-                Text(
-                    call.finalVerdict,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = levelColor(Dashboard.level(call.finalVerdict)),
-                )
+        val sorted = points.sortedBy { it.seq }
+        val riskiest = Dashboard.riskiestSeq(sorted)?.let { s -> sorted.indexOfFirst { it.seq == s } }?.takeIf { it >= 0 }
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Space.gap)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                VerdictDot(call.finalVerdict, 26)
+                Text(verdictWord(call.finalVerdict), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold,
+                    color = levelColor(Dashboard.level(call.finalVerdict)), modifier = Modifier.semantics { heading() })
             }
-            Text(Reasons.display(call))
-            val seconds = ((call.endedAt - call.startedAt) / 1000).coerceAtLeast(0)
-            Text(
-                fmt.format(Date(call.endedAt)) + (if (seconds > 0) " · ${seconds / 60} min ${seconds % 60} s" else "") +
-                    (call.liveVerdict?.let { " · during the call: $it" } ?: "") + " · " + reviewLabel(call.review) +
-                    " · privacy: " + PrivacyLevel.badgeFor(call.privacyLevel),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            Text("Risk over time", fontWeight = FontWeight.SemiBold)
-            RiskChart(points)
-
-            Text("Signals that fired", fontWeight = FontWeight.SemiBold)
-            if (call.signalsFired.isEmpty()) Text("None.", style = MaterialTheme.typography.bodyMedium)
-            else SignalChips(call.signalsFired)
-
-            call.riskiestSentence?.let {
-                Text("Riskiest sentence", fontWeight = FontWeight.SemiBold)
-                InfoBanner("“$it”", levelColor(Dashboard.level(call.finalVerdict)))
-            }
-        }
-    }
-}
-
-private fun reviewLabel(review: String) = when (review) {
-    "bert" -> "final review"
-    "fallback" -> "final review unavailable"
-    "unavailable" -> "server not reached at the end"
-    "on_device" -> "checked on this phone"
-    "migrated" -> "from the old history"
-    else -> review
-}
-
-/**
- * The call's combined score after each caller line, drawn with Compose Canvas (no chart library). Dashed lines at
- * the aggregator's UNSURE (0.45) and SCAM (0.6) thresholds; each point is coloured by the level it reached.
- */
-@Composable
-fun RiskChart(points: List<ScorePoint>) {
-    val data = Dashboard.chart(points)
-    if (data.isEmpty()) {
-        Text("No scores were saved for this call.", style = MaterialTheme.typography.bodyMedium)
-        return
-    }
-    val maxT = data.maxOf { it.first }.coerceAtLeast(1f)
-    val axis = MaterialTheme.colorScheme.outline
-    val line = MaterialTheme.colorScheme.onSurface
-    val description = "Risk over time: ${data.size} points, highest ${"%.2f".format(data.maxOf { it.second })}"
-    Column {
-        Canvas(Modifier.fillMaxWidth().height(180.dp).semantics { contentDescription = description }) {
-            val w = size.width
-            val h = size.height
-            val pad = 12f   // keeps the dots at the edges (first line, score 1.0) fully inside the chart
-            fun x(t: Float) = pad + t / maxT * (w - 2 * pad)
-            fun y(v: Float) = h - pad - v * (h - 2 * pad)
-            // axes + thresholds
-            drawLine(axis, Offset(0f, h), Offset(w, h), strokeWidth = 2f)
-            drawLine(axis, Offset(0f, 0f), Offset(0f, h), strokeWidth = 2f)
-            val dash = PathEffect.dashPathEffect(floatArrayOf(12f, 10f))
-            drawLine(WarnYellow, Offset(0f, y(Dashboard.UNSURE_LINE)), Offset(w, y(Dashboard.UNSURE_LINE)), 3f, pathEffect = dash)
-            drawLine(ScamRed, Offset(0f, y(Dashboard.SCAM_LINE)), Offset(w, y(Dashboard.SCAM_LINE)), 3f, pathEffect = dash)
-            // the score line
-            val path = Path()
-            data.forEachIndexed { i, (t, v) -> if (i == 0) path.moveTo(x(t), y(v)) else path.lineTo(x(t), y(v)) }
-            drawPath(path, line, style = Stroke(width = 4f))
-            data.forEach { (t, v) ->
-                val c = when {
-                    v >= Dashboard.SCAM_LINE -> ScamRed
-                    v >= Dashboard.UNSURE_LINE -> WarnYellow
-                    else -> SafeGreen
+            Text(DashboardStats.whatHappened(call.finalVerdict, call.liveVerdict, Reasons.display(call)), style = MaterialTheme.typography.titleLarge)
+            Text("${whenText(call.endedAt)} at ${clock(call.endedAt)}", style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            AppCard {
+                Text("Risk during the call", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                if (sorted.isEmpty()) Text("No scores were saved for this call.", style = MaterialTheme.typography.bodyLarge)
+                else {
+                    RiskLineChart(sorted.map { it.combined },
+                        "Risk during the call: ${sorted.size} points, highest ${"%.2f".format(sorted.mapNotNull { it.combined }.maxOrNull() ?: 0f)}",
+                        marker = riskiest)
+                    if (riskiest != null) ChartCaption("The circle marks the riskiest moment")
                 }
-                drawCircle(c, radius = 9f, center = Offset(x(t), y(v)))
+            }
+            call.riskiestSentence?.let {
+                AppCard {
+                    Text("Riskiest sentence", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Text("“$it”", style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+            AppCard(padding = 0.dp) {
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(role = Role.Button) { details = !details }.padding(horizontal = Space.card),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Details", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Icon(if (details) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                        contentDescription = if (details) "Hide details" else "Show details")
+                }
+                AnimatedVisibility(details) {
+                    Column(Modifier.padding(start = Space.card, end = Space.card, bottom = Space.card), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        DetailRow("Length", DashboardStats.duration(((call.endedAt - call.startedAt) / 1000).coerceAtLeast(0).toInt()))
+                        DetailRow("Checked", PlainWords.checkedWhere(call.privacyLevel).removePrefix("Checked ").replaceFirstChar { it.uppercase() })
+                        DetailRow("During the call", call.liveVerdict?.let { verdictWord(it) } ?: "-")
+                        DetailRow("Final check", reviewWords(call.review))
+                        if (sorted.isNotEmpty()) {
+                            Text("Warning signs (highest score out of 100)", style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            val rows = Risk.SIGNALS.map { s ->
+                                val v = sorted.mapNotNull { p -> when (s) { "urgency" -> p.urgency; "money" -> p.money; else -> p.impersonation } }.maxOrNull() ?: 0f
+                                PlainWords.signalName(s) to (v * 100).toInt()
+                            }
+                            HorizontalBars(rows, MaterialTheme.colorScheme.primary, "Warning signs in this call: " + rows.joinToString { "${it.first} ${it.second}" })
+                        }
+                    }
+                }
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("0 s", style = MaterialTheme.typography.labelSmall)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("- - suspicious", style = MaterialTheme.typography.labelSmall, color = WarnYellow)
-                Text("- - likely scam", style = MaterialTheme.typography.labelSmall, color = ScamRed)
-            }
-            Text("${maxT.toInt()} s", style = MaterialTheme.typography.labelSmall)
-        }
+    }
+}
+
+@Composable
+private fun DetailRow(key: String, value: String) {
+    Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {
+        Text(key, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyLarge)
     }
 }

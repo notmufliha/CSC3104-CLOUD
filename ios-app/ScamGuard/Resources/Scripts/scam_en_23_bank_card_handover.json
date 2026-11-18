@@ -1,0 +1,62 @@
+[
+  {
+    "speaker": "caller",
+    "text": "Good morning, this is the fraud department of DBS Bank. We detected unusual withdrawals on your debit card.",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "Really? I haven't used my card today.",
+    "delay_ms": 6015
+  },
+  {
+    "speaker": "caller",
+    "text": "Your card has been compromised and we must replace it today before more money is taken.",
+    "delay_ms": 2865
+  },
+  {
+    "speaker": "receiver",
+    "text": "Okay, how do I get a new card?",
+    "delay_ms": 5115
+  },
+  {
+    "speaker": "caller",
+    "text": "For your safety, please don't go to the branch, it is being monitored by the syndicate.",
+    "delay_ms": 2550
+  },
+  {
+    "speaker": "receiver",
+    "text": "That's scary. Then what should I do?",
+    "delay_ms": 5115
+  },
+  {
+    "speaker": "caller",
+    "text": "Our officer will come to your home within the hour to collect the old card.",
+    "delay_ms": 2820
+  },
+  {
+    "speaker": "receiver",
+    "text": "Alright, I'll be at home.",
+    "delay_ms": 4575
+  },
+  {
+    "speaker": "caller",
+    "text": "Put the card in an envelope and write your PIN on a note inside, so we can cancel it properly.",
+    "delay_ms": 2325
+  },
+  {
+    "speaker": "receiver",
+    "text": "My PIN too? Is that normal?",
+    "delay_ms": 5430
+  },
+  {
+    "speaker": "caller",
+    "text": "Yes, it's the standard procedure. Also withdraw your cash at the ATM and hand it to the officer for safekeeping.",
+    "delay_ms": 2415
+  },
+  {
+    "speaker": "receiver",
+    "text": "I'll call the bank hotline first, thank you.",
+    "delay_ms": 6240
+  }
+]
