@@ -25,13 +25,20 @@ nonisolated enum Risk {
         signals.filter { (callScores[$0] ?? 0) >= signalOn }
     }
 
+    /// A warning sign's short name.
     static func chipLabel(_ signal: String) -> String {
         switch signal {
-        case "urgency": return "Urgency"
-        case "money": return "Money / OTP"
-        case "impersonation": return "Impersonation"
+        case "urgency": return L.s(.chip_urgency)
+        case "money": return L.s(.chip_money)
+        case "impersonation": return L.s(.chip_impersonation)
         default: return signal
         }
+    }
+
+    /// What the call screen shows for a level. With "Show 'Be careful' warnings" off, a yellow moment is shown as
+    /// "Listening…": only red warnings reach the user (the call is still saved as "Be careful").
+    static func shown(_ level: Level, showCareful: Bool) -> Level {
+        level == .yellow && !showCareful ? .listening : level
     }
 
     /// Strongest reason first: money, then impersonation, then urgency.

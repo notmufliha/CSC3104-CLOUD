@@ -133,7 +133,7 @@ final class CallFlowTests: XCTestCase {
         vm.answer()
         try await finished(vm)
         XCTAssertEqual(vm.state.gatewayError, "Could not reach the server")
-        XCTAssertTrue(vm.state.duringCallLine.hasSuffix("Final review unavailable"))
+        XCTAssertTrue(vm.state.duringCallLine.hasSuffix("Final check not available"))
     }
 
     func testIgnoredAndDuplicateAnswersChangeNothing() async throws {

@@ -23,9 +23,9 @@ nonisolated enum DashboardStats {
         }
         var label: String {
             switch self {
-            case .week: return "7 days"
-            case .month: return "30 days"
-            case .all: return "All"
+            case .week: return L.s(.period_week)
+            case .month: return L.s(.period_month)
+            case .all: return L.s(.period_all)
             }
         }
     }
@@ -157,15 +157,16 @@ nonisolated enum DashboardStats {
         while r.hasSuffix(".") { r.removeLast() }
         if let f = r.first { r = f.lowercased() + r.dropFirst() }
         switch finalVerdict {
-        case "SCAM": return r.isEmpty ? "Likely scam." : "Likely scam: \(r)."
-        case "UNSURE": return r.isEmpty ? "Something seemed off." : "Something seemed off: \(r)."
+        case "SCAM": return r.isEmpty ? L.s(.ds_what_scam) : L.s(.ds_what_scam_r, r)
+        case "UNSURE": return r.isEmpty ? L.s(.ds_what_off) : L.s(.ds_what_off_r, r)
         case "SAFE":
-            return warnings.contains(liveVerdict ?? "") ? "A warning came up, but the final check found the call safe."
-                : "No warning signs in this call."
-        default: return "This call couldn't be checked."
+            return warnings.contains(liveVerdict ?? "") ? L.s(.ds_what_calmed) : L.s(.ds_what_safe)
+        default: return L.s(.ds_what_unchecked)
         }
     }
 
     /// "1 min 24 s" / "45 s".
-    static func duration(_ seconds: Int) -> String { seconds >= 60 ? "\(seconds / 60) min \(seconds % 60) s" : "\(seconds) s" }
+    static func duration(_ seconds: Int) -> String {
+        seconds >= 60 ? L.s(.pw_dur_min, "\(seconds / 60)", "\(seconds % 60)") : L.s(.pw_dur_s, "\(seconds)")
+    }
 }

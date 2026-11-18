@@ -8,7 +8,17 @@ struct Slice: Identifiable {
     let label: String
     let value: Int
     let color: Color
+    /// A risk slice: its legend shows the risk icon (never colour alone).
+    var level: Risk.Level?
     var id: String { label }
+}
+
+/// A legend key: the risk icon for risk slices, else a colour dot.
+struct SliceKey: View {
+    let slice: Slice
+    var body: some View {
+        if let l = slice.level { RiskIcon(level: l, size: 22) } else { Circle().fill(slice.color).frame(width: 14, height: 14) }
+    }
 }
 
 /// Coloured dots with "Label N", wrapping onto more lines.
@@ -19,7 +29,7 @@ struct Legend: View {
         FlowLayout(spacing: 16, lineSpacing: 4) {
             ForEach(slices) { s in
                 HStack(spacing: 8) {
-                    Circle().fill(s.color).frame(width: 12, height: 12)
+                    SliceKey(slice: s)
                     Text("\(s.label) \(s.value)").font(.body)
                 }
             }

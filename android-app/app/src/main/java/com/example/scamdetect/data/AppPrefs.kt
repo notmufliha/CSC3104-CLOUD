@@ -42,6 +42,42 @@ class AppPrefs(context: Context) : Onboarding.Store {
         get() = sp.getInt(KEY_ONBOARDING_VERSION, 0)
         set(value) = sp.edit { putInt(KEY_ONBOARDING_VERSION, value) }
 
+    // ---- elderly-friendly settings (new keys only; the same names and defaults on iOS)
+
+    /** "large" (default) or "xlarge". */
+    override var textSize: String
+        get() = sp.getString(KEY_TEXT_SIZE, TEXT_LARGE) ?: TEXT_LARGE
+        set(value) = sp.edit { putString(KEY_TEXT_SIZE, value) }
+
+    /** "Read warnings aloud". On by default. */
+    override var readAloud: Boolean
+        get() = sp.getBoolean(KEY_READ_ALOUD, true)
+        set(value) = sp.edit { putBoolean(KEY_READ_ALOUD, value) }
+
+    /** "Show 'Be careful' warnings". On by default; off = only red warnings show (calls are still saved). */
+    var showBeCareful: Boolean
+        get() = sp.getBoolean(KEY_SHOW_CAREFUL, true)
+        set(value) = sp.edit { putBoolean(KEY_SHOW_CAREFUL, value) }
+
+    /** Simple mode; null = never written (an install from before Simple mode: it keeps the full app). */
+    override var simpleMode: Boolean?
+        get() = if (sp.contains(KEY_SIMPLE)) sp.getBoolean(KEY_SIMPLE, true) else null
+        set(value) = sp.edit { if (value == null) remove(KEY_SIMPLE) else putBoolean(KEY_SIMPLE, value) }
+
+    /** An existing user was offered Simple mode once (yes or no). */
+    override var simpleModeOffered: Boolean
+        get() = sp.getBoolean(KEY_SIMPLE_OFFERED, false)
+        set(value) = sp.edit { putBoolean(KEY_SIMPLE_OFFERED, value) }
+
+    /** The trusted family contact, on this phone only. Empty = none. */
+    override var familyName: String
+        get() = sp.getString(KEY_FAMILY_NAME, "") ?: ""
+        set(value) = sp.edit { putString(KEY_FAMILY_NAME, value.trim()) }
+
+    override var familyPhone: String
+        get() = sp.getString(KEY_FAMILY_PHONE, "") ?: ""
+        set(value) = sp.edit { putString(KEY_FAMILY_PHONE, value.trim()) }
+
     /** Any setting an earlier version saved, or its old history: then this install is not a first launch. */
     override fun hasAnySetting(): Boolean = EXISTING_KEYS.any { sp.contains(it) }
 
@@ -79,6 +115,15 @@ class AppPrefs(context: Context) : Onboarding.Store {
         private const val KEY_FL_PHONE_ID = "fl_phone_id"
         private const val KEY_ONBOARDING_DONE = "onboarding_completed"
         private const val KEY_ONBOARDING_VERSION = "onboarding_version"
+        private const val KEY_TEXT_SIZE = "text_size"
+        private const val KEY_READ_ALOUD = "read_aloud"
+        private const val KEY_SHOW_CAREFUL = "show_be_careful"
+        private const val KEY_SIMPLE = "simple_mode"
+        private const val KEY_SIMPLE_OFFERED = "simple_mode_offered"
+        private const val KEY_FAMILY_NAME = "family_name"
+        private const val KEY_FAMILY_PHONE = "family_phone"
+        const val TEXT_LARGE = "large"
+        const val TEXT_XLARGE = "xlarge"
         private val EXISTING_KEYS = listOf(KEY_URL, KEY_HISTORY, KEY_SAVE_SENTENCE, KEY_PRIVACY_LEVEL, KEY_HELP_IMPROVE, KEY_FL_PHONE_ID)
     }
 }

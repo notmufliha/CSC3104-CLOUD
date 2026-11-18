@@ -12,6 +12,9 @@ import org.junit.Test
 
 /** Workstream B.7: the dashboard's numbers (no Room, no Android). */
 class DashboardTest {
+    /** The English wording (string resources), as the app shows it in English. */
+    @org.junit.Before fun english() = TestStrings.install()
+
     private fun call(id: String, verdict: String, reason: String) = CallRecord(
         id = id, startedAt = 0, endedAt = 0, finalVerdict = verdict, liveVerdict = verdict, topReason = reason,
         callScore = null, signalsFired = emptyList(), review = "fallback", riskiestSentence = null,

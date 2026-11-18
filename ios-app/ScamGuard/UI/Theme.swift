@@ -35,6 +35,13 @@ nonisolated enum Theme {
     static let muted = dynamic(0x49454F, 0xCAC4D0)
     /// Selected card / icon circle (M3 primaryContainer).
     static let brandContainer = dynamic(0xEADDFF, 0x4F378B)
+    /// Text on brandContainer (M3 onPrimaryContainer).
+    static let onBrandContainer = dynamic(0x21005D, 0xEADDFF)
+    /// Borders (M3 outline / outlineVariant).
+    static let outline = dynamic(0x79747E, 0x938F99)
+    static let outlineVariant = dynamic(0xCAC4D0, 0x49454F)
+    /// Red text that keeps its contrast in dark mode.
+    static let warningInkAdaptive = dynamic(0xB71C1C, 0xFFB4AB)
     /// Text on a brand-coloured fill (M3 onPrimary): white in light mode, dark purple in dark mode.
     static let onBrand = dynamic(0xFFFFFF, 0x381E72)
 
@@ -67,20 +74,39 @@ nonisolated enum Theme {
         }
     }
 
+    /// The level's word for the live call ("Safe so far", "Be careful", "Scam", "Could not check", "Listening…").
     static func levelLabel(_ level: Risk.Level) -> String {
         switch level {
-        case .listening: return "Listening…"
-        case .green: return "Looks safe so far"
-        case .yellow: return "Suspicious"
-        case .red: return "Likely scam"
-        case .error: return "Could not check"
+        case .listening: return L.s(.risk_listening)
+        case .green: return L.s(.risk_safe_so_far)
+        case .yellow: return L.s(.risk_careful)
+        case .red: return L.s(.risk_scam)
+        case .error: return L.s(.risk_could_not_check)
         }
     }
 
+    /// The level's word for a finished call ("Safe", "Be careful", "Scam", "Not checked").
+    static func riskWord(_ level: Risk.Level) -> String {
+        switch level {
+        case .green: return L.s(.risk_safe)
+        case .yellow: return L.s(.risk_careful)
+        case .red: return L.s(.risk_scam)
+        case .error: return L.s(.risk_not_checked)
+        case .listening: return L.s(.risk_listening)
+        }
+    }
+
+    /// Text on a white button / the warning: the risk red, darker, for contrast (7.4:1 on white).
+    static let warningInk = Color(red: 0xB7 / 255, green: 0x1C / 255, blue: 0x1C / 255)
+    /// Dark text on the yellow banner (11:1).
+    static let onYellow = Color(red: 0x1C / 255, green: 0x1B / 255, blue: 0x1F / 255)
+    /// Grey badge fill: dark enough for a white glyph (6.1:1).
+    static let badgeGrey = Color(red: 0x61 / 255, green: 0x61 / 255, blue: 0x61 / 255)
+
     static func kindLabel(_ kind: String) -> String {
         switch kind {
-        case "scam": return "SCAM CALL"
-        case "normal": return "NORMAL CALL"
+        case "scam": return L.s(.pick_kind_scam)
+        case "normal": return L.s(.pick_kind_normal)
         default: return kind.uppercased()
         }
     }
@@ -95,9 +121,9 @@ nonisolated enum Theme {
 
     static func langLabel(_ lang: String?) -> String {
         switch lang {
-        case "en": return "English"
-        case "zh": return "Chinese"
-        default: return "Auto-detect"
+        case "en": return L.s(.pick_english)
+        case "zh": return L.s(.pick_chinese)
+        default: return L.s(.pick_auto)
         }
     }
 }

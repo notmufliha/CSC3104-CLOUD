@@ -1,6 +1,5 @@
 package com.example.scamdetect.ui
 
-import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.BackHandler
@@ -34,18 +33,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -64,6 +67,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -77,110 +81,167 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.scamdetect.LOCAL_NETWORK_PERMISSION
 import com.example.scamdetect.R
+import com.example.scamdetect.data.AppPrefs
 import com.example.scamdetect.logic.Onboarding
+import com.example.scamdetect.logic.Onboarding.Path
 import com.example.scamdetect.logic.Onboarding.Server
 import com.example.scamdetect.logic.Onboarding.Step
 import com.example.scamdetect.logic.PrivacyLevel
 import kotlinx.coroutines.launch
 
-// First-launch setup: up to five screens, one decision each. Same screens, wording and look as
-// ios-app/ScamGuard/UI/SetupViews.swift. The wording lives in logic/Onboarding.kt.
+// First-launch setup. Simple (the default): Welcome, "Use recommended settings", family contact.
+// "Choose myself": the full choices. "Set up for a family member": their settings, the contact, an optional PIN.
+// Same screens, wording and look as ios-app/ScamGuard/UI/SetupViews.swift.
+
+/** What the setup screens can do (kept in CallViewModel, so a rotation keeps it). */
+data class SetupActions(
+    val onStep: (Step) -> Unit,
+    val onChange: ((Onboarding.Choices) -> Onboarding.Choices) -> Unit,
+    val onTest: suspend (String) -> Boolean,
+    val onFinish: (startTour: Boolean) -> Unit,
+    val onLeave: () -> Unit,
+    val onTextSize: (String) -> Unit,
+)
 
 /**
- * The setup. Swipe or Back / Next between screens; Skip saves what is picked so far (defaults for the rest).
- * Android Back goes one screen back; on the first screen it asks before leaving.
+ * The setup. Swipe or Back / the big buttons between screens; Skip saves what is picked so far (recommended
+ * settings for the rest). Android Back goes one screen back; on the first screen it asks before leaving.
  */
 @Composable
-fun SetupFlow(
-    step: Step,
-    choices: Onboarding.Choices,
-    isReplay: Boolean,
-    onStep: (Step) -> Unit,
-    onChange: ((Onboarding.Choices) -> Onboarding.Choices) -> Unit,
-    onTest: suspend (String) -> Boolean,
-    onFinish: (startTour: Boolean) -> Unit,
-    onLeave: () -> Unit,
-) {
-    val steps = Onboarding.steps(choices.privacy)
+fun SetupFlow(step: Step, choices: Onboarding.Choices, isReplay: Boolean, a: SetupActions) {
+    val steps = Onboarding.steps(choices)
     val index = steps.indexOf(step).coerceAtLeast(0)
     val pager = rememberPagerState(initialPage = index) { steps.size }
     var confirmLeave by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     // The view model holds the step (it survives rotation); the pager follows it, and a swipe updates it.
-    LaunchedEffect(index) { if (pager.currentPage != index) pager.animateScrollToPage(index) }
-    LaunchedEffect(pager.settledPage) { steps.getOrNull(pager.settledPage)?.let { if (it != step) onStep(it) } }
+    LaunchedEffect(index, steps.size) { if (pager.currentPage != index) pager.animateScrollToPage(index) }
+    LaunchedEffect(pager.settledPage) { steps.getOrNull(pager.settledPage)?.let { if (it != step) a.onStep(it) } }
 
-    fun go(to: Step?) { if (to != null) { onStep(to); scope.launch { pager.animateScrollToPage(steps.indexOf(to)) } } }
-    val previous = Onboarding.previous(step, choices.privacy)
+    fun go(to: Step?) { if (to != null) { a.onStep(to); scope.launch { pager.animateScrollToPage(Onboarding.steps(choices).indexOf(to).coerceAtLeast(0)) } } }
+    val previous = Onboarding.previous(step, choices)
     BackHandler { if (previous != null) go(previous) else confirmLeave = true }
 
     Surface(Modifier.fillMaxSize().testTag("setup"), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             // top bar: Back on the left, Skip on the right
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp).heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (previous != null) TextButton(onClick = { go(previous) }, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text("‹ Back", style = MaterialTheme.typography.bodyLarge)
+                if (previous != null) TextButton(onClick = { go(previous) }, modifier = Modifier.heightIn(min = 56.dp)) {
+                    Text("‹ " + stringResource(R.string.btn_back), style = MaterialTheme.typography.bodyLarge)
                 }
                 Spacer(Modifier.weight(1f))
-                if (step != Step.DONE) TextButton(onClick = { onFinish(false) }, modifier = Modifier.heightIn(min = 48.dp).testTag("setupSkip")) {
-                    Text("Skip", style = MaterialTheme.typography.bodyLarge)
+                if (step != Step.DONE) TextButton(onClick = { a.onFinish(false) }, modifier = Modifier.heightIn(min = 56.dp).testTag("setupSkip")) {
+                    Text(stringResource(R.string.btn_skip), style = MaterialTheme.typography.bodyLarge)
                 }
             }
-            HorizontalPager(pager, Modifier.weight(1f).fillMaxWidth(), key = { steps[it] }) { page ->
-                SetupPage(steps[page]) {
-                    when (steps[page]) {
-                        Step.WELCOME -> {}
-                        Step.PRIVACY -> PrivacyChoices(choices.privacy) { p -> onChange { it.copy(privacy = p) } }
-                        Step.SERVER -> ServerChoice(choices, onChange, onTest)
-                        Step.DATA -> DataChoices(choices, onChange)
+            HorizontalPager(pager, Modifier.weight(1f).fillMaxWidth(), key = { steps.getOrElse(it) { Step.WELCOME } }) { page ->
+                val s = steps.getOrElse(page) { Step.WELCOME }
+                SetupPage(s, choices) {
+                    when (s) {
+                        Step.WELCOME -> Unit
+                        Step.RECOMMENDED -> RecommendedList()
+                        Step.PRIVACY -> PrivacyChoices(choices, a.onChange)
+                        Step.SERVER -> ServerChoice(choices, a.onChange, a.onTest)
+                        Step.DATA -> DataChoices(choices, a.onChange)
+                        Step.HELPER -> HelperChoices(choices, a)
+                        Step.FAMILY -> FamilyFields(choices, a.onChange)
+                        Step.PIN -> PinSetup(choices, a.onChange)
                         Step.DONE -> SetupSummary(choices)
                     }
                 }
             }
-            // bottom: progress dots and the main button
+            // bottom: progress dots and the main button(s)
             Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Dots(index, steps.size, Onboarding.progress(step, choices.privacy))
-                val wide = Modifier.fillMaxWidth().widthIn(max = 480.dp).heightIn(min = 56.dp)
+                val (n, of) = Onboarding.progress(step, choices)
+                Dots(index, steps.size, stringResource(R.string.setup_step, n.toString(), of.toString()))
+                val wide = Modifier.fillMaxWidth().widthIn(max = 480.dp).heightIn(min = 60.dp)
                 when (step) {
-                    Step.WELCOME -> Button(onClick = { go(Onboarding.next(step, choices.privacy)) }, modifier = wide.testTag("setupNext")) {
-                        Text("Get started", style = BigButtonText)
+                    Step.WELCOME -> {
+                        Button(onClick = { a.onChange { it.copy(path = Path.SIMPLE) }; go(Step.RECOMMENDED) }, modifier = wide.testTag("setupNext")) {
+                            Text(stringResource(R.string.btn_get_started), style = BigButtonText)
+                        }
+                        OutlinedButton(onClick = { a.onChange { it.copy(path = Path.HELPER) }; go(Step.HELPER) }, modifier = wide.testTag("setupHelper")) {
+                            Text(stringResource(R.string.btn_family_member), style = BigButtonText, textAlign = TextAlign.Center)
+                        }
+                    }
+                    Step.RECOMMENDED -> {
+                        Button(onClick = { a.onChange { Onboarding.recommended(it) }; go(Step.FAMILY) }, modifier = wide.testTag("setupRecommended")) {
+                            Text(stringResource(R.string.btn_use_recommended), style = BigButtonText, textAlign = TextAlign.Center)
+                        }
+                        OutlinedButton(onClick = { a.onChange { it.copy(path = Path.CUSTOM) }; go(Step.PRIVACY) }, modifier = wide.testTag("setupCustom")) {
+                            Text(stringResource(R.string.btn_choose_myself), style = BigButtonText)
+                        }
+                    }
+                    Step.FAMILY -> {
+                        val last = Onboarding.next(step, choices) == null
+                        Button(onClick = { if (last) a.onFinish(true) else go(Onboarding.next(step, choices)) }, modifier = wide.testTag("setupFamilyNext")) {
+                            Text(stringResource(if (last) R.string.btn_save_finish else R.string.btn_next), style = BigButtonText)
+                        }
+                        TextButton(onClick = {
+                            a.onChange { it.copy(familyName = "", familyPhone = "") }
+                            if (last) a.onFinish(true) else go(Onboarding.next(step, choices))
+                        }, modifier = Modifier.heightIn(min = 56.dp)) { Text(stringResource(R.string.btn_skip_for_now), style = MaterialTheme.typography.bodyLarge) }
                     }
                     Step.DONE -> {
-                        Button(onClick = { onFinish(true) }, modifier = wide.testTag("setupTour")) { Text("Show me around", style = BigButtonText) }
-                        OutlinedButton(onClick = { onFinish(false) }, modifier = wide.testTag("setupNoTour")) { Text("Skip tour", style = BigButtonText) }
+                        Button(onClick = { a.onFinish(true) }, modifier = wide.testTag("setupTour")) { Text(stringResource(R.string.btn_show_me_around), style = BigButtonText) }
+                        OutlinedButton(onClick = { a.onFinish(false) }, modifier = wide.testTag("setupNoTour")) { Text(stringResource(R.string.btn_skip_tour), style = BigButtonText) }
                     }
                     else -> {
-                        Button(onClick = { go(Onboarding.next(step, choices.privacy)) }, modifier = wide.testTag("setupNext")) {
-                            Text("Next", style = BigButtonText)
+                        Button(onClick = { go(Onboarding.next(step, choices)) }, modifier = wide.testTag("setupNext")) {
+                            Text(stringResource(R.string.btn_next), style = BigButtonText)
                         }
                         if (step == Step.SERVER) TextButton(
-                            onClick = { onChange { it.copy(server = Server.LATER) }; go(Onboarding.next(step, choices.privacy)) },
-                            modifier = Modifier.heightIn(min = 48.dp),
-                        ) { Text("Set up later", style = MaterialTheme.typography.bodyLarge) }
+                            onClick = { a.onChange { it.copy(server = Server.LATER) }; go(Onboarding.next(step, choices)) },
+                            modifier = Modifier.heightIn(min = 56.dp),
+                        ) { Text(stringResource(R.string.btn_set_up_later), style = MaterialTheme.typography.bodyLarge) }
                     }
                 }
             }
         }
     }
 
-    if (confirmLeave) AlertDialog(
-        onDismissRequest = { confirmLeave = false },
-        title = { Text("Leave setup?") },
-        text = {
-            Text(if (isReplay) "Nothing will change." else "You'll see it again next time.", style = MaterialTheme.typography.bodyLarge)
-        },
-        confirmButton = { TextButton(onClick = { confirmLeave = false; onLeave() }) { Text("Leave") } },
-        dismissButton = { Button(onClick = { confirmLeave = false }) { Text("Stay") } },
+    if (confirmLeave) YesNoDialog(
+        title = stringResource(R.string.setup_leave_title),
+        text = stringResource(if (isReplay) R.string.setup_leave_replay else R.string.setup_leave_first),
+        yes = stringResource(R.string.btn_leave),
+        no = stringResource(R.string.btn_stay),
+        onYes = { confirmLeave = false; a.onLeave() },
+        onNo = { confirmLeave = false },
     )
 }
 
-private val BigButtonText @Composable get() = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp)
+private val BigButtonText @Composable get() = MaterialTheme.typography.labelLarge
+
+/** Screen title and one line, by step. Helper path: the family screen talks to the helper. */
+private fun titleOf(s: Step, c: Onboarding.Choices) = when (s) {
+    Step.WELCOME -> R.string.setup_welcome_title
+    Step.RECOMMENDED -> R.string.setup_rec_title
+    Step.PRIVACY -> R.string.setup_privacy_title
+    Step.SERVER -> R.string.setup_server_title
+    Step.DATA -> R.string.setup_data_title
+    Step.HELPER -> R.string.setup_helper_title
+    Step.FAMILY -> if (c.path == Path.HELPER) R.string.setup_helper_family_title else R.string.setup_family_title
+    Step.PIN -> R.string.pin_setup_title
+    Step.DONE -> R.string.setup_done_title
+}
+
+private fun lineOf(s: Step, c: Onboarding.Choices) = when (s) {
+    Step.WELCOME -> R.string.setup_welcome_line
+    Step.RECOMMENDED -> R.string.setup_rec_line
+    Step.PRIVACY -> R.string.setup_privacy_line
+    Step.SERVER -> R.string.setup_server_line
+    Step.DATA -> R.string.setup_data_line
+    Step.HELPER -> R.string.setup_helper_line
+    Step.FAMILY -> if (c.path == Path.HELPER) R.string.setup_helper_family_line else R.string.setup_family_line
+    Step.PIN -> R.string.pin_setup_line
+    Step.DONE -> R.string.setup_done_line
+}
 
 /** Big icon, title, one line, then the screen's own content; scrolls with very large text. */
 @Composable
-private fun SetupPage(step: Step, content: @Composable ColumnScope.() -> Unit) {
+private fun SetupPage(step: Step, c: Onboarding.Choices, content: @Composable ColumnScope.() -> Unit) {
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -188,11 +249,12 @@ private fun SetupPage(step: Step, content: @Composable ColumnScope.() -> Unit) {
     ) {
         Box(Modifier.widthIn(max = 520.dp)) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Spacer(Modifier.height(if (step == Step.WELCOME) 40.dp else 8.dp))
+                Spacer(Modifier.height(if (step == Step.WELCOME) 16.dp else 8.dp))
                 SetupIcon(step)
-                Text(Onboarding.title(step), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold,
+                Text(stringResource(titleOf(step, c)), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center, modifier = Modifier.semantics { heading() })
-                Text(Onboarding.line(step), style = SetupLine, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                Text(stringResource(lineOf(step, c)), style = SetupLine, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                if (step == Step.WELCOME) PrivacyPromise()
                 Spacer(Modifier.height(4.dp))
                 content()
             }
@@ -200,23 +262,39 @@ private fun SetupPage(step: Step, content: @Composable ColumnScope.() -> Unit) {
     }
 }
 
-private val SetupLine @Composable get() = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp, lineHeight = 28.sp)
+private val SetupLine @Composable get() = MaterialTheme.typography.bodyLarge.copy(fontSize = 22.sp, lineHeight = 30.sp)
+
+/** "Your calls stay private. We never record your voice." (Welcome and Help.) */
+@Composable
+fun PrivacyPromise() {
+    Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Icon(Icons.Filled.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(32.dp))
+            Text(stringResource(R.string.privacy_promise), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer)
+        }
+    }
+}
 
 @Composable
 private fun SetupIcon(step: Step) {
     if (step == Step.WELCOME) {
         Image(painterResource(R.drawable.scamguard_logo), contentDescription = null,
-            modifier = Modifier.size(128.dp).clip(RoundedCornerShape(28.dp)))
+            modifier = Modifier.size(104.dp).clip(RoundedCornerShape(24.dp)))
         return
     }
     val icon: ImageVector = when (step) {
+        Step.RECOMMENDED -> Icons.Filled.Star
         Step.PRIVACY -> Icons.Filled.Lock
         Step.SERVER -> ImageVector.vectorResource(R.drawable.ic_setup_server)
         Step.DATA -> Icons.Filled.Person
+        Step.HELPER -> Icons.Filled.Settings
+        Step.FAMILY -> Icons.Filled.Phone
+        Step.PIN -> Icons.Filled.Lock
         else -> Icons.Filled.CheckCircle
     }
-    Box(Modifier.size(112.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(56.dp))
+    Box(Modifier.size(96.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
     }
 }
 
@@ -226,48 +304,111 @@ private fun Dots(index: Int, count: Int, spoken: String) {
         repeat(count) { i ->
             val on = i == index
             Box(Modifier.size(width = if (on) 24.dp else 10.dp, height = 10.dp)
-                .background(if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, CircleShape))
+                .background(if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, CircleShape))
         }
     }
 }
 
-// ---------------------------------------------------------------- 2. privacy
+/** A big radio card: one choice in a list (text size, privacy). */
+@Composable
+fun ChoiceCard(selected: Boolean, title: String, line: String? = null, tag: String = "", onClick: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(2.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp).then(if (tag.isNotEmpty()) Modifier.testTag(tag) else Modifier)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick),
+    ) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            RadioButton(selected = selected, onClick = null)
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                if (line != null) Text(line, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+/** Plain yes / no question: big text, nothing pre-selected, both buttons the same size. */
+@Composable
+fun YesNoDialog(title: String, text: String, yes: String, no: String, onYes: () -> Unit, onNo: () -> Unit, yesIsDanger: Boolean = false) {
+    AlertDialog(
+        onDismissRequest = onNo,
+        title = { Text(title, style = MaterialTheme.typography.headlineSmall) },
+        text = { Text(text, style = MaterialTheme.typography.bodyLarge) },
+        confirmButton = {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = onYes, modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp),
+                    border = BorderStroke(2.dp, if (yesIsDanger) ScamRed else MaterialTheme.colorScheme.primary)) {
+                    Text(yes, style = MaterialTheme.typography.labelLarge, color = if (yesIsDanger) WarningInk else MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center)
+                }
+                OutlinedButton(onClick = onNo, modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp),
+                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)) {
+                    Text(no, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
+                }
+            }
+        },
+    )
+}
+
+// ---------------------------------------------------------------- 2. recommended
 
 @Composable
-private fun PrivacyChoices(current: PrivacyLevel, onPick: (PrivacyLevel) -> Unit) {
-    var info by rememberSaveable { mutableStateOf<PrivacyLevel?>(null) }
-    Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        PrivacyLevel.entries.forEach { level ->
-            val selected = level == current
-            Surface(
-                shape = RoundedCornerShape(24.dp),
-                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
-                border = BorderStroke(2.dp, if (selected) MaterialTheme.colorScheme.primary else Color.Transparent),
-                modifier = Modifier.fillMaxWidth().testTag("privacy_${level.id}")
-                    .selectable(selected = selected, role = Role.RadioButton) { onPick(level) },
-            ) {
-                Row(Modifier.padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically,
+private fun RecommendedList() {
+    Group {
+        Column(Modifier.padding(vertical = 8.dp)) {
+            listOf(R.string.setup_rec_b1, R.string.setup_rec_b2, R.string.setup_rec_b3).forEach { id ->
+                Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Box(Modifier.size(52.dp).background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer, CircleShape),
-                        contentAlignment = Alignment.Center) {
-                        Icon(ImageVector.vectorResource(privacyIcon(level)), contentDescription = null, modifier = Modifier.size(28.dp),
-                            tint = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary)
-                    }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(Onboarding.privacyTitle(level), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text(Onboarding.privacyTag(level), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.SemiBold)
-                        Text(Onboarding.privacyLine(level), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    IconButton(onClick = { info = level }, modifier = Modifier.size(48.dp)) {
-                        Icon(Icons.Filled.Info, contentDescription = "About ${Onboarding.privacyTitle(level)}", tint = MaterialTheme.colorScheme.primary)
-                    }
+                    RiskIcon(com.example.scamdetect.logic.Risk.Level.GREEN, 30.dp)
+                    Text(stringResource(id), style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }
     }
-    info?.let { l -> InfoSheet(Onboarding.privacyTitle(l), l.explanation) { info = null } }
 }
+
+// ---------------------------------------------------------------- privacy ("Choose myself")
+
+/** Plain name, tag and line for a privacy level (no technical words in Simple mode). */
+fun privacyTagRes(p: PrivacyLevel) = when (p) {
+    PrivacyLevel.CLOUD -> R.string.privacy_tag_cloud
+    PrivacyLevel.HYBRID -> R.string.privacy_tag_hybrid
+    PrivacyLevel.ON_DEVICE -> R.string.privacy_tag_on_device
+}
+
+fun privacyPlainRes(p: PrivacyLevel) = when (p) {
+    PrivacyLevel.CLOUD -> R.string.privacy_plain_cloud
+    PrivacyLevel.HYBRID -> R.string.privacy_plain_hybrid
+    PrivacyLevel.ON_DEVICE -> R.string.privacy_plain_on_device
+}
+
+@Composable
+private fun PrivacyChoices(c: Onboarding.Choices, onChange: ((Onboarding.Choices) -> Onboarding.Choices) -> Unit) {
+    var info by rememberSaveable { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        PrivacyLevel.entries.forEach { level ->
+            ChoiceCard(
+                selected = level == c.privacy,
+                title = if (c.simple) stringResource(privacyTagRes(level)) else "${level.shortTitle()} · ${stringResource(privacyTagRes(level))}",
+                line = stringResource(privacyPlainRes(level)),
+                tag = "privacy_${level.id}",
+            ) { onChange { it.copy(privacy = level) } }
+        }
+        OutlinedButton(onClick = { info = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+            Icon(Icons.Filled.Info, contentDescription = null)
+            Spacer(Modifier.size(8.dp))
+            Text(stringResource(R.string.setup_more_about), style = MaterialTheme.typography.labelLarge)
+        }
+    }
+    if (info) InfoSheet(stringResource(R.string.set_how_checked),
+        PrivacyLevel.entries.joinToString("\n\n") { "${Tr(privacyTagRes(it))}: ${Tr(privacyPlainRes(it))}" } + "\n\n" +
+            Tr(R.string.privacy_english_only)) { info = false }
+}
+
+private fun Tr(id: Int) = com.example.scamdetect.logic.Tr.s(id)
 
 fun privacyIcon(level: PrivacyLevel) = when (level) {
     PrivacyLevel.CLOUD -> R.drawable.ic_setup_cloud
@@ -275,7 +416,7 @@ fun privacyIcon(level: PrivacyLevel) = when (level) {
     PrivacyLevel.ON_DEVICE -> R.drawable.ic_setup_phone
 }
 
-// ---------------------------------------------------------------- 3. server
+// ---------------------------------------------------------------- server
 
 @Composable
 private fun ServerChoice(
@@ -299,30 +440,30 @@ private fun ServerChoice(
         OutlinedTextField(
             value = choices.serverUrl,
             onValueChange = { v -> onChange { it.copy(serverUrl = v, server = Server.NOT_CHECKED) } },
-            label = { Text("Server address") },
+            label = { Text(stringResource(R.string.field_server)) },
             singleLine = true,
             textStyle = MaterialTheme.typography.bodyLarge,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
             modifier = Modifier.fillMaxWidth().testTag("setupUrl"),
         )
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SERVER_PRESETS.forEach { (label, u) ->
                 PillChip(label, selected = choices.serverUrl == u) { onChange { it.copy(serverUrl = u, server = Server.NOT_CHECKED) } }
             }
         }
-        OutlinedButton(onClick = test, enabled = !testing, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("setupTest")) {
-            Text("Test connection", style = MaterialTheme.typography.bodyLarge)
+        OutlinedButton(onClick = test, enabled = !testing, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("setupTest")) {
+            Text(stringResource(R.string.btn_test_connection), style = MaterialTheme.typography.labelLarge)
         }
         val (label, color) = when {
-            testing -> "Checking…" to MaterialTheme.colorScheme.onSurfaceVariant
-            choices.server == Server.CONNECTED -> "Connected ✓" to SafeGreen
-            choices.server == Server.CANT_REACH -> "Can't reach" to ScamRed
+            testing -> stringResource(R.string.status_checking) to MaterialTheme.colorScheme.onSurfaceVariant
+            choices.server == Server.CONNECTED -> stringResource(R.string.status_connected) + " ✓" to SafeGreen
+            choices.server == Server.CANT_REACH -> stringResource(R.string.status_cant_reach) to ScamRed
             else -> null to Color.Unspecified
         }
         if (label != null) Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { StatusChip(label, color) }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Icon(Icons.Filled.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Text(Onboarding.NETWORK_HEADS_UP, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.net_heads_up), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -342,32 +483,106 @@ fun withLocalNetwork(run: () -> Unit): () -> Unit {
     }
 }
 
-// ---------------------------------------------------------------- 4. data
+// ---------------------------------------------------------------- data
 
 @Composable
 private fun DataChoices(choices: Onboarding.Choices, onChange: ((Onboarding.Choices) -> Onboarding.Choices) -> Unit) {
     Group {
-        ToggleRow("Save the riskiest sentence", "Keep one line from warned calls", choices.saveSentence) { v ->
+        ToggleRow(stringResource(R.string.data_save_sentence), stringResource(R.string.data_save_sentence_line), choices.saveSentence) { v ->
             onChange { it.copy(saveSentence = v) }
         }
         HorizontalDivider(Modifier.padding(start = 16.dp))
-        ToggleRow("Help improve detection", "Keep labels on this phone", choices.helpImprove) { v ->
+        ToggleRow(stringResource(R.string.data_help_improve), stringResource(R.string.data_help_improve_line), choices.helpImprove) { v ->
             onChange { it.copy(helpImprove = v) }
         }
     }
 }
 
-// ---------------------------------------------------------------- 5. done
+// ---------------------------------------------------------------- helper: their settings
 
 @Composable
-private fun SetupSummary(choices: Onboarding.Choices) {
+private fun HelperChoices(c: Onboarding.Choices, a: SetupActions) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        TextSizeChoices(c.textSize) { size -> a.onChange { it.copy(textSize = size) }; a.onTextSize(size) }
+        Group {
+            ToggleRow(stringResource(R.string.set_simple_mode), stringResource(R.string.set_simple_mode_line), c.simple) { v ->
+                a.onChange { it.copy(simple = v) }
+            }
+            HorizontalDivider(Modifier.padding(start = 16.dp))
+            ToggleRow(stringResource(R.string.set_read_aloud), stringResource(R.string.set_read_aloud_line), c.readAloud) { v ->
+                a.onChange { it.copy(readAloud = v) }
+            }
+        }
+    }
+}
+
+/** "Text size": Large / Extra large, each shown at its own size. */
+@Composable
+fun TextSizeChoices(current: String, onPick: (String) -> Unit) {
+    Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(stringResource(R.string.set_text_size), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+        ChoiceCard(current == AppPrefs.TEXT_LARGE, stringResource(R.string.text_large), stringResource(R.string.text_size_sample), "text_large") {
+            onPick(AppPrefs.TEXT_LARGE)
+        }
+        ChoiceCard(current == AppPrefs.TEXT_XLARGE, stringResource(R.string.text_xlarge), stringResource(R.string.text_size_sample), "text_xlarge") {
+            onPick(AppPrefs.TEXT_XLARGE)
+        }
+    }
+}
+
+// ---------------------------------------------------------------- family contact
+
+@Composable
+fun FamilyFields(c: Onboarding.Choices, onChange: ((Onboarding.Choices) -> Onboarding.Choices) -> Unit) {
+    ContactFields(c.familyName, c.familyPhone, { v -> onChange { it.copy(familyName = v) } }, { v -> onChange { it.copy(familyPhone = v) } })
+}
+
+/** Name + phone number fields (setup and Settings → My family contact). */
+@Composable
+fun ContactFields(name: String, phone: String, onName: (String) -> Unit, onPhone: (String) -> Unit) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        OutlinedTextField(value = name, onValueChange = onName, label = { Text(stringResource(R.string.field_name)) },
+            singleLine = true, textStyle = MaterialTheme.typography.bodyLarge, modifier = Modifier.fillMaxWidth().testTag("familyName"))
+        OutlinedTextField(value = phone, onValueChange = onPhone, label = { Text(stringResource(R.string.field_phone)) },
+            placeholder = { Text(stringResource(R.string.field_phone_hint)) },
+            singleLine = true, textStyle = MaterialTheme.typography.bodyLarge,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            modifier = Modifier.fillMaxWidth().testTag("familyPhone"))
+    }
+}
+
+// ---------------------------------------------------------------- done
+
+@Composable
+private fun SetupSummary(c: Onboarding.Choices) {
+    val rows = buildList {
+        add(stringResource(R.string.set_text_size) to stringResource(if (c.textSize == AppPrefs.TEXT_XLARGE) R.string.text_xlarge else R.string.text_large))
+        add(stringResource(R.string.set_simple_mode) to stringResource(if (c.simple) R.string.on else R.string.off))
+        add(stringResource(R.string.sum_privacy) to stringResource(privacyTagRes(c.privacy)))
+        if (c.path == Path.CUSTOM) {
+            add(stringResource(R.string.sum_server) to serverLabel(c))
+            add(stringResource(R.string.data_save_sentence) to stringResource(if (c.saveSentence) R.string.on else R.string.off))
+            add(stringResource(R.string.data_help_improve) to stringResource(if (c.helpImprove) R.string.on else R.string.off))
+        }
+        add(stringResource(R.string.sum_family) to c.familyName.ifBlank { c.familyPhone }.ifBlank { stringResource(R.string.not_set) })
+        if (c.path == Path.HELPER) add(stringResource(R.string.sum_pin) to stringResource(if (c.pin.length == 4) R.string.on else R.string.off))
+    }
     Group {
-        Onboarding.summary(choices).forEachIndexed { i, (k, v) ->
+        rows.forEachIndexed { i, (k, v) ->
             if (i > 0) HorizontalDivider(Modifier.padding(start = 16.dp))
             KeyValueRow(k, v)
         }
     }
 }
 
+@Composable
+private fun serverLabel(c: Onboarding.Choices): String = stringResource(when {
+    c.privacy == PrivacyLevel.ON_DEVICE -> R.string.status_not_needed
+    c.server == Server.CONNECTED -> R.string.status_connected
+    c.server == Server.CANT_REACH -> R.string.status_cant_reach
+    c.server == Server.LATER -> R.string.status_set_up_later
+    else -> R.string.status_not_checked
+})
+
 /** First launch: Back on the first screen, confirmed, closes the app (the setup shows again next time). */
-fun leaveApp(context: android.content.Context) { (context as? Activity)?.finish() }
+fun leaveApp(context: android.content.Context) { context.findActivity()?.finish() }

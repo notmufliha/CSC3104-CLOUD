@@ -29,8 +29,8 @@ private func format(_ ms: Int64, _ pattern: String) -> String {
 
 private func dayLabel(_ daysAgo: Int) -> String {
     switch daysAgo {
-    case 0: return "Today"
-    case 1: return "Yesterday"
+    case 0: return L.s(.pw_today)
+    case 1: return L.s(.pw_yesterday)
     default:
         let f = DateFormatter()
         f.dateFormat = "d MMM"
@@ -44,12 +44,13 @@ func whenText(_ endedAt: Int64) -> String {
     return PlainWords.timeAgo(endedAt, now, DashboardStats.daysAgo(endedAt, now, .current)) ?? format(endedAt, "d MMM")
 }
 
+/// A saved verdict as the risk icon (✓ / ! / ✕ / i in its colour), so it never relies on colour alone.
 struct VerdictDot: View {
     let verdict: String
     var size: CGFloat = 14
 
     var body: some View {
-        Circle().fill(Theme.levelColor(Dashboard.level(verdict))).frame(width: size, height: size)
+        RiskIcon(level: Dashboard.level(verdict), size: size)
     }
 }
 
@@ -77,7 +78,7 @@ struct InfoSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title).font(.title2.weight(.semibold))
             ScrollView { Text(text).font(.body).frame(maxWidth: .infinity, alignment: .leading) }
-            HStack { Spacer(); Button("OK") { dismiss() }.font(.body).frame(minWidth: 44, minHeight: 44) }
+            HStack { Spacer(); Button(L.s(.btn_ok)) { dismiss() }.font(.body).frame(minWidth: 56, minHeight: 56) }
         }
         .padding(24)
         .presentationDetents([.medium, .large])
@@ -88,7 +89,7 @@ struct PeriodSwitcher: View {
     @Binding var periodRaw: String
 
     var body: some View {
-        Picker("Period", selection: $periodRaw) {
+        Picker(L.s(.ins_title), selection: $periodRaw) {
             ForEach(DashboardStats.Period.allCases) { Text($0.label).tag($0.rawValue) }
         }
         .pickerStyle(.segmented)
@@ -110,7 +111,7 @@ struct EmptyState: View {
                 .accessibilityHidden(true)
             Text(text).font(.title2).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
             if let goHome {
-                Button(action: goHome) { Text("Go to Home").font(.body).padding(.horizontal, 12).frame(minHeight: 44) }
+                Button(action: goHome) { Text(L.s(.btn_go_home)).font(.body).padding(.horizontal, 12).frame(minHeight: 56) }
                     .buttonStyle(.borderedProminent)
                     .foregroundStyle(Theme.onBrand)
             }
@@ -130,7 +131,7 @@ struct CallListRow: View {
         // Very large text: no sparkline and no fixed time column, so the row never grows wider than the screen.
         let big = typeSize.isAccessibilitySize
         HStack(spacing: 10) {
-            VerdictDot(verdict: call.finalVerdict, size: 16)
+            VerdictDot(verdict: call.finalVerdict, size: 28)
             if big {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(PlainWords.verdict(call.finalVerdict)).font(.headline)
@@ -173,9 +174,9 @@ private struct IconBadge: View {
 }
 
 private func resultSlices(_ s: DashboardStats.Stats) -> [Slice] {
-    [Slice(label: "Safe", value: s.safe, color: Theme.safeGreen),
-     Slice(label: "Be careful", value: s.unsure, color: Theme.warnYellow),
-     Slice(label: "Scam", value: s.scam, color: Theme.scamRed)]
+    [Slice(label: L.s(.risk_safe), value: s.safe, color: Theme.safeGreen, level: .green),
+     Slice(label: L.s(.risk_careful), value: s.unsure, color: Theme.warnYellow, level: .yellow),
+     Slice(label: L.s(.risk_scam), value: s.scam, color: Theme.scamRed, level: .red)]
 }
 
 // ---------------------------------------------------------------- main dashboard (4 cards)
@@ -193,7 +194,7 @@ struct DashboardView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.gap) {
                 if calls.isEmpty {
-                    EmptyState(text: "No calls yet. Try a demo call from Home.", goHome: goHome)
+                    EmptyState(text: L.s(.dash_empty), goHome: goHome)
                         .tourTarget(.dashboardHero)
                 } else {
                     PeriodSwitcher(periodRaw: $periodRaw)
@@ -204,7 +205,7 @@ struct DashboardView: View {
                         AppCard(color: Theme.brandContainer) {
                             HStack(spacing: 14) {
                                 IconBadge(systemName: "star.fill", color: Theme.brand)
-                                Text("See more insights").font(.title2.weight(.semibold))
+                                Text(L.s(.dash_more_insights)).font(.title2.weight(.semibold))
                                 Spacer(minLength: 4)
                                 Image(systemName: "chevron.right")
                             }
@@ -216,7 +217,7 @@ struct DashboardView: View {
             .padding(Space.page)
         }
         .background(Theme.background)
-        .navigationTitle("Dashboard")
+        .navigationTitle(L.s(vm.simpleMode ? .tab_family : .dash_title))
         .navigationDestination(for: DashboardRoute.self) { route in
             switch route {
             case .call(let id): CallDetailView(callId: id)
@@ -233,11 +234,11 @@ struct DashboardView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
             HStack(spacing: 20) {
-                DonutChart(slices: resultSlices(stats), centerLabel: "calls", size: 112, compact: true)
+                DonutChart(slices: resultSlices(stats), centerLabel: L.s(.dash_calls_center), size: 112, compact: true)
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(resultSlices(stats)) { s in
                         HStack(spacing: 8) {
-                            Circle().fill(s.color).frame(width: 12, height: 12)
+                            SliceKey(slice: s)
                             Text("\(s.value) \(s.label)").font(.body)
                         }
                     }
@@ -250,9 +251,9 @@ struct DashboardView: View {
     private func recent(_ calls: [CallRow]) -> some View {
         AppCard(padding: 0) {
             HStack {
-                Text("Recent calls").font(.title2.weight(.semibold)).accessibilityAddTraits(.isHeader)
+                Text(L.s(.home_recent)).font(.title2.weight(.semibold)).accessibilityAddTraits(.isHeader)
                 Spacer()
-                NavigationLink(value: DashboardRoute.history) { Text("See all").font(.body).frame(minHeight: 44) }
+                NavigationLink(value: DashboardRoute.history) { Text(L.s(.btn_see_all)).font(.body).frame(minHeight: 56) }
             }
             .padding(.horizontal, Space.card)
             .padding(.top, 8)
@@ -270,11 +271,11 @@ struct DashboardView: View {
         let top = PlainWords.topWarning(stats)
         return NavigationLink(value: DashboardRoute.insights) {
             AppCard {
-                Text("Top warning sign").font(.title2.weight(.semibold))
+                Text(L.s(.dash_top_sign)).font(.title2.weight(.semibold))
                 HStack(spacing: 14) {
                     IconBadge(systemName: top == nil ? "checkmark.circle.fill" : "exclamationmark.triangle.fill",
                               color: top == nil ? Theme.safeGreen : Theme.scamRed)
-                    Text(top ?? "No warning signs \(PlainWords.periodPhrase(period))").font(.headline)
+                    Text(top ?? L.s(.dash_no_signs_period, PlainWords.periodPhrase(period))).font(.headline)
                         .multilineTextAlignment(.leading)
                     Spacer(minLength: 4)
                     Image(systemName: "chevron.right").foregroundStyle(Theme.muted)
@@ -301,9 +302,9 @@ private struct InsightSection<Content: View>: View {
                 Text(title).font(.title2.weight(.semibold)).accessibilityAddTraits(.isHeader)
                 Spacer()
                 Button { showInfo = true } label: {
-                    Image(systemName: "info.circle.fill").font(.title3).foregroundStyle(Theme.brand).frame(width: 44, height: 44)
+                    Image(systemName: "info.circle.fill").font(.title3).foregroundStyle(Theme.brand).frame(width: 56, height: 56)
                 }
-                .accessibilityLabel("About \(title)")
+                .accessibilityLabel(L.s(.a11y_about, title))
             }
             Text(takeaway).font(.body)
             AppCard { content }
@@ -330,7 +331,7 @@ private struct Key: View {
         FlowLayout(spacing: 16, lineSpacing: 4) {
             ForEach(slices) { s in
                 HStack(spacing: 8) {
-                    Circle().fill(s.color).frame(width: 12, height: 12)
+                    SliceKey(slice: s)
                     Text(s.label).font(.body)
                 }
             }
@@ -367,7 +368,7 @@ struct InsightsView: View {
                 VStack(alignment: .leading, spacing: 28) {
                     PeriodSwitcher(periodRaw: $periodRaw)
                     if s.isEmpty {
-                        EmptyState(text: "No calls \(PlainWords.periodPhrase(period)).")
+                        EmptyState(text: L.s(.ins_none_period, PlainWords.periodPhrase(period)))
                     } else {
                         sections(s)
                     }
@@ -383,69 +384,63 @@ struct InsightsView: View {
             #endif
         }
         .background(Theme.background)
-        .navigationTitle("Insights")
+        .navigationTitle(L.s(.ins_title))
     }
 
     @ViewBuilder
     private func sections(_ s: DashboardStats.Stats) -> some View {
         let first = dayLabel(s.buckets.first!.daysAgo)
-        let last = s.weekly ? "This week" : "Today"
-        InsightSection(title: "Calls over time", takeaway: PlainWords.overTime(s),
-                       info: "Each bar is one \(s.weekly ? "week" : "day"). The colours show safe calls, calls that needed care, and scams.") {
+        let last = L.s(s.weekly ? .pw_this_week : .pw_today)
+        InsightSection(title: L.s(.ins_over_time), takeaway: PlainWords.overTime(s),
+                       info: L.s(s.weekly ? .ins_over_time_info_week : .ins_over_time_info_day)) {
             StackedBarChart(bars: s.buckets.map {
-                [Slice(label: "Safe", value: $0.safe, color: Theme.safeGreen), Slice(label: "Be careful", value: $0.unsure, color: Theme.warnYellow),
-                 Slice(label: "Scam", value: $0.scam, color: Theme.scamRed), Slice(label: "Not checked", value: $0.notChecked, color: Theme.neutralGrey)]
-            }, description: "Calls over time: " + s.buckets.map { "\(dayLabel($0.daysAgo)) \($0.total)" }.joined(separator: ", "))
+                [Slice(label: L.s(.risk_safe), value: $0.safe, color: Theme.safeGreen, level: .green), Slice(label: L.s(.risk_careful), value: $0.unsure, color: Theme.warnYellow, level: .yellow),
+                 Slice(label: L.s(.risk_scam), value: $0.scam, color: Theme.scamRed, level: .red), Slice(label: L.s(.risk_not_checked), value: $0.notChecked, color: Theme.neutralGrey, level: .error)]
+            }, description: L.s(.ins_over_time) + ": " + s.buckets.map { "\(dayLabel($0.daysAgo)) \($0.total)" }.joined(separator: ", "))
             AxisEnds(left: first, right: last)
             Key(slices: resultSlices(s))
         }
         if !s.reasons.isEmpty {
-            InsightSection(title: "Why calls were flagged", takeaway: PlainWords.reasons(s),
-                           info: "The main reason behind each warning or scam, most common first.") {
-                HorizontalBars(rows: s.reasons, color: Theme.scamRed,
-                               description: "Why calls were flagged: " + s.reasons.map { "\($0.0) \($0.1)" }.joined(separator: ", "))
+            InsightSection(title: L.s(.ins_why), takeaway: PlainWords.reasons(s), info: L.s(.ins_why_info)) {
+                HorizontalBars(rows: s.reasons.map { (Reasons.localized($0.0), $0.1) }, color: Theme.scamRed,
+                               description: L.s(.ins_why) + ": " + s.reasons.map { "\(Reasons.localized($0.0)) \($0.1)" }.joined(separator: ", "))
             }
         }
-        InsightSection(title: "Warning signs heard", takeaway: PlainWords.signals(s),
-                       info: "How many calls had each kind of warning sign. One call can have more than one.") {
+        InsightSection(title: L.s(.ins_signs), takeaway: PlainWords.signals(s), info: L.s(.ins_signs_info)) {
             let rows = s.signals.map { (PlainWords.signalName($0.0), $0.1) }
             HorizontalBars(rows: rows, color: Theme.brand,
-                           description: "Warning signs heard: " + rows.map { "\($0.0) \($0.1)" }.joined(separator: ", "))
+                           description: L.s(.ins_signs) + ": " + rows.map { "\($0.0) \($0.1)" }.joined(separator: ", "))
         }
-        InsightSection(title: "Risk trend", takeaway: PlainWords.trend(s),
-                       info: "The average risk of your calls over time. Above the yellow line needs care; above the red line looks like a scam.") {
+        InsightSection(title: L.s(.ins_trend), takeaway: PlainWords.trend(s), info: L.s(.ins_trend_info)) {
             RiskLineChart(values: s.buckets.map { $0.avgRisk.map(Float.init) },
-                          description: "Average risk: " + s.buckets.map {
+                          description: L.s(.ins_trend) + ": " + s.buckets.map {
                               "\(dayLabel($0.daysAgo)) \($0.avgRisk.map { String(format: "%.2f", $0) } ?? "none")"
                           }.joined(separator: ", "))
             AxisEnds(left: first, right: last)
         }
-        InsightSection(title: "Time of day", takeaway: PlainWords.hours(s), info: "When the calls that needed care, or were scams, came in.") {
-            HourChart(hours: s.riskyHours, color: Theme.scamRed, description: "Risky calls by hour: " +
+        InsightSection(title: L.s(.ins_hours), takeaway: PlainWords.hours(s), info: L.s(.ins_hours_info)) {
+            HourChart(hours: s.riskyHours, color: Theme.scamRed, description: L.s(.ins_hours) + ": " +
                       s.riskyHours.enumerated().filter { $0.element > 0 }.map { "\($0.offset):00 \($0.element)" }.joined(separator: ", "))
         }
-        InsightSection(title: "Double-checked warnings", takeaway: PlainWords.doubleCheck(s),
-                       info: "When a call ends, ScamGuard checks the whole call once more. Some warnings turn out safe.") {
-            SegmentedBar(slices: [Slice(label: "Confirmed", value: s.confirmed, color: Theme.scamRed),
-                                  Slice(label: "Turned out safe", value: s.calmed, color: Theme.safeGreen)],
-                         description: "Double-checked warnings: \(s.confirmed) confirmed, \(s.calmed) turned out safe")
+        InsightSection(title: L.s(.ins_double), takeaway: PlainWords.doubleCheck(s), info: L.s(.ins_double_info)) {
+            SegmentedBar(slices: [Slice(label: L.s(.ins_confirmed), value: s.confirmed, color: Theme.scamRed, level: .red),
+                                  Slice(label: L.s(.ins_turned_safe), value: s.calmed, color: Theme.safeGreen, level: .green)],
+                         description: L.s(.a11y_double, "\(s.confirmed)", "\(s.calmed)"))
         }
-        InsightSection(title: "Checked where", takeaway: PlainWords.whereChecked(s),
-                       info: "Cloud: checked by the ScamGuard server. Hybrid: on this phone, with server help. On-device: only on this phone.") {
+        InsightSection(title: L.s(.ins_where), takeaway: PlainWords.whereChecked(s), info: L.s(.ins_where_info)) {
             let slices = s.privacy.map { Slice(label: PrivacyLevel.badgeFor($0.0), value: $0.1, color: Theme.privacyColor($0.0)) }
-            SegmentedBar(slices: slices, description: "Checked where: " + slices.map { "\($0.label) \($0.value)" }.joined(separator: ", "))
+            SegmentedBar(slices: slices, description: L.s(.ins_where) + ": " + slices.map { "\($0.label) \($0.value)" }.joined(separator: ", "))
         }
-        InsightSection(title: "Your answers", takeaway: PlainWords.answers(s), info: "What you told ScamGuard after calls. These stay on this phone.") {
+        InsightSection(title: L.s(.ins_answers), takeaway: PlainWords.answers(s), info: L.s(.ins_answers_info)) {
             HStack(alignment: .top, spacing: 16) {
-                BigNumber(value: "\(s.markedFine)", label: "Marked as fine", color: Theme.safeGreen)
-                BigNumber(value: "\(s.hungUpAfterWarning)", label: "Hung up after a warning", color: Theme.scamRed)
+                BigNumber(value: "\(s.markedFine)", label: L.s(.ins_marked_fine), color: Theme.safeGreen)
+                BigNumber(value: "\(s.hungUpAfterWarning)", label: L.s(.ins_hung_up), color: Theme.scamRed)
             }
         }
         if !s.lengthVsRisk.isEmpty {
-            InsightSection(title: "Call length", takeaway: PlainWords.length(s),
-                           info: "Each dot is one call: further right is longer, higher up is riskier.") {
-                ScatterChart(points: s.lengthVsRisk, description: "Call length and risk: \(s.lengthVsRisk.count) calls")
-                AxisEnds(left: "Short", right: "Long")
+            InsightSection(title: L.s(.ins_length), takeaway: PlainWords.length(s), info: L.s(.ins_length_info)) {
+                ScatterChart(points: s.lengthVsRisk, description: L.s(.a11y_length_chart, "\(s.lengthVsRisk.count)"))
+                AxisEnds(left: L.s(.ins_short), right: L.s(.ins_long))
             }
         }
     }
@@ -458,7 +453,9 @@ struct HistoryView: View {
     var goHome: () -> Void = {}
     @State private var filter: String?          // nil = all, else the saved result
 
-    private static let filters: [(String?, String)] = [(nil, "All"), ("SCAM", "Scam"), ("UNSURE", "Be careful"), ("SAFE", "Safe")]
+    private static var filters: [(String?, String)] {
+        [(nil, L.s(.pick_all)), ("SCAM", L.s(.risk_scam)), ("UNSURE", L.s(.risk_careful)), ("SAFE", L.s(.risk_safe))]
+    }
 
     var body: some View {
         let _ = vm.historyVersion
@@ -470,13 +467,13 @@ struct HistoryView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 if calls.isEmpty {
-                    EmptyState(text: "No calls yet. Try a demo call from Home.", goHome: goHome)
+                    EmptyState(text: L.s(.dash_empty), goHome: goHome)
                 } else {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
                             ForEach(Self.filters, id: \.1) { v, label in
                                 Button { filter = v } label: {
-                                    Text(label).font(.body).padding(.horizontal, 16).frame(minHeight: 44)
+                                    Text(label).font(.body).padding(.horizontal, 16).frame(minHeight: 56)
                                         .foregroundStyle(filter == v ? Theme.onBrand : Color.primary)
                                         .background(filter == v ? Theme.brand : Theme.card, in: Capsule())
                                 }
@@ -484,8 +481,8 @@ struct HistoryView: View {
                             }
                         }
                     }
-                    if shown.isEmpty { Text("No calls here.").font(.body).foregroundStyle(Theme.muted) }
-                    ForEach(["Today", "This week", "Earlier"], id: \.self) { g in
+                    if shown.isEmpty { Text(L.s(.hist_none)).font(.body).foregroundStyle(Theme.muted) }
+                    ForEach([L.s(.pw_today), L.s(.pw_this_week), L.s(.pw_earlier)], id: \.self) { g in
                         if let list = groups[g] {
                             Text(g).font(.title2.weight(.semibold)).padding(.top, 8).accessibilityAddTraits(.isHeader)
                             AppCard(padding: 0) {
@@ -507,7 +504,7 @@ struct HistoryView: View {
             .padding(Space.page)
         }
         .background(Theme.background)
-        .navigationTitle("History")
+        .navigationTitle(L.s(.hist_title))
     }
 }
 
@@ -515,19 +512,15 @@ struct HistoryView: View {
 
 private func reviewWords(_ review: String) -> String {
     switch review {
-    case "bert": return "Checked again at the end"
-    case "fallback": return "Final check not available"
-    case "unavailable": return "Server not reached at the end"
-    case "on_device": return "Checked on this phone"
-    case "migrated": return "From the old history"
+    case "bert": return L.s(.det_rechecked)
+    case "fallback": return L.s(.det_no_final)
+    case "unavailable": return L.s(.det_not_reached)
+    case "on_device": return L.s(.pw_checked_on_device)
+    case "migrated": return L.s(.det_old)
     default: return review
     }
 }
 
-private func checkedShort(_ id: String) -> String {
-    let t = PlainWords.checkedWhere(id).replacingOccurrences(of: "Checked ", with: "")
-    return t.prefix(1).uppercased() + t.dropFirst()
-}
 
 struct CallDetailView: View {
     @Environment(CallViewModel.self) private var vm
@@ -547,7 +540,7 @@ struct CallDetailView: View {
                 if let call {
                     content(call, points)
                 } else {
-                    Text("This call is no longer saved.").font(.body)
+                    Text(L.s(.det_gone)).font(.body)
                 }
             }
             .padding(Space.page)
@@ -565,29 +558,29 @@ struct CallDetailView: View {
                 .foregroundStyle(Theme.levelColor(Dashboard.level(call.finalVerdict)))
                 .accessibilityAddTraits(.isHeader)
         }
-        Text(DashboardStats.whatHappened(call.finalVerdict, call.liveVerdict, call.displayReason)).font(.title2)
+        Text(DashboardStats.whatHappened(call.finalVerdict, call.liveVerdict, Reasons.localized(call.displayReason))).font(.title2)
         Text("\(whenText(call.endedAt)) at \(format(call.endedAt, "HH:mm"))").font(.body).foregroundStyle(Theme.muted)
         AppCard {
-            Text("Risk during the call").font(.title2.weight(.semibold))
+            Text(L.s(.det_risk)).font(.title2.weight(.semibold))
             if points.isEmpty {
-                Text("No scores were saved for this call.").font(.body)
+                Text(L.s(.det_no_scores)).font(.body)
             } else {
                 RiskLineChart(values: points.map(\.combined),
                               description: "Risk during the call: \(points.count) points, highest \(String(format: "%.2f", points.compactMap(\.combined).max() ?? 0))",
                               marker: riskiest)
-                if riskiest != nil { ChartCaption(text: "The circle marks the riskiest moment") }
+                if riskiest != nil { ChartCaption(text: L.s(.det_circle)) }
             }
         }
         if let s = call.riskiestSentence {
             AppCard {
-                Text("Riskiest sentence").font(.title2.weight(.semibold))
+                Text(L.s(.det_sentence)).font(.title2.weight(.semibold))
                 Text("“\(s)”").font(.body)
             }
         }
         AppCard(padding: 0) {
             Button { withAnimation { details.toggle() } } label: {
                 HStack {
-                    Text("Details").font(.title2.weight(.semibold))
+                    Text(L.s(.det_details)).font(.title2.weight(.semibold))
                     Spacer()
                     Image(systemName: details ? "chevron.up" : "chevron.down")
                 }
@@ -596,21 +589,21 @@ struct CallDetailView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(details ? "Hide details" : "Show details")
+            .accessibilityLabel(L.s(details ? .det_hide : .det_show))
             if details {
                 VStack(alignment: .leading, spacing: 12) {
-                    DetailRow(key: "Length", value: DashboardStats.duration(Int(max((call.endedAt - call.startedAt) / 1000, 0))))
-                    DetailRow(key: "Checked", value: checkedShort(call.privacyLevel))
-                    DetailRow(key: "During the call", value: call.liveVerdict.map(PlainWords.verdict) ?? "-")
-                    DetailRow(key: "Final check", value: reviewWords(call.review))
+                    DetailRow(key: L.s(.det_length), value: DashboardStats.duration(Int(max((call.endedAt - call.startedAt) / 1000, 0))))
+                    DetailRow(key: L.s(.det_checked), value: PlainWords.checkedWhere(call.privacyLevel))
+                    DetailRow(key: L.s(.det_during), value: call.liveVerdict.map(PlainWords.verdict) ?? "-")
+                    DetailRow(key: L.s(.det_final), value: reviewWords(call.review))
                     if !points.isEmpty {
-                        Text("Warning signs (highest score out of 100)").font(.body).foregroundStyle(Theme.muted)
+                        Text(L.s(.det_signs)).font(.body).foregroundStyle(Theme.muted)
                         let rows: [(String, Int)] = Risk.signals.map { s in
                             let v = points.compactMap { p -> Float? in s == "urgency" ? p.urgency : s == "money" ? p.money : p.impersonation }.max() ?? 0
                             return (PlainWords.signalName(s), Int(v * 100))
                         }
                         HorizontalBars(rows: rows, color: Theme.brand,
-                                       description: "Warning signs in this call: " + rows.map { "\($0.0) \($0.1)" }.joined(separator: ", "))
+                                       description: L.s(.ins_signs) + ": " + rows.map { "\($0.0) \($0.1)" }.joined(separator: ", "))
                     }
                 }
                 .padding([.horizontal, .bottom], Space.card)

@@ -29,7 +29,7 @@ final class PlainWordsTests: XCTestCase {
         XCTAssertEqual(PlainWords.trend(s), "Risk is going down")
         XCTAssertEqual(PlainWords.hours(s), "Most risky calls happen in the morning")
         XCTAssertEqual(PlainWords.doubleCheck(s), "2 warnings turned out safe after a second look")
-        XCTAssertEqual(PlainWords.whereChecked(s), "Most calls were checked by the ScamGuard server")
+        XCTAssertEqual(PlainWords.whereChecked(s), "Most calls were checked online")
         XCTAssertEqual(PlainWords.answers(s), "You marked 2 warnings as fine")
         XCTAssertEqual(PlainWords.length(s), "An average call lasted 1 min 37 s")
     }
@@ -62,8 +62,8 @@ final class PlainWordsTests: XCTestCase {
     func testPlainWordsForResultsAndPlaces() {
         XCTAssertEqual(["SAFE", "UNSURE", "SCAM", "NOT CHECKED"].map(PlainWords.verdict), ["Safe", "Be careful", "Scam", "Not checked"])
         XCTAssertEqual(PlainWords.checkedWhere("on_device"), "Checked on this phone")
-        XCTAssertEqual(PlainWords.checkedWhere("hybrid"), "Checked on this phone with server help")
-        XCTAssertEqual(PlainWords.checkedWhere("cloud"), "Checked by the ScamGuard server")
+        XCTAssertEqual(PlainWords.checkedWhere("hybrid"), "Checked on this phone, online only when unsure")
+        XCTAssertEqual(PlainWords.checkedWhere("cloud"), "Checked online")
         XCTAssertEqual([8, 13, 19, 23, 3].map(PlainWords.partOfDay), ["morning", "afternoon", "evening", "night", "night"])
         XCTAssertEqual(PlainWords.reasonSentence("impersonation"), "Most warnings came from fake police, banks or officials")
         XCTAssertEqual(PlainWords.reasonSentence(nil), "Most warnings had several small warning signs")

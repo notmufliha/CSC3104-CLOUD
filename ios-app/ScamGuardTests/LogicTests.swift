@@ -250,7 +250,7 @@ final class ReasonsTests: XCTestCase {
         let scam = ended(.cloud, verdict: "SCAM", scores: ["money": 0.9], review: .unavailable)
         XCTAssertTrue(scam.showsTriggers)
         XCTAssertEqual(scam.triggerLines.map(\.seq), [1])
-        XCTAssertTrue(scam.duringCallLine.hasSuffix("Final review unavailable"))
+        XCTAssertTrue(scam.duringCallLine.hasSuffix("Final check not available"))
     }
 }
 

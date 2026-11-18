@@ -1,5 +1,8 @@
 package com.example.scamdetect.ui
 
+import com.example.scamdetect.R
+import com.example.scamdetect.logic.Tr
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -79,8 +82,10 @@ fun Modifier.tourTarget(target: Tour.Target): Modifier = composed {
  * title, one line, "2 of 7", Skip tour and Next. Taps anywhere else do nothing.
  */
 @Composable
-fun TourOverlay(index: Int, onNext: () -> Unit, onSkip: () -> Unit) {
-    val step = Tour.steps[index]
+fun TourOverlay(steps: List<Tour.Step>, index: Int, onNext: () -> Unit, onSkip: () -> Unit) {
+    val step = steps[index.coerceIn(0, steps.size - 1)]
+    val progress = androidx.compose.ui.res.stringResource(R.string.tour_progress, (index + 1).toString(), steps.size.toString())
+    val title = androidx.compose.ui.res.stringResource(step.title)
     val target = LocalTourTargets.current.bounds[step.target.id]
     val density = LocalDensity.current
     val pad = with(density) { 8.dp.toPx() }
@@ -93,7 +98,7 @@ fun TourOverlay(index: Int, onNext: () -> Unit, onSkip: () -> Unit) {
     Box(
         Modifier.fillMaxSize()
             .testTag("tourOverlay")
-            .semantics { paneTitle = "Tour, ${Tour.progress(index)}" }
+            .semantics { paneTitle = Tr.s(R.string.a11y_tour, progress) }
             // Swallow every touch that the bubble doesn't take, so the screen underneath can't be used.
             .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } } },
     ) {
@@ -113,7 +118,7 @@ fun TourOverlay(index: Int, onNext: () -> Unit, onSkip: () -> Unit) {
             Box(
                 Modifier.offset { IntOffset(h.left.roundToInt(), h.top.roundToInt()) }
                     .size(with(density) { h.width.toDp() }, with(density) { h.height.toDp() })
-                    .semantics { contentDescription = "Highlighted: ${step.target.spoken}" },
+                    .semantics { contentDescription = Tr.s(R.string.a11y_highlighted, title) },
             )
         }
         // Dark mode: a lighter card and a thin outline, so the bubble stands out from the dimmed screen.
@@ -127,19 +132,20 @@ fun TourOverlay(index: Int, onNext: () -> Unit, onSkip: () -> Unit) {
                 modifier = Modifier.widthIn(max = 480.dp).testTag("tourBubble"),
             ) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(Tour.progress(index), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary,
+                    Text(progress, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold)
-                    Text(step.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
+                    Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
                         modifier = Modifier.focusRequester(titleFocus).focusTarget()
                             .semantics { heading(); liveRegion = LiveRegionMode.Polite })
-                    Text(step.line, style = MaterialTheme.typography.bodyLarge)
+                    Text(androidx.compose.ui.res.stringResource(step.line), style = MaterialTheme.typography.bodyLarge)
                     Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = onSkip, modifier = Modifier.heightIn(min = 48.dp)) {
-                            Text("Skip tour", style = MaterialTheme.typography.bodyLarge)
+                        TextButton(onClick = onSkip, modifier = Modifier.heightIn(min = 56.dp)) {
+                            Text(androidx.compose.ui.res.stringResource(R.string.btn_skip_tour), style = MaterialTheme.typography.bodyLarge)
                         }
                         Spacer(Modifier.weight(1f))
-                        Button(onClick = onNext, modifier = Modifier.heightIn(min = 48.dp).testTag("tourNext")) {
-                            Text(Tour.nextLabel(index), style = MaterialTheme.typography.bodyLarge)
+                        Button(onClick = onNext, modifier = Modifier.heightIn(min = 56.dp).testTag("tourNext")) {
+                            Text(androidx.compose.ui.res.stringResource(if (index >= steps.size - 1) R.string.btn_done else R.string.btn_next),
+                                style = MaterialTheme.typography.labelLarge)
                         }
                     }
                 }
@@ -177,9 +183,10 @@ fun tourDemoCall(redAlert: Boolean) = CallUiState(
     combinedScore = 0.79f,
     callScores = mapOf("urgency" to 0.47f, "money" to 1f, "impersonation" to 0.9f),
     lines = listOf(
-        ChatLine(1, false, "Hello?"),
-        ChatLine(2, true, "This is Officer Tan from the police.", listOf("impersonation")),
-        ChatLine(3, true, "Read me the OTP you just received.", listOf("money")),
+        ChatLine(1, false, Tr.s(R.string.demo_line_hello)),
+        ChatLine(2, true, Tr.s(R.string.demo_line_officer), listOf("impersonation")),
+        ChatLine(3, true, Tr.s(R.string.demo_line_otp), listOf("money")),
     ),
     scamAlert = redAlert,
+    warningOpen = redAlert,
 )

@@ -19,6 +19,8 @@ final class CallViewModel {
     let haptic: @MainActor () -> Void
     /// G.2: the on-device models (nil = could not be loaded).
     let onDevice: OnDeviceServices
+    /// Red warning sound, haptics and speech; the yellow tap. Silent in tests.
+    let alerts: WarningAlerts
 
     // ------------------------------------------------------------ observable state
     private(set) var state = CallUiState()
@@ -33,6 +35,22 @@ final class CallViewModel {
     private(set) var mobileBertStatus = "Checking MobileBERT…"
     /// Settings: the server's state from the last check (true = connected, false = can't reach), nil = not checked yet.
     private(set) var connection: Bool?
+    /// Debug builds only: a demo connection state stays (no real check replaces it).
+    private var connectionFixed = false
+    /// "Read warnings aloud" and "Show 'Be careful' warnings".
+    private(set) var readAloud: Bool
+    private(set) var showBeCareful: Bool
+    /// The trusted family contact, nil = none set.
+    private(set) var family: Family?
+
+    struct Family: Equatable { let name: String; let phone: String }
+    /// Simple mode (Home, For family, simple Settings). An install from before it keeps the full app.
+    private(set) var simpleMode = false
+    /// Home's one-time card for an existing user: "Try Simple mode?".
+    private(set) var simpleOffer = false
+    /// The optional PIN (only its salted hash is kept, in the Keychain).
+    let pins: PinStore
+    private(set) var pinSet = false
 
     // ------------------------------------------------------------ first-launch setup + guided tour
 
@@ -68,12 +86,15 @@ final class CallViewModel {
     static let endedHungUp = "user_hung_up"
     static let endedDiscarded = "user_discarded"
     /// What the summary says instead of sharing a report at levels 2 and 3.
-    static let nothingShared = "Privacy mode: calls aren't shared from this phone. Your answer is kept here only."
+    static var nothingShared: String { L.s(.nothing_shared) }
+    /** The last report went through (the summary then turns its buttons off). */
+    private(set) var reportSent = false
     static let cloudChecked = "checked with cloud"
     static let cloudUnavailable = "cloud check unavailable, checked on this phone"
     static let mobileBertChecked = "checked with MobileBERT on this phone"
     static let mobileBertFailed = "MobileBERT failed, small models only"
     private static let knownVerdicts: Set<String> = ["SAFE", "UNSURE", "SCAM"]
+    static let underTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     private static let warningVerdicts: Set<String> = ["SCAM", "UNSURE"]
 
     init(prefs: AppPrefs = AppPrefs(),
@@ -81,8 +102,10 @@ final class CallViewModel {
          scripts: [CallScript] = ScriptRepository.loadAll(),
          session: URLSession = URLSession(configuration: Network.gatewayConfiguration()),
          delayScale: Double = 1,
-         haptic: @escaping @MainActor () -> Void = { UINotificationFeedbackGenerator().notificationOccurred(.error) },
+         haptic: @escaping @MainActor () -> Void = {},
          onDevice: OnDeviceServices = OnDeviceServices(),
+         alerts: WarningAlerts? = nil,
+         pins: PinStore = PinStore(),
          startUp: Bool = true) {
         self.prefs = prefs
         self.store = store
@@ -91,6 +114,16 @@ final class CallViewModel {
         self.delayScale = delayScale
         self.haptic = haptic
         self.onDevice = onDevice
+        // Sound and speech only in the real app, never while unit tests run inside it.
+        self.alerts = alerts ?? (startUp && !Self.underTests ? AlertPlayer() : SilentAlerts())
+        readAloud = prefs.readAloud
+        textSize = prefs.textSize
+        showBeCareful = prefs.showBeCareful
+        family = Self.savedFamily(prefs)
+        simpleMode = Onboarding.simpleModeAtLaunch(prefs.simpleMode)
+        simpleOffer = Onboarding.offerSimpleMode(prefs.simpleMode, offered: prefs.simpleModeOffered)
+        self.pins = pins
+        pinSet = pins.isSet
         gatewayUrl = prefs.gatewayUrl
         privacyLevel = prefs.privacyLevel
         saveSentence = prefs.saveRiskiestSentence
@@ -144,6 +177,8 @@ final class CallViewModel {
     func decline() { reset() }
 
     func reset() {
+        alerts.stop()
+        reportSent = false
         cancelPlayback()
         callId = ""               // a late end answer for the old call must not touch the next one
         state = CallUiState()
@@ -220,6 +255,8 @@ final class CallViewModel {
 
     /// User pressed the red button (or "Hang up now" on the red alert).
     func hangUp() {
+        alerts.stop()
+        state.warningOpen = false
         cancelPlayback()                                // also cancels lines still waiting for an answer
         endCall(Self.endedHungUp)
     }
@@ -376,12 +413,80 @@ final class CallViewModel {
             state.serverAction = body.action ?? state.serverAction
             state.gatewayError = nil                    // a newer line got through: an earlier blip no longer counts
         }
-        // First time the call turns SCAM -> one haptic + red pop-up.
+        // First time the call turns SCAM -> the full-screen red warning, sound, haptics and the spoken warning.
         if state.verdict == "SCAM" && !state.scamAlert {
             alertAt = now()
             state.scamAlert = true
+            state.warningOpen = true
             haptic()
+            alerts.red(prefs.readAloud ? speech(state.warningKind) : nil)
+        } else if state.verdict == "UNSURE" && !state.scamAlert && !state.carefulAlerted {
+            // Yellow: one short tap, no sound, no pop-up; nothing at all when "Be careful" warnings are off (the
+            // call is still saved as "Be careful").
+            state.carefulAlerted = true
+            if prefs.showBeCareful { alerts.yellow() }
         }
+    }
+
+    /// The spoken warning (English).
+    func speech(_ kind: Warnings.Kind) -> WarningSpeech {
+        WarningSpeech(text: Warnings.spoken(kind))
+    }
+
+    // ------------------------------------------------------------ warning actions + settings
+
+    /// "Close this warning": back to the call (or its summary, if it has ended). The call goes on.
+    func closeWarning() {
+        alerts.stop()
+        state.warningOpen = false
+    }
+
+    /// "Call my family" / "Call 1799": hang up the scam call first (if it is still on); the screen then opens the
+    /// phone app with the number filled in. The user taps Call.
+    func leaveCallForHelp() {
+        if state.phase == .inCall { hangUp() } else { closeWarning() }
+    }
+
+    /// The message for "Tell [name]" (Messages opens with it; the user taps Send).
+    func familyMessage() -> String { Warnings.familyMessage() }
+
+    /// "Text size": AppPrefs.textLarge (default) or textXLarge.
+    private(set) var textSize: String = AppPrefs.textLarge
+    func setTextSize(_ size: String) { prefs.textSize = size; textSize = prefs.textSize }
+
+    // ------------------------------------------------------------ Simple mode, PIN
+
+    func setSimpleMode(_ on: Bool) {
+        prefs.simpleMode = on
+        prefs.simpleModeOffered = true
+        simpleMode = on
+        simpleOffer = false
+    }
+
+    /// "No, thanks" on the card: never asked again, the full app stays.
+    func declineSimpleOffer() {
+        prefs.simpleModeOffered = true
+        simpleOffer = false
+    }
+
+    func verifyPin(_ pin: String) -> Bool { pins.verify(pin) }
+    func setPin(_ pin: String) { pins.set(pin); pinSet = pins.isSet }
+    /// "Forgot PIN" / "Turn off the PIN": removes only the PIN; the call history is not touched.
+    func clearPin() { pins.clear(); pinSet = pins.isSet }
+
+    func setReadAloud(_ on: Bool) { prefs.readAloud = on; readAloud = on }
+    func setShowBeCareful(_ on: Bool) { prefs.showBeCareful = on; showBeCareful = on }
+
+    func setFamily(name: String, phone: String) {
+        prefs.familyName = name
+        prefs.familyPhone = phone
+        family = Self.savedFamily(prefs)
+    }
+
+    private static func savedFamily(_ p: AppPrefs) -> Family? {
+        let phone = p.familyPhone
+        guard !phone.isEmpty else { return nil }
+        return Family(name: p.familyName.isEmpty ? phone : p.familyName, phone: phone)
     }
 
     func markError(_ id: String, _ seq: Int, _ msg: String) {
@@ -496,23 +601,23 @@ final class CallViewModel {
         let s = state
         if !s.privacyLevel.cloudCall { return Self.nothingShared }
         let lines = reportPreview()
-        if lines.isEmpty { return "Nothing to report: the caller said nothing." }
+        if lines.isEmpty { return L.s(.report_nothing) }
         let text = lines.map(\.text).joined(separator: " ")
         let chinese = Py.countUTF16(text) { (0x4E00...0x9FFF).contains($0) }
         let language = s.script?.lang ?? (chinese * 10 > text.utf16.count * 3 ? "zh" : "en")   // gateway's 30% rule
-        guard let api = gateway() else { return "Could not send the report: not a valid server address" }
+        guard let api = gateway() else { return L.s(.report_failed) }
         do {
             let resp = try await api.report(ReportRequest(
                 callId: callId.isEmpty ? UUID().uuidString.lowercased() : callId, kind: kind,
                 appVerdict: s.verdict ?? "", language: language, consent: true, lines: lines))
             if resp.isSuccessful {
-                return "Thank you. Shared \(resp.body?.linesStored ?? lines.count) lines; " +
-                    "lines not approved for training are deleted after 30 days."
+                reportSent = true
+                return L.s(.report_thanks, "\(resp.body?.linesStored ?? lines.count)")
             }
-            if resp.status == 503 { return "Reporting is not set up on this server." }
-            return "Could not send the report (server answered \(resp.status))."
+            if resp.status == 503 { return L.s(.report_not_set_up) }
+            return L.s(.report_failed)
         } catch {
-            return "Could not send the report: \(Self.describe(error))"
+            return L.s(.report_failed)
         }
     }
 
@@ -532,7 +637,10 @@ final class CallViewModel {
     }
 
     /// Quiet GET /healthz on the saved address, for the Settings list.
-    func refreshConnection() async { _ = await testConnection(prefs.gatewayUrl) }
+    func refreshConnection() async {
+        if connectionFixed { return }
+        _ = await testConnection(prefs.gatewayUrl)
+    }
 
     #if DEBUG
     /// Debug builds only (Help & about): sample history for demos and screenshots.
@@ -636,6 +744,12 @@ final class CallViewModel {
         if prefs.gatewayUrl != urlBefore { connection = nil }
         saveSentence = c.saveSentence
         helpImprove = c.helpImprove
+        textSize = prefs.textSize
+        readAloud = prefs.readAloud
+        simpleMode = c.simple
+        simpleOffer = false
+        family = Self.savedFamily(prefs)
+        if Pin.isValid(c.pin) { setPin(c.pin) }
         if !c.saveSentence { store.forgetSentences() }
         if !c.helpImprove { store.forgetLabelSentences() }
         historyVersion += 1
@@ -643,7 +757,7 @@ final class CallViewModel {
         let wasReplay = setupIsReplay
         setupIsReplay = false
         if wasReplay { gate = .app } else { openApp() }
-        tourStep = startTour ? 0 : nil
+        if startTour { self.startTour() } else { tourStep = nil }
     }
 
     /// Leaving "Run setup again" from its first screen: nothing is saved.
@@ -673,8 +787,13 @@ final class CallViewModel {
     }
 
     /// Debug builds only (-demoSetup): open the setup at one screen, for screenshots.
-    func demoSetup(_ step: Onboarding.Step, privacy: PrivacyLevel?, server: String?) {
+    func demoSetup(_ step: Onboarding.Step, privacy: PrivacyLevel?, server: String?, path: String? = nil) {
         if let privacy { setupChoices.privacy = privacy }
+        switch path {
+        case "custom": setupChoices.path = .custom
+        case "helper": setupChoices.path = .helper
+        default: break
+        }
         switch server {
         case "connected": setupChoices.server = .connected
         case "cantReach": setupChoices.server = .cantReach
@@ -685,11 +804,17 @@ final class CallViewModel {
     }
     #endif
 
-    func startTour(at: Int = 0) { tourStep = min(max(at, 0), Tour.steps.count - 1) }
+    /// The tour shown: Simple mode's 3 steps or the full app's 7, fixed when it starts.
+    private(set) var tourSimple = false
+
+    func startTour(at: Int = 0) {
+        tourSimple = simpleMode
+        tourStep = min(max(at, 0), Tour.steps(simple: tourSimple).count - 1)
+    }
 
     func tourNext() {
         guard let i = tourStep else { return }
-        tourStep = Tour.isLast(i) ? nil : i + 1
+        tourStep = Tour.isLast(i, simple: tourSimple) ? nil : i + 1
     }
 
     func tourBack() {
@@ -700,6 +825,28 @@ final class CallViewModel {
     func endTour() { tourStep = nil }
 
     /// The pretend call the tour's in-call steps show. Nothing is sent.
+    #if DEBUG
+    /// Debug builds only (screenshots): a pretend call showing the red warning (red = true) or the yellow banner.
+    /// Nothing is sent and nothing is saved (no call id).
+    func demoWarning(red: Bool) {
+        cancelPlayback()
+        callId = ""
+        var s = Self.tourDemoCall(redAlert: red)
+        s.privacyLevel = prefs.privacyLevel
+        if !red {
+            s.verdict = "UNSURE"
+            s.combinedScore = 0.52
+            s.callScores = ["urgency": 0.2, "money": 0.62, "impersonation": 0.1]
+            s.lines = [ChatLine(seq: 1, isCaller: false, text: L.s(.demo_line_hello)),
+                       ChatLine(seq: 2, isCaller: true, text: L.s(.demo_line_parcel), flags: ["money"])]
+        }
+        state = s
+    }
+
+    /// Debug builds only (screenshots): the server check's result without a server.
+    func demoConnection(_ ok: Bool?) { connection = ok; connectionFixed = true }
+    #endif
+
     static func tourDemoCall(redAlert: Bool) -> CallUiState {
         var s = CallUiState()
         s.phase = .inCall
@@ -707,11 +854,12 @@ final class CallViewModel {
         s.combinedScore = 0.79
         s.callScores = ["urgency": 0.47, "money": 1, "impersonation": 0.9]
         s.lines = [
-            ChatLine(seq: 1, isCaller: false, text: "Hello?"),
-            ChatLine(seq: 2, isCaller: true, text: "This is Officer Tan from the police.", flags: ["impersonation"]),
-            ChatLine(seq: 3, isCaller: true, text: "Read me the OTP you just received.", flags: ["money"]),
+            ChatLine(seq: 1, isCaller: false, text: L.s(.demo_line_hello)),
+            ChatLine(seq: 2, isCaller: true, text: L.s(.demo_line_officer), flags: ["impersonation"]),
+            ChatLine(seq: 3, isCaller: true, text: L.s(.demo_line_otp), flags: ["money"]),
         ]
         s.scamAlert = redAlert
+        s.warningOpen = redAlert
         return s
     }
 

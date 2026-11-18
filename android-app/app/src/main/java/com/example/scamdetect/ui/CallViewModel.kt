@@ -1,12 +1,8 @@
 package com.example.scamdetect.ui
 
 import android.app.Application
-import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -39,6 +35,9 @@ import com.example.scamdetect.logic.Reasons
 import com.example.scamdetect.logic.Risk
 import com.example.scamdetect.logic.Summary
 import com.example.scamdetect.logic.Tour
+import com.example.scamdetect.logic.Tr
+import com.example.scamdetect.R
+import com.example.scamdetect.logic.Warnings
 import com.example.scamdetect.ondevice.MobileBert
 import com.example.scamdetect.ondevice.OnDeviceCall
 import com.example.scamdetect.ondevice.OnDeviceScorer
@@ -100,6 +99,10 @@ data class CallUiState(
     val finalReview: FinalReview? = null,
     /** Workstream G: the privacy level this call runs at, fixed when it is answered (in-call badge, dashboard). */
     val privacyLevel: PrivacyLevel = PrivacyLevel.DEFAULT,
+    /** The full-screen red warning is showing. Only the user closes it (a button), even after the call ends. */
+    val warningOpen: Boolean = false,
+    /** The yellow "Be careful" buzz was given in this call (once per call). */
+    val carefulAlerted: Boolean = false,
 ) {
     /** The live level: the in-call bar. */
     val level get() = Risk.level(verdict, gatewayError)
@@ -108,6 +111,8 @@ data class CallUiState(
     val lit get() = Risk.litSignals(callScores)
     val flaggedTexts get() = lines.filter { it.flags.isNotEmpty() }.map { it.text }
     val banner get() = Risk.banner(level, lit, flaggedTexts)
+    /** What the red warning / yellow banner say (no scores): the strongest reason heard so far. */
+    val warningKind get() = Warnings.kind(lit, flaggedTexts, Reasons.codeForText(finalReview?.reason))
 }
 
 class CallViewModel(app: Application) : AndroidViewModel(app) {
@@ -127,6 +132,70 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch { callHistory.migrateLegacy() }   // the old SharedPreferences History, once
+    }
+
+    /** Red warning sound, vibration and speech; the yellow buzz. */
+    private val alerts = Alerts(app).also { it.warmUp() }
+
+    /** "Read warnings aloud" and "Show 'Be careful' warnings" (Settings). */
+    private val _readAloud = MutableStateFlow(prefs.readAloud)
+    val readAloud: StateFlow<Boolean> = _readAloud.asStateFlow()
+    private val _showBeCareful = MutableStateFlow(prefs.showBeCareful)
+    val showBeCareful: StateFlow<Boolean> = _showBeCareful.asStateFlow()
+
+    /** "Text size": AppPrefs.TEXT_LARGE (default) or TEXT_XLARGE. */
+    private val _textSize = MutableStateFlow(prefs.textSize)
+    val textSize: StateFlow<String> = _textSize.asStateFlow()
+    fun setTextSize(size: String) { prefs.textSize = size; _textSize.value = prefs.textSize }
+
+    fun setReadAloud(on: Boolean) { prefs.readAloud = on; _readAloud.value = on }
+    fun setShowBeCareful(on: Boolean) { prefs.showBeCareful = on; _showBeCareful.value = on }
+
+    /** The trusted family contact (name, phone), null = none set. */
+    data class Family(val name: String, val phone: String)
+    private fun savedFamily() = prefs.familyPhone.takeIf { it.isNotBlank() }?.let { Family(prefs.familyName.ifBlank { it }, it) }
+    private val _family = MutableStateFlow(savedFamily())
+    val family: StateFlow<Family?> = _family.asStateFlow()
+
+    fun setFamily(name: String, phone: String) {
+        prefs.familyName = name
+        prefs.familyPhone = phone
+        _family.value = savedFamily()
+    }
+
+    /** Simple mode (Home, For family, simple Settings). An install from before it keeps the full app. */
+    private val _simple = MutableStateFlow(Onboarding.simpleModeAtLaunch(prefs.simpleMode))
+    val simpleMode: StateFlow<Boolean> = _simple.asStateFlow()
+
+    /** Home's one-time card for an existing user: "Try Simple mode?". */
+    private val _simpleOffer = MutableStateFlow(Onboarding.offerSimpleMode(prefs.simpleMode, prefs.simpleModeOffered))
+    val simpleOffer: StateFlow<Boolean> = _simpleOffer.asStateFlow()
+
+    fun setSimpleMode(on: Boolean) {
+        prefs.simpleMode = on
+        prefs.simpleModeOffered = true
+        _simple.value = on
+        _simpleOffer.value = false
+    }
+
+    /** "No, thanks" on the card: never asked again, the full app stays. */
+    fun declineSimpleOffer() {
+        prefs.simpleModeOffered = true
+        _simpleOffer.value = false
+    }
+
+    /** The optional PIN (only its hash is stored, data/PinStore.kt). */
+    private val pinStore = com.example.scamdetect.data.PinStore(app)
+    val pinSet: StateFlow<Boolean> = pinStore.isSet.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    suspend fun verifyPin(pin: String): Boolean = pinStore.verify(pin)
+    fun setPin(pin: String) { viewModelScope.launch { pinStore.set(pin) } }
+    /** "Forgot PIN" / "Turn off the PIN": removes only the PIN; the call history is not touched. */
+    fun clearPin() { viewModelScope.launch { pinStore.clear() } }
+
+    override fun onCleared() {
+        alerts.shutdown()
+        super.onCleared()
     }
 
     /** G: Settings' privacy level. A change applies from the next call. */
@@ -149,6 +218,33 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     val isDebugBuild: Boolean =
         (app.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
+    /**
+     * Debug builds only (screenshots): a pretend call showing the red warning (red = true) or the yellow banner.
+     * Nothing is sent and nothing is saved (no call id).
+     */
+    fun demoWarning(red: Boolean) {
+        if (!isDebugBuild) return
+        playJob?.cancel()
+        callId = ""
+        val base = tourDemoCall(redAlert = red)
+        _state.value = if (red) base.copy(privacyLevel = prefs.privacyLevel) else base.copy(
+            verdict = "UNSURE", combinedScore = 0.52f, privacyLevel = prefs.privacyLevel,
+            callScores = mapOf("urgency" to 0.2f, "money" to 0.62f, "impersonation" to 0.1f),
+            lines = listOf(
+                ChatLine(1, false, Tr.s(R.string.demo_line_hello)),
+                ChatLine(2, true, Tr.s(R.string.demo_line_parcel), listOf("money")),
+            ),
+        )
+    }
+
+    /** Debug builds only (screenshots): a screen to open (MainActivity's Screen name). */
+    val demoScreen = MutableStateFlow<String?>(null)
+
+    /** Debug builds only (screenshots): the server check's result without a server. */
+    fun demoConnection(ok: Boolean?) { if (isDebugBuild) { _connection.value = ok; connectionFixed = true } }
+    /** Debug builds only: a demo connection state stays (no real check replaces it). */
+    private var connectionFixed = false
+
     fun loadSampleHistory() {
         if (!isDebugBuild) return
         viewModelScope.launch {
@@ -165,6 +261,7 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Quiet GET /healthz on the saved address, for the Settings list. */
     fun refreshConnection() {
+        if (connectionFixed) return
         viewModelScope.launch { _connection.value = testConnection(prefs.gatewayUrl).startsWith("Connected") }
     }
 
@@ -283,6 +380,7 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     fun decline() = reset()
 
     fun reset() {
+        alerts.stop()
         playJob?.cancel()
         callId = ""               // a late end answer for the old call must not touch the next one
         _state.value = CallUiState()
@@ -433,9 +531,28 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
 
     /** User pressed the red button (or "Hang up now" on the red alert). */
     fun hangUp() {
+        alerts.stop()
+        _state.update { it.copy(warningOpen = false) }
         playJob?.cancel()                                 // also cancels lines still waiting for an answer
         endCall(ENDED_HUNG_UP)
     }
+
+    /** "Close this warning": back to the call (or its summary, if it has ended). The call goes on. */
+    fun closeWarning() {
+        alerts.stop()
+        _state.update { it.copy(warningOpen = false) }
+    }
+
+    /**
+     * "Call my family" / "Call 1799" on the red warning: hang up the scam call first (if it is still on), then the
+     * screen opens the phone app with the number filled in. The user taps Call.
+     */
+    fun leaveCallForHelp() {
+        if (_state.value.phase == Phase.IN_CALL) hangUp() else closeWarning()
+    }
+
+    /** The message for "Tell [name]" (the SMS app opens with it; the user taps Send). */
+    fun familyMessage(): String = Warnings.familyMessage()
 
     /**
      * B.5: the call is over. Shows "Final review…", sends POST /v1/call/end with the caller lines and waits up to
@@ -630,8 +747,13 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         // call and this block has no suspension point, so two answers cannot both get here.
         if (_state.value.verdict == "SCAM" && !_state.value.scamAlert) {
             alertAt = System.currentTimeMillis()          // G.12: for "hung up within 10 s of a red alert"
-            _state.update { it.copy(scamAlert = true) }
-            vibrateOnce()
+            _state.update { it.copy(scamAlert = true, warningOpen = true) }
+            alerts.red(if (prefs.readAloud) speech(_state.value.warningKind) else null)
+        } else if (_state.value.verdict == "UNSURE" && !_state.value.scamAlert && !_state.value.carefulAlerted) {
+            // Yellow: one short buzz, no sound, no pop-up; nothing at all when "Be careful" warnings are off (the
+            // call is still saved as "Be careful").
+            _state.update { it.copy(carefulAlerted = true) }
+            if (prefs.showBeCareful) alerts.yellow()
         }
     }
 
@@ -644,16 +766,8 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private fun vibrateOnce() {
-        val ctx = getApplication<Application>()
-        val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= 31) {
-            ctx.getSystemService(VibratorManager::class.java)?.defaultVibrator
-        } else {
-            @Suppress("DEPRECATION")
-            ctx.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-        }
-        vibrator?.vibrate(VibrationEffect.createOneShot(600, VibrationEffect.DEFAULT_AMPLITUDE))
-    }
+    /** The spoken warning (English). */
+    private fun speech(kind: Warnings.Kind) = Alerts.Speech(Warnings.spoken(kind, Tr.txt))
 
     // ---------------------------------------------------------------- H.3 report / "this was fine"
 
@@ -662,11 +776,11 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         _state.value.lines.filter { it.isCaller && it.text.isNotBlank() }.map { ReportLine(it.seq, Mask.mask(it.text)) }
 
     /** Sends the report after the user agreed. kind = "scam" or "fine". Returns a short message for the screen. */
-    suspend fun sendReport(kind: String): String {
+    suspend fun sendReport(kind: String): Pair<String, Boolean> {
         val s = _state.value
-        if (!s.privacyLevel.cloudCall) return NOTHING_SHARED
+        if (!s.privacyLevel.cloudCall) return nothingShared() to false
         val lines = reportPreview()
-        if (lines.isEmpty()) return "Nothing to report: the caller said nothing."
+        if (lines.isEmpty()) return Tr.s(R.string.report_nothing) to false
         val text = lines.joinToString(" ") { it.text }
         val chinese = text.count { it in '一'..'鿿' }
         val language = s.script?.lang ?: if (chinese * 10 > text.length * 3) "zh" else "en" // gateway's 30% rule
@@ -675,15 +789,14 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
                 ReportRequest(callId.ifEmpty { UUID.randomUUID().toString() }, kind, s.verdict ?: "", language, true, lines)
             )
             when {
-                resp.isSuccessful -> "Thank you. Shared ${resp.body()?.linesStored ?: lines.size} lines; " +
-                    "lines not approved for training are deleted after 30 days."
-                resp.code() == 503 -> "Reporting is not set up on this server."
-                else -> "Could not send the report (server answered ${resp.code()})."
+                resp.isSuccessful -> Tr.s(R.string.report_thanks, (resp.body()?.linesStored ?: lines.size).toString()) to true
+                resp.code() == 503 -> Tr.s(R.string.report_not_set_up) to false
+                else -> Tr.s(R.string.report_failed) to false
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            "Could not send the report: ${e.javaClass.simpleName}"
+            Tr.s(R.string.report_failed) to false
         }
     }
 
@@ -822,18 +935,24 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         val c = _setupChoices.value
         val urlBefore = prefs.gatewayUrl
         Onboarding.apply(c, prefs)
+        if (com.example.scamdetect.logic.Pin.isValid(c.pin)) setPin(c.pin)
         _privacyLevel.value = prefs.privacyLevel
         _gatewayUrl.value = prefs.gatewayUrl
         if (prefs.gatewayUrl != urlBefore) _connection.value = null
         _saveSentence.value = c.saveSentence
         _helpImprove.value = c.helpImprove
+        _textSize.value = prefs.textSize
+        _readAloud.value = prefs.readAloud
+        _simple.value = c.simple
+        _simpleOffer.value = false
+        _family.value = savedFamily()
         if (!c.saveSentence) viewModelScope.launch { callHistory.forgetSentences() }
         if (!c.helpImprove) viewModelScope.launch { callHistory.forgetLabelSentences() }
         if (c.privacy.scoresOnPhone) preloadModels()
         val wasReplay = setupIsReplay
         setupIsReplay = false
         if (wasReplay) _gate.value = Gate.APP else openApp()
-        _tourStep.value = if (startTour) 0 else null
+        if (startTour) startTour() else _tourStep.value = null
     }
 
     /** Back on the first screen of "Run setup again", confirmed: nothing is saved. */
@@ -862,11 +981,18 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         _gate.value = Gate.SETUP
     }
 
-    fun startTour(at: Int = 0) { _tourStep.value = at.coerceIn(0, Tour.steps.size - 1) }
+    /** The tour shown: Simple mode's 3 steps or the full app's 7, fixed when it starts. */
+    var tourSimple = false
+        private set
+
+    fun startTour(at: Int = 0) {
+        tourSimple = _simple.value
+        _tourStep.value = at.coerceIn(0, Tour.steps(tourSimple).size - 1)
+    }
 
     fun tourNext() {
         val i = _tourStep.value ?: return
-        _tourStep.value = if (Tour.isLast(i)) null else i + 1
+        _tourStep.value = if (Tour.isLast(i, tourSimple)) null else i + 1
     }
 
     fun tourBack() {
@@ -884,7 +1010,7 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         private const val ENDED_HUNG_UP = "user_hung_up"
         const val NOT_CHECKED = "NOT CHECKED"
         /** G: what the summary says instead of sharing a report at levels 2 and 3. */
-        const val NOTHING_SHARED = "Privacy mode: calls aren't shared from this phone. Your answer is kept here only."
+        fun nothingShared() = Tr.s(R.string.nothing_shared)
         /** G.3: notes under a Hybrid caller line whose last 5 lines were sent (masked) to the cloud. */
         const val CLOUD_CHECKED = "checked with cloud"
         const val CLOUD_UNAVAILABLE = "cloud check unavailable, checked on this phone"
