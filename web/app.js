@@ -1,5 +1,7 @@
-// ScamGuard web app: the phone apps' cloud mode (privacy level 1) in a browser, so the system can be tried without
-// Android Studio or Xcode. Same gateway calls (POST v1/utterance, v1/call/end, GET healthz), the same screens in
+// ScamGuard web app: the phone apps in a browser, so the system can be tried without Android Studio or Xcode. All
+// three privacy levels: 1 Cloud (the gateway checks every line), 2 Hybrid and 3 On-device (checked in this page by
+// ondevice.js, the apps' own on-device models and rules; Hybrid asks the cloud's BERT only at unsure moments, with
+// the lines masked; On-device asks MobileBERT, run here with onnxruntime-web, and makes no request at all). Same gateway calls (POST v1/utterance, v1/call/end, GET healthz), the same screens in
 // Standard and Simple mode, and the same wording: strings.json is generated from tools/i18n/strings/*.json together
 // with the apps' string tables (tools/i18n/gen_strings.py), and learn.json is the apps' Learn content
 // (tools/learn/build_learn.py). Kept in step with android-app ui/CallViewModel.kt, logic/Risk.kt, logic/Warnings.kt,
@@ -8,7 +10,7 @@
 // Everything the phone keeps on the phone (history, settings, family contact, quiz score) stays in this browser
 // (localStorage). Nothing new is uploaded.
 // Not in the browser: real phone calls and messages (Call / Tell my family open the computer's tel: / sms: handler,
-// if any), the weekly reminder notification, on-device checking (privacy levels 2 and 3), the PIN lock.
+// if any), the weekly reminder notification, the PIN lock, the hidden Developer view.
 "use strict";
 
 // ---------------------------------------------------------------- wording (the apps' string table)
@@ -53,6 +55,9 @@ const simple = () => store.get("simple", false);
 const textSize = () => store.get("textSize", simple() ? "large" : "normal");
 const family = () => { const p = store.get("familyPhone", ""); return p ? { name: store.get("familyName", "") || p, phone: p } : null; };
 const showCareful = () => store.get("showCareful", true);
+/** Privacy level (logic/PrivacyLevel.kt ids): "cloud" (default), "hybrid" or "on_device". A change applies from the next call. */
+const PRIVACY_LEVELS = ["cloud", "hybrid", "on_device"];
+const privacyLevel = () => { const v = store.get("privacyLevel", "cloud"); return PRIVACY_LEVELS.includes(v) ? v : "cloud"; };
 
 /** "api/" (same address as this page) unless Settings saved another. */
 function gatewayUrl() { return store.get("gatewayUrl", "api/"); }
@@ -89,31 +94,63 @@ const warnMessage = (k) => T("warn_msg_" + k);
 const warnDo = (k) => T(k === "otp" ? "warn_do_otp" : k === "money" ? "warn_do_money" : "warn_do_details");
 const carefulLine = (k) => T({ otp: "careful_msg_money", money: "careful_msg_money", official: "careful_msg_official", rush: "careful_msg_rush" }[k] || "careful_msg_general");
 
-// ---------------------------------------------------------------- masking (logic/Mask.kt, backend/review/mask.py)
+// Masking (logic/Mask.kt, backend/review/mask.py) is in ondevice.js (OnDevice.Mask): Hybrid uses it too.
+const Mask = OnDevice.Mask;
 
-const Mask = (() => {
-  const email = /\b[\w.+-]+@[\w-]+(\.[\w-]+)+\b/g;
-  const url = /\b(?:https?:\/\/|www\.)\S+|\b[\w-]+\.(?:com|sg|net|org|gov|io|co|my|cn)(?:\/\S*)?\b/gi;
-  const money = /(?:(?:S?\$|SGD|USD|RM|MYR|RMB|¥|€|£)\s?\d[\d,]*(?:\.\d+)?(?:\s?(?:k|m|million|thousand))?)|(?:\d[\d,]*(?:\.\d+)?\s?(?:dollars?|sgd|bucks|元|块))/gi;
-  const id = /\b[STFGM]\d{7}[A-Z]\b/gi;
-  const phone = /(?<![\w])\+?\d[\d\s-]{6,}\d(?![\w])/g;
-  const digits = /\d+/g;
-  const TITLE = "(?:[Oo]fficer|[Ii]nspector|[Ss]ergeant|[Mm]r|[Mm]rs|[Mm]s|[Mm]adam|[Dd]r|[Dd]octor)\\.?";
-  const CUE = "(?:[Mm]y name is|[Tt]his is|[Ii] am|[Ii]'m|[Ss]peaking with)";
-  const name = new RegExp(`((?:\\b${CUE}\\s+(?:${TITLE}\\s+)?|\\b${TITLE}\\s+))([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)?)`, "g");
-  const nameZh = /(我叫|我姓)([一-鿿]{1,3})/g;
-  const notNames = new Set(("police singapore dbs ocbc uob posb maybank citibank hsbc standard moh mom iras cpf ica spf " +
-    "customs immigration interpol the your a an calling from with here just not sorry sure fine okay ok very shopee " +
-    "lazada grab singtel starhub m1 dhl fedex ninja amazon apple microsoft google manager officer inspector sergeant " +
-    "madam sir doctor").split(" "));
-  return (text) => {
-    let t = text.replace(email, "[EMAIL_ADDRESS]");
-    t = t.replace(url, "[URL]").replace(money, "[MONEY_AMOUNT]").replace(id, "[NUMBER]");
-    t = t.replace(phone, "[PHONE_NUMBER]").replace(digits, "[NUMBER]");
-    t = t.replace(name, (_, cue, who) => cue + (notNames.has(who.split(" ")[0].toLowerCase()) ? who : "[PERSON_NAME]"));
-    return t.replace(nameZh, (_, cue) => cue + "[PERSON_NAME]");
-  };
-})();
+// ---------------------------------------------------------------- on-device checking (levels 2 and 3)
+
+// The apps' model files, served next to this page (ondevice/), loaded once when a level that needs them is picked.
+const engine = { scorer: null, scorerLoading: null, bert: null, bertLoading: null, bertStatus: "not loaded" };
+function loadScorer() {
+  engine.scorerLoading ??= OnDevice.OnDeviceScorer.load(async (f) => {
+    const r = await fetch("ondevice/" + f);
+    if (!r.ok) throw new Error(`ondevice/${f}: ${r.status}`);
+    return r.json();
+  }).then((s) => { engine.scorer = s; render(); return s; }).catch((e) => { engine.scorerLoading = null; throw e; });
+  return engine.scorerLoading;
+}
+function loadScript(src) {
+  return new Promise((ok, fail) => {
+    const el = document.createElement("script");
+    el.src = src; el.onload = ok; el.onerror = () => fail(new Error("could not load " + src));
+    document.head.appendChild(el);
+  });
+}
+/** Level 3's second opinion: MobileBERT (ondevice/mobilebert/) in onnxruntime-web (vendor/ort/). Resolves to it or null. */
+function loadMobileBert() {
+  engine.bertLoading ??= (async () => {
+    engine.bertStatus = "loading"; render();
+    try {
+      if (!window.ort) await loadScript("vendor/ort/ort.wasm.min.js");
+      ort.env.wasm.wasmPaths = new URL("vendor/ort/", location.href).href;
+      const get = async (n, kind) => { const r = await fetch("ondevice/mobilebert/" + n); return r.ok ? r[kind]() : null; };
+      const res = await OnDevice.MobileBert.load(ort, (n) => get(n, "text"), (n) => get(n, "arrayBuffer"));
+      engine.bert = res.installed || null;
+      engine.bertStatus = res.installed ? "ready" : res.reason;
+    } catch (e) {
+      engine.bert = null; engine.bertStatus = "could not be loaded: " + (e?.message || e);
+    }
+    render();
+    return engine.bert;
+  })();
+  return engine.bertLoading;
+}
+/** Start loading what the chosen level needs, so the first call doesn't wait. */
+function preload(level = privacyLevel()) {
+  if (level === "cloud") return;
+  loadScorer().catch(() => render());
+  if (level === "on_device") loadMobileBert();
+}
+
+/** G.3: POST v1/verify with the masked lines; BERT's score, or null if the server didn't answer within 1.5 s. */
+async function verifyInCloud(lines) {
+  if (!lines.length) return null;
+  try {
+    const r = await api("v1/verify", { lines, lang: "en" }, OnDevice.OnDeviceCall.VERIFY_TIMEOUT_MS);
+    const score = r.ok ? r.json?.score : null;
+    return typeof score === "number" && score >= 0 && score <= 1 ? score : null;
+  } catch { return null; }
+}
 
 // ---------------------------------------------------------------- gateway
 
@@ -198,6 +235,7 @@ function newCall(script) {
     lines: [], verdict: null, combinedScore: null, callScores: {}, error: null, lastOutcomeSeq: 0,
     scamAlert: false, warningOpen: false, points: [], startedAt: 0, timers: [], ended: false,
     reviewing: false, finalReview: null, copied: false,
+    level: "cloud", chain: Promise.resolve(),
   };
 }
 const callLevel = (c) => level(c.verdict, c.error);
@@ -218,7 +256,9 @@ function ring(script) { stopTimers(); call = newCall(script); go("ringing"); }
 function answer() {
   const c = call;
   c.startedAt = Date.now();
+  c.level = privacyLevel();
   go("call");
+  if (c.level !== "cloud") return playOnDevice(c);
   let at = 0;
   const sends = [];
   c.script.lines.forEach((line, i) => {
@@ -248,6 +288,60 @@ async function send(c, seq, text) {
   if (!r.ok) return markError(c, seq, `Server error ${r.status}`);
   if (!r.json) return markError(c, seq, "Empty answer from server");
   applyAnswer(c, seq, r.json);
+}
+
+/**
+ * Levels 2 and 3 (CallViewModel.playOnDevice): the same playback, but every caller line is scored in this page,
+ * one at a time and in order (the rules need that). Level 3 makes no request at all; level 2 sends the caller's last
+ * 5 lines, masked, to v1/verify only at unsure moments or on the spot check, and keeps its own answer if the server
+ * is slow or down. English only; other lines show "could not check".
+ */
+function playOnDevice(c) {
+  const hybrid = c.level === "hybrid";
+  const models = loadScorer().then((s) => new OnDevice.OnDeviceCall(s)).catch(() => null);
+  const bert = hybrid ? Promise.resolve(null) : loadMobileBert();
+  let at = 0;
+  c.script.lines.forEach((line, i) => {
+    at += line.delay_ms ?? DEFAULT_DELAY_MS;
+    c.timers.push(setTimeout(() => {
+      if (c.ended) return;
+      const seq = i + 1;
+      const caller = isCaller(line);
+      c.lines.push({ seq, isCaller: caller, text: line.text, flags: [], pending: caller, failed: false, note: null });
+      render();
+      if (caller) c.chain = c.chain.then(() => scoreHere(c, seq, line.text, models, bert, hybrid)).catch(() => markError(c, seq, "Could not check on this device"));
+      if (i === c.script.lines.length - 1) {
+        // let the last answers arrive (up to 5 s), a moment to read the final state, then end
+        Promise.race([c.chain, sleep(5000)]).then(() => sleep(1500)).then(() => endCall(c, "script_finished"));
+      }
+    }, at));
+  });
+  if (!c.script.lines.length) endCall(c, "script_finished");
+}
+
+async function scoreHere(c, seq, text, models, bertLoading, hybrid) {
+  if (c.ended) return;
+  const local = await models;
+  if (c.ended) return;
+  if (!local) return markError(c, seq, "On-device models could not be loaded");
+  if (!OnDevice.OnDeviceCall.isEnglish(c.script.lang, text)) return markError(c, seq, "On-device checks are English only");
+  const setNote = (key) => { const l = c.lines.find((x) => x.seq === seq); if (l) l.note = key; };
+  if (hybrid) {
+    const a = await local.answerHybrid(c.id, seq, text, verifyInCloud, Mask);
+    if (c.ended) return;
+    if (a.second) setNote(a.second.bertScore != null ? "note_cloud_checked" : "note_cloud_unavailable");
+    return applyAnswer(c, seq, a.response);
+  }
+  const mb = await bertLoading;
+  if (c.ended) return;
+  if (mb) {
+    // MobileBERT reads the lines unmasked: they never leave this page
+    const a = await local.answerWithSecondOpinion(c.id, seq, text, (x) => x, true, (lines) => mb.score(lines));
+    if (c.ended) return;
+    if (a.second) setNote(a.second.bertScore != null ? "note_mb_checked" : "note_mb_failed");
+    return applyAnswer(c, seq, a.response);
+  }
+  applyAnswer(c, seq, local.answer(c.id, seq, text));
 }
 
 function applyAnswer(c, seq, body) {
@@ -290,7 +384,8 @@ function stopTimers() { if (call) { call.timers.forEach(clearTimeout); call.time
 function discard() {
   if (call && screen === "call" && !call.ended) {
     call.ended = true; stopTimers();
-    sendEnd(call, "user_discarded");
+    // levels 2 and 3: the server keeps no memory of the call, so nothing is sent
+    if (call.level === "cloud") sendEnd(call, "user_discarded");
   }
   call = null; go("home");
 }
@@ -310,6 +405,14 @@ async function endCall(c, endedBy) {
   c.lines.forEach((l) => { if (l.pending) { l.pending = false; l.failed = true; } });
   c.reviewing = true; c.warningOpen = false;
   go("summary");
+  if (c.level !== "cloud") {
+    // levels 2 and 3 send no end message (it would carry every caller line, unmasked): the live verdict is final
+    c.finalReview = { finalVerdict: null, reason: "", reviewed: false, topWindowSeqs: [], answered: false, onDevice: true };
+    c.reviewing = false;
+    saveHistory(c);
+    if (c === call) render();
+    return;
+  }
   const resp = await Promise.race([sendEnd(c, endedBy), sleep(FINAL_REVIEW_WAIT_MS).then(() => null)]);
   const verdict = ["SAFE", "UNSURE", "SCAM"].includes(resp?.final_verdict) ? resp.final_verdict : null;
   c.finalReview = resp
@@ -352,7 +455,8 @@ function saveHistory(c) {
   calls.unshift({
     id: c.id, startedAt: c.startedAt, endedAt: Date.now(), finalVerdict: verdict, liveVerdict: historyVerdict(callLevel(c)),
     reasonCode: reasonCode(lvl, c.callScores, c.finalReview?.reason), callScore: c.combinedScore,
-    review: c.finalReview?.reviewed ? "bert" : c.finalReview?.answered ? "fallback" : "unavailable",
+    review: c.finalReview?.reviewed ? "bert" : c.finalReview?.onDevice ? "on_device" : c.finalReview?.answered ? "fallback" : "unavailable",
+    privacyLevel: c.level,
     title: c.script.title, riskiestSentence: sentence, points: c.points.map((p) => [p.t, p.combined]),
   });
   store.set("calls", calls.slice(0, 200));
@@ -447,8 +551,9 @@ const emptyState = (icon, text) => `<div class="empty"><div class="empty-ico" ar
 function bubble(l, risky = false) {
   const state = l.pending ? `<div class="state">${esc(T("call_checking"))}</div>` : l.failed ? `<div class="state">${esc(T("risk_not_checked"))}</div>` : "";
   const flags = l.flags?.length && !simple() ? `<div class="flags">⚑ ${esc(T("call_flagged", l.flags.map(chipLabel).join(", ")))}</div>` : "";
+  const note = l.note && !simple() ? `<div class="state">${esc(T(l.note))}</div>` : "";
   return `<div class="bubble ${l.isCaller ? "" : "me"} ${l.flags?.length ? "flagged" : ""} ${risky ? "risky" : ""}">
-    <div class="who">${esc(l.isCaller ? T("call_caller") : T("call_you"))}${risky ? " · " + esc(T("call_risky_here")) : ""}</div>${esc(l.text)}${flags}${state}</div>`;
+    <div class="who">${esc(l.isCaller ? T("call_caller") : T("call_you"))}${risky ? " · " + esc(T("call_risky_here")) : ""}</div>${esc(l.text)}${flags}${note}${state}</div>`;
 }
 
 function go(to) { screen = to; sheet = null; render(); $("#screen").scrollTop = 0; }
@@ -490,7 +595,7 @@ const SCREENS = {
     <button class="btn wide" data-go="pick">${esc(T("btn_pick_script"))}</button>
     <button class="btn wide" data-go="learn">${esc(T("btn_learn"))}</button>
     ${scripts.length ? "" : emptyState("ℹ", T("pick_none"))}
-    ${connected === false ? stateBanner("ERROR", T("error_banner")) : ""}
+    ${connected === false && privacyLevel() !== "on_device" ? stateBanner("ERROR", T("error_banner")) : ""}
     <div class="note small">${webNote()}</div>`,
 
   pick: () => {
@@ -525,7 +630,7 @@ const SCREENS = {
     const word = lvl === "YELLOW" && !showCareful() ? T("risk_safe_so_far") : levelWord(lvl, true);
     return `<div ${c.warningOpen ? 'aria-hidden="true" inert' : ""} class="col">
       <div class="strong">${esc(T("call_on_call"))}</div>
-      ${simple() ? "" : `<div class="small muted">${esc(c.script.title)}</div>`}
+      ${simple() ? "" : `<div class="small muted">${esc(c.script.title)} · <span aria-label="${esc(T("a11y_privacy_badge", T("privacy_tag_" + c.level)))}">${esc(T("pw_checked_" + c.level))}</span></div>`}
       <div class="riskbar">
         <div class="row"><span class="grow strong" style="font-size:1.25rem">${esc(word)}</span>
           ${has && c.combinedScore != null && !simple() ? `<span class="small">${esc(T("call_risk_score", c.combinedScore.toFixed(2)))}</span>` : ""}</div>
@@ -552,7 +657,7 @@ const SCREENS = {
     const fam = family();
     return `<h1>${esc(T("summary_title"))}</h1>
       ${hiddenYellow ? badge("LISTENING", T("risk_call_ended"), true) : badge(lvl, levelWord(lvl), true)}
-      ${simple() ? "" : `<p class="muted">${esc(T(fr?.reviewed ? "sum_during" : "sum_during_unavailable", levelWord(callLevel(c), true)))}</p>`}
+      ${simple() ? "" : `<p class="muted">${esc(T(fr?.onDevice ? "sum_during_phone" : fr?.reviewed ? "sum_during" : "sum_during_unavailable", levelWord(callLevel(c), true)))}</p>`}
       ${banner}
       ${after ? `<div class="after card">
         <h2>${esc(T("after_title"))}</h2>
@@ -697,11 +802,11 @@ const SCREENS = {
       <p class="small muted"><b>api/</b> (the default) means the server this page came from: the docker compose edge
         (http://127.0.0.1:8088/) or the Kubernetes Ingress (https://&lt;laptop IP&gt;:8443/).</p>
       <div class="row"><button class="btn fill" data-act="save-url">${esc(T("btn_save"))}</button><button class="btn" data-act="test-url">${esc(T("btn_test"))}</button></div>
-      <p id="url-result" class="small" role="status"></p>
+      <p id="url-result" class="small" role="status"></p>`}
       <hr><h2>${esc(T("set_how_checked"))}</h2>
-      <div class="choice on"><span><span class="strong block">${esc(T("privacy_tag_cloud"))}</span><span class="small muted block">${esc(T("privacy_plain_cloud"))}</span></span></div>
-      <div class="choice off"><span><span class="strong block">${esc(T("privacy_tag_hybrid"))}</span><span class="small muted block">${esc(T("privacy_plain_hybrid"))} (phone apps only)</span></span></div>
-      <div class="choice off"><span><span class="strong block">${esc(T("privacy_tag_on_device"))}</span><span class="small muted block">${esc(T("privacy_plain_on_device"))} (phone apps only)</span></span></div>`}
+      <div class="col" role="radiogroup">${PRIVACY_LEVELS.map((l) => radio("privacy", l, privacyLevel(), T("privacy_tag_" + l), T("privacy_plain_" + l))).join("")}</div>
+      <p class="small muted">${esc(T("privacy_applies_next"))}${privacyLevel() === "cloud" ? "" : " " + esc(T("privacy_english_only"))}</p>
+      ${privacyLevel() === "cloud" || simple() ? "" : `<p class="small muted">${esc(onDeviceStatus())}</p>`}
       <hr><h2>${esc(T("help_colours"))}</h2>
       ${badge("GREEN", T("risk_safe") + " – " + T("help_safe_line"))}${badge("YELLOW", T("risk_careful") + " – " + T("help_careful_line"))}
       ${badge("RED", T("risk_scam") + " – " + T("help_scam_line"))}${badge("ERROR", T("risk_not_checked") + " – " + T("help_notchecked_line"))}`;
@@ -709,8 +814,23 @@ const SCREENS = {
 };
 
 function webNote() {
-  return "Web version of the ScamGuard app (the backup for trying it without installing). Calls are checked online by " +
-    "the ScamGuard server. Phone calls, messages, the weekly reminder and on-device checking need the Android or iOS app.";
+  const where = { cloud: "Calls are checked online by the ScamGuard server.",
+    hybrid: "Calls are checked in this browser; only unsure moments go to the server, masked.",
+    on_device: "Calls are checked in this browser only; nothing about the call is sent." }[privacyLevel()];
+  return "Web version of the ScamGuard app (for trying it without installing). " + where +
+    " Change it in Settings → How calls are checked. Phone calls, messages, the weekly reminder and the PIN lock need the Android or iOS app.";
+}
+
+/** Settings, levels 2 and 3: what is loaded in this page (the Developer view's model line, in plain words). */
+function onDeviceStatus() {
+  const m = engine.scorer ? "On-device models: " + engine.scorer.models.map((x) => x.version).join(", ")
+    : engine.scorerLoading ? "On-device models: loading…" : "On-device models: not loaded";
+  if (privacyLevel() !== "on_device") return m + ".";
+  const b = engine.bert ? `MobileBERT ${engine.bert.config.version}: ready (second opinion in this browser)`
+    : engine.bertStatus === "loading" ? "MobileBERT: loading (about 37 MB, once)…"
+    : engine.bertStatus === "not loaded" ? "MobileBERT: not loaded"
+    : `${engine.bertStatus}: level 3 uses the small models only`;
+  return m + ". " + b + ".";
 }
 
 function warningScreen(c) {
@@ -864,6 +984,7 @@ document.addEventListener("change", (e) => {
     render();
   }
   if (t.name === "size") { store.set("textSize", t.value); render(); }
+  if (t.name === "privacy") { store.set("privacyLevel", t.value); preload(t.value); render(); }
 });
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
@@ -880,5 +1001,6 @@ document.addEventListener("keydown", (e) => {
   render();
   await Promise.all([loadScripts(), loadLearn()]);
   render();
+  preload();
   checkConnection();
 })();

@@ -54,3 +54,8 @@ script_results*.md
 backend/federated/data/
 backend/federated/model/*.joblib
 backend/federated/results/*.joblib
+
+# tools/testing/web_ondevice_parity.mjs: onnxruntime-web for its MobileBERT checks (npm install --prefix tools/testing ...)
+tools/testing/node_modules/
+tools/testing/package.json
+tools/testing/package-lock.json

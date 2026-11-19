@@ -1,0 +1,5 @@
+# Build context for web/Dockerfile (run from the repo root): only what the image copies.
+*
+!web/
+!android-app/app/src/main/assets/models/
+!android-app/app/src/main/assets/scripts/
