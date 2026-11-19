@@ -1,5 +1,5 @@
-// ScamGuard web app (POST v1/utterance, v1/call/end, v1/verify, v1/report, GET healthz): the phone apps in a browser, so the system can be tried without Android Studio or Xcode. All
-// three privacy levels: 1 Cloud (the gateway checks every line), 2 Hybrid and 3 On-device (checked in this page by
+// ScamGuard web app (POST v1/utterance, v1/call/end, v1/verify, v1/report, GET healthz): the phone apps in a
+// browser, so the system can be tried without Android Studio or Xcode. All three privacy levels: 1 Cloud (the gateway checks every line), 2 Hybrid and 3 On-device (checked in this page by
 // ondevice.js, the apps' own on-device models and rules; Hybrid asks the cloud's BERT only at unsure moments, with
 // the lines masked; On-device asks MobileBERT, run here with onnxruntime-web, and makes no request at all). Same gateway calls (POST v1/utterance, v1/call/end, GET healthz), the same screens in
 // Standard and Simple mode, and the same wording: strings.json is generated from tools/i18n/strings/*.json together

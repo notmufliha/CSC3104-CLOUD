@@ -5,13 +5,14 @@ import Foundation
 nonisolated enum ScriptRepository {
     static func loadAll(bundle: Bundle = .main) -> [CallScript] {
         let urls = bundle.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? []
-        return urls
+        let parsed: [CallScript] = urls
             .filter { $0.lastPathComponent.hasPrefix("scam_") || $0.lastPathComponent.hasPrefix("normal_") }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
             .compactMap { url in
                 guard let data = try? Data(contentsOf: url) else { return nil }
                 return try? parse(name: url.lastPathComponent, data: data)
             }
+        return ScriptTitles.withTitles(parsed)   // display titles (files keep their names)
     }
 
     static func parse(name: String, data: Data) throws -> CallScript {
