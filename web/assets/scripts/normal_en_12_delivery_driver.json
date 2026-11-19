@@ -1,0 +1,52 @@
+[
+  {
+    "speaker": "caller",
+    "text": "Hi, I'm the delivery driver. I'm downstairs at your block now with your order.",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "Oh, I'll come down. Which entrance are you at?",
+    "delay_ms": 5300
+  },
+  {
+    "speaker": "caller",
+    "text": "I'm at the lobby near the letterboxes. Blue jacket.",
+    "delay_ms": 4050
+  },
+  {
+    "speaker": "receiver",
+    "text": "Okay, give me two minutes. I'm just putting on my shoes.",
+    "delay_ms": 3650
+  },
+  {
+    "speaker": "caller",
+    "text": "No problem. Can you confirm the unit number? The app shows number twelve.",
+    "delay_ms": 4750
+  },
+  {
+    "speaker": "receiver",
+    "text": "Yes, number twelve, thanks.",
+    "delay_ms": 5000
+  },
+  {
+    "speaker": "caller",
+    "text": "The total is twenty-three dollars fifty. It's cash on delivery, or you can PayNow me.",
+    "delay_ms": 2400
+  },
+  {
+    "speaker": "receiver",
+    "text": "I'll pay cash. Do you have change for fifty?",
+    "delay_ms": 5650
+  },
+  {
+    "speaker": "caller",
+    "text": "Yes, no problem.",
+    "delay_ms": 4050
+  },
+  {
+    "speaker": "receiver",
+    "text": "Great, coming down now.",
+    "delay_ms": 1700
+  }
+]

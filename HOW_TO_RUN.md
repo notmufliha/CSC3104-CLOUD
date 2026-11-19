@@ -2,14 +2,11 @@
 
 ScamGuard can be tried in three ways: the **web version** (no install), the **Android app** (Android Studio) and
 the **iPhone app** (Xcode, Mac only). All three use the same ScamGuard server, which runs on your computer with
-Docker, either with Docker Compose or on Kubernetes (minikube). Start with step 1, then choose any of the three ways.
-
-The web version has **all three privacy levels** of the phone apps (Cloud, Hybrid, On-device), so every way calls
-can be checked can be tried in a browser, without a phone or Android Studio.
+Docker. Start with step 1, then choose any of the three ways.
 
 | Way | You need | Time |
 |---|---|---|
-| [Web version](#2-web-version-no-install) | Docker Desktop and a browser | about 15 min (first build), then 1 min |
+| [Web version](#2-web-version-no-install) | Docker Desktop and a browser (computer or phone) | about 15 min (first build), then 1 min |
 | [Android app](#3-android-app-android-studio) | Docker Desktop and Android Studio | about 10 min after step 1 |
 | [iPhone app](#4-iphone-app-xcode-mac-only) | Docker Desktop and Xcode 27 on a Mac | about 10 min after step 1 |
 
@@ -34,97 +31,51 @@ can be checked can be tried in a browser, without a phone or Android Studio.
 
 To stop it later, run `docker compose down`.
 
-### 1b. Or: start the server on Kubernetes (minikube)
-
-This is the full cloud deployment (replicas, autoscaling, Ingress with HTTPS), the same one the report describes. It
-needs Docker Desktop (8 GB of memory for Docker), `minikube` and `kubectl`.
-
-```powershell
-demo\up.ps1        # Windows (macOS/Linux: bash demo/up.sh). First run about 20 min: builds 12 images, starts minikube
-demo\expose.ps1    # leave this window open: it keeps https://127.0.0.1:8443/ (and https://<laptop IP>:8443/) open
-```
-
-The web version is then at **https://127.0.0.1:8443/** (step 2). Its certificate is signed by the project's own
-demo CA (`demo/tls/ca.crt`), so the browser warns the first time: choose **Advanced → Continue to 127.0.0.1**, or
-import `demo/tls/ca.crt` as a trusted certificate to avoid the warning. More: [demo/README.md](demo/README.md).
-
 ---
 
 ## 2. Web version (no install)
 
-Open **http://127.0.0.1:8088/** (Docker Compose) or **https://127.0.0.1:8443/** (Kubernetes, step 1b) in Chrome,
-Edge, Safari or Firefox. It works best in a narrow window or with the browser's phone view (developer tools →
-device toolbar).
+Open **http://127.0.0.1:8088/** in Chrome, Edge, Safari or Firefox. On a computer the app appears inside a phone
+frame (untick **Show phone frame** at the top right to hide it; the switch next to it picks light or dark). It is a
+replica of the iPhone app: the same screens, wording and look, and the same three privacy levels.
 
-The web version has the same screens and wording as the phone apps, and the same three privacy levels
-(**Settings → How calls are checked**; a change applies from the next call):
-
-| Level in Settings | Where each caller line is checked | What is sent to the server during a call |
-|---|---|---|
-| **Most accurate** (Cloud, the default) | by the server: 3 checks per language + BERT | every caller line |
-| **Balanced** (Hybrid) | in the browser, with the apps' own on-device models | only at unsure moments: the caller's last 5 lines, with names and numbers removed, for a BERT second opinion |
-| **Most private** (On-device) | in the browser only, with the apps' on-device models and MobileBERT as the second opinion | nothing |
-
-Hybrid and On-device run the **same model files and decision rules as the Android and iOS apps**
-(`web/ondevice.js`, a port of the apps' code; checked against the same parity files, see
-`tools/testing/web_ondevice_parity.mjs`). Like the apps, they check English calls only. The first switch to
-**Most private** loads MobileBERT into the page (about 37 MB, once); Settings shows when it is ready.
-
-**On a phone's browser** (any phone, including an iPhone, with no app installed): with the Kubernetes server
-(step 1b) and `demo\expose.ps1` running, put the phone on the same Wi-Fi as the laptop and open
-`https://<laptop IP>:8443/` (expose prints the IP). Campus Wi-Fi often blocks devices from reaching each other; if
-the page doesn't open, connect the laptop to the phone's hotspot instead.
+**From a phone** (on the same Wi-Fi or hotspot as the laptop): find the laptop's address (macOS:
+`ipconfig getifaddr en0`; Windows: `ipconfig`) and open `http://<that address>:8088/`. It fills the screen; **Share →
+Add to Home Screen** makes it open like an app. There, **Call my family**, **Tell my family** and **Call 1799** open
+the phone's own Phone and Messages apps.
 
 **What to try:**
 
-1. **Home → Simulate scam call** (or **Choose a call script… → Bank OTP**), then **Answer**.
-   - The risk bar fills as each caller line is checked by the server.
-   - After a few lines the screen turns red: **"This may be a scam"**, with **Hang up**, **Call my family**,
-     **Tell (name)**, **Call 1799 ScamShield Helpline** and **Close this warning**.
-2. Tap **Hang up**. The **Call summary** shows the result and the **"What to do now"** card:
-   - **Report to ScamShield** (copies a short summary first, then opens the ScamShield site);
-   - Call 1799;
-   - Tell my family;
-   - How to block this number;
-   - If I already shared details.
-3. **Simulate normal call**: stays green ("Safe so far"), with no warning.
-4. **Try the privacy levels**: Settings → How calls are checked → **Balanced** or **Most private**, then play the
-   same Bank OTP call again. The call screen says where it is checked ("Checked on this phone" / "online only when
-   unsure"); a caller line that got a second opinion says **Also checked online** (Hybrid) or **Checked again on
-   this phone** (MobileBERT). The summary says "Checked on this phone". To see that Most private sends nothing,
-   open developer tools → Network before the call: no request is made until you leave the page. (Turning the
-   server off, `docker compose stop gateway`, also shows it: Most private still warns; Hybrid keeps its own answer
-   when the online check is unavailable.)
-5. **Learn to spot scams**: 10 common scam types with warning signs and what to do. **Practice quiz**: 5 real caller lines, "Scam or Safe?".
-6. **Dashboard → Share weekly summary**: a short note for the family. It has no phone numbers and nothing the
-   caller said. **Share** opens the browser's share menu, or copies the note.
-7. **Settings**:
-   - **How calls are checked** (the privacy level, above).
-   - **App style**: **Standard** or **Simple**. Simple has bigger text and fewer buttons, and its Home has
-     "ScamGuard is protecting you", **Try a practice call**, Learn and Recent calls.
-   - **Text size**.
-   - **My family contact** (used by Call my family / Tell my family).
-   - **Read warnings aloud**.
-   - **Show 'Be careful' warnings**.
-   - **Connection** status.
+1. The first screen asks **"Who will use this phone?"**. **Me** gives the full app; **Me, but simpler** gives Simple
+   mode; **An older family member** sets it up for someone else (text size, family contact, optional PIN).
+2. **Home → Simulate scam call** (or **Choose a call script… → Bank OTP**), then **Answer**.
+   - The risk bar fills as each caller line is checked; the warning signs light up.
+   - After a few lines the screen turns red: **"This may be a scam"** (with a sound, and read aloud if that is on),
+     with **Hang up**, **Call my family**, **Call 1799 ScamShield Helpline**, **Tell (name)** and **Close this warning**.
+3. Tap **Hang up**. The **Call summary** shows the result and **"What to do now"** (Report to ScamShield, Call 1799,
+   Tell my family, How to block this number, If I already shared details). Below it, **Help ScamGuard learn →
+   This was a scam / This was fine** shows the caller's lines with names and numbers removed and, after **Share**,
+   sends them to the team's review website (the learning loop; Cloud level only).
+4. **Simulate normal call**: stays green, with no warning.
+5. **Settings → How calls are checked**: **Balanced** (Hybrid) and **Most private** (On-device) check the call
+   inside the browser with the same small models as the phones; Most private sends nothing at all.
+6. **Learn to spot scams**: 10 common scam types and a 5-question practice quiz.
+7. **Dashboard**: results, recent calls, Insights charts, History, each call's details, and **Share weekly summary**.
+8. **Settings → Help → tap "Version 1.0" seven times** unlocks the **Developer view**: server address, models, the
+   last call's scores, the request log (caller text masked), live scores during calls, playback speed, sample
+   history, and **Reset app to first launch**.
 
 **Known limits of the web version:**
-- A browser can't make phone calls or send text messages. **Call my family**, **Tell my family** and
-  **Call 1799** open the computer's phone or messages app if it has one; otherwise nothing happens. The
-  demo video shows them on a phone.
-- These are in the phone apps only:
-  - the weekly reminder notification;
-  - the PIN lock;
-  - the hidden Developer view;
-  - newer on-device models downloaded from the server (federated learning): the web version uses the models built
-    into the apps.
-- "Balanced" and "Most private" check English calls only (as on the phones); Chinese lines show "Not checked".
-- MobileBERT runs on onnxruntime-web (WebAssembly), whose int8 arithmetic is not bit-for-bit the phones': on the
-  test windows its score is within 0.06 of the server's Python run and on the same side of the 0.45 / 0.6
-  thresholds, and every English demo call gets the same verdicts, line by line, as native ONNX Runtime.
-- History, settings and the family contact are kept in this browser only (nothing is uploaded).
+- On a computer, **Call** and **Tell my family** can't call or text; the app says what a phone would do. The demo
+  video shows them on a phone.
+- No MobileBERT (the phone's large second-opinion model); **Most private** uses the three small models only.
+- The weekly reminder works only while the page is open, and only over HTTPS or on `127.0.0.1`.
+- Over plain `http://<laptop address>:8088/` browsers turn off sharing, so **Share** becomes **Copy text**.
+- History, settings, the family contact and the PIN are kept in this browser only (nothing is uploaded).
 
-If the page says it can't connect, check that step 1 (or 1b) is running. "Most private" works even then.
+If the page says it can't connect, check that step 1 is running. The web version is also served by the
+Kubernetes demo at https://127.0.0.1:8443/ (see README.md, section B); the browser warns once about the project's
+own certificate: choose **Advanced → Continue**. More: [web/README.md](web/README.md).
 
 ---
 
@@ -208,9 +159,7 @@ Use any simulator name from `xcrun simctl list devices available`. More: [ios-ap
 | Problem | Fix |
 |---|---|
 | Every call shows "Could not check" | The server isn't running: `docker compose ps`, then `docker compose up -d`. On Android 17+, allow local network access (Android Settings → Apps → ScamGuard → Permissions). |
-| The web page is blank or old | Reload the page without the cache (Shift + Reload). After changing `web/`, rebuild it: `docker compose up -d --build edge` (Kubernetes: run `demo\up.ps1` again). |
-| Browser warns about the certificate at https://127.0.0.1:8443/ | Expected: the demo's own CA. Choose Advanced → Continue, or import `demo/tls/ca.crt` as trusted. |
-| Settings says "MobileBERT could not be loaded" | Most private then uses the three small checks only. Reload the page; check that `https://127.0.0.1:8443/vendor/ort/ort.wasm.min.js` opens (the web image downloads onnxruntime-web when it is built, so building needs internet). |
+| The web page is blank or old | Reload the page without the cache (Shift + Reload). |
 | Port 8088 or 8080 is already in use | Stop the other program, or run `docker compose down` and start again. |
 | Android Studio: "SDK location not found" | Open the `android-app` folder (not the root), or set `sdk.dir` in `android-app/local.properties`. |
 | Xcode can't open the project | Xcode 27 is needed. |
