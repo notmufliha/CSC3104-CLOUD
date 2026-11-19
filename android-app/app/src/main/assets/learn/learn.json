@@ -1,0 +1,651 @@
+{
+ "version": 1,
+ "generated_by": "tools/learn/build_learn.py",
+ "types": [
+  {
+   "id": "bank_code",
+   "title": "A 'bank' asks for your code",
+   "signs": [
+    "Says it is your bank and there is a strange payment.",
+    "Says you must act within minutes.",
+    "Asks you to read out a code sent to your phone, or your card number."
+   ],
+   "todo": "Hang up. Call your bank on the number on the back of your card. Never share a code.",
+   "script": "scam_en_11_bank_otp.json",
+   "source_name": "ScamShield",
+   "source_url": "https://www.scamshield.gov.sg/"
+  },
+  {
+   "id": "fake_police",
+   "title": "Fake police officer",
+   "signs": [
+    "Your call is passed to someone who says they are the police.",
+    "Says you will be arrested today and must tell no one.",
+    "Asks you to move your savings to a 'safety account'."
+   ],
+   "todo": "Hang up. The police never ask you to move your money. Call 1799 if you are unsure.",
+   "script": "scam_en_10_gov_official.json",
+   "source_name": "ScamShield",
+   "source_url": "https://www.scamshield.gov.sg/"
+  },
+  {
+   "id": "parcel",
+   "title": "Parcel held at customs",
+   "signs": [
+    "Says a parcel in your name is held at customs.",
+    "Passes you to an 'officer' who threatens the police.",
+    "Asks for a fee by PayNow within the hour."
+   ],
+   "todo": "Hang up. Check with the courier on its own app or website. Do not pay anyone who calls you.",
+   "script": "scam_en_12_parcel_customs.json",
+   "source_name": "ScamShield",
+   "source_url": "https://www.scamshield.gov.sg/"
+  },
+  {
+   "id": "tech_support",
+   "title": "Fake computer or internet support",
+   "signs": [
+    "Says your router or computer has been hacked.",
+    "Asks you to install an app or read out a code so they can see your screen.",
+    "Asks you to log in to your bank, move money, or pay with gift cards."
+   ],
+   "todo": "Hang up. Never let a caller control your phone or computer.",
+   "script": "scam_en_13_tech_support.json",
+   "source_name": "ScamShield",
+   "source_url": "https://www.scamshield.gov.sg/"
+  },
+  {
+   "id": "relative",
+   "title": "A 'relative' in trouble",
+   "signs": [
+    "Asks you to guess who is calling, then says they changed their number.",
+    "Says they are in trouble and need money today.",
+    "Asks you to keep it secret and to PayNow quickly."
+   ],
+   "todo": "Hang up. Call the person on the number you already have, or ask the family.",
+   "script": "scam_en_14_friend_in_trouble.json",
+   "source_name": "ScamShield",
+   "source_url": "https://www.scamshield.gov.sg/"
+  },
+  {
+   "id": "ica_police",
+   "title": "ICA officer, then 'China police'",
+   "signs": [
+    "Says it is ICA and your passport was used for a crime.",
+    "Passes you to 'police' from another country who threaten arrest.",
+    "Asks you to move all your savings to a 'supervision account'."
+   ],
+   "todo": "Hang up. ICA never asks you to transfer money over the phone. Call 1799 if you are unsure.",
+   "script": "scam_en_20_ica_to_china_police.json",
+   "source_name": "Singapore Police Force advisory",
+   "source_url": "https://www.police.gov.sg/Media-Hub/News/2026/09/20260925_advisory_on_scams_involving_the_immigration_checkpoints_authority_ica"
+  },
+  {
+   "id": "telco_officer",
+   "title": "Phone company, then a 'MAS officer'",
+   "signs": [
+    "Says a second phone line in your name is used for fraud.",
+    "Passes you to an officer from the Monetary Authority of Singapore.",
+    "Says your bank account will be frozen unless you move your money now."
+   ],
+   "todo": "Hang up. No real officer asks you to move your money to a 'safety account'. Call 1799 if you are unsure.",
+   "script": "scam_en_21_telco_to_mas_officer.json",
+   "source_name": "Singapore Police Force advisory",
+   "source_url": "https://www.police.gov.sg/Media-Hub/News/2026/07/20260719_police_advisory_on_government_officials_impersonation_scams_involving_telephone_numbers"
+  },
+  {
+   "id": "apple_crypto",
+   "title": "Fake Apple support and your coins",
+   "signs": [
+    "Says someone is logging in to your Apple ID right now.",
+    "Asks you to open your crypto app while they stay on the line.",
+    "Asks you to move your coins to a 'secure wallet' and read out a code."
+   ],
+   "todo": "Hang up. Never move coins or share a code because a caller tells you to.",
+   "script": "scam_en_22_apple_support_crypto.json",
+   "source_name": "Singapore Police Force advisory",
+   "source_url": "https://www.police.gov.sg/media-hub/news/2026/08/20260821_police_advisory_on_apple_impersonation_cryptocurrency_account_compromise_scams"
+  },
+  {
+   "id": "card_handover",
+   "title": "A 'bank officer' comes for your card",
+   "signs": [
+    "Says your bank card was used and must be replaced today.",
+    "Tells you not to go to the bank branch.",
+    "Asks you to hand over your card and PIN, or your cash."
+   ],
+   "todo": "Hang up. Never give your card, PIN or cash to anyone. Call your bank on the number on your card.",
+   "script": "scam_en_23_bank_card_handover.json",
+   "source_name": "Singapore Police Force advisory",
+   "source_url": "https://www.police.gov.sg/media-hub/news/2026/05/20260504_police_advisory_on_government_officials_impersonation_scams_involving_cash_transfers"
+  },
+  {
+   "id": "job_task",
+   "title": "Part-time job that asks you to pay",
+   "signs": [
+    "Offers easy money for liking or reviewing products.",
+    "Says you must pay first to get your earnings.",
+    "Gives a deadline: pay in minutes or lose everything."
+   ],
+   "todo": "Stop. A real job never asks you to pay to get your pay.",
+   "script": "scam_en_24_job_task_deposit.json",
+   "source_name": "Singapore Police Force, Annual Scam and Cybercrime Brief 2025",
+   "source_url": "https://www.police.gov.sg/-/media/SPF/Advisories/Scams/Annual-Scam-and-Cybercrime-Brief-2025.pdf"
+  }
+ ],
+ "quiz": [
+  {
+   "text": "The transaction will go through in five minutes, so we must act immediately.",
+   "scam": true,
+   "why": "A real bank never asks you to read out a code or your card number.",
+   "script": "scam_en_11_bank_otp.json",
+   "type": "bank_code"
+  },
+  {
+   "text": "I am sending a six-digit code to your phone now. Please read it out to me.",
+   "scam": true,
+   "why": "A real bank never asks you to read out a code or your card number.",
+   "script": "scam_en_11_bank_otp.json",
+   "type": "bank_code"
+  },
+  {
+   "text": "Yes, that is normal, it is part of the cancellation process. Just tell me the numbers.",
+   "scam": true,
+   "why": "A real bank never asks you to read out a code or your card number.",
+   "script": "scam_en_11_bank_otp.json",
+   "type": "bank_code"
+  },
+  {
+   "text": "Also give me your card number and the three digits at the back so I can block it.",
+   "scam": true,
+   "why": "A real bank never asks you to read out a code or your card number.",
+   "script": "scam_en_11_bank_otp.json",
+   "type": "bank_code"
+  },
+  {
+   "text": "Your name is linked to a criminal case and you may be arrested today if you do not cooperate.",
+   "scam": true,
+   "why": "The police never ask you to move your money or to keep it a secret.",
+   "script": "scam_en_10_gov_official.json",
+   "type": "fake_police"
+  },
+  {
+   "text": "You must not tell anyone, not your family and not your bank. This investigation is confidential.",
+   "scam": true,
+   "why": "The police never ask you to move your money or to keep it a secret.",
+   "script": "scam_en_10_gov_official.json",
+   "type": "fake_police"
+  },
+  {
+   "text": "To prove your innocence, we need to check your funds. Transfer your savings into a safety account that we provide.",
+   "scam": true,
+   "why": "The police never ask you to move your money or to keep it a secret.",
+   "script": "scam_en_10_gov_official.json",
+   "type": "fake_police"
+  },
+  {
+   "text": "Do it right now, within the next thirty minutes, or a warrant will be issued.",
+   "scam": true,
+   "why": "The police never ask you to move your money or to keep it a secret.",
+   "script": "scam_en_10_gov_official.json",
+   "type": "fake_police"
+  },
+  {
+   "text": "Open your banking app and send all the money to this account number. Read me the OTP when the bank sends it.",
+   "scam": true,
+   "why": "The police never ask you to move your money or to keep it a secret.",
+   "script": "scam_en_10_gov_official.json",
+   "type": "fake_police"
+  },
+  {
+   "text": "Stay on the line. Do not hang up until the transfer is done.",
+   "scam": true,
+   "why": "The police never ask you to move your money or to keep it a secret.",
+   "script": "scam_en_10_gov_official.json",
+   "type": "fake_police"
+  },
+  {
+   "text": "If you do not resolve this today, we will refer your case to the police and the parcel will be destroyed.",
+   "scam": true,
+   "why": "No one should make you pay a 'release fee' over the phone.",
+   "script": "scam_en_12_parcel_customs.json",
+   "type": "parcel"
+  },
+  {
+   "text": "You need to pay a release fee of four hundred and eighty dollars through PayNow.",
+   "scam": true,
+   "why": "No one should make you pay a 'release fee' over the phone.",
+   "script": "scam_en_12_parcel_customs.json",
+   "type": "parcel"
+  },
+  {
+   "text": "I will send you the number now. Pay within one hour, otherwise the fine will double.",
+   "scam": true,
+   "why": "No one should make you pay a 'release fee' over the phone.",
+   "script": "scam_en_12_parcel_customs.json",
+   "type": "parcel"
+  },
+  {
+   "text": "After you pay, take a screenshot of the receipt and send it to me on WhatsApp.",
+   "scam": true,
+   "why": "No one should make you pay a 'release fee' over the phone.",
+   "script": "scam_en_12_parcel_customs.json",
+   "type": "parcel"
+  },
+  {
+   "text": "Now I can see your screen. The virus has reached your banking. Please log in to your internet banking so I can check.",
+   "scam": true,
+   "why": "Real support staff never ask you to log in to your bank, move money or pay with gift cards.",
+   "script": "scam_en_13_tech_support.json",
+   "type": "tech_support"
+  },
+  {
+   "text": "Yes, we must move your money to a protected account before the hackers take it. Please do it right now.",
+   "scam": true,
+   "why": "Real support staff never ask you to log in to your bank, move money or pay with gift cards.",
+   "script": "scam_en_13_tech_support.json",
+   "type": "tech_support"
+  },
+  {
+   "text": "The cleaning service also costs two hundred dollars. Please pay with gift cards from any convenience store.",
+   "scam": true,
+   "why": "Real support staff never ask you to log in to your bank, move money or pay with gift cards.",
+   "script": "scam_en_13_tech_support.json",
+   "type": "tech_support"
+  },
+  {
+   "text": "I'm fine, but I need to pay the other driver's repair cost and bail today or they will charge me.",
+   "scam": true,
+   "why": "Asking for urgent money and for secrecy is a sign of a fake relative.",
+   "script": "scam_en_14_friend_in_trouble.json",
+   "type": "relative"
+  },
+  {
+   "text": "Five thousand five hundred dollars. Please don't tell Mum, she will be so worried.",
+   "scam": true,
+   "why": "Asking for urgent money and for secrecy is a sign of a fake relative.",
+   "script": "scam_en_14_friend_in_trouble.json",
+   "type": "relative"
+  },
+  {
+   "text": "Can you PayNow it now? I'll give you the number. It's really urgent, they are waiting.",
+   "scam": true,
+   "why": "Asking for urgent money and for secrecy is a sign of a fake relative.",
+   "script": "scam_en_14_friend_in_trouble.json",
+   "type": "relative"
+  },
+  {
+   "text": "Thank you Auntie, I'll pay you back next week, I promise. Please hurry.",
+   "scam": true,
+   "why": "Asking for urgent money and for secrecy is a sign of a fake relative.",
+   "script": "scam_en_14_friend_in_trouble.json",
+   "type": "relative"
+  },
+  {
+   "text": "I will transfer you now to Inspector Zhang from the Shanghai Public Security Bureau. Please stay on the line.",
+   "scam": true,
+   "why": "No officer asks you to move your savings so they can 'check' them.",
+   "script": "scam_en_20_ica_to_china_police.json",
+   "type": "ica_police"
+  },
+  {
+   "text": "This is Inspector Zhang. If you do not cooperate today, a warrant will be issued and you can be arrested at the airport.",
+   "scam": true,
+   "why": "No officer asks you to move your savings so they can 'check' them.",
+   "script": "scam_en_20_ica_to_china_police.json",
+   "type": "ica_police"
+  },
+  {
+   "text": "To clear your name, you must move all your savings into a supervision account so we can check the money is clean.",
+   "scam": true,
+   "why": "No officer asks you to move your savings so they can 'check' them.",
+   "script": "scam_en_20_ica_to_china_police.json",
+   "type": "ica_police"
+  },
+  {
+   "text": "Go to the bank now and transfer it. Do not tell the bank staff or your family, this is a confidential investigation.",
+   "scam": true,
+   "why": "No officer asks you to move your savings so they can 'check' them.",
+   "script": "scam_en_20_ica_to_china_police.json",
+   "type": "ica_police"
+  },
+  {
+   "text": "I understand. Because it involves fraud, I have to connect you to an officer from the Monetary Authority of Singapore.",
+   "scam": true,
+   "why": "No real officer asks you to move your money to a 'safety account'.",
+   "script": "scam_en_21_telco_to_mas_officer.json",
+   "type": "telco_officer"
+  },
+  {
+   "text": "This is Officer Tan from MAS. Your bank accounts are linked to the fraud and will be frozen within the hour.",
+   "scam": true,
+   "why": "No real officer asks you to move your money to a 'safety account'.",
+   "script": "scam_en_21_telco_to_mas_officer.json",
+   "type": "telco_officer"
+  },
+  {
+   "text": "To protect it, transfer your balance to a MAS safety account now. You will get it back after the investigation.",
+   "scam": true,
+   "why": "No real officer asks you to move your money to a 'safety account'.",
+   "script": "scam_en_21_telco_to_mas_officer.json",
+   "type": "telco_officer"
+  },
+  {
+   "text": "No, the bank staff may be involved. Stay on the line with me while you do the transfer.",
+   "scam": true,
+   "why": "No real officer asks you to move your money to a 'safety account'.",
+   "script": "scam_en_21_telco_to_mas_officer.json",
+   "type": "telco_officer"
+  },
+  {
+   "text": "We need to act fast before they get in, every minute counts.",
+   "scam": true,
+   "why": "Real support never asks you to move your coins or read out a code.",
+   "script": "scam_en_22_apple_support_crypto.json",
+   "type": "apple_crypto"
+  },
+  {
+   "text": "Transfer all your coins to the Apple secure wallet address I'm sending you, then read me the six-digit code you receive.",
+   "scam": true,
+   "why": "Real support never asks you to move your coins or read out a code.",
+   "script": "scam_en_22_apple_support_crypto.json",
+   "type": "apple_crypto"
+  },
+  {
+   "text": "It's only temporary. Once the hacker is blocked, we send everything back to you.",
+   "scam": true,
+   "why": "Real support never asks you to move your coins or read out a code.",
+   "script": "scam_en_22_apple_support_crypto.json",
+   "type": "apple_crypto"
+  },
+  {
+   "text": "For your safety, please don't go to the branch, it is being monitored by the syndicate.",
+   "scam": true,
+   "why": "A real bank never asks for your PIN or asks you to hand over your card or cash.",
+   "script": "scam_en_23_bank_card_handover.json",
+   "type": "card_handover"
+  },
+  {
+   "text": "Our officer will come to your home within the hour to collect the old card.",
+   "scam": true,
+   "why": "A real bank never asks for your PIN or asks you to hand over your card or cash.",
+   "script": "scam_en_23_bank_card_handover.json",
+   "type": "card_handover"
+  },
+  {
+   "text": "Put the card in an envelope and write your PIN on a note inside, so we can cancel it properly.",
+   "scam": true,
+   "why": "A real bank never asks for your PIN or asks you to hand over your card or cash.",
+   "script": "scam_en_23_bank_card_handover.json",
+   "type": "card_handover"
+  },
+  {
+   "text": "Yes, it's the standard procedure. Also withdraw your cash at the ATM and hand it to the officer for safekeeping.",
+   "scam": true,
+   "why": "A real bank never asks for your PIN or asks you to hand over your card or cash.",
+   "script": "scam_en_23_bank_card_handover.json",
+   "type": "card_handover"
+  },
+  {
+   "text": "Good. To withdraw your commission, the system needs you to complete one merchant task first.",
+   "scam": true,
+   "why": "A real job never asks you to pay money to get your earnings.",
+   "script": "scam_en_24_job_task_deposit.json",
+   "type": "job_task"
+  },
+  {
+   "text": "You top up five hundred dollars to the merchant account, and you get it back with thirty percent commission.",
+   "scam": true,
+   "why": "A real job never asks you to pay money to get your earnings.",
+   "script": "scam_en_24_job_task_deposit.json",
+   "type": "job_task"
+  },
+  {
+   "text": "The task expires in twenty minutes, so please transfer now or you will lose everything you earned today.",
+   "scam": true,
+   "why": "A real job never asks you to pay money to get your earnings.",
+   "script": "scam_en_24_job_task_deposit.json",
+   "type": "job_task"
+  },
+  {
+   "text": "Good morning, this is a reminder call from your bank's card services.",
+   "scam": false,
+   "why": "A real bank reminder: you pay it yourself, and the bank never asks for your code.",
+   "script": "normal_en_10_bank_reminder.json"
+  },
+  {
+   "text": "Not at all. Your credit card payment of two hundred and forty dollars is due on the twenty-fifth.",
+   "scam": false,
+   "why": "A real bank reminder: you pay it yourself, and the bank never asks for your code.",
+   "script": "normal_en_10_bank_reminder.json"
+  },
+  {
+   "text": "You can pay through the mobile app, internet banking, or GIRO if you have set it up.",
+   "scam": false,
+   "why": "A real bank reminder: you pay it yourself, and the bank never asks for your code.",
+   "script": "normal_en_10_bank_reminder.json"
+  },
+  {
+   "text": "Sure. And please remember, the bank will never ask you for your OTP or password over the phone.",
+   "scam": false,
+   "why": "A real bank reminder: you pay it yourself, and the bank never asks for your code.",
+   "script": "normal_en_10_bank_reminder.json"
+  },
+  {
+   "text": "No problem. If you have any questions, call the number printed on the back of your card.",
+   "scam": false,
+   "why": "A real bank reminder: you pay it yourself, and the bank never asks for your code.",
+   "script": "normal_en_10_bank_reminder.json"
+  },
+  {
+   "text": "Hello, this is the clinic calling to confirm your appointment tomorrow at ten thirty.",
+   "scam": false,
+   "why": "The clinic only confirms your visit; you pay at the counter.",
+   "script": "normal_en_11_clinic_appointment.json"
+  },
+  {
+   "text": "Great. Please bring your NRIC and any medication you are currently taking.",
+   "scam": false,
+   "why": "The clinic only confirms your visit; you pay at the counter.",
+   "script": "normal_en_11_clinic_appointment.json"
+  },
+  {
+   "text": "Yes, no food for eight hours before the blood test, but you can drink plain water.",
+   "scam": false,
+   "why": "The clinic only confirms your visit; you pay at the counter.",
+   "script": "normal_en_11_clinic_appointment.json"
+  },
+  {
+   "text": "About thirty minutes. Please arrive ten minutes early to register at the counter.",
+   "scam": false,
+   "why": "The clinic only confirms your visit; you pay at the counter.",
+   "script": "normal_en_11_clinic_appointment.json"
+  },
+  {
+   "text": "Yes, there is a carpark behind the building. The consultation fee can be paid at the counter after your visit.",
+   "scam": false,
+   "why": "The clinic only confirms your visit; you pay at the counter.",
+   "script": "normal_en_11_clinic_appointment.json"
+  },
+  {
+   "text": "Hi, I'm the delivery driver. I'm downstairs at your block now with your order.",
+   "scam": false,
+   "why": "The driver is at your door with your own order.",
+   "script": "normal_en_12_delivery_driver.json"
+  },
+  {
+   "text": "I'm at the lobby near the letterboxes. Blue jacket.",
+   "scam": false,
+   "why": "The driver is at your door with your own order.",
+   "script": "normal_en_12_delivery_driver.json"
+  },
+  {
+   "text": "No problem. Can you confirm the unit number? The app shows number twelve.",
+   "scam": false,
+   "why": "The driver is at your door with your own order.",
+   "script": "normal_en_12_delivery_driver.json"
+  },
+  {
+   "text": "The total is twenty-three dollars fifty. It's cash on delivery, or you can PayNow me.",
+   "scam": false,
+   "why": "The driver is at your door with your own order.",
+   "script": "normal_en_12_delivery_driver.json"
+  },
+  {
+   "text": "Hello, good afternoon. My name is Amelia, I'm calling from a financial advisory firm. Do you have a minute?",
+   "scam": false,
+   "why": "A sales call with no pressure and nothing to pay now.",
+   "script": "normal_en_13_insurance_sales.json"
+  },
+  {
+   "text": "We have a new hospitalisation plan for young working adults. I would like to explain the benefits briefly.",
+   "scam": false,
+   "why": "A sales call with no pressure and nothing to pay now.",
+   "script": "normal_en_13_insurance_sales.json"
+  },
+  {
+   "text": "That's great. Many people find employer coverage ends when they change jobs, so a personal plan can be a good backup.",
+   "scam": false,
+   "why": "A sales call with no pressure and nothing to pay now.",
+   "script": "normal_en_13_insurance_sales.json"
+  },
+  {
+   "text": "It starts from about thirty dollars a month, depending on your age and the ward type.",
+   "scam": false,
+   "why": "A sales call with no pressure and nothing to pay now.",
+   "script": "normal_en_13_insurance_sales.json"
+  },
+  {
+   "text": "Of course. This promotion ends at the end of the month, but there's no obligation. May I send you the brochure by email?",
+   "scam": false,
+   "why": "A sales call with no pressure and nothing to pay now.",
+   "script": "normal_en_13_insurance_sales.json"
+  },
+  {
+   "text": "Hello, it's Mum. Are you free this weekend?",
+   "scam": false,
+   "why": "A normal family chat. No one asks you for money.",
+   "script": "normal_en_14_family_call.json"
+  },
+  {
+   "text": "Ah Ma's birthday is on Sunday. Your aunt booked the restaurant for twelve o'clock.",
+   "scam": false,
+   "why": "A normal family chat. No one asks you for money.",
+   "script": "normal_en_14_family_call.json"
+  },
+  {
+   "text": "Can you pick up the cake on the way? I'll PayNow you back after dinner.",
+   "scam": false,
+   "why": "A normal family chat. No one asks you for money.",
+   "script": "normal_en_14_family_call.json"
+  },
+  {
+   "text": "The one near your office. Please remember to ask them to write her name on it.",
+   "scam": false,
+   "why": "A normal family chat. No one asks you for money.",
+   "script": "normal_en_14_family_call.json"
+  },
+  {
+   "text": "Come by eleven thirty, so we can all walk in together.",
+   "scam": false,
+   "why": "A normal family chat. No one asks you for money.",
+   "script": "normal_en_14_family_call.json"
+  },
+  {
+   "text": "Bye bye. Take care and eat properly ah.",
+   "scam": false,
+   "why": "A normal family chat. No one asks you for money.",
+   "script": "normal_en_14_family_call.json"
+  },
+  {
+   "text": "Hello, this is a reminder call from the Immigration and Checkpoints Authority about your passport renewal.",
+   "scam": false,
+   "why": "ICA points you to its own app and asks for no money.",
+   "script": "normal_en_20_ica_passport_collection.json"
+  },
+  {
+   "text": "Your new passport is ready for collection at the ICA Building.",
+   "scam": false,
+   "why": "ICA points you to its own app and asks for no money.",
+   "script": "normal_en_20_ica_passport_collection.json"
+  },
+  {
+   "text": "Please book a collection appointment through the MyICA app or the ICA website.",
+   "scam": false,
+   "why": "ICA points you to its own app and asks for no money.",
+   "script": "normal_en_20_ica_passport_collection.json"
+  },
+  {
+   "text": "Remember to bring your old passport and your NRIC when you come.",
+   "scam": false,
+   "why": "ICA points you to its own app and asks for no money.",
+   "script": "normal_en_20_ica_passport_collection.json"
+  },
+  {
+   "text": "No, the fee was already paid with your application. ICA will never ask you to transfer money over the phone.",
+   "scam": false,
+   "why": "ICA points you to its own app and asks for no money.",
+   "script": "normal_en_20_ica_passport_collection.json"
+  },
+  {
+   "text": "Hello, this is the card security team from your bank. We want to check one transaction on your credit card.",
+   "scam": false,
+   "why": "The bank only asks yes or no, and tells you to call back on the number on your card.",
+   "script": "normal_en_21_bank_fraud_check.json"
+  },
+  {
+   "text": "There was a purchase of one hundred and twenty dollars at an online electronics store this morning. Was that you?",
+   "scam": false,
+   "why": "The bank only asks yes or no, and tells you to call back on the number on your card.",
+   "script": "normal_en_21_bank_fraud_check.json"
+  },
+  {
+   "text": "Thank you. We have blocked the card to keep your account safe, and the charge will be reversed.",
+   "scam": false,
+   "why": "The bank only asks yes or no, and tells you to call back on the number on your card.",
+   "script": "normal_en_21_bank_fraud_check.json"
+  },
+  {
+   "text": "A replacement card will be mailed to your registered address in five working days.",
+   "scam": false,
+   "why": "The bank only asks yes or no, and tells you to call back on the number on your card.",
+   "script": "normal_en_21_bank_fraud_check.json"
+  },
+  {
+   "text": "We will never ask for your PIN or a one-time password. If you're unsure, call us back on the number on the back of your card.",
+   "scam": false,
+   "why": "The bank only asks yes or no, and tells you to call back on the number on your card.",
+   "script": "normal_en_21_bank_fraud_check.json"
+  },
+  {
+   "text": "Hi, I'm calling from Singtel. Your mobile contract ends at the end of this month.",
+   "scam": false,
+   "why": "An offer with nothing to pay today and no hand-over to any officer.",
+   "script": "normal_en_22_telco_contract_renewal.json"
+  },
+  {
+   "text": "We have a renewal offer with more data for the same monthly price of thirty-five dollars.",
+   "scam": false,
+   "why": "An offer with nothing to pay today and no hand-over to any officer.",
+   "script": "normal_en_22_telco_contract_renewal.json"
+  },
+  {
+   "text": "You can add a new phone with the plan, and the promotion is available until the end of the month.",
+   "scam": false,
+   "why": "An offer with nothing to pay today and no hand-over to any officer.",
+   "script": "normal_en_22_telco_contract_renewal.json"
+  },
+  {
+   "text": "No problem. You can also renew any time in the My Singtel app or at any of our shops.",
+   "scam": false,
+   "why": "An offer with nothing to pay today and no hand-over to any officer.",
+   "script": "normal_en_22_telco_contract_renewal.json"
+  },
+  {
+   "text": "There's nothing to pay today. Your current plan continues until you decide.",
+   "scam": false,
+   "why": "An offer with nothing to pay today and no hand-over to any officer.",
+   "script": "normal_en_22_telco_contract_renewal.json"
+  }
+ ]
+}

@@ -58,6 +58,44 @@ final class CallViewModel {
     private(set) var devTick = 0
     /// When each line of this call appeared (ms since it started).
     private var lineShownAt: [Int: Int] = [:]
+    /// "Learn to spot scams": the bundled cards and quiz lines (Resources/Learn/learn.json, shared with Android).
+    let learn = Learn.bundled()
+    /// The practice quiz's best score, nil = never played.
+    private(set) var quizBest: Int?
+    func recordQuiz(_ score: Int) {
+        prefs.quizBest = Quiz.best(prefs.quizBest, score)
+        quizBest = prefs.quizBest
+    }
+
+    // ------------------------------------------------------------ weekly summary (Logic/WeeklySummary.swift)
+    let notifier: WeeklyNotifier
+    private(set) var weeklyReminder = false
+
+    /// The note for the family: the last 7 days of this phone's history, counts and plain reasons only.
+    func weeklySummary() -> String {
+        WeeklySummary.text(store.calls().map { WeeklySummary.Call(endedAt: $0.endedAt, verdict: $0.finalVerdict, reasonCode: $0.reasonCode) },
+                           nowMs: now())
+    }
+
+    /// The "Weekly reminder" switch. Notification permission is asked only here, when turning it on. Returns false
+    /// when notifications were refused (the switch stays off).
+    @discardableResult
+    func setWeeklyReminder(_ on: Bool) async -> Bool {
+        var action = WeeklyReminder.onToggle(on: on, permitted: await notifier.permitted())
+        var stayOn = on
+        if action == .askPermission {
+            (stayOn, action) = WeeklyReminder.afterPermission(granted: await notifier.requestPermission())
+        }
+        switch action {
+        case .schedule: notifier.scheduleWeekly()
+        case .cancel: notifier.cancelWeekly()
+        case .nothing, .askPermission: break
+        }
+        prefs.weeklyReminder = action == .schedule ? true : (action == .cancel ? false : stayOn)
+        weeklyReminder = prefs.weeklyReminder
+        return !(on && !weeklyReminder)
+    }
+
     /// Developer view: MobileBERT's status, version and size.
     private(set) var mobileBertDev = "checking…"
 
@@ -125,11 +163,15 @@ final class CallViewModel {
          alerts: WarningAlerts? = nil,
          pins: PinStore = PinStore(),
          startUp: Bool = true,
-         devLog: DevLog = .shared) {
+         devLog: DevLog = .shared,
+         notifier: WeeklyNotifier = LiveWeeklyNotifier()) {
+        self.notifier = notifier
         self.prefs = prefs
         self.devLog = devLog
         dev = DevSession(store: prefs, log: devLog)
         devUnlocked = prefs.developerUnlocked
+        quizBest = prefs.quizBest
+        weeklyReminder = prefs.weeklyReminder
         self.store = store
         self.scripts = scripts
         self.session = session
@@ -169,6 +211,11 @@ final class CallViewModel {
     /// App start: preload the models if needed and read MobileBERT's status (both stay on the phone). The network
     /// check for newer models waits until the app opens (openApp), so the setup sends nothing.
     private func startUpTasks() {
+        // Re-arm a weekly reminder that is on. Never asks for anything.
+        if prefs.weeklyReminder {
+            let n = notifier
+            Task { if WeeklyReminder.atLaunch(savedOn: true, permitted: await n.permitted()) == .schedule { n.scheduleWeekly() } }
+        }
         if privacyLevel.scoresOnPhone { preloadModels() }
         Task {
             mobileBertStatus = await onDevice.mobileBertStatusLine()
@@ -867,6 +914,9 @@ final class CallViewModel {
         simpleMode = AppStyle.simpleAtLaunch(prefs.simpleMode)
         appStyleTip = false
         family = Self.savedFamily(prefs)
+        quizBest = prefs.quizBest
+        notifier.cancelWeekly()
+        weeklyReminder = prefs.weeklyReminder
         pinSet = pins.isSet
         modelStatus = onDevice.updater.describe()
         modelCheck = ""
@@ -1036,6 +1086,28 @@ final class CallViewModel {
             s.callScores = ["urgency": 0.2, "money": 0.62, "impersonation": 0.1]
             s.lines = [ChatLine(seq: 1, isCaller: false, text: L.s(.demo_line_hello)),
                        ChatLine(seq: 2, isCaller: true, text: L.s(.demo_line_parcel), flags: ["money"])]
+        }
+        state = s
+    }
+
+    /// Debug builds only (screenshots, accessibility audits): a finished pretend call on its summary screen, Scam
+    /// (red) or "Be careful". Nothing is sent and nothing is saved (no call id).
+    func demoSummary(red: Bool) {
+        cancelPlayback()
+        callId = ""
+        var s = Self.tourDemoCall(redAlert: false)
+        s.phase = .ended
+        s.privacyLevel = prefs.privacyLevel
+        if red {
+            s.scamAlert = true
+            s.finalReview = FinalReview(finalVerdict: "SCAM", reason: "", reviewed: true, topWindowSeqs: [2, 3], callScore: 0.97)
+        } else {
+            s.verdict = "UNSURE"
+            s.combinedScore = 0.52
+            s.callScores = ["urgency": 0.2, "money": 0.62, "impersonation": 0.1]
+            s.lines = [ChatLine(seq: 1, isCaller: false, text: L.s(.demo_line_hello)),
+                       ChatLine(seq: 2, isCaller: true, text: L.s(.demo_line_parcel), flags: ["money"])]
+            s.finalReview = FinalReview(finalVerdict: "UNSURE", reason: "", reviewed: true, topWindowSeqs: [2], callScore: 0.55)
         }
         state = s
     }

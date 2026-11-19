@@ -44,6 +44,11 @@ struct SetupView: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(.easeInOut, value: step)
+            // A new screen drops the keyboard: otherwise it stays on the field of the screen just left, and the PIN
+            // typed on the next screen was added to the end of the phone number.
+            .onChange(of: step) {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
 
             // bottom: progress dots and the main button(s)
             VStack(spacing: 12) {
@@ -151,14 +156,27 @@ struct BigButton: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .foregroundStyle(prominent ? Theme.onBrand : (danger ? Theme.warningInkAdaptive : Theme.brand))
                 .padding(.horizontal, 16).padding(.vertical, 12)
-                .frame(maxWidth: 480, minHeight: 60)
+                .frame(maxWidth: 480, minHeight: 64)
                 .frame(maxWidth: .infinity)
                 .background(prominent ? Theme.brand : Color.clear, in: Capsule())
                 .overlay(Capsule().stroke(danger ? Theme.scamRed : Theme.brand, lineWidth: prominent ? 0 : 2))
                 .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressFeedbackStyle())
         .accessibilityIdentifier(id)
+    }
+}
+
+/// Subtle press feedback for big buttons: shrinks slightly while pressed (not with Reduce Motion) and a light tap on
+/// release. Same as Android's Modifier.pressFeedback().
+struct PressFeedbackStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduce
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? Motion.pressScale(reduce: reduce) : 1)
+            .animation(reduce ? nil : .easeOut(duration: 0.09), value: configuration.isPressed)
+            .sensoryFeedback(.impact(weight: .light), trigger: configuration.isPressed) { old, new in old && !new }
     }
 }
 

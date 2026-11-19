@@ -37,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -94,19 +95,23 @@ fun WarningScreen(
     demo: Boolean = false,
 ) {
     val title = stringResource(R.string.warn_title)
+    val closeLabel = stringResource(R.string.btn_close_warning)
     val message = stringResource(Warnings.message(kind))
     val doLine = stringResource(Warnings.doLine(kind))
     val view = LocalView.current
     val context = LocalContext.current
     val flash = remember { Animatable(0f) }
+    val reduce = reduceMotion()
+    // Entrance: a short scale + fade (logic/Motion.kt); with "Remove animations" it simply appears.
+    val enter = remember { Animatable(if (demo || reduce) 1f else 0f) }
+    LaunchedEffect(Unit) { enter.animateTo(1f, tween(com.example.scamdetect.logic.Motion.warningEnterMs(reduce))) }
     LaunchedEffect(Unit) {
         if (demo) return@LaunchedEffect
         @Suppress("DEPRECATION")
         view.announceForAccessibility("$title. $message $doLine")
         // A gentle flash: three soft pulses, one a second (well under the 3-a-second seizure limit). Off when the
         // phone's animations are turned off.
-        val animations = Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
-        if (animations == 0f) return@LaunchedEffect
+        if (!com.example.scamdetect.logic.Motion.warningFlash(reduce)) return@LaunchedEffect
         repeat(3) {
             flash.animateTo(0.9f, tween(300))
             flash.animateTo(0f, tween(450))
@@ -115,7 +120,13 @@ fun WarningScreen(
     }
 
     Box(
-        Modifier.fillMaxSize().background(ScamRed)
+        Modifier.fillMaxSize()
+            .graphicsLayer {
+                val start = com.example.scamdetect.logic.Motion.warningStartScale(reduce)
+                val s = start + (1f - start) * enter.value
+                scaleX = s; scaleY = s; alpha = enter.value
+            }
+            .background(ScamRed)
             .semantics { paneTitle = title }
     ) {
         Column(
@@ -158,7 +169,7 @@ fun WarningScreen(
                     shape = RoundedCornerShape(20.dp),
                     color = Color.Transparent,
                     border = BorderStroke(2.dp, Color.White),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp).semantics { contentDescription = closeLabel },
                 ) {
                     Box(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), contentAlignment = Alignment.Center) {
                         Text(stringResource(R.string.btn_close_warning), color = Color.White, fontSize = 22.sp,
@@ -189,6 +200,8 @@ private fun WarningButton(
         modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp)
             .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
             .semantics(mergeDescendants = true) {
+                // An explicit label: still read when the button is only partly on screen (largest text scrolls).
+                contentDescription = listOfNotNull(label, sub).joinToString(", ")
                 if (hint != null) onClick(label = hint) { onClick(); true }
             },
     ) {

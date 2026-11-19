@@ -54,6 +54,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -98,7 +99,8 @@ fun HomeScreen(
     onScamCall: () -> Unit,
     onNormalCall: () -> Unit,
     onPickScript: () -> Unit,
-    onPasteText: () -> Unit,
+    /** "Learn to spot scams". */
+    onLearn: () -> Unit = {},
     /** An existing user's one-time "Try Simple mode?" card. */
     offer: (@Composable () -> Unit)? = null,
 ) {
@@ -110,7 +112,7 @@ fun HomeScreen(
             Button(onClick = onScamCall, modifier = wide.tourTarget(Tour.Target.SCAM_CALL)) { Text(stringResource(R.string.btn_sim_scam)) }
             Button(onClick = onNormalCall, modifier = wide) { Text(stringResource(R.string.btn_sim_normal)) }
             OutlinedButton(onClick = onPickScript, modifier = wide.tourTarget(Tour.Target.PICK_SCRIPT)) { Text(stringResource(R.string.btn_pick_script)) }
-            OutlinedButton(onClick = onPasteText, modifier = wide) { Text(stringResource(R.string.btn_paste_text)) }
+            OutlinedButton(onClick = onLearn, modifier = wide.testTag("learnButton")) { Text(stringResource(R.string.btn_learn)) }
         }
     }
 }
@@ -178,7 +180,7 @@ fun ScriptPickerScreen(
         }
 
     Page(Tr.s(R.string.pick_title), onBack) {
-        if (scripts.isEmpty()) Text(Tr.s(R.string.pick_none))
+        if (scripts.isEmpty()) EmptyState(Tr.s(R.string.pick_none), icon = androidx.compose.material.icons.Icons.Filled.Info, compact = true)
         // Collapsed by default; the header always says what is active, so nothing is hidden silently.
         val active = listOfNotNull(
             kind?.replaceFirstChar { it.uppercase() },
@@ -249,23 +251,6 @@ fun ScriptPickerScreen(
     }
 }
 
-// ---------------------------------------------------------------- Paste text
-
-@Composable
-fun PasteTextScreen(onCheck: (String) -> Unit, onBack: () -> Unit) {
-    var text by remember { mutableStateOf("") }
-    Page(Tr.s(R.string.paste_title), onBack) {
-        OutlinedTextField(
-            value = text, onValueChange = { text = it },
-            label = { Text(Tr.s(R.string.paste_label)) },
-            modifier = Modifier.fillMaxWidth().height(180.dp)
-        )
-        Button(onClick = { onCheck(text.trim()) }, enabled = text.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
-            Text(Tr.s(R.string.btn_check))
-        }
-    }
-}
-
 // ---------------------------------------------------------------- 4.6 After-call summary
 
 /**
@@ -276,37 +261,17 @@ fun PasteTextScreen(onCheck: (String) -> Unit, onBack: () -> Unit) {
 @Composable
 fun SummaryScreen(
     state: CallUiState,
-    reportPreview: () -> List<ReportLine>,
-    onReport: suspend (kind: String) -> Pair<String, Boolean>,
     onDone: () -> Unit,
-    /** G.12: "This was fine" tapped (kept as a local label; sharing still goes through the consent screen). */
-    onThisWasFine: () -> Unit = {},
     /** "Show 'Be careful' warnings": off = a "Be careful" call ends as plain "Call ended" (still saved). */
     showCareful: Boolean = true,
     /** Simple mode: no technical lines. */
     simple: Boolean = false,
+    /** The trusted family contact ("Tell my family" on the after-call card); null = none. */
+    family: CallViewModel.Family? = null,
+    /** "Save the riskiest sentence": only then does the copied report summary include the (masked) caller lines. */
+    includeLines: Boolean = false,
 ) {
     val context = LocalContext.current
-    // H.3: which button opened the consent screen ("scam" / "fine"), and the result once sent.
-    // Saveable: rotating the phone must not re-enable the buttons and let one call be reported twice. If the phone
-    // turns while sending, the screen keeps "Sending…" and the buttons stay off rather than offer a second send.
-    var asking by rememberSaveable { mutableStateOf<String?>(null) }
-    var reportResult by rememberSaveable { mutableStateOf<String?>(null) }
-    var sent by rememberSaveable { mutableStateOf(false) }
-    var sending by rememberSaveable { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    asking?.let { kind ->
-        ConsentDialog(
-            kind = kind,
-            lines = remember(kind) { reportPreview() },
-            onShare = {
-                asking = null
-                sending = true
-                scope.launch { val (msg, ok) = onReport(kind); reportResult = msg; sent = ok; sending = false }
-            },
-            onCancel = { asking = null; reportResult = Tr.s(R.string.sum_not_shared) },
-        )
-    }
     if (state.reviewing) {
         Page(stringResource(R.string.summary_title)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -342,6 +307,9 @@ fun SummaryScreen(
                 level == Risk.Level.YELLOW -> CarefulBanner(state.warningKind)
                 level == Risk.Level.ERROR -> StateBanner(Risk.Level.ERROR, stringResource(R.string.error_banner))
             }
+            // After a Scam or "Be careful" call: what to do now (nothing extra after a safe call)
+            val afterCard = com.example.scamdetect.logic.AfterCall.shows(level, showCareful)
+            if (afterCard) AfterCallCard(state, family, includeLines)
             // Android bug fixed (as iOS): "What triggered it" only when the call didn't end safe
             if (level != Risk.Level.GREEN && !hiddenYellow) {
                 Text(stringResource(R.string.sum_triggered), style = MaterialTheme.typography.titleMedium)
@@ -349,11 +317,12 @@ fun SummaryScreen(
                 if (shown.isEmpty()) Text(stringResource(R.string.sum_no_lines), style = MaterialTheme.typography.bodyLarge)
                 shown.forEach { ChatBubble(it, riskyHere = it.seq in risky, showNotes = !simple) }
             }
-            val wide = Modifier.fillMaxWidth().heightIn(min = 60.dp)
+            val wide = Modifier.fillMaxWidth().heightIn(min = 64.dp)
             Button(onClick = onDone, modifier = wide.testTag("summaryDone")) {
                 Text(stringResource(R.string.btn_done), style = MaterialTheme.typography.labelLarge)
             }
-            OutlinedButton(
+            // The card above already has "Report to ScamShield"; other calls keep the plain button.
+            if (!afterCard) OutlinedButton(
                 onClick = {
                     try {
                         context.startActivity(Intent(Intent.ACTION_VIEW, SCAMSHIELD_URL.toUri()))
@@ -363,56 +332,9 @@ fun SummaryScreen(
                 modifier = wide,
                 border = androidx.compose.foundation.BorderStroke(2.dp, ScamRed),
             ) { Text(stringResource(R.string.btn_report_scamshield), style = MaterialTheme.typography.labelLarge, color = WarningInkFor()) }
-            // H.3: help ScamGuard learn. Disabled once sent, so one call is shared at most once.
-            // G: at levels 2 and 3 calls aren't shared, so there is no consent screen and nothing is sent
-            val canShare = state.privacyLevel.cloudCall
-            fun share(kind: String) { if (canShare) asking = kind else reportResult = CallViewModel.nothingShared() }
-            OutlinedButton(onClick = { share("scam") }, enabled = !sent && !sending, modifier = wide) {
-                Text(stringResource(R.string.btn_was_scam), style = MaterialTheme.typography.labelLarge)
-            }
-            OutlinedButton(onClick = { onThisWasFine(); share("fine") }, enabled = !sent && !sending, modifier = wide) {
-                Text(stringResource(R.string.btn_was_fine), style = MaterialTheme.typography.labelLarge)
-            }
-            if (sending) Text(stringResource(R.string.sum_sending), style = MaterialTheme.typography.bodyLarge)
-            reportResult?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
             Spacer(Modifier.height(8.dp))
         }
     }
-}
-
-/**
- * Shows exactly what would leave the phone before anything is sent: big text, a plain yes / no, nothing
- * pre-selected, both buttons the same size. Nothing is sent on "No".
- */
-@Composable
-private fun ConsentDialog(kind: String, lines: List<ReportLine>, onShare: () -> Unit, onCancel: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onCancel,
-        title = { Text(stringResource(if (kind == "scam") R.string.consent_title_scam else R.string.consent_title_fine),
-            style = MaterialTheme.typography.headlineSmall) },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(stringResource(R.string.consent_why), style = MaterialTheme.typography.bodyLarge)
-                Text(stringResource(R.string.consent_sent, lines.size.toString()), style = MaterialTheme.typography.bodyLarge)
-                Text(stringResource(R.string.consent_not_sent), style = MaterialTheme.typography.bodyLarge)
-                Text(stringResource(R.string.consent_kept), style = MaterialTheme.typography.bodyLarge)
-                HorizontalDivider()
-                lines.forEach { Text("“${it.text}”", style = MaterialTheme.typography.bodyLarge) }
-            }
-        },
-        confirmButton = {
-            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = onShare, enabled = lines.isNotEmpty(), modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp),
-                    border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)) {
-                    Text(stringResource(R.string.btn_yes_share), style = MaterialTheme.typography.labelLarge)
-                }
-                OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp),
-                    border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)) {
-                    Text(stringResource(R.string.btn_no_dont_share), style = MaterialTheme.typography.labelLarge)
-                }
-            }
-        },
-    )
 }
 
 private val WARNING_LEVELS = setOf(Risk.Level.RED, Risk.Level.YELLOW)

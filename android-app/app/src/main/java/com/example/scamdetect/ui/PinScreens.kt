@@ -131,7 +131,7 @@ fun PinGate(onCheck: suspend (String) -> Boolean, onForgot: () -> Unit, onBack: 
             Button(
                 // Always full contrast: tapping too early says "Use 4 numbers" instead of a faded button.
                 onClick = { if (!Pin.isValid(pin)) short = true else scope.launch { if (!onCheck(pin)) { wrong = true; pin = "" } } },
-                modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp).heightIn(min = 60.dp).testTag("pinUnlock"),
+                modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp).heightIn(min = 64.dp).testTag("pinUnlock"),
             ) { Text(stringResource(R.string.btn_unlock), style = MaterialTheme.typography.labelLarge) }
             TextButton(onClick = { forgot = true }, modifier = Modifier.heightIn(min = 56.dp)) {
                 Text(stringResource(R.string.btn_forgot_pin), style = MaterialTheme.typography.bodyLarge)

@@ -119,11 +119,19 @@ def write_ios(table):
         f.write("\n".join(out) + "\n")
 
 
+def write_web(table):
+    # The web app (web/app.js) reads the same English text, with {0} {1} placeholders as in the table.
+    with open(os.path.join(ROOT, "web", "strings.json"), "w", encoding="utf-8") as f:
+        json.dump({k: table[k] for k in sorted(table)}, f, ensure_ascii=False, indent=0)
+        f.write("\n")
+
+
 def main():
     table = load()
     check(table)
     write_android(table)
     write_ios(table)
+    write_web(table)
     print(f"{len(table)} keys")
 
 

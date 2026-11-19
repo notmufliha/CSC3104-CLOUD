@@ -88,6 +88,16 @@ class AppPrefs(context: Context) : Onboarding.Store, com.example.scamdetect.logi
         get() = sp.getString(KEY_FAMILY_PHONE, "") ?: ""
         set(value) = sp.edit { putString(KEY_FAMILY_PHONE, value.trim()) }
 
+    /** Practice quiz: the best score so far (of 5); null = never played. Only the number is kept. */
+    var quizBest: Int?
+        get() = if (sp.contains(KEY_QUIZ_BEST)) sp.getInt(KEY_QUIZ_BEST, 0) else null
+        set(value) = sp.edit { if (value == null) remove(KEY_QUIZ_BEST) else putInt(KEY_QUIZ_BEST, value) }
+
+    /** "Weekly reminder" (Share weekly summary): a local notification once a week. Off by default. */
+    var weeklyReminder: Boolean
+        get() = sp.getBoolean(KEY_WEEKLY_REMINDER, false)
+        set(value) = sp.edit { putBoolean(KEY_WEEKLY_REMINDER, value) }
+
     /** Developer view unlocked (Help & about → tap the version 7 times). The only thing the Developer view saves. */
     override var developerUnlocked: Boolean
         get() = sp.getBoolean(KEY_DEV_UNLOCKED, false)
@@ -143,6 +153,8 @@ class AppPrefs(context: Context) : Onboarding.Store, com.example.scamdetect.logi
         private const val KEY_FAMILY_NAME = "family_name"
         private const val KEY_FAMILY_PHONE = "family_phone"
         const val KEY_DEV_UNLOCKED = "developer_view_unlocked"
+        const val KEY_QUIZ_BEST = "quiz_best"
+        const val KEY_WEEKLY_REMINDER = "weekly_reminder"
         /** The SharedPreferences file (the instrumented tests read it directly). */
         const val FILE = "scamguard"
         const val TEXT_NORMAL = "normal"

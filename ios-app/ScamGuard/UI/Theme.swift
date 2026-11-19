@@ -3,7 +3,8 @@ import UIKit
 
 /// Colours and words from android-app ui/InCallScreen.kt and ui/theme/Color.kt.
 nonisolated enum Theme {
-    static let safeGreen = Color(red: 0x2E / 255, green: 0x7D / 255, blue: 0x32 / 255)     // 0xFF2E7D32
+    /// Safe green, #2B7530: at least 4.5:1 on cards as text (accessibility audit; was #2E7D32, 4.4:1). Same on Android.
+    static let safeGreen = Color(red: 0x2B / 255, green: 0x75 / 255, blue: 0x30 / 255)     // 0xFF2B7530
     static let warnYellow = Color(red: 0xF9 / 255, green: 0xA8 / 255, blue: 0x25 / 255)    // 0xFFF9A825
     static let scamRed = Color(red: 0xC6 / 255, green: 0x28 / 255, blue: 0x28 / 255)       // 0xFFC62828
     static let neutralGrey = Color(red: 0x9E / 255, green: 0x9E / 255, blue: 0x9E / 255)   // 0xFF9E9E9E
@@ -29,6 +30,8 @@ nonisolated enum Theme {
     static let background = dynamic(0xFFFBFE, 0x141218)
     /// Card background (M3 surfaceContainer).
     static let card = dynamic(0xF3EDF7, 0x211F26)
+    /// Material surfaceContainerHigh (Android's colorScheme.surfaceContainerHigh): cards that stand out from `card`.
+    static let cardHigh = dynamic(0xECE6F0, 0x2B2930)
     /// Empty bar track (M3 surfaceVariant).
     static let track = dynamic(0xE7E0EC, 0x49454F)
     /// Secondary text (M3 onSurfaceVariant).

@@ -91,6 +91,7 @@ fun SimpleHomeScreen(
     onPractice: () -> Unit,
     onFix: suspend () -> Boolean,
     onRefresh: () -> Unit,
+    onLearn: () -> Unit = {},
 ) {
     LaunchedEffect(Unit) { onRefresh() }
     var fixing by rememberSaveable { mutableStateOf(false) }
@@ -112,6 +113,7 @@ fun SimpleHomeScreen(
                 Text(stringResource(R.string.home_practice_line), style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 8.dp))
             }
+            LearnHomeCard(onLearn)
             RecentCallsCard(calls)
             Spacer(Modifier.size(8.dp))
         }
@@ -143,7 +145,7 @@ private fun StatusCard(status: HomeStatus, fixing: Boolean, onFix: () -> Unit) {
             }
             if (status == HomeStatus.NOT_CONNECTED) Button(
                 onClick = onFix, enabled = !fixing,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp).testTag("fixIt"),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp).testTag("fixIt"),
             ) { Text(stringResource(if (fixing) R.string.status_checking else R.string.btn_try_again), style = MaterialTheme.typography.labelLarge) }
         }
     }
@@ -154,8 +156,7 @@ private fun StatusCard(status: HomeStatus, fixing: Boolean, onFix: () -> Unit) {
 private fun RecentCallsCard(calls: List<CallRecord>) {
     AppCard {
         Text(stringResource(R.string.home_recent), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
-        if (calls.isEmpty()) Text(stringResource(R.string.home_no_calls), style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (calls.isEmpty()) EmptyState(stringResource(R.string.home_no_calls), compact = true)
         calls.take(3).forEachIndexed { i, c ->
             if (i > 0) HorizontalDivider()
             val level = Dashboard.level(c.finalVerdict)
@@ -383,7 +384,7 @@ fun FamilyPage(name: String, phone: String, onSave: (String, String) -> Unit, on
             ContactFields(n, p, { n = it; note = null }, { p = it; note = null })
             Button(onClick = {
                 if (p.isBlank()) note = needPhone else { onSave(n, p); note = "$saved ✓" }
-            }, modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp).testTag("familySave")) {
+            }, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp).testTag("familySave")) {
                 Text(stringResource(R.string.btn_save), style = MaterialTheme.typography.labelLarge)
             }
             note?.let { Text(it, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold) }
@@ -408,7 +409,7 @@ fun PinSettingsPage(pinSet: Boolean, onSet: (String) -> Unit, onClear: () -> Uni
             if (changing) {
                 NewPinFields { newPin = it }
                 Button(onClick = { onSet(newPin); changing = false; done = true }, enabled = newPin.isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp).testTag("pinSave")) {
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp).testTag("pinSave")) {
                     Text(stringResource(R.string.btn_save), style = MaterialTheme.typography.labelLarge)
                 }
             } else {

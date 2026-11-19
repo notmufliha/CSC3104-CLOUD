@@ -84,6 +84,12 @@ struct AppRoot: View {
         if let id = d.string(forKey: "demoLevel") { vm.setPrivacyLevel(PrivacyLevel.fromId(id)) }
         if let id = d.string(forKey: "demoSpeed"), let sp = PlaybackSpeed(rawValue: id) { vm.setPlaybackSpeed(sp) }
         if d.bool(forKey: "demoOverlay") { vm.setDevOverlay(true) }
+        // -demoSummary red|yellow: a finished pretend call's summary (screenshots, accessibility audits)
+        switch d.string(forKey: "demoSummary") {
+        case "red": vm.demoSummary(red: true)
+        case "yellow": vm.demoSummary(red: false)
+        default: break
+        }
         // -demoResetApp YES: "Reset app to first launch" (needs the Developer view unlocked), for screenshots
         if d.bool(forKey: "demoResetApp") { vm.resetApp() }
         if d.bool(forKey: "demoTip") { vm.demoAppStyleTip() }
@@ -176,7 +182,9 @@ struct RootView: View {
                     .navigationDestination(for: HomeRoute.self) { route in
                         switch route {
                         case .pick: ScriptPickerView()
-                        case .paste: PasteTextView()
+                        case .learn: LearnView()
+                        case .learnType(let id): ScamTypeView(id: id)
+                        case .quiz: QuizView()
                         }
                     }
             }
@@ -246,15 +254,23 @@ struct RootView: View {
             tab = .dashboard
             dashboardPath = [.call(first.id)]
         }
-        switch d.string(forKey: "demoDashboard") {   // -demoDashboard insights|history
+        switch d.string(forKey: "demoDashboard") {   // -demoDashboard insights|history|weekly
         case "insights": tab = .dashboard; dashboardPath = [.insights]
         case "history": tab = .dashboard; dashboardPath = [.history]
+        case "weekly": tab = .dashboard; dashboardPath = [.weekly]
         default: break
         }
         switch d.string(forKey: "demoTab") {
         case "dashboard": tab = .dashboard
         case "settings": tab = .settings
         default: break
+        }
+        // -demoLearn list|quiz|<scam type id> (with -demoQuiz answered|result for the quiz)
+        switch d.string(forKey: "demoLearn") {
+        case nil: break
+        case "list": tab = .home; homePath = [.learn]
+        case "quiz": tab = .home; homePath = [.learn, .quiz]
+        case let id?: tab = .home; homePath = [.learn, .learnType(id)]
         }
         if let name = d.string(forKey: "demoScript"), let s = vm.scripts.first(where: { $0.fileName == name }) {
             vm.ring(s)
@@ -264,7 +280,7 @@ struct RootView: View {
     #endif
 }
 
-enum HomeRoute: Hashable { case pick, paste }
+enum HomeRoute: Hashable { case pick, learn, learnType(String), quiz }
 
 /// The full-screen call: ringing -> in call -> summary, with the red warning over it until the user acts.
 struct CallFlowView: View {
@@ -275,17 +291,21 @@ struct CallFlowView: View {
 
     var body: some View {
         ZStack {
-            switch vm.state.phase {
-            case .ringing:
-                IncomingCallView(callerName: L.s(.call_unknown_caller), callerNumber: L.s(.call_private_number),
-                                 onAnswer: { vm.answer() }, onDecline: { vm.decline() })
-            case .inCall:
-                InCallView()
-            case .ended:
-                SummaryView()
-            case .idle:
-                Color.clear
+            Group {
+                switch vm.state.phase {
+                case .ringing:
+                    IncomingCallView(callerName: L.s(.call_unknown_caller), callerNumber: L.s(.call_private_number),
+                                     onAnswer: { vm.answer() }, onDecline: { vm.decline() })
+                case .inCall:
+                    InCallView()
+                case .ended:
+                    SummaryView()
+                case .idle:
+                    Color.clear
+                }
             }
+            // Covered by the red warning: hidden from VoiceOver and the accessibility audit (only the warning is reachable).
+            .accessibilityHidden(vm.state.warningOpen)
             // Developer view: live scores at the top; never over the red warning (it hides while that shows).
             if DevOverlay.visible(enabled: vm.devOverlay, unlocked: vm.devUnlocked, inCall: vm.state.phase == .inCall,
                                   warningOpen: vm.state.warningOpen) {

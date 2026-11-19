@@ -23,14 +23,29 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case about_version
     case about_versions
     case about_who
+    case after_block
+    case after_copied
+    case after_report
+    case after_report_line
+    case after_shared
+    case after_tell_family
+    case after_title
     case app_name_text
+    case block_android_1
+    case block_android_2
+    case block_android_3
+    case block_android_4
+    case block_ios_1
+    case block_ios_2
+    case block_ios_3
+    case block_ios_4
+    case block_title
     case btn_answer
     case btn_back
     case btn_call_1799
     case btn_call_family
     case btn_cancel
     case btn_change_pin
-    case btn_check
     case btn_choose_myself
     case btn_close
     case btn_close_warning
@@ -45,15 +60,14 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case btn_got_it
     case btn_hang_up
     case btn_keep_pin
+    case btn_learn
     case btn_leave
     case btn_next
     case btn_no
-    case btn_no_dont_share
     case btn_no_keep
     case btn_no_thanks
     case btn_ok
     case btn_open_scamshield
-    case btn_paste_text
     case btn_pick_script
     case btn_practice_call
     case btn_remove_contact
@@ -66,6 +80,7 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case btn_see_all
     case btn_set_pin
     case btn_set_up_later
+    case btn_share
     case btn_show_me_around
     case btn_sim_normal
     case btn_sim_scam
@@ -81,11 +96,9 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case btn_turn_off_pin
     case btn_unlock
     case btn_use_recommended
-    case btn_was_fine
-    case btn_was_scam
+    case btn_weekly
     case btn_yes
     case btn_yes_delete
-    case btn_yes_share
     case call_caller
     case call_checking
     case call_flagged
@@ -109,12 +122,12 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case conn_fail_line
     case conn_not_needed
     case conn_ok
-    case consent_kept
-    case consent_not_sent
-    case consent_sent
-    case consent_title_fine
-    case consent_title_scam
-    case consent_why
+    case copy_footer
+    case copy_lines
+    case copy_result
+    case copy_title
+    case copy_when
+    case copy_why
     case dash_calls_center
     case dash_empty
     case dash_more_insights
@@ -163,6 +176,7 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case ds_what_scam
     case ds_what_scam_r
     case ds_what_unchecked
+    case empty_learn
     case error_banner
     case family_need_phone
     case family_page_line
@@ -221,6 +235,18 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case ins_where_info
     case ins_why
     case ins_why_info
+    case learn_card_line
+    case learn_hear
+    case learn_hear_line
+    case learn_line
+    case learn_quiz
+    case learn_quiz_line
+    case learn_signs
+    case learn_source
+    case learn_title
+    case learn_todo
+    case learn_types
+    case loading
     case mdl_check
     case mdl_info
     case mdl_installed
@@ -244,10 +270,11 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case note_mb_checked
     case note_mb_failed
     case nothing_shared
+    case notif_channel
+    case notif_weekly_text
+    case notif_weekly_title
     case off
     case on
-    case paste_label
-    case paste_title
     case period_all
     case period_month
     case period_week
@@ -347,6 +374,23 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case pw_where_hybrid
     case pw_where_on_device
     case pw_yesterday
+    case quiz_best
+    case quiz_caller_says
+    case quiz_progress
+    case quiz_question
+    case quiz_r3
+    case quiz_r4
+    case quiz_r5
+    case quiz_r_low
+    case quiz_right
+    case quiz_safe
+    case quiz_scam
+    case quiz_score
+    case quiz_see_result
+    case quiz_title
+    case quiz_was_safe
+    case quiz_was_scam
+    case quiz_wrong
     case reason_bert
     case reason_earlier
     case reason_impersonation
@@ -417,6 +461,11 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case setup_step
     case setup_welcome_line
     case setup_welcome_title
+    case shared_1799
+    case shared_bank
+    case shared_line
+    case shared_passwords
+    case shared_title
     case sms_family
     case srv_encrypted
     case srv_info
@@ -442,10 +491,8 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case sum_during_unavailable
     case sum_family
     case sum_no_lines
-    case sum_not_shared
     case sum_pin
     case sum_privacy
-    case sum_sending
     case sum_server
     case sum_triggered
     case summary_title
@@ -492,6 +539,26 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case warn_msg_several
     case warn_spoken
     case warn_title
+    case weekly_calls_many
+    case weekly_calls_one
+    case weekly_careful_many
+    case weekly_careful_one
+    case weekly_end
+    case weekly_head
+    case weekly_line
+    case weekly_none
+    case weekly_preview
+    case weekly_r_imp
+    case weekly_r_money
+    case weekly_r_other
+    case weekly_r_urgency
+    case weekly_reminder
+    case weekly_reminder_denied
+    case weekly_reminder_line
+    case weekly_scam_many
+    case weekly_scam_one
+    case weekly_scam_zero
+    case weekly_title
     case what_does_this_mean
     case who_family
     case who_family_line

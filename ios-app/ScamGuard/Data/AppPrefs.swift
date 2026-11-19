@@ -26,6 +26,8 @@ nonisolated final class AppPrefs: OnboardingStore, DevStore, @unchecked Sendable
     static let keyFamilyName = "family_name"
     static let keyFamilyPhone = "family_phone"
     static let keyDevUnlocked = "developer_view_unlocked"
+    static let keyQuizBest = "quiz_best"
+    static let keyWeeklyReminder = "weekly_reminder"
     static let textNormal = "normal"
     static let textLarge = "large"
     static let textXLarge = "xlarge"
@@ -34,7 +36,7 @@ nonisolated final class AppPrefs: OnboardingStore, DevStore, @unchecked Sendable
     /// Every key the app saves ("Reset app to first launch" removes them all).
     static let allKeys = [keyURL, keySaveSentence, keyPrivacyLevel, keyHelpImprove, keyFlPhoneId, keyOnboardingCompleted,
                           keyOnboardingVersion, keyTextSize, keyReadAloud, keyShowCareful, keySimple, keyStyleTip,
-                          keyTextSizeChosen, keyReadAloudChosen, keyFamilyName, keyFamilyPhone, keyDevUnlocked]
+                          keyTextSizeChosen, keyReadAloudChosen, keyFamilyName, keyFamilyPhone, keyDevUnlocked, keyQuizBest, keyWeeklyReminder]
 
     var gatewayUrl: String {
         get { defaults.string(forKey: Self.keyURL) ?? Self.defaultURL }
@@ -136,6 +138,18 @@ nonisolated final class AppPrefs: OnboardingStore, DevStore, @unchecked Sendable
     var familyPhone: String {
         get { defaults.string(forKey: Self.keyFamilyPhone) ?? "" }
         set { defaults.set(newValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Self.keyFamilyPhone) }
+    }
+
+    /// Practice quiz: the best score so far (of 5); nil = never played. Only the number is kept.
+    var quizBest: Int? {
+        get { defaults.object(forKey: Self.keyQuizBest) == nil ? nil : defaults.integer(forKey: Self.keyQuizBest) }
+        set { if let newValue { defaults.set(newValue, forKey: Self.keyQuizBest) } else { defaults.removeObject(forKey: Self.keyQuizBest) } }
+    }
+
+    /// "Weekly reminder" (Share weekly summary): a local notification once a week. Off by default.
+    var weeklyReminder: Bool {
+        get { defaults.bool(forKey: Self.keyWeeklyReminder) }
+        set { defaults.set(newValue, forKey: Self.keyWeeklyReminder) }
     }
 
     /// Developer view unlocked (Help & about → tap the version 7 times). The only thing the Developer view saves.

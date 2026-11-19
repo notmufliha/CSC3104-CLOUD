@@ -43,6 +43,7 @@ struct SimpleHomeView: View {
                     .accessibilityIdentifier("practiceCall")
                     Text(L.s(.home_practice_line)).font(.body).foregroundStyle(Theme.muted).padding(.horizontal, 8)
                 }
+                LearnHomeCard()
                 recentCalls
             }
             .padding(16)
@@ -99,7 +100,7 @@ struct SimpleHomeView: View {
         let calls = Array(vm.store.calls().prefix(3))
         return VStack(alignment: .leading, spacing: 12) {
             Text(L.s(.home_recent)).font(.title2.bold()).accessibilityAddTraits(.isHeader)
-            if calls.isEmpty { Text(L.s(.home_no_calls)).font(.body).foregroundStyle(Theme.muted) }
+            if calls.isEmpty { EmptyState(text: L.s(.home_no_calls), compact: true) }
             ForEach(Array(calls.enumerated()), id: \.element.id) { i, c in
                 if i > 0 { Divider() }
                 let level = Dashboard.level(c.finalVerdict)
