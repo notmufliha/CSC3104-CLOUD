@@ -33,6 +33,27 @@ nonisolated enum Reasons {
     }
 
     /// What the dashboard shows for a saved call: the code's wording, else the text saved with it.
+    /// A code's wording in the app (Localizable.xcstrings); nil for an unknown code.
+    static func label(_ code: String?) -> String? {
+        switch code {
+        case money: return L.s(.reason_money)
+        case impersonation: return L.s(.reason_impersonation)
+        case urgency: return L.s(.reason_urgency)
+        case bert: return L.s(.reason_bert)
+        case several: return L.s(.reason_several)
+        case earlier: return L.s(.reason_earlier)
+        case none: return L.s(.reason_none)
+        case serverNotReached: return L.s(.reason_server_not_reached)
+        case noLines: return L.s(.reason_no_lines)
+        default: return nil
+        }
+    }
+
+    /// A reason as shown: the app's wording for its code; a wording the app doesn't know (a newer server's) is shown
+    /// as the server sent it.
+    static func localized(_ text: String) -> String { label(codeForText(text)) ?? text }
+
+    /// What the dashboard counts a saved call under: the code's (English, server) wording, else the text saved with it.
     static func display(reasonCode: String?, topReason: String) -> String {
         text(reasonCode) ?? topReason
     }

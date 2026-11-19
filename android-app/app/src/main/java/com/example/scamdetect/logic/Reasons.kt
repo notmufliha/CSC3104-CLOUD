@@ -34,7 +34,27 @@ object Reasons {
     /** The server's wording for a code; null for an unknown code. */
     fun text(code: String?): String? = code?.let { TEXT[it] }
 
-    /** What the dashboard shows for a saved call: the code's wording, else the text saved with it. */
+    /** A code's wording in the app (string resources); null for an unknown code. */
+    fun label(code: String?): String? = when (code) {
+        MONEY -> Tr.s(com.example.scamdetect.R.string.reason_money)
+        IMPERSONATION -> Tr.s(com.example.scamdetect.R.string.reason_impersonation)
+        URGENCY -> Tr.s(com.example.scamdetect.R.string.reason_urgency)
+        BERT -> Tr.s(com.example.scamdetect.R.string.reason_bert)
+        SEVERAL -> Tr.s(com.example.scamdetect.R.string.reason_several)
+        EARLIER -> Tr.s(com.example.scamdetect.R.string.reason_earlier)
+        NONE -> Tr.s(com.example.scamdetect.R.string.reason_none)
+        SERVER_NOT_REACHED -> Tr.s(com.example.scamdetect.R.string.reason_server_not_reached)
+        NO_LINES -> Tr.s(com.example.scamdetect.R.string.reason_no_lines)
+        else -> null
+    }
+
+    /**
+     * A reason as shown: the app's wording for its code; a wording the app doesn't know (a newer server's) is shown
+     * as the server sent it.
+     */
+    fun localized(text: String): String = label(codeForText(text)) ?: text
+
+    /** What the dashboard counts a saved call under: the code's (English, server) wording, else the text saved with it. */
     fun display(call: CallRecord): String = text(call.reasonCode) ?: call.topReason
 
     /**

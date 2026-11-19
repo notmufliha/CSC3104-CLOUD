@@ -1,10 +1,22 @@
 package com.example.scamdetect.ui
 
+import com.example.scamdetect.logic.Tr
+
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.selection.selectableGroup
+
+import com.example.scamdetect.logic.Risk
+
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.res.stringResource
+import com.example.scamdetect.R
+
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +26,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -66,13 +79,14 @@ import kotlinx.coroutines.launch
 // Settings as a grouped menu; each row opens its own page. Same rows, wording and order as
 // ios-app/ScamGuard/UI/SettingsView.swift.
 
-enum class SettingsPage { PRIVACY, SERVER, MODELS, DATA, HELP }
+enum class SettingsPage { PRIVACY, DATA, HELP, APP_STYLE, TEXT_SIZE, FAMILY, ADVANCED, PIN, DEVELOPER }
 
-/** Server addresses offered as one-tap presets (Settings → Server, and the setup's server screen). */
+/** Server addresses offered as one-tap presets (Developer view → Server address only). */
 val SERVER_PRESETS = listOf(
     "Emulator" to "http://10.0.2.2:8080/",
     "Emulator HTTPS" to "https://10.0.2.2:8443/api/",
-    "Phone HTTPS" to "https://192.168.1.23:8443/api/",
+    "Mac on Wi-Fi" to "http://192.168.1.23:8080/",
+    "HTTPS" to "https://192.168.1.23:8443/api/",
 )
 
 /** One line per privacy level, for the cards and the menu. */
@@ -112,42 +126,56 @@ private fun MenuRow(icon: ImageVector, title: String, value: String, valueColor:
     }
 }
 
+/** The full app's Settings: the everyday rows, everything Advanced settings holds, Help, and Developer view if unlocked. */
 @Composable
 fun SettingsMenuScreen(
     privacyLevel: PrivacyLevel,
     connection: Boolean?,
-    modelsValue: String,
     callCount: Int,
-    version: String,
     onRefresh: () -> Unit,
     onOpen: (SettingsPage) -> Unit,
+    textSize: String,
+    onRetry: suspend () -> Unit = {},
+    readAloud: Boolean,
+    onReadAloud: (Boolean) -> Unit,
+    familyName: String?,
+    showCareful: Boolean,
+    onShowCareful: (Boolean) -> Unit,
+    pinSet: Boolean,
+    developerUnlocked: Boolean = false,
 ) {
     LaunchedEffect(Unit) { onRefresh() }
-    Page("Settings") {
+    Page(stringResource(R.string.tab_settings)) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Group {
-                MenuRow(Icons.Filled.Lock, "Privacy level", privacyLevel.shortTitle(), modifier = Modifier.tourTarget(Tour.Target.PRIVACY_ROW)) {
-                    onOpen(SettingsPage.PRIVACY)
-                }
-                HorizontalDivider(Modifier.padding(start = 66.dp))
-                MenuRow(Icons.Filled.Share, "Server", connectionLabel(connection), connectionColor(connection)) { onOpen(SettingsPage.SERVER) }
-                HorizontalDivider(Modifier.padding(start = 66.dp))
-                MenuRow(Icons.Filled.Build, "On-device models", modelsValue) { onOpen(SettingsPage.MODELS) }
-            }
-            Group {
-                MenuRow(Icons.Filled.Person, "My data & history", "$callCount call${if (callCount == 1) "" else "s"}") { onOpen(SettingsPage.DATA) }
-                HorizontalDivider(Modifier.padding(start = 66.dp))
-                MenuRow(Icons.Filled.Info, "Help & about", "v$version") { onOpen(SettingsPage.HELP) }
-            }
+            EverydaySettings(false, textSize, readAloud, familyName, onOpen, onReadAloud)
+            AdvancedRows(false, showCareful, onShowCareful, pinSet, privacyLevel, connection, callCount, onOpen, onRetry)
+            Group { SettingsRow(Icons.Filled.Info, stringResource(R.string.set_help), tag = "rowHelp") { onOpen(SettingsPage.HELP) } }
+            if (developerUnlocked) DeveloperRow(onOpen)
         }
     }
 }
 
-fun connectionLabel(c: Boolean?) = when (c) {
-    true -> "Connected"
-    false -> "Can't reach"
-    null -> "Not checked"
+/** The hidden Developer view's row: only once unlocked (Help & about → tap the version 7 times). */
+@Composable
+fun DeveloperRow(onOpen: (SettingsPage) -> Unit) {
+    Group { SettingsRow(Icons.Filled.Build, stringResource(R.string.set_developer), tag = "rowDeveloper") { onOpen(SettingsPage.DEVELOPER) } }
 }
+
+/** "Read warnings aloud" and "Show 'Be careful' warnings" (the same rows on iOS). */
+@Composable
+fun WarningSettings(readAloud: Boolean, onReadAloud: (Boolean) -> Unit, showCareful: Boolean, onShowCareful: (Boolean) -> Unit) {
+    Group {
+        ToggleRow(stringResource(R.string.set_read_aloud), stringResource(R.string.set_read_aloud_line), readAloud, onReadAloud)
+        HorizontalDivider(Modifier.padding(start = 16.dp))
+        ToggleRow(stringResource(R.string.set_show_careful), stringResource(R.string.set_show_careful_line), showCareful, onShowCareful)
+    }
+}
+
+fun connectionLabel(c: Boolean?) = com.example.scamdetect.logic.Tr.s(when (c) {
+    true -> R.string.status_connected
+    false -> R.string.status_cant_reach
+    null -> R.string.status_not_checked
+})
 
 @Composable
 fun connectionColor(c: Boolean?) = when (c) {
@@ -162,10 +190,10 @@ private fun SubPage(title: String, onBack: () -> Unit, info: String? = null, con
     var showInfo by remember { mutableStateOf(false) }
     Page(title, onBack) {
         if (info != null) Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("What does this mean?", Modifier.weight(1f).clickable { showInfo = true },
+            Text(Tr.s(R.string.what_does_this_mean), Modifier.weight(1f).clickable { showInfo = true },
                 style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
-            IconButton(onClick = { showInfo = true }) {
-                Icon(Icons.Filled.Info, contentDescription = "About $title", tint = MaterialTheme.colorScheme.primary)
+            IconButton(onClick = { showInfo = true }, modifier = Modifier.size(56.dp)) {
+                Icon(Icons.Filled.Info, contentDescription = Tr.s(R.string.a11y_about, title), tint = MaterialTheme.colorScheme.primary)
             }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp), content = content)
@@ -176,74 +204,28 @@ private fun SubPage(title: String, onBack: () -> Unit, info: String? = null, con
 // ---------------------------------------------------------------- Privacy level
 
 @Composable
-fun PrivacyPage(current: PrivacyLevel, onPick: (PrivacyLevel) -> Unit, onBack: () -> Unit) {
-    val info = PrivacyLevel.entries.joinToString("\n\n") { "${it.shortTitle()}: ${it.explanation}" }
-    SubPage("Privacy level", onBack, info) {
-        Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+fun PrivacyPage(current: PrivacyLevel, onPick: (PrivacyLevel) -> Unit, onBack: () -> Unit, simple: Boolean = false) {
+    var info by remember { mutableStateOf(false) }
+    Page(stringResource(R.string.set_how_checked), onBack) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             PrivacyLevel.entries.forEach { level ->
-                val selected = level == current
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
-                    border = BorderStroke(2.dp, if (selected) MaterialTheme.colorScheme.primary else Color.Transparent),
-                    modifier = Modifier.fillMaxWidth()
-                        .selectable(selected = selected, enabled = level.available, role = Role.RadioButton) { onPick(level) },
-                ) {
-                    Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        RadioButton(selected = selected, onClick = null)
-                        Column(Modifier.weight(1f)) {
-                            Text(level.shortTitle() + if (level == PrivacyLevel.DEFAULT) " (default)" else "",
-                                style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                            Text(level.oneLine(), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
+                ChoiceCard(
+                    selected = level == current,
+                    title = if (simple) stringResource(privacyTagRes(level)) else "${level.shortTitle()} · ${stringResource(privacyTagRes(level))}",
+                    line = stringResource(privacyPlainRes(level)),
+                    tag = "privacy_${level.id}",
+                ) { if (level.available) onPick(level) }
+            }
+            Text(stringResource(R.string.privacy_applies_next), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.privacy_english_only), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!simple) OutlinedButton(onClick = { info = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+                Text(stringResource(R.string.setup_more_about), style = MaterialTheme.typography.labelLarge)
             }
         }
-        Text("Applies from the next call.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
-}
-
-// ---------------------------------------------------------------- Server
-
-@Composable
-fun ServerPage(
-    currentUrl: String,
-    connection: Boolean?,
-    onSave: (String) -> Unit,
-    onTest: suspend (String) -> String,
-    onBack: () -> Unit,
-) {
-    var url by remember(currentUrl) { mutableStateOf(currentUrl) }
-    var result by remember { mutableStateOf<String?>(null) }
-    var testing by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    val info = "The address of the ScamGuard server. Emulator: 10.0.2.2 is your laptop (docker compose: :8080). " +
-        "Kubernetes: run demo/expose on the laptop; it prints https://<laptop Wi-Fi IP>:8443/api/. First time only: " +
-        "install demo/tls/ca.crt on this device. Without HTTPS, what callers say is sent as plain text."
-    SubPage("Server", onBack, info) {
-        StatusChip(if (testing) "Checking…" else connectionLabel(connection), if (testing) MaterialTheme.colorScheme.onSurfaceVariant else connectionColor(connection))
-        OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("Server address") }, singleLine = true,
-            textStyle = MaterialTheme.typography.bodyLarge, modifier = Modifier.fillMaxWidth())
-        val encrypted = url.trim().startsWith("https://", ignoreCase = true)
-        Text(if (encrypted) "🔒 Encrypted" else "⚠︎ Not encrypted",
-            style = MaterialTheme.typography.bodyLarge, color = if (encrypted) SafeGreen else ScamRed)
-        Text("Presets", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SERVER_PRESETS.forEach { (label, u) ->
-                OutlinedButton(onClick = { url = u }) { Text(label, style = MaterialTheme.typography.bodyLarge) }
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = { onSave(url); result = "Saved" }, modifier = Modifier.weight(1f).height(52.dp)) {
-                Text("Save", style = MaterialTheme.typography.bodyLarge)
-            }
-            val test = withLocalNetwork { scope.launch { testing = true; result = onTest(url); testing = false } }
-            OutlinedButton(onClick = test,
-                modifier = Modifier.weight(1f).height(52.dp)) { Text("Test", style = MaterialTheme.typography.bodyLarge) }
-        }
-        result?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
-    }
+    if (info) InfoSheet(stringResource(R.string.set_how_checked),
+        PrivacyLevel.entries.joinToString("\n\n") { "${it.shortTitle()} · ${Tr.s(privacyTagRes(it))}: ${Tr.s(privacyPlainRes(it))}" } +
+            "\n\n" + Tr.s(R.string.privacy_english_only)) { info = false }
 }
 
 @Composable
@@ -255,45 +237,6 @@ fun StatusChip(text: String, color: Color) {
         Box(Modifier.size(10.dp).background(color, CircleShape))
         Text("  $text", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
     }
-}
-
-// ---------------------------------------------------------------- On-device models
-
-@Composable
-fun ModelsPage(modelStatus: String, mobileBertStatus: String, modelCheck: String, onCheck: suspend () -> String, onBack: () -> Unit) {
-    val scope = rememberCoroutineScope()
-    val info = "Used at privacy levels 2 and 3. Newer versions come from federated learning: phones train on their own " +
-        "calls and share only model changes, never the calls. The app checks for new versions when it starts."
-    SubPage("On-device models", onBack, info) {
-        Group {
-            modelStatus.lines().filter { it.isNotBlank() }.forEachIndexed { i, line ->
-                if (i > 0) HorizontalDivider(Modifier.padding(start = 16.dp))
-                val name = line.substringBefore(":").replaceFirstChar { it.uppercase() }
-                val value = if ("federated" in line) "Updated " + line.substringAfter("federated ").substringBefore(" (") else "Built-in"
-                KeyValueRow(if (name == "Money") "Money / OTP" else name, value)
-            }
-            HorizontalDivider(Modifier.padding(start = 16.dp))
-            KeyValueRow("MobileBERT", if (mobileBertStatus.startsWith("MobileBERT installed")) "Installed" else "Not installed")
-        }
-        Button(onClick = { scope.launch { onCheck() } }, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-            Text("Check for updates", style = MaterialTheme.typography.bodyLarge)
-        }
-        if (modelCheck.isNotEmpty()) Text(friendlyModelCheck(modelCheck), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
-        OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-            Text("Train on my calls", style = MaterialTheme.typography.bodyLarge)
-        }
-        Text("Coming soon", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-/** The update check's result in plain words (same wording on iOS). */
-fun friendlyModelCheck(msg: String): String = when {
-    msg.startsWith("Checking") -> "Checking…"
-    msg.startsWith("No model service") || msg.startsWith("Bad server address") -> "Can't reach the update service"
-    msg.startsWith("The registry has no phone models") -> "No updates yet"
-    msg.startsWith("Kept the current models") -> "Update failed, kept the current models"
-    msg.startsWith("Updated") -> "Models updated"
-    else -> msg
 }
 
 @Composable
@@ -318,51 +261,52 @@ fun DataPage(
     onBack: () -> Unit,
 ) {
     var confirm by remember { mutableStateOf(false) }
-    val info = "Save the riskiest sentence: keeps the one caller line that scored highest in calls that ended with a " +
-        "warning. Off: no words from your calls are kept, only verdicts and scores.\n\n" +
-        "Help improve detection: the app keeps simple labels on this phone (for example, you hung up right after a " +
-        "warning, or tapped \"This was fine\"). On: the caller's lines of those calls are kept too, with numbers and " +
-        "names removed. Nothing is uploaded.\n\nYour history stays on this phone."
-    SubPage("My data & history", onBack, info) {
+    val info = Tr.s(R.string.data_info)
+    SubPage(Tr.s(R.string.set_my_data), onBack, info) {
         Group {
-            ToggleRow("Save the riskiest sentence", "Keep one line from warned calls", saveSentence, onSaveSentence)
+            ToggleRow(Tr.s(R.string.data_save_sentence), Tr.s(R.string.data_save_sentence_line), saveSentence, onSaveSentence)
             HorizontalDivider(Modifier.padding(start = 16.dp))
-            ToggleRow("Help improve detection", "Keep labels on this phone", helpImprove, onHelpImprove)
+            ToggleRow(Tr.s(R.string.data_help_improve), Tr.s(R.string.data_help_improve_line), helpImprove, onHelpImprove)
         }
         Group {
-            KeyValueRow("Calls saved", "$callCount")
+            KeyValueRow(Tr.s(R.string.data_calls_saved), "$callCount")
             HorizontalDivider(Modifier.padding(start = 16.dp))
-            KeyValueRow("Labels kept", "$labelCount")
+            KeyValueRow(Tr.s(R.string.data_labels_kept), "$labelCount")
         }
-        Text("Nothing here is uploaded.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(Tr.s(R.string.data_nothing_uploaded), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Button(
             onClick = { confirm = true },
             enabled = callCount > 0 || labelCount > 0,
             colors = ButtonDefaults.buttonColors(containerColor = ScamRed, contentColor = Color.White),
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-        ) { Text("Delete my history", style = MaterialTheme.typography.bodyLarge) }
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+        ) { Text(Tr.s(R.string.btn_delete_history), style = MaterialTheme.typography.labelLarge) }
     }
-    if (confirm) AlertDialog(
-        onDismissRequest = { confirm = false },
-        title = { Text("Delete my history?") },
-        text = { Text("Deletes every saved call, chart, saved sentence and label on this phone. This can't be undone.",
-            style = MaterialTheme.typography.bodyLarge) },
-        confirmButton = {
-            Button(onClick = { confirm = false; onDelete() },
-                colors = ButtonDefaults.buttonColors(containerColor = ScamRed, contentColor = Color.White)) { Text("Delete") }
-        },
-        dismissButton = { TextButton(onClick = { confirm = false }) { Text("Cancel") } },
+    if (confirm) YesNoDialog(
+        title = Tr.s(R.string.delete_title),
+        text = Tr.s(R.string.delete_text),
+        yes = Tr.s(R.string.btn_yes_delete),
+        no = Tr.s(R.string.btn_no_keep),
+        onYes = { confirm = false; onDelete() },
+        onNo = { confirm = false },
+        yesIsDanger = true,
     )
 }
 
 @Composable
 internal fun ToggleRow(title: String, line: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+    // The whole row is the switch: a big target, read as one item ("Read warnings aloud, on, switch").
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 64.dp)
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(line, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Switch(checked = checked, onCheckedChange = onChange)
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 
@@ -371,69 +315,76 @@ internal fun ToggleRow(title: String, line: String, checked: Boolean, onChange: 
 @Composable
 fun HelpPage(
     version: String,
-    modelStatus: String,
-    mobileBertStatus: String,
-    debug: Boolean,
-    onLoadSample: () -> Unit,
     onBack: () -> Unit,
     onReplayTour: () -> Unit = {},
     onRunSetup: () -> Unit = {},
-    onResetSetup: () -> Unit = {},
+    simple: Boolean = false,
+    /** One tap on the version number (7 unlock the Developer view); returns what to tell the user, or null. */
+    onVersionTap: () -> String? = { null },
 ) {
+    Page(stringResource(R.string.set_help), onBack) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            PrivacyPromise()
+            HelpSection(stringResource(R.string.help_how)) {
+                listOf(R.string.help_b1, R.string.help_b2, R.string.help_b3).forEach { Bullet(stringResource(it)) }
+            }
+            HelpSection(stringResource(R.string.help_colours)) {
+                ColourRow(Risk.Level.GREEN, stringResource(R.string.risk_safe), stringResource(R.string.help_safe_line))
+                ColourRow(Risk.Level.YELLOW, stringResource(R.string.risk_careful), stringResource(R.string.help_careful_line))
+                ColourRow(Risk.Level.RED, stringResource(R.string.risk_scam), stringResource(R.string.help_scam_line))
+                ColourRow(Risk.Level.ERROR, stringResource(R.string.risk_not_checked), stringResource(R.string.help_notchecked_line))
+            }
+            HelpSection(stringResource(R.string.help_again)) {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(onClick = onReplayTour, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+                        Text(stringResource(R.string.btn_replay_tour), style = MaterialTheme.typography.labelLarge)
+                    }
+                    OutlinedButton(onClick = onRunSetup, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+                        Text(stringResource(R.string.btn_run_setup), style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            }
+            AboutSection(version, onVersionTap)
+            if (!simple) {
+                HelpSection(stringResource(R.string.help_privacy_levels)) {
+                    PrivacyLevel.entries.forEach { Bullet("${it.shortTitle()} (${stringResource(privacyTagRes(it))}): ${stringResource(privacyPlainRes(it))}") }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+/** Phase 6: who made the app, that it isn't a government app, and how to check a scam (1799, ScamShield). */
+@Composable
+fun AboutSection(version: String, onVersionTap: () -> String? = { null }) {
     val context = LocalContext.current
-    var loaded by remember { mutableStateOf(false) }
-    SubPage("Help & about", onBack) {
-        HelpSection("Get started again") {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(onClick = onReplayTour, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                    Text("Replay tour", style = MaterialTheme.typography.bodyLarge)
-                }
-                OutlinedButton(onClick = onRunSetup, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                    Text("Run setup again", style = MaterialTheme.typography.bodyLarge)
-                }
+    var toast by remember { mutableStateOf<android.widget.Toast?>(null) }
+    HelpSection(stringResource(R.string.about_title)) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(stringResource(R.string.about_who), style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.about_not_gov), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.about_verify), style = MaterialTheme.typography.bodyLarge)
+            Button(onClick = { dial(context, SCAMSHIELD_HELPLINE) }, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+                Text(stringResource(R.string.btn_call_1799), style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
             }
-        }
-        HelpSection("How ScamGuard works") {
-            listOf(
-                "It listens to what the caller says.",
-                "Each sentence is checked for scam signs.",
-                "The bar turns yellow or red when it's risky.",
-                "A red alert tells you to hang up.",
-            ).forEach { Bullet(it) }
-        }
-        HelpSection("What the colours mean") {
-            ColourRow(SafeGreen, "Safe", "No warning signs")
-            ColourRow(WarnYellow, "Warning", "Be careful")
-            ColourRow(ScamRed, "Scam", "Hang up now")
-            ColourRow(NeutralGrey, "Grey", "Couldn't check")
-        }
-        HelpSection("Privacy levels") {
-            PrivacyLevel.entries.forEach { Bullet("${it.shortTitle()}: ${it.oneLine().replaceFirstChar { c -> c.lowercase() }}") }
-        }
-        HelpSection("Report a scam") {
-            Button(onClick = {
+            OutlinedButton(onClick = {
                 try { context.startActivity(Intent(Intent.ACTION_VIEW, SCAMSHIELD_URL.toUri())) } catch (e: ActivityNotFoundException) { }
-            }, colors = ButtonDefaults.buttonColors(containerColor = ScamRed, contentColor = Color.White),
-                modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Open ScamShield", style = MaterialTheme.typography.bodyLarge) }
-        }
-        HelpSection("About") {
-            KeyValueRow("Version", version)
-            modelStatus.lines().filter { it.isNotBlank() }.forEach { line ->
-                KeyValueRow(line.substringBefore(":").replaceFirstChar { it.uppercase() } + " model",
-                    if ("federated" in line) line.substringAfter("federated ").substringBefore(" (") else "built-in")
+            }, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+                Text(stringResource(R.string.btn_open_scamshield), style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
             }
-            KeyValueRow("MobileBERT", Regex("\\((mobilebert[^)]*)\\)").find(mobileBertStatus)?.groupValues?.get(1) ?: "not installed")
+            // Tapping the version 7 times unlocks the hidden Developer view (like Android's developer options).
+            Text(stringResource(R.string.about_version) + " " + version, style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("aboutVersion").clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null,
+                ) {
+                    onVersionTap()?.let { msg ->
+                        toast?.cancel()
+                        toast = android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).also { it.show() }
+                    }
+                }.padding(vertical = 12.dp))
         }
-        if (debug) HelpSection("Debug build") {
-            OutlinedButton(onClick = { onLoadSample(); loaded = true }, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                Text("Load sample history", style = MaterialTheme.typography.bodyLarge)
-            }
-            if (loaded) Text("Added about 60 sample calls.", style = MaterialTheme.typography.bodyLarge)
-            OutlinedButton(onClick = onResetSetup, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                Text("Reset first-launch setup", style = MaterialTheme.typography.bodyLarge)
-            }
-        }
-        Spacer(Modifier.height(8.dp))
     }
 }
 
@@ -454,10 +405,13 @@ private fun Bullet(text: String) {
 }
 
 @Composable
-private fun ColourRow(color: Color, name: String, meaning: String) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(18.dp).background(color, CircleShape))
-        Text("  $name", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        Text(meaning, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun ColourRow(level: Risk.Level, name: String, meaning: String) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        RiskIcon(level, 28.dp)
+        Column(Modifier.weight(1f)) {
+            Text(name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(meaning, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }

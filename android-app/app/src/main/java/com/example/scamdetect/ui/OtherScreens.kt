@@ -1,5 +1,8 @@
 package com.example.scamdetect.ui
 
+import com.example.scamdetect.logic.Tr
+import androidx.compose.ui.platform.testTag
+
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -50,6 +54,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -61,6 +66,9 @@ import com.example.scamdetect.data.ReportLine
 import com.example.scamdetect.logic.PrivacyLevel
 import com.example.scamdetect.logic.Risk
 import com.example.scamdetect.logic.Tour
+import com.example.scamdetect.logic.Warnings
+import com.example.scamdetect.R
+import androidx.compose.ui.res.stringResource
 import com.example.scamdetect.logic.ScriptTitles
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -79,7 +87,7 @@ internal fun Page(title: String, onBack: (() -> Unit)? = null, content: @Composa
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (onBack != null) Row {
-                TextButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("‹ Back", style = MaterialTheme.typography.bodyLarge) }
+                TextButton(onClick = onBack, modifier = Modifier.heightIn(min = 56.dp)) { Text("‹ " + Tr.s(R.string.btn_back), style = MaterialTheme.typography.bodyLarge) }
             }
             if (title.isNotEmpty()) Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
             content()
@@ -94,25 +102,34 @@ fun HomeScreen(
     onScamCall: () -> Unit,
     onNormalCall: () -> Unit,
     onPickScript: () -> Unit,
-    onPasteText: () -> Unit,
+    /** "Learn to spot scams". */
+    onLearn: () -> Unit = {},
+    /** An existing user's one-time "Try Simple mode?" card. */
+    offer: (@Composable () -> Unit)? = null,
 ) {
-    Page("ScamGuard") {
-        Text("Simulate a call and watch the scam check work live.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        val wide = Modifier.fillMaxWidth().height(52.dp)
-        Button(onClick = onScamCall, modifier = wide.tourTarget(Tour.Target.SCAM_CALL)) { Text("Simulate scam call") }
-        Button(onClick = onNormalCall, modifier = wide) { Text("Simulate normal call") }
-        OutlinedButton(onClick = onPickScript, modifier = wide.tourTarget(Tour.Target.PICK_SCRIPT)) { Text("Choose a call script…") }
-        OutlinedButton(onClick = onPasteText, modifier = wide) { Text("Paste text") }
+    Page(stringResource(R.string.app_name_text)) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            offer?.invoke()
+            Text(stringResource(R.string.home_full_line), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
+            val wide = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+            Button(onClick = onScamCall, modifier = wide.tourTarget(Tour.Target.SCAM_CALL)) { Text(stringResource(R.string.btn_sim_scam)) }
+            Button(onClick = onNormalCall, modifier = wide) { Text(stringResource(R.string.btn_sim_normal)) }
+            OutlinedButton(onClick = onPickScript, modifier = wide.tourTarget(Tour.Target.PICK_SCRIPT)) { Text(stringResource(R.string.btn_pick_script)) }
+            OutlinedButton(onClick = onLearn, modifier = wide.testTag("learnButton")) { Text(stringResource(R.string.btn_learn)) }
+        }
     }
 }
 
 // ---------------------------------------------------------------- 4.2 Script picker
 
-private enum class ScriptSort(val label: String) { TYPE("Type"), TITLE("Title A–Z"), LANGUAGE("Language"), LENGTH("Shortest") }
+private enum class ScriptSort(val labelRes: Int) {
+    TYPE(R.string.pick_sort_type), TITLE(R.string.pick_sort_title), LANGUAGE(R.string.pick_sort_lang), LENGTH(R.string.pick_sort_short);
+    val label: String get() = Tr.s(labelRes)
+}
 
 private fun kindLabel(kind: String) = when (kind) {
-    "scam" -> "SCAM CALL"
-    "normal" -> "NORMAL CALL"
+    "scam" -> Tr.s(R.string.pick_kind_scam)
+    "normal" -> Tr.s(R.string.pick_kind_normal)
     else -> kind.uppercase()
 }
 
@@ -123,9 +140,9 @@ private fun kindColor(kind: String) = when (kind) {
 }
 
 private fun langLabel(lang: String?) = when (lang) {
-    "en" -> "English"
-    "zh" -> "Chinese"
-    else -> "Auto-detect"
+    "en" -> Tr.s(R.string.pick_english)
+    "zh" -> Tr.s(R.string.pick_chinese)
+    else -> Tr.s(R.string.pick_auto)
 }
 
 @Composable
@@ -139,7 +156,15 @@ private fun ChipRow(label: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-fun ScriptPickerScreen(scripts: List<CallScript>, onPick: (CallScript) -> Unit, onBack: () -> Unit) {
+fun ScriptPickerScreen(
+    allScripts: List<CallScript>,
+    onPick: (CallScript) -> Unit,
+    onBack: () -> Unit,
+    /** Developer view unlocked: the learning-loop test calls get their own section at the end. */
+    showTestCalls: Boolean = false,
+) {
+    val scripts = allScripts.filterNot { com.example.scamdetect.logic.DevScripts.isTestCall(it.fileName) }
+    val testCalls = if (showTestCalls) allScripts.filter { com.example.scamdetect.logic.DevScripts.isTestCall(it.fileName) } else emptyList()
     var kind by remember { mutableStateOf<String?>(null) }   // null = all
     var lang by remember { mutableStateOf<String?>(null) }
     var sort by remember { mutableStateOf(ScriptSort.TYPE) }
@@ -157,8 +182,8 @@ fun ScriptPickerScreen(scripts: List<CallScript>, onPick: (CallScript) -> Unit, 
             }
         }
 
-    Page("Call scripts", onBack) {
-        if (scripts.isEmpty()) Text("No scripts found in assets/scripts/.")
+    Page(Tr.s(R.string.pick_title), onBack) {
+        if (scripts.isEmpty()) EmptyState(Tr.s(R.string.pick_none), icon = androidx.compose.material.icons.Icons.Filled.Info, compact = true)
         // Collapsed by default; the header always says what is active, so nothing is hidden silently.
         val active = listOfNotNull(
             kind?.replaceFirstChar { it.uppercase() },
@@ -170,49 +195,49 @@ fun ScriptPickerScreen(scripts: List<CallScript>, onPick: (CallScript) -> Unit, 
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "${if (filtersOpen) "▾" else "▸"}  Filter & sort",
+                "${if (filtersOpen) "▾" else "▸"}  " + Tr.s(R.string.pick_filter),
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
             )
             Text(
-                "$active · ${shown.size} of ${scripts.size}",
+                Tr.s(R.string.pick_count, active, shown.size.toString(), scripts.size.toString()),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         AnimatedVisibility(filtersOpen) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ChipRow("Type") {
-                    listOf(null to "All", "scam" to "Scam", "normal" to "Normal").forEach { (k, l) ->
-                        FilterChip(selected = kind == k, onClick = { kind = k }, label = { Text(l) })
+                ChipRow(Tr.s(R.string.pick_type)) {
+                    listOf(null to Tr.s(R.string.pick_all), "scam" to Tr.s(R.string.pick_scam), "normal" to Tr.s(R.string.pick_normal)).forEach { (k, l) ->
+                        PillChip(l, kind == k) { kind = k }
                     }
                 }
-                ChipRow("Language") {
-                    listOf(null to "All", "en" to "English", "zh" to "Chinese").forEach { (k, l) ->
-                        FilterChip(selected = lang == k, onClick = { lang = k }, label = { Text(l) })
+                ChipRow(Tr.s(R.string.pick_language)) {
+                    listOf(null to Tr.s(R.string.pick_all), "en" to Tr.s(R.string.pick_english), "zh" to Tr.s(R.string.pick_chinese)).forEach { (k, l) ->
+                        PillChip(l, lang == k) { lang = k }
                     }
                 }
-                ChipRow("Sort") {
+                ChipRow(Tr.s(R.string.pick_sort)) {
                     ScriptSort.entries.forEach { s ->
-                        FilterChip(selected = sort == s, onClick = { sort = s }, label = { Text(s.label) })
+                        PillChip(s.label, sort == s) { sort = s }
                     }
                 }
             }
         }
         // H's learning-loop test calls go last, in their own section (ScriptTitles): they are meant to be missed.
-        val (regular, tests) = ScriptTitles.sections(shown)
+        // They are listed only while the Developer view is unlocked (testCalls).
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(regular, key = { it.fileName }) { s -> ScriptCard(s, onPick) }
-            if (tests.isNotEmpty()) {
+            items(shown, key = { it.fileName }) { s -> ScriptCard(s, onPick) }
+            if (testCalls.isNotEmpty()) {
                 item(key = "learning-tests-header") {
-                    Column(Modifier.padding(top = 16.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Column(Modifier.padding(top = 16.dp, bottom = 4.dp).testTag("testCallsHeader"), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(ScriptTitles.TEST_SECTION, fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.semantics { heading() })
                         Text(ScriptTitles.TEST_SECTION_NOTE, style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                items(tests, key = { it.fileName }) { s -> ScriptCard(s, onPick) }
+                items(testCalls, key = { it.fileName }) { s -> ScriptCard(s, onPick) }
             }
         }
     }
@@ -234,28 +259,11 @@ private fun ScriptCard(s: CallScript, onPick: (CallScript) -> Unit) {
                 )
                 Text(s.title, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "${langLabel(s.lang)} · ${s.lines.size} lines",
+                    Tr.s(R.string.pick_lines, langLabel(s.lang), s.lines.size.toString()),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        }
-    }
-}
-
-// ---------------------------------------------------------------- Paste text
-
-@Composable
-fun PasteTextScreen(onCheck: (String) -> Unit, onBack: () -> Unit) {
-    var text by remember { mutableStateOf("") }
-    Page("Paste text", onBack) {
-        OutlinedTextField(
-            value = text, onValueChange = { text = it },
-            label = { Text("What the caller said") },
-            modifier = Modifier.fillMaxWidth().height(180.dp)
-        )
-        Button(onClick = { onCheck(text.trim()) }, enabled = text.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
-            Text("Check")
         }
     }
 }
@@ -270,131 +278,80 @@ fun PasteTextScreen(onCheck: (String) -> Unit, onBack: () -> Unit) {
 @Composable
 fun SummaryScreen(
     state: CallUiState,
-    reportPreview: () -> List<ReportLine>,
-    onReport: suspend (kind: String) -> String,
     onDone: () -> Unit,
-    /** G.12: "This was fine" tapped (kept as a local label; sharing still goes through the consent screen). */
-    onThisWasFine: () -> Unit = {},
+    /** "Show 'Be careful' warnings": off = a "Be careful" call ends as plain "Call ended" (still saved). */
+    showCareful: Boolean = true,
+    /** Simple mode: no technical lines. */
+    simple: Boolean = false,
+    /** The trusted family contact ("Tell my family" on the after-call card); null = none. */
+    family: CallViewModel.Family? = null,
+    /** "Save the riskiest sentence": only then does the copied report summary include the (masked) caller lines. */
+    includeLines: Boolean = false,
 ) {
     val context = LocalContext.current
-    // H.3: which button opened the consent screen ("scam" / "fine"), and the result once sent.
-    // Saveable: rotating the phone must not re-enable the buttons and let one call be reported twice. If the phone
-    // turns while sending, the screen keeps "Sending…" and the buttons stay off rather than offer a second send.
-    var asking by rememberSaveable { mutableStateOf<String?>(null) }
-    var reportResult by rememberSaveable { mutableStateOf<String?>(null) }
-    var sending by rememberSaveable { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    asking?.let { kind ->
-        ConsentDialog(
-            kind = kind,
-            lines = remember(kind) { reportPreview() },
-            onShare = {
-                asking = null
-                sending = true
-                scope.launch { reportResult = onReport(kind); sending = false }
-            },
-            onCancel = { asking = null; reportResult = "Nothing was shared." },
-        )
-    }
     if (state.reviewing) {
-        Page("Call summary") {
+        Page(stringResource(R.string.summary_title)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                CircularProgressIndicator(Modifier.height(24.dp).width(24.dp), strokeWidth = 3.dp)
-                Text("Final review…", style = MaterialTheme.typography.titleMedium)
+                CircularProgressIndicator(Modifier.height(32.dp).width(32.dp), strokeWidth = 4.dp)
+                Text(stringResource(R.string.sum_checking), style = MaterialTheme.typography.titleMedium)
             }
-            Text("Checking the whole call once more.", style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.sum_checking_line), style = MaterialTheme.typography.bodyLarge)
         }
         return
     }
     val level = state.summaryLevel
     val review = state.finalReview
     val risky = review?.topWindowSeqs.orEmpty()
-    Page("Call summary") {
-        Text(
-            levelLabel(level).uppercase(),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = levelColor(level)
-        )
-        Text(
-            "During the call: " + levelLabel(state.level) + when {
-                review?.onDevice == true -> " · Checked on this phone"
-                review?.reviewed == true -> ""
-                else -> " · Final review unavailable"
-            },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        val reason = review?.reason?.takeIf { it.isNotBlank() && level in WARNING_LEVELS }
-        val banner = Risk.banner(level, state.lit, state.flaggedTexts)
-        if (reason != null) InfoBanner("$reason. ${Risk.action(state.lit)}", levelColor(level))
-        else banner?.let { InfoBanner(it, levelColor(level)) }
-        Text("What triggered it", fontWeight = FontWeight.SemiBold)
-        val shown = state.lines.filter { it.isCaller && (it.flags.isNotEmpty() || it.seq in risky) }
-        if (shown.isEmpty()) Text("No caller lines were flagged.")
-        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(shown, key = { it.seq }) { ChatBubble(it, riskyHere = it.seq in risky) }
-        }
-        Button(
-            onClick = {
-                try {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, SCAMSHIELD_URL.toUri()))
-                } catch (e: ActivityNotFoundException) { // no browser on this device
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = ScamRed, contentColor = Color.White)
-        ) { Text("Report to ScamShield") }
-        // H.3: help ScamGuard learn. Disabled once sent, so one call is shared at most once.
-        val sent = reportResult?.startsWith("Thank you") == true
-        // G: at levels 2 and 3 calls aren't shared, so there is no consent screen and nothing is sent
-        val canShare = state.privacyLevel.cloudCall
-        fun share(kind: String) { if (canShare) asking = kind else reportResult = CallViewModel.NOTHING_SHARED }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            OutlinedButton(onClick = { share("scam") }, enabled = !sent && !sending, modifier = Modifier.weight(1f)) {
-                Text("This was a scam")
+    val hiddenYellow = level == Risk.Level.YELLOW && !showCareful
+    Page(stringResource(R.string.summary_title)) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            if (hiddenYellow) RiskBadge(Risk.Level.LISTENING, stringResource(R.string.risk_call_ended), 40.dp, MaterialTheme.typography.headlineSmall)
+            else RiskBadge(level, riskWord(level), 40.dp, MaterialTheme.typography.headlineSmall)
+            if (!simple) Text(
+                Tr.s(when {
+                    review?.onDevice == true -> R.string.sum_during_phone
+                    review?.reviewed == true -> R.string.sum_during
+                    else -> R.string.sum_during_unavailable
+                }, levelLabel(state.level)),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            // The reason in plain words (the server's English text is only a fallback on the dashboard)
+            when {
+                hiddenYellow -> {}
+                level == Risk.Level.RED -> StateBanner(Risk.Level.RED,
+                    stringResource(Warnings.message(state.warningKind)) + " " + stringResource(Warnings.doLine(state.warningKind)))
+                level == Risk.Level.YELLOW -> CarefulBanner(state.warningKind)
+                level == Risk.Level.ERROR -> StateBanner(Risk.Level.ERROR, stringResource(R.string.error_banner))
             }
-            OutlinedButton(onClick = { onThisWasFine(); share("fine") }, enabled = !sent && !sending, modifier = Modifier.weight(1f)) {
-                Text("This was fine")
+            // After a Scam or "Be careful" call: what to do now (nothing extra after a safe call)
+            val afterCard = com.example.scamdetect.logic.AfterCall.shows(level, showCareful)
+            if (afterCard) AfterCallCard(state, family, includeLines)
+            // Android bug fixed (as iOS): "What triggered it" only when the call didn't end safe
+            if (level != Risk.Level.GREEN && !hiddenYellow) {
+                Text(stringResource(R.string.sum_triggered), style = MaterialTheme.typography.titleMedium)
+                val shown = state.lines.filter { it.isCaller && (it.flags.isNotEmpty() || it.seq in risky) }
+                if (shown.isEmpty()) Text(stringResource(R.string.sum_no_lines), style = MaterialTheme.typography.bodyLarge)
+                shown.forEach { ChatBubble(it, riskyHere = it.seq in risky, showNotes = !simple) }
             }
+            val wide = Modifier.fillMaxWidth().heightIn(min = 64.dp)
+            Button(onClick = onDone, modifier = wide.testTag("summaryDone")) {
+                Text(stringResource(R.string.btn_done), style = MaterialTheme.typography.labelLarge)
+            }
+            // The card above already has "Report to ScamShield"; other calls keep the plain button.
+            if (!afterCard) OutlinedButton(
+                onClick = {
+                    try {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, SCAMSHIELD_URL.toUri()))
+                    } catch (e: ActivityNotFoundException) { // no browser on this device
+                    }
+                },
+                modifier = wide,
+                border = androidx.compose.foundation.BorderStroke(2.dp, ScamRed),
+            ) { Text(stringResource(R.string.btn_report_scamshield), style = MaterialTheme.typography.labelLarge, color = WarningInkFor()) }
+            Spacer(Modifier.height(8.dp))
         }
-        if (sending) Text("Sending…", style = MaterialTheme.typography.bodySmall)
-        reportResult?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-        OutlinedButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text("Done") }
     }
-}
-
-/** Shows exactly what would leave the phone before anything is sent. Nothing is sent on "Don't share". */
-@Composable
-private fun ConsentDialog(kind: String, lines: List<ReportLine>, onShare: () -> Unit, onCancel: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onCancel,
-        title = { Text(if (kind == "scam") "Share this scam call?" else "Share this call as a false alarm?") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "Helps ScamGuard learn new scams. A team member reads it, labels it, and it may be used to " +
-                        "retrain the detectors.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Text("Sent: the caller's ${lines.size} lines below. We try to remove numbers, amounts, links and " +
-                    "names, but some can slip through, such as a name said in passing or digits read out as words. " +
-                    "Check the text; if you see anything private, tap Don't share.",
-                    style = MaterialTheme.typography.bodySmall)
-                Text("Not sent: your phone number, the caller's number, anything you said.",
-                    style = MaterialTheme.typography.bodySmall)
-                Text("Kept: deleted after 30 days, except lines a reviewer approves as training examples. Those " +
-                    "stay encrypted with no link to you, so they can't be withdrawn later.",
-                    style = MaterialTheme.typography.bodySmall)
-                HorizontalDivider()
-                LazyColumn(Modifier.height(180.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(lines, key = { it.seq }) { Text("“${it.text}”", style = MaterialTheme.typography.bodySmall) }
-                }
-            }
-        },
-        confirmButton = { Button(onClick = onShare, enabled = lines.isNotEmpty()) { Text("Share") } },
-        dismissButton = { TextButton(onClick = onCancel) { Text("Don't share") } },
-    )
 }
 
 private val WARNING_LEVELS = setOf(Risk.Level.RED, Risk.Level.YELLOW)

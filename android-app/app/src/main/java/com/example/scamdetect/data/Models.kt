@@ -50,6 +50,16 @@ data class UtteranceResponse(
     val ignored: Boolean? = null,
     /** Why it was ignored ("call_ended"); null otherwise. */
     val reason: String? = null,
+    // Shown in the Developer view only (never used to decide anything):
+    @SerializedName("live_alert") val liveAlert: String? = null,
+    @SerializedName("fast_score") val fastScore: Float? = null,
+    @SerializedName("bert_score") val bertScore: Float? = null,
+    /** "ok" | "timeout" | "error" | "skipped" | "off" | "no_context" */
+    @SerializedName("bert_status") val bertStatus: String? = null,
+    /** H.8: the model version each worker that answered used, e.g. {"urgency": "v5"}. */
+    @SerializedName("model_versions") val modelVersions: Map<String, String>? = null,
+    /** On the phone only: which rule decided (LocalRules). The cloud doesn't send one. */
+    val rule: String? = null,
 )
 
 /** Workstream B: one caller line in the end message, for the end-of-call review (not stored by the server). */

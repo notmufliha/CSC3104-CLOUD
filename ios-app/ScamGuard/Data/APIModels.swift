@@ -79,6 +79,8 @@ nonisolated struct UtteranceResponse: Decodable, Equatable, Sendable {
     /// Why it was ignored ("call_ended"); nil otherwise.
     var reason: String?
     var error: String?
+    /// On the phone only: which rule decided (LocalRules), for the Developer view. The cloud doesn't send one.
+    var rule: String?
 
     enum CodingKeys: String, CodingKey {
         case callId = "call_id", seq, scored, duplicate, verdict

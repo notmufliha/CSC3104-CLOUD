@@ -35,6 +35,7 @@ private struct TourTargetModifier: ViewModifier {
 /// The coach mark: dims the screen, cuts a rounded hole around the step's element, and shows a bubble with the
 /// title, one line, "2 of 7", Skip tour and Next. Taps anywhere else do nothing.
 struct TourOverlay: View {
+    let steps: [Tour.Step]
     let index: Int
     let onNext: () -> Void
     let onSkip: () -> Void
@@ -46,7 +47,7 @@ struct TourOverlay: View {
     private static let corner: CGFloat = 16
 
     var body: some View {
-        let step = Tour.steps[index]
+        let step = steps[min(max(index, 0), steps.count - 1)]
         GeometryReader { outer in
         let insets = outer.safeAreaInsets          // read here: the inner reader ignores the safe area
         GeometryReader { geo in
@@ -67,7 +68,7 @@ struct TourOverlay: View {
                         .frame(width: hole.width, height: hole.height)
                         .offset(x: hole.minX, y: hole.minY)
                         .accessibilityElement()
-                        .accessibilityLabel("Highlighted: \(step.target.spoken)")
+                        .accessibilityLabel(L.s(.a11y_highlighted, L.s(step.title)))
                 }
                 bubble(step)
                     .frame(maxWidth: min(geo.size.width - 32, 480))
@@ -91,20 +92,20 @@ struct TourOverlay: View {
 
     private func bubble(_ step: Tour.Step) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(Tour.progress(index)).font(.body.weight(.semibold)).foregroundStyle(Theme.brand)
-            Text(step.title).font(.title2.bold())
+            Text(L.s(.tour_progress, "\(index + 1)", "\(steps.count)")).font(.body.weight(.semibold)).foregroundStyle(Theme.brand)
+            Text(L.s(step.title)).font(.title2.bold())
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityFocused($titleFocused)
-            Text(step.line).font(.body).fixedSize(horizontal: false, vertical: true)
+            Text(L.s(step.line)).font(.body).fixedSize(horizontal: false, vertical: true)
             HStack {
-                Button(action: onSkip) { Text("Skip tour").font(.body).frame(minHeight: 44).padding(.horizontal, 8) }
+                Button(action: onSkip) { Text(L.s(.btn_skip_tour)).font(.body).frame(minHeight: 56).padding(.horizontal, 8) }
                     .accessibilityIdentifier("tourSkip")
                 Spacer()
                 Button(action: onNext) {
-                    Text(Tour.nextLabel(index)).font(.body.weight(.semibold))
+                    Text(L.s(index >= steps.count - 1 ? .btn_done : .btn_next)).font(.body.weight(.semibold))
                         .foregroundStyle(Theme.onBrand)
                         .padding(.horizontal, 24)
-                        .frame(minHeight: 48)
+                        .frame(minHeight: 56)
                         .background(Theme.brand, in: Capsule())
                 }
                 .accessibilityIdentifier("tourNext")

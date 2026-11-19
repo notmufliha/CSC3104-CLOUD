@@ -2,27 +2,22 @@ import SwiftUI
 
 let scamShieldURL = URL(string: "https://www.scamshield.gov.sg/")!
 
-/// Port of Android's SummaryScreen (4.6 + B.5 + H.3): leads with the final verdict (else the live one), the live
-/// verdict small underneath; "Final review…" while the end-of-call answer is on its way (up to 3 s).
+/// Port of Android's SummaryScreen (4.6 + B.5): leads with the final result (else the live one), in plain
+/// words; "Checking the whole call once more…" while the end-of-call answer is on its way (up to 3 s).
 struct SummaryView: View {
     @Environment(CallViewModel.self) private var vm
     @Environment(\.openURL) private var openURL
-    /// Which button opened the consent screen ("scam" / "fine").
-    @State private var asking: String?
-    @State private var reportResult: String?
-    @State private var sending = false
-
     var body: some View {
         let s = vm.state
         NavigationStack {
             Group {
                 if s.reviewing {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 10) {
                         HStack(spacing: 12) {
-                            ProgressView()
-                            Text("Final review…").font(.headline)
+                            ProgressView().controlSize(.large)
+                            Text(L.s(.sum_checking)).font(.title3.weight(.semibold))
                         }
-                        Text("Checking the whole call once more.").font(.footnote)
+                        Text(L.s(.sum_checking_line)).font(.body)
                         Spacer()
                     }
                     .padding(16)
@@ -31,121 +26,50 @@ struct SummaryView: View {
                     summary(s)
                 }
             }
-            .navigationTitle("Call summary")
+            .navigationTitle(L.s(.summary_title))
+            .background(Theme.background)
         }
-        .sheet(item: Binding(get: { asking.map(Asking.init) }, set: { asking = $0?.kind })) { a in
-            ConsentSheet(kind: a.kind, lines: vm.reportPreview(), onShare: {
-                asking = nil
-                sending = true
-                Task {
-                    reportResult = await vm.sendReport(a.kind)
-                    sending = false
-                }
-            }, onCancel: {
-                asking = nil
-                reportResult = "Nothing was shared."
-            })
-        }
-    }
-
-    private struct Asking: Identifiable {
-        let kind: String
-        var id: String { kind }
     }
 
     @ViewBuilder
     private func summary(_ s: CallUiState) -> some View {
         let level = s.summaryLevel
+        let hiddenYellow = level == .yellow && !vm.showBeCareful
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(Theme.levelLabel(level).uppercased())
-                    .font(.title.bold())
-                    .foregroundStyle(Theme.levelColor(level))
-                Text(s.duringCallLine).font(.footnote).foregroundStyle(.secondary)
-                if let reason = s.summaryReason {
-                    InfoBanner(text: reason, color: Theme.levelColor(level))
-                } else if let b = Risk.banner(level, s.lit, s.flaggedTexts) {
-                    InfoBanner(text: b, color: Theme.levelColor(level))
+            VStack(alignment: .leading, spacing: 14) {
+                if hiddenYellow {
+                    RiskBadge(level: .listening, word: L.s(.risk_call_ended), size: 40, font: .title.bold())
+                } else {
+                    RiskBadge(level: level, size: 40, font: .title.bold())
                 }
-                if s.showsTriggers {
-                    Text("What triggered it").fontWeight(.semibold)
+                if !vm.simpleMode { Text(s.duringCallLine).font(.body).foregroundStyle(Theme.muted) }
+                // The reason in plain words (the server's English text is only a fallback on the
+                // dashboard).
+                if !hiddenYellow {
+                    switch level {
+                    case .red: StateBanner(level: .red, text: L.s(Warnings.message(s.warningKind)) + " " + L.s(Warnings.doLine(s.warningKind)))
+                    case .yellow: CarefulBanner(kind: s.warningKind)
+                    case .error: StateBanner(level: .error, text: L.s(.error_banner))
+                    default: EmptyView()
+                    }
+                }
+                // After a Scam or "Be careful" call: what to do now (nothing extra after a safe call)
+                let afterCard = AfterCall.shows(level, showCareful: vm.showBeCareful)
+                if afterCard { AfterCallCard(state: s) }
+                if s.showsTriggers && !hiddenYellow {
+                    Text(L.s(.sum_triggered)).font(.title3.weight(.semibold))
                     let risky = s.finalReview?.topWindowSeqs ?? []
                     let shown = s.triggerLines
-                    if shown.isEmpty { Text("No caller lines were flagged.") }
-                    ForEach(shown) { ChatBubble(line: $0, riskyHere: risky.contains($0.seq)) }
+                    if shown.isEmpty { Text(L.s(.sum_no_lines)).font(.body) }
+                    ForEach(shown) { ChatBubble(line: $0, riskyHere: risky.contains($0.seq), showNotes: !vm.simpleMode) }
                 }
-                Button { openURL(scamShieldURL) } label: {
-                    Text("Report to ScamShield").frame(maxWidth: .infinity, minHeight: 36)
+                BigButton(title: L.s(.btn_done), id: "summaryDone") { vm.reset() }
+                // The card above already has "Report to ScamShield"; other calls keep the plain button.
+                if !afterCard {
+                    BigButton(title: L.s(.btn_report_scamshield), id: "summaryScamShield", prominent: false, danger: true) { openURL(scamShieldURL) }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.scamRed)
-                reportButtons(s)
-                if sending { Text("Sending…").font(.footnote) }
-                if let r = reportResult { Text(r).font(.footnote) }
-                Button { vm.reset() } label: {
-                    Text("Done").frame(maxWidth: .infinity, minHeight: 36)
-                }
-                .buttonStyle(.bordered)
             }
             .padding(16)
         }
-    }
-
-    /// H.3: help ScamGuard learn. Disabled once sent, so one call is shared at most once. At levels 2 and 3 calls
-    /// aren't shared: no consent screen, nothing is sent, the answer is kept as a local label.
-    @ViewBuilder
-    private func reportButtons(_ s: CallUiState) -> some View {
-        let sent = reportResult?.hasPrefix("Thank you") == true
-        HStack(spacing: 8) {
-            Button { share("scam", s) } label: {
-                Text("This was a scam").frame(maxWidth: .infinity, minHeight: 36)
-            }
-            .buttonStyle(.bordered)
-            Button { vm.thisWasFine(); share("fine", s) } label: {
-                Text("This was fine").frame(maxWidth: .infinity, minHeight: 36)
-            }
-            .buttonStyle(.bordered)
-        }
-        .disabled(sent || sending)
-    }
-
-    private func share(_ kind: String, _ s: CallUiState) {
-        if s.privacyLevel.cloudCall { asking = kind } else { reportResult = CallViewModel.nothingShared }
-    }
-}
-
-/// Shows exactly what would leave the phone before anything is sent. Nothing is sent on "Don't share".
-struct ConsentSheet: View {
-    let kind: String
-    let lines: [ReportLine]
-    let onShare: () -> Void
-    let onCancel: () -> Void
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Helps ScamGuard learn new scams. A team member reads it, labels it, and it may be used to " +
-                         "retrain the detectors.")
-                    Text("Sent: the caller's \(lines.count) lines below. We try to remove numbers, amounts, links and " +
-                         "names, but some can slip through, such as a name said in passing or digits read out as " +
-                         "words. Check the text; if you see anything private, tap Don't share.").font(.footnote)
-                    Text("Not sent: your phone number, the caller's number, anything you said.").font(.footnote)
-                    Text("Kept: deleted after 30 days, except lines a reviewer approves as training examples. Those " +
-                         "stay encrypted with no link to you, so they can't be withdrawn later.").font(.footnote)
-                    Divider()
-                    ForEach(lines, id: \.seq) { Text("“\($0.text)”").font(.footnote) }
-                }
-                .padding(16)
-            }
-            .navigationTitle(kind == "scam" ? "Share this scam call?" : "Share this call as a false alarm?")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Don't share", action: onCancel) }
-                ToolbarItem(placement: .confirmationAction) { Button("Share", action: onShare).disabled(lines.isEmpty) }
-            }
-        }
-        .interactiveDismissDisabled()
-        .presentationDetents([.large])
     }
 }

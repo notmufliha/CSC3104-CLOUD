@@ -12,6 +12,9 @@ import org.junit.Test
 
 /** Workstream G: one reason wording on the dashboard, whichever privacy level decided the call. */
 class ReasonsTest {
+    /** The English wording (string resources), as the app shows it in English. */
+    @org.junit.Before fun english() = TestStrings.install()
+
     private fun call(id: String, reason: String, code: String?, verdict: String = "SCAM") = CallRecord(
         id = id, startedAt = 0, endedAt = 1, finalVerdict = verdict, liveVerdict = verdict, topReason = reason,
         callScore = 0.8f, signalsFired = emptyList(), review = "fallback", riskiestSentence = null, reasonCode = code,
