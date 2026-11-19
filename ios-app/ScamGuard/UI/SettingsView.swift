@@ -48,7 +48,7 @@ private struct MenuRow: View {
     }
 }
 
-enum SettingsRoute: String, Hashable { case privacy, server, models, data, help, textSize, family, advanced, pin }
+enum SettingsRoute: String, Hashable { case privacy, server, models, data, help, appStyle, textSize, family, advanced, pin }
 
 /// Settings. Simple mode: the everyday rows, Help, and "Advanced settings" (PIN-protected if set). The full app:
 /// the everyday rows, everything Advanced settings holds, and Help.
@@ -86,6 +86,7 @@ struct SettingsView: View {
             case .models: ModelsPage()
             case .data: DataPage()
             case .help: HelpPage()
+            case .appStyle: AppStylePage()
             case .textSize: TextSizePage()
             case .family: FamilyPage()
             case .advanced: AdvancedPage()

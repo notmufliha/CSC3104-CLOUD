@@ -3,7 +3,6 @@
   "setup_welcome_line": "ScamGuard warns you during calls if the caller might be a scammer.",
   "privacy_promise": "Your calls stay private. We never record your voice.",
   "btn_get_started": "Get started",
-  "btn_family_member": "Set up for a family member",
   "setup_rec_title": "Use recommended settings?",
   "setup_rec_line": "Most people choose these. You can change them later.",
   "setup_rec_b1": "Calls are checked online, the most accurate way",
@@ -56,5 +55,20 @@
   "setup_helper_title": "Their settings",
   "setup_helper_line": "Choose what works best for your family member.",
   "setup_helper_family_title": "Who should they call?",
-  "setup_helper_family_line": "Usually you. During a scam warning they can call or message this person with one tap. Kept only on this phone."
+  "setup_helper_family_line": "Usually you. During a scam warning they can call or message this person with one tap. Kept only on this phone.",
+
+  "who_title": "Who will use this phone?",
+  "who_line": "You can change this later in Settings.",
+  "who_me": "Me",
+  "who_me_line": "The full app, with charts and all the settings.",
+  "who_simpler": "Me, but simpler",
+  "who_simpler_line": "Bigger text and fewer buttons.",
+  "who_family": "An older family member",
+  "who_pick_one": "Choose one of the three to go on.",
+  "who_family_line": "Set it up for them, with you as their family contact.",
+  "handover_title": "Hand the phone to {0}",
+  "handover_title_noname": "Hand the phone to your family member",
+  "handover_line": "A short tour shows them what a scam warning looks like.",
+  "btn_start_tour": "Start the tour",
+  "btn_finish_no_tour": "Finish without the tour"
 }

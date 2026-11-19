@@ -34,21 +34,30 @@ final class OnboardingTests: XCTestCase {
             get { saved["onboarding_version"] as? Int ?? 0 }
             set { saved["onboarding_version"] = newValue }
         }
+        // Not saved yet: the app style's default, as AppPrefs does.
         var textSize: String {
-            get { saved["text_size"] as? String ?? "large" }
+            get { saved["text_size"] as? String ?? AppStyle.textSize(simple: AppStyle.simpleAtLaunch(simpleMode)) }
             set { saved["text_size"] = newValue }
         }
         var readAloud: Bool {
-            get { saved["read_aloud"] as? Bool ?? true }
+            get { saved["read_aloud"] as? Bool ?? AppStyle.readAloud(simple: AppStyle.simpleAtLaunch(simpleMode)) }
             set { saved["read_aloud"] = newValue }
+        }
+        var textSizeChosen: Bool {
+            get { saved["text_size_chosen"] as? Bool ?? false }
+            set { saved["text_size_chosen"] = newValue }
+        }
+        var readAloudChosen: Bool {
+            get { saved["read_aloud_chosen"] as? Bool ?? false }
+            set { saved["read_aloud_chosen"] = newValue }
         }
         var simpleMode: Bool? {
             get { saved["simple_mode"] as? Bool }
             set { saved["simple_mode"] = newValue }
         }
-        var simpleModeOffered: Bool {
-            get { saved["simple_mode_offered"] as? Bool ?? false }
-            set { saved["simple_mode_offered"] = newValue }
+        var appStyleTipShown: Bool {
+            get { saved["app_style_tip_shown"] as? Bool ?? false }
+            set { saved["app_style_tip_shown"] = newValue }
         }
         var familyName: String {
             get { saved["family_name"] as? String ?? "" }
@@ -167,81 +176,150 @@ final class OnboardingTests: XCTestCase {
         XCTAssertEqual(p.onboardingVersion, Onboarding.version)
     }
 
-    // ---- which screens
+    // ---- "Who will use this phone?" and the three ways through (the same cases as Android)
 
     private func c(_ path: Onboarding.Path, _ privacy: PrivacyLevel = .cloud) -> Onboarding.Choices {
         var c = Onboarding.defaults(Self.defaultURL)
-        c.path = path
         c.privacy = privacy
-        return c
+        return Onboarding.choose(c, path)
     }
 
-    func testSimpleSetupIsThreeScreens() {
-        XCTAssertEqual(Onboarding.steps(c(.simple)), [.welcome, .recommended, .family])
-        XCTAssertNil(Onboarding.next(.family, c(.simple)))
-        XCTAssertTrue(Onboarding.progress(.recommended, c(.simple)) == (2, 3))
+    func testTheFirstQuestionComesFirstWithNothingPicked() {
+        let start = Onboarding.defaults(Self.defaultURL)
+        XCTAssertNil(start.path)
+        XCTAssertFalse(start.simple)
+        XCTAssertEqual(Onboarding.steps(start), [.who])
+        for p in Onboarding.Path.allCases { XCTAssertEqual(Onboarding.steps(c(p)).first, .who) }
     }
 
-    func testChooseMyselfKeepsTheFullChoicesAndSkipsServerForOnDevice() {
-        XCTAssertEqual(Onboarding.steps(c(.custom)), [.welcome, .recommended, .privacy, .server, .data, .family, .done])
-        XCTAssertEqual(Onboarding.steps(c(.custom, .onDevice)), [.welcome, .recommended, .privacy, .data, .family, .done])
-        XCTAssertEqual(Onboarding.next(.privacy, c(.custom, .onDevice)), .data)
-        XCTAssertEqual(Onboarding.next(.privacy, c(.custom)), .server)
-        XCTAssertNil(Onboarding.previous(.welcome, c(.custom)))
-        XCTAssertTrue(Onboarding.progress(.data, c(.custom, .onDevice)) == (4, 6))
+    func testMeIsStandardWithTheFullSetup() {
+        XCTAssertEqual(Onboarding.steps(c(.standard)), [.who, .welcome, .privacy, .server, .data, .done])
+        XCTAssertEqual(Onboarding.steps(c(.standard, .onDevice)), [.who, .welcome, .privacy, .data, .done])
+        let s = FakeStore()
+        Onboarding.apply(c(.standard, .hybrid), s)
+        XCTAssertEqual(s.simpleMode, false)
+        XCTAssertEqual(s.textSize, "normal")
+        XCTAssertFalse(s.readAloud, "read aloud is off in Standard mode")
+        XCTAssertEqual(s.privacyLevel, .hybrid)
+        XCTAssertEqual(Tour.steps(simple: AppStyle.simpleAtLaunch(s.simpleMode)).count, 7)
     }
 
-    func testFamilyHelperSetup() {
-        XCTAssertEqual(Onboarding.steps(c(.helper)), [.welcome, .helper, .family, .pin, .done])
+    func testMeButSimplerIsSimpleModeWithThreeScreensAndNoFamilySetup() {
+        XCTAssertEqual(Onboarding.steps(c(.simple)), [.who, .welcome, .recommended])
+        XCTAssertTrue(Onboarding.progress(.recommended, c(.simple)) == (3, 3))
+        XCTAssertFalse(Onboarding.steps(c(.simple)).contains(.family) || Onboarding.steps(c(.simple)).contains(.pin))
+        let s = FakeStore()
+        Onboarding.apply(Onboarding.recommended(c(.simple, .onDevice)), s)
+        XCTAssertEqual(s.simpleMode, true)
+        XCTAssertEqual(s.textSize, "large")
+        XCTAssertTrue(s.readAloud)
+        XCTAssertEqual(s.privacyLevel, .cloud)
+        XCTAssertEqual(s.familyPhone, "")
+        // "Choose myself": the detailed screens, still no family setup
+        XCTAssertEqual(Onboarding.steps(c(.custom, .onDevice)), [.who, .welcome, .recommended, .privacy, .data, .done])
+        XCTAssertTrue(c(.custom).simple)
+    }
+
+    func testFamilyPathGoesThroughContactAndPinAndEndsSimple() {
+        XCTAssertEqual(Onboarding.steps(c(.helper)), [.who, .helper, .family, .pin, .handover])
+        XCTAssertEqual(Onboarding.next(.helper, c(.helper)), .family)
+        XCTAssertEqual(Onboarding.next(.pin, c(.helper)), .handover)
+        XCTAssertNil(Onboarding.next(.handover, c(.helper)))
         let s = FakeStore()
         var h = c(.helper)
-        h.textSize = "xlarge"; h.simple = true; h.readAloud = false
+        h.textSize = "xlarge"; h.textSizeChosen = true; h.readAloud = false; h.readAloudChosen = true
         h.familyName = " Mei Ling "; h.familyPhone = " 9123 4567 "; h.pin = "2468"
         Onboarding.apply(h, s)
-        XCTAssertEqual(s.textSize, "xlarge")
         XCTAssertEqual(s.simpleMode, true)
+        XCTAssertEqual(s.textSize, "xlarge")
         XCTAssertFalse(s.readAloud)
         XCTAssertEqual(s.familyName, "Mei Ling")
         XCTAssertEqual(s.familyPhone, "9123 4567")
         XCTAssertFalse(s.saved.values.contains { ($0 as? String) == "2468" }, "the PIN is never kept with the settings")
+        XCTAssertEqual(Tour.steps(simple: AppStyle.simpleAtLaunch(s.simpleMode)).count, 3)
     }
 
-    func testRecommendedSettings() {
-        var x = c(.custom, .onDevice)
-        x.saveSentence = true; x.helpImprove = true; x.readAloud = false
-        let r = Onboarding.recommended(x)
-        XCTAssertEqual(r.privacy, .cloud)
-        XCTAssertFalse(r.saveSentence || r.helpImprove)
-        XCTAssertTrue(r.readAloud)
-        XCTAssertEqual(r.path, .simple)
-    }
-
-    // ---- Simple mode: on for new installs, never forced on existing ones
-
-    func testSimpleModeDefaults() {
+    func testSkipIsStandardWithRecommendedSettings() {
         let s = FakeStore()
-        Onboarding.apply(Onboarding.defaults(Self.defaultURL), s)       // a new install (finished or skipped)
-        XCTAssertEqual(s.simpleMode, true)
-        XCTAssertTrue(Onboarding.simpleModeAtLaunch(s.simpleMode))
-        XCTAssertFalse(Onboarding.offerSimpleMode(s.simpleMode, offered: s.simpleModeOffered))
-        XCTAssertTrue(Onboarding.defaults(Self.defaultURL).simple)
-        XCTAssertTrue(Onboarding.defaults(Self.defaultURL).readAloud)
-        XCTAssertEqual(Onboarding.defaults(Self.defaultURL).textSize, "large")
+        Onboarding.apply(Onboarding.defaults(Self.defaultURL), s)       // Skip on "Who will use this phone?"
+        XCTAssertEqual(s.simpleMode, false)
+        XCTAssertEqual(s.textSize, "normal")
+        XCTAssertFalse(s.readAloud)
+        XCTAssertEqual(s.privacyLevel, .cloud)
+        XCTAssertFalse(s.saveRiskiestSentence || s.helpImproveDetection)
+        XCTAssertFalse(AppStyle.showTip(simple: false, tipShown: s.appStyleTipShown), "no tip about the choice just made")
     }
 
-    func testExistingUsersKeepTheirModeAndAreOfferedSimpleModeOnce() {
-        let s = FakeStore(["privacy_level": "hybrid"])                  // installed before Simple mode
-        XCTAssertEqual(s.launch(), .existingUser)
-        Onboarding.markCompleted(s)
-        XCTAssertNil(s.simpleMode)
-        XCTAssertFalse(Onboarding.simpleModeAtLaunch(s.simpleMode), "keeps the full app")
-        XCTAssertTrue(Onboarding.offerSimpleMode(s.simpleMode, offered: s.simpleModeOffered), "offered once")
-        s.simpleModeOffered = true                                        // "No, thanks"
-        XCTAssertFalse(Onboarding.offerSimpleMode(s.simpleMode, offered: s.simpleModeOffered))
-        XCTAssertFalse(Onboarding.simpleModeAtLaunch(s.simpleMode))
+    func testChangingTheAnswerResetsOnlyTheDefaults() {
+        let simpler = c(.simple)
+        XCTAssertEqual(simpler.textSize, "large")
+        XCTAssertTrue(simpler.readAloud)
+        let back = Onboarding.choose(simpler, .standard)
+        XCTAssertEqual(back.textSize, "normal")
+        XCTAssertFalse(back.readAloud)
+        var picked = simpler
+        picked.textSize = "xlarge"; picked.textSizeChosen = true
+        XCTAssertEqual(Onboarding.choose(picked, .standard).textSize, "xlarge", "a size the user picked stays")
+    }
+
+    func testRunSetupAgainStartsAtTheQuestionAndKeepsTheRest() {
+        let s = FakeStore()
+        var h = c(.helper, .hybrid)
+        h.familyName = "Mei Ling"; h.familyPhone = "91234567"
+        Onboarding.apply(h, s)
+        let replay = Onboarding.fromSaved(s)
+        XCTAssertNil(replay.path, "nothing picked")
+        XCTAssertEqual(Onboarding.steps(replay), [.who])
+        XCTAssertEqual(replay.familyPhone, "91234567")
+        XCTAssertEqual(replay.privacy, .hybrid)
+    }
+
+    // ---- switching later (Settings → App style)
+
+    func testSwitchingKeepsDataAndOnlyChangesDefaultsTheUserLeftAlone() {
+        let s = FakeStore()
+        var h = c(.helper, .hybrid)
+        h.familyName = "Mei Ling"; h.familyPhone = "91234567"; h.saveSentence = true
+        Onboarding.apply(h, s)
+        s.textSize = "xlarge"; s.textSizeChosen = true             // the user picked Extra large in Settings
+        AppStyle.switchTo(simple: false, s)
+        XCTAssertEqual(s.simpleMode, false)
+        XCTAssertEqual(s.textSize, "xlarge")
+        XCTAssertFalse(s.readAloud, "read aloud follows Standard (not set by the user)")
+        XCTAssertEqual(s.familyPhone, "91234567")
         XCTAssertEqual(s.privacyLevel, .hybrid)
-        XCTAssertFalse(Onboarding.offerSimpleMode(false, offered: false))
-        XCTAssertFalse(Onboarding.simpleModeAtLaunch(false))
+        XCTAssertTrue(s.saveRiskiestSentence)
+        XCTAssertEqual(s.launch(), .done)
+        AppStyle.switchTo(simple: true, s)
+        XCTAssertTrue(s.readAloud)
+        XCTAssertEqual(s.textSize, "xlarge")
+    }
+
+    func testLeavingSimpleModeAsksForThePinWhenSet() {
+        XCTAssertTrue(AppStyle.needsPin(fromSimple: true, toSimple: false, pinSet: true))
+        XCTAssertFalse(AppStyle.needsPin(fromSimple: true, toSimple: false, pinSet: false))
+        XCTAssertFalse(AppStyle.needsPin(fromSimple: false, toSimple: true, pinSet: true), "turning Simple on never asks")
+        XCTAssertFalse(AppStyle.needsPin(fromSimple: true, toSimple: true, pinSet: true))
+    }
+
+    // ---- existing installs
+
+    func testUpgradeKeepsTheModeAndShowsTheTipOnce() {
+        // set up before Simple mode existed: Standard, phone-size text, tip once
+        let old = FakeStore(["privacy_level": "hybrid"])
+        XCTAssertEqual(old.launch(), .existingUser)
+        Onboarding.markCompleted(old)
+        XCTAssertFalse(AppStyle.simpleAtLaunch(old.simpleMode))
+        XCTAssertEqual(old.textSize, "normal")
+        XCTAssertTrue(AppStyle.showTip(simple: AppStyle.simpleAtLaunch(old.simpleMode), tipShown: old.appStyleTipShown))
+        old.appStyleTipShown = true                                         // "Got it"
+        XCTAssertFalse(AppStyle.showTip(simple: false, tipShown: old.appStyleTipShown))
+        // already in Simple mode: stays Simple, no tip, no new question
+        let simple = FakeStore(["simple_mode": true, "onboarding_completed": true, "onboarding_version": 1])
+        XCTAssertEqual(simple.launch(), .done)
+        XCTAssertTrue(AppStyle.simpleAtLaunch(simple.simpleMode))
+        XCTAssertEqual(simple.textSize, "large")
+        XCTAssertFalse(AppStyle.showTip(simple: true, tipShown: simple.appStyleTipShown))
     }
 
     // ---- wording (identical on Android)
@@ -279,12 +357,16 @@ final class OnboardingTests: XCTestCase {
         let vm = CallViewModel(prefs: AppPrefs(defaults: d), store: try CallStore(inMemory: true), scripts: [],
                                pins: PinStore(service: "test.\(suite)"), startUp: false)
         XCTAssertEqual(vm.gate, .setup)
-        vm.updateSetup { $0.privacy = .onDevice }
+        XCTAssertEqual(vm.setupStep, .who)
+        XCTAssertNil(vm.setupChoices.path, "nothing pre-selected")
+        vm.updateSetup { $0 = Onboarding.choose($0, .simple); $0.privacy = .onDevice }
         vm.finishSetup(startTour: true)
         XCTAssertEqual(vm.gate, .app)
         XCTAssertEqual(vm.privacyLevel, .onDevice)
-        XCTAssertTrue(vm.simpleMode, "a new install is in Simple mode")
-        XCTAssertFalse(vm.simpleOffer)
+        XCTAssertTrue(vm.simpleMode, "Me, but simpler = Simple mode")
+        XCTAssertEqual(vm.textSize, "large")
+        XCTAssertTrue(vm.readAloud)
+        XCTAssertFalse(vm.appStyleTip)
         XCTAssertEqual(vm.tourStep, 0)
         XCTAssertTrue(vm.tourSimple)
         for _ in 0..<2 { vm.tourNext() }
@@ -298,6 +380,8 @@ final class OnboardingTests: XCTestCase {
         // replay from Help & about starts from what is saved
         again.runSetupAgain()
         XCTAssertEqual(again.gate, .setup)
+        XCTAssertEqual(again.setupStep, .who, "Run setup again starts at the question")
+        XCTAssertNil(again.setupChoices.path)
         XCTAssertEqual(again.setupChoices.privacy, .onDevice)
         again.leaveSetup()
         XCTAssertEqual(again.gate, .app)
@@ -314,16 +398,64 @@ final class OnboardingTests: XCTestCase {
                                pins: PinStore(service: "test.\(suite)"), startUp: false)
         XCTAssertEqual(vm.gate, .app)
         XCTAssertEqual(prefs.onboardingCompleted, true)
-        // upgrade: the full app stays, Simple mode is offered once
+        // upgrade: Standard stays (phone-size text, not read aloud), the App style tip shows once
         XCTAssertFalse(vm.simpleMode)
-        XCTAssertTrue(vm.simpleOffer)
-        vm.declineSimpleOffer()
-        XCTAssertFalse(vm.simpleOffer)
+        XCTAssertEqual(vm.textSize, "normal")
+        XCTAssertFalse(vm.readAloud)
+        XCTAssertTrue(vm.appStyleTip)
+        vm.dismissAppStyleTip()
+        XCTAssertFalse(vm.appStyleTip)
         let again = CallViewModel(prefs: AppPrefs(defaults: d), store: try CallStore(inMemory: true), scripts: [],
                                   pins: PinStore(service: "test.\(suite)"), startUp: false)
         XCTAssertFalse(again.simpleMode)
-        XCTAssertFalse(again.simpleOffer, "asked only once")
-        again.setSimpleMode(true)
+        XCTAssertFalse(again.appStyleTip, "shown only once")
+        again.setAppStyle(simple: true)
         XCTAssertEqual(prefs.simpleMode, true)
+    }
+
+    @MainActor
+    func testViewModelSkipIsStandard() throws {
+        let suite = "onboarding-skip-\(UUID().uuidString)"
+        let d = UserDefaults(suiteName: suite)!
+        defer { d.removePersistentDomain(forName: suite) }
+        let vm = CallViewModel(prefs: AppPrefs(defaults: d), store: try CallStore(inMemory: true), scripts: [],
+                               pins: PinStore(service: "test.\(suite)"), startUp: false)
+        vm.finishSetup(startTour: true)                     // Skip on the first screen, then the tour
+        XCTAssertFalse(vm.simpleMode)
+        XCTAssertEqual(vm.textSize, "normal")
+        XCTAssertFalse(vm.readAloud)
+        XCTAssertFalse(vm.tourSimple, "the full 7-step tour")
+        XCTAssertFalse(vm.appStyleTip)
+    }
+
+    @MainActor
+    func testViewModelSwitchingKeepsDataAndAsksForThePin() throws {
+        let suite = "onboarding-switch-\(UUID().uuidString)"
+        let d = UserDefaults(suiteName: suite)!
+        let pins = PinStore(service: "test.\(suite)")
+        defer { d.removePersistentDomain(forName: suite); pins.clear() }
+        let store = try CallStore(inMemory: true)
+        let vm = CallViewModel(prefs: AppPrefs(defaults: d), store: store, scripts: [], pins: pins, startUp: false)
+        vm.updateSetup { $0 = Onboarding.choose($0, .helper); $0.familyName = "Mei Ling"; $0.familyPhone = "91234567"; $0.pin = "2468" }
+        vm.finishSetup(startTour: false)
+        vm.loadSampleHistory()
+        let calls = store.calls().count
+        XCTAssertTrue(vm.simpleMode)
+        XCTAssertTrue(vm.pinSet)
+        XCTAssertTrue(vm.appStyleNeedsPin(toSimple: false), "leaving Simple mode needs the PIN")
+        XCTAssertFalse(vm.appStyleNeedsPin(toSimple: true))
+        XCTAssertTrue(vm.verifyPin("2468"))
+        vm.setAppStyle(simple: false)
+        XCTAssertFalse(vm.simpleMode)
+        XCTAssertEqual(vm.textSize, "normal")
+        XCTAssertFalse(vm.readAloud)
+        XCTAssertEqual(store.calls().count, calls, "history kept")
+        XCTAssertGreaterThan(calls, 0)
+        XCTAssertEqual(vm.family?.phone, "91234567", "contact kept")
+        XCTAssertTrue(vm.pinSet, "PIN kept")
+        XCTAssertFalse(vm.appStyleNeedsPin(toSimple: false), "already Standard")
+        vm.setAppStyle(simple: true)
+        XCTAssertTrue(vm.simpleMode)
+        XCTAssertTrue(vm.readAloud)
     }
 }

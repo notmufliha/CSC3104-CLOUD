@@ -5,14 +5,17 @@ import Foundation
 /// Localizable.xcstrings (generated from tools/i18n).
 nonisolated enum Onboarding {
     /// Bump when the setup gains a screen that existing users should see. Saved with the "completed" flag.
-    static let version = 1
+    static let version = 2
 
-    enum Step: Int, CaseIterable, Hashable, Sendable { case welcome, recommended, privacy, server, data, helper, family, pin, done }
+    enum Step: Int, CaseIterable, Hashable, Sendable {
+        case who, welcome, recommended, privacy, server, data, helper, family, pin, handover, done
+    }
 
-    /// Which way through the setup. simple (the default): Welcome, "Use recommended settings", family
-    /// contact (3 screens). custom ("Choose myself"): the full choices. helper ("Set up for a family member"): text
-    /// size, Simple mode and read-aloud for them, the contact, an optional PIN.
-    enum Path: Sendable { case simple, custom, helper }
+    /// Which way through the setup, from the first screen ("Who will use this phone?"); nil = not chosen yet.
+    /// standard ("Me"): the full app and its 5-screen setup. simple ("Me, but simpler"): Simple mode, Welcome and
+    /// "Use recommended settings"; custom is its "Choose myself". helper ("An older family member"): Simple mode set
+    /// up by a helper: text size and read-aloud, the family contact, an optional PIN, then "Hand the phone to ...".
+    enum Path: CaseIterable, Sendable { case standard, simple, custom, helper }
 
     /// What the app does when it starts.
     enum Launch: Equatable, Sendable {
@@ -36,10 +39,13 @@ nonisolated enum Onboarding {
 
     /// The screens, in order, for the way chosen. On-device needs no server, so that screen is left out.
     static func steps(_ c: Choices) -> [Step] {
+        let server: [Step] = c.privacy == .onDevice ? [] : [.server]
         switch c.path {
-        case .simple: return [.welcome, .recommended, .family]
-        case .custom: return [.welcome, .recommended, .privacy] + (c.privacy == .onDevice ? [] : [.server]) + [.data, .family, .done]
-        case .helper: return [.welcome, .helper, .family, .pin, .done]
+        case nil: return [.who]
+        case .standard?: return [.who, .welcome, .privacy] + server + [.data, .done]
+        case .simple?: return [.who, .welcome, .recommended]
+        case .custom?: return [.who, .welcome, .recommended, .privacy] + server + [.data, .done]
+        case .helper?: return [.who, .helper, .family, .pin, .handover]
         }
     }
 
@@ -64,54 +70,76 @@ nonisolated enum Onboarding {
         var server: Server = .notChecked
         var saveSentence = false
         var helpImprove = false
-        var path: Path = .simple
-        var textSize = AppPrefs.textLarge
-        /// Simple mode: on for every new install (an install from before it keeps the full app).
-        var simple = true
-        var readAloud = true
+        /// nil until "Who will use this phone?" is answered (nothing is pre-selected).
+        var path: Path?
+        var textSize = AppStyle.textSize(simple: false)
+        var readAloud = AppStyle.readAloud(simple: false)
+        /// The user picked the text size / read-aloud themselves: switching modes then keeps it.
+        var textSizeChosen = false
+        var readAloudChosen = false
         var familyName = ""
         var familyPhone = ""
         /// A 4-digit PIN for Advanced settings and "For family" (helper setup only); "" = none.
         var pin = ""
+
+        /// Simple mode: every way except "Me" (and Skip on the first screen).
+        var simple: Bool { path != nil && path != .standard }
     }
 
-    /// What Skip saves on a first launch: recommended settings (Cloud, both data switches off, Simple mode on).
+    /// What Skip saves on a first launch: Standard mode, recommended settings (Cloud, both data switches off).
     static func defaults(_ currentUrl: String) -> Choices { Choices(serverUrl: currentUrl) }
 
-    /// "Run setup again" starts from what is saved now, so Skip keeps it.
+    /// An answer to "Who will use this phone?": the way through, and that mode's text size and read-aloud.
+    static func choose(_ c: Choices, _ path: Path) -> Choices {
+        let simple = path != .standard
+        var r = c
+        r.path = path
+        if !c.textSizeChosen { r.textSize = AppStyle.textSize(simple: simple) }
+        if !c.readAloudChosen { r.readAloud = AppStyle.readAloud(simple: simple) }
+        return r
+    }
+
+    /// Skip before answering the first question = Standard mode.
+    static func answered(_ c: Choices) -> Choices { c.path == nil ? choose(c, .standard) : c }
+
+    /// "Run setup again" starts from what is saved now (Skip keeps it), at the first question, nothing picked.
     static func fromSaved(_ store: OnboardingStore) -> Choices {
         var c = Choices(privacy: store.privacyLevel, serverUrl: store.gatewayUrl,
                         saveSentence: store.saveRiskiestSentence, helpImprove: store.helpImproveDetection)
         c.textSize = store.textSize
-        c.simple = simpleModeAtLaunch(store.simpleMode)
         c.readAloud = store.readAloud
+        c.textSizeChosen = store.textSizeChosen
+        c.readAloudChosen = store.readAloudChosen
         c.familyName = store.familyName
         c.familyPhone = store.familyPhone
         return c
     }
 
-    /// "Use recommended settings": the most accurate checking, nothing kept, warnings read aloud.
+    /// "Use recommended settings" (Simple mode): the most accurate checking, nothing kept, warnings read aloud.
     static func recommended(_ c: Choices) -> Choices {
         var r = c
         r.privacy = .cloud
         r.saveSentence = false
         r.helpImprove = false
-        r.readAloud = true
+        if !c.readAloudChosen { r.readAloud = true }
         r.path = .simple
         return r
     }
 
     /// Saves the choices and marks the setup done. The server address is kept as it was for On-device (no server
     /// screen) and for "Set up later". The PIN is saved separately (Keychain), by the caller.
-    static func apply(_ c: Choices, _ store: OnboardingStore) {
+    static func apply(_ choices: Choices, _ store: OnboardingStore) {
+        let c = answered(choices)
         store.privacyLevel = c.privacy
         if c.privacy != .onDevice && c.server != .later { store.gatewayUrl = c.serverUrl }
         store.saveRiskiestSentence = c.saveSentence
         store.helpImproveDetection = c.helpImprove
+        store.simpleMode = c.simple
         store.textSize = c.textSize
         store.readAloud = c.readAloud
-        store.simpleMode = c.simple
-        store.simpleModeOffered = true
+        store.textSizeChosen = c.textSizeChosen
+        store.readAloudChosen = c.readAloudChosen
+        store.appStyleTipShown = true            // they just chose: no tip about it
         store.familyName = c.familyName.trimmingCharacters(in: .whitespacesAndNewlines)
         store.familyPhone = c.familyPhone.trimmingCharacters(in: .whitespacesAndNewlines)
         markCompleted(store)
@@ -127,19 +155,38 @@ nonisolated enum Onboarding {
         store.onboardingCompleted = false
     }
 
-    // ---- Simple mode for installs from before it
-
-    /// New installs save Simple mode in the setup; an install from before it (nothing saved) keeps the full app.
-    static func simpleModeAtLaunch(_ saved: Bool?) -> Bool { saved ?? false }
-
-    /// An existing user is offered Simple mode once (a card on Home), never switched over by itself.
-    static func offerSimpleMode(_ saved: Bool?, offered: Bool) -> Bool { saved == nil && !offered }
-
     /// (step number, number of steps), for "Step 2 of 3".
     static func progress(_ s: Step, _ c: Choices) -> (Int, Int) {
         let all = steps(c)
         return ((all.firstIndex(of: s) ?? 0) + 1, all.count)
     }
+}
+
+/// The two app styles. Standard: the full app (dashboard, insights, history, all settings), the phone's own text
+/// size, warnings not read aloud. Simple: Simple Home, "For family", short settings + Advanced, large text, read
+/// aloud. Both get the same red warning, "Be careful" banner and plain wording. Same rules on Android (logic/Onboarding.kt).
+nonisolated enum AppStyle {
+    static func textSize(simple: Bool) -> String { simple ? AppPrefs.textLarge : AppPrefs.textNormal }
+
+    static func readAloud(simple: Bool) -> Bool { simple }
+
+    /// Saved mode; nothing saved = an install from before Simple mode, which keeps the full app.
+    static func simpleAtLaunch(_ saved: Bool?) -> Bool { saved ?? false }
+
+    /// Settings → App style. Keeps the history, settings, contact and PIN; only the layout changes, and the text size
+    /// and read-aloud follow the new style unless the user set them.
+    static func switchTo(simple: Bool, _ store: OnboardingStore) {
+        store.simpleMode = simple
+        if !store.textSizeChosen { store.textSize = textSize(simple: simple) }
+        if !store.readAloudChosen { store.readAloud = readAloud(simple: simple) }
+        store.appStyleTipShown = true
+    }
+
+    /// Leaving Simple mode needs the PIN when one is set, so a senior can't switch by accident.
+    static func needsPin(fromSimple: Bool, toSimple: Bool, pinSet: Bool) -> Bool { fromSimple && !toSimple && pinSet }
+
+    /// The one-time Home tip for users who were set up before the "Who will use this phone?" question.
+    static func showTip(simple: Bool, tipShown: Bool) -> Bool { !simple && !tipShown }
 }
 
 /// The settings the setup reads and writes: AppPrefs on the phone, a dictionary in tests.
@@ -153,9 +200,12 @@ nonisolated protocol OnboardingStore: AnyObject {
     var onboardingVersion: Int { get set }
     var textSize: String { get set }
     var readAloud: Bool { get set }
-    /// nil = never written (an install from before Simple mode).
+    var textSizeChosen: Bool { get set }
+    var readAloudChosen: Bool { get set }
+    /// nil = never written (an install from before Simple mode: Standard).
     var simpleMode: Bool? { get set }
-    var simpleModeOffered: Bool { get set }
+    /// The one-time "Try Simple mode in Settings → App style" tip on Home was shown and closed.
+    var appStyleTipShown: Bool { get set }
     var familyName: String { get set }
     var familyPhone: String { get set }
     /// Any setting saved by an earlier version of the app.

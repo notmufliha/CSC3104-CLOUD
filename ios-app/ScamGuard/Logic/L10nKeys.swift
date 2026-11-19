@@ -38,11 +38,12 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case btn_delete_history
     case btn_discard_call
     case btn_done
-    case btn_family_member
+    case btn_finish_no_tour
     case btn_fix_it
     case btn_forgot_pin
     case btn_get_started
     case btn_go_home
+    case btn_got_it
     case btn_hang_up
     case btn_keep_pin
     case btn_leave
@@ -51,8 +52,6 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case btn_no_dont_share
     case btn_no_keep
     case btn_no_thanks
-    case btn_offer_no
-    case btn_offer_yes
     case btn_ok
     case btn_open_scamshield
     case btn_paste_text
@@ -74,6 +73,7 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case btn_skip
     case btn_skip_for_now
     case btn_skip_tour
+    case btn_start_tour
     case btn_stay
     case btn_tell_family
     case btn_test
@@ -168,6 +168,9 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case fix_ok
     case fix_text
     case fix_title
+    case handover_line
+    case handover_title
+    case handover_title_noname
     case help_again
     case help_b1
     case help_b2
@@ -241,8 +244,6 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case note_mb_failed
     case nothing_shared
     case off
-    case offer_text
-    case offer_title
     case on
     case paste_label
     case paste_title
@@ -369,6 +370,7 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case saved
     case set_advanced
     case set_advanced_line
+    case set_app_style
     case set_connection
     case set_family
     case set_group_app
@@ -385,8 +387,6 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case set_read_aloud_line
     case set_show_careful
     case set_show_careful_line
-    case set_simple_mode
-    case set_simple_mode_line
     case set_text_size
     case set_updates
     case setup_data_line
@@ -428,6 +428,11 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case status_not_checked
     case status_not_needed
     case status_set_up_later
+    case style_page_line
+    case style_simple
+    case style_simple_line
+    case style_standard
+    case style_standard_line
     case sum_checking
     case sum_checking_line
     case sum_during
@@ -447,8 +452,11 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case tab_home
     case tab_settings
     case text_large
+    case text_normal
+    case text_normal_line
     case text_size_sample
     case text_xlarge
+    case tip_app_style
     case tour_bar_line
     case tour_bar_title
     case tour_buttons_line
@@ -483,4 +491,13 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case warn_spoken
     case warn_title
     case what_does_this_mean
+    case who_family
+    case who_family_line
+    case who_line
+    case who_me
+    case who_me_line
+    case who_pick_one
+    case who_simpler
+    case who_simpler_line
+    case who_title
 }

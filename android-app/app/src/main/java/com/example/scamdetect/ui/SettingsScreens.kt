@@ -78,7 +78,7 @@ import kotlinx.coroutines.launch
 // Settings as a grouped menu; each row opens its own page. Same rows, wording and order as
 // ios-app/ScamGuard/UI/SettingsView.swift.
 
-enum class SettingsPage { PRIVACY, SERVER, MODELS, DATA, HELP, TEXT_SIZE, FAMILY, ADVANCED, PIN }
+enum class SettingsPage { PRIVACY, SERVER, MODELS, DATA, HELP, APP_STYLE, TEXT_SIZE, FAMILY, ADVANCED, PIN }
 
 /** Server addresses offered as one-tap presets (Settings → Server, and the setup's server screen). */
 val SERVER_PRESETS = listOf(
@@ -139,14 +139,13 @@ fun SettingsMenuScreen(
     familyName: String?,
     showCareful: Boolean,
     onShowCareful: (Boolean) -> Unit,
-    onSimple: (Boolean) -> Unit,
     pinSet: Boolean,
 ) {
     LaunchedEffect(Unit) { onRefresh() }
     Page(stringResource(R.string.tab_settings)) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            EverydaySettings(textSize, readAloud, familyName, onOpen, onReadAloud)
-            AdvancedRows(false, showCareful, onShowCareful, onSimple, pinSet, privacyLevel, connection, modelsUpdated, callCount, onOpen)
+            EverydaySettings(false, textSize, readAloud, familyName, onOpen, onReadAloud)
+            AdvancedRows(false, showCareful, onShowCareful, pinSet, privacyLevel, connection, modelsUpdated, callCount, onOpen)
             Group { SettingsRow(Icons.Filled.Info, stringResource(R.string.set_help), tag = "rowHelp") { onOpen(SettingsPage.HELP) } }
         }
     }

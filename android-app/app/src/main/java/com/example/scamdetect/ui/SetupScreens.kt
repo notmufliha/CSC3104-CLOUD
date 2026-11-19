@@ -36,6 +36,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
@@ -72,6 +73,7 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -100,6 +102,7 @@ data class SetupActions(
     val onTest: suspend (String) -> Boolean,
     val onFinish: (startTour: Boolean) -> Unit,
     val onLeave: () -> Unit,
+    /** Shows a text size while the setup runs (saved only when it finishes). */
     val onTextSize: (String) -> Unit,
 )
 
@@ -113,6 +116,7 @@ fun SetupFlow(step: Step, choices: Onboarding.Choices, isReplay: Boolean, a: Set
     val index = steps.indexOf(step).coerceAtLeast(0)
     val pager = rememberPagerState(initialPage = index) { steps.size }
     var confirmLeave by rememberSaveable { mutableStateOf(false) }
+    var askWho by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     // The view model holds the step (it survives rotation); the pager follows it, and a swipe updates it.
@@ -131,15 +135,21 @@ fun SetupFlow(step: Step, choices: Onboarding.Choices, isReplay: Boolean, a: Set
                     Text("‹ " + stringResource(R.string.btn_back), style = MaterialTheme.typography.bodyLarge)
                 }
                 Spacer(Modifier.weight(1f))
-                if (step != Step.DONE) TextButton(onClick = { a.onFinish(false) }, modifier = Modifier.heightIn(min = 56.dp).testTag("setupSkip")) {
+                // Skip on the first screen = Standard mode with recommended settings.
+                if (step != Step.DONE && step != Step.HANDOVER) TextButton(onClick = { a.onFinish(false) }, modifier = Modifier.heightIn(min = 56.dp).testTag("setupSkip")) {
                     Text(stringResource(R.string.btn_skip), style = MaterialTheme.typography.bodyLarge)
                 }
             }
-            HorizontalPager(pager, Modifier.weight(1f).fillMaxWidth(), key = { steps.getOrElse(it) { Step.WELCOME } }) { page ->
-                val s = steps.getOrElse(page) { Step.WELCOME }
+            HorizontalPager(pager, Modifier.weight(1f).fillMaxWidth(), key = { steps.getOrElse(it) { Step.WHO } }) { page ->
+                val s = steps.getOrElse(page) { Step.WHO }
                 SetupPage(s, choices) {
                     when (s) {
-                        Step.WELCOME -> Unit
+                        Step.WHO -> WhoChoices(choices.path) { path ->
+                            val next = Onboarding.choose(choices, path)
+                            a.onChange { Onboarding.choose(it, path) }
+                            a.onTextSize(next.textSize)
+                        }
+                        Step.WELCOME, Step.HANDOVER -> Unit
                         Step.RECOMMENDED -> RecommendedList()
                         Step.PRIVACY -> PrivacyChoices(choices, a.onChange)
                         Step.SERVER -> ServerChoice(choices, a.onChange, a.onTest)
@@ -155,19 +165,23 @@ fun SetupFlow(step: Step, choices: Onboarding.Choices, isReplay: Boolean, a: Set
             Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 val (n, of) = Onboarding.progress(step, choices)
-                Dots(index, steps.size, stringResource(R.string.setup_step, n.toString(), of.toString()))
+                // No dots until the first question is answered (the number of screens depends on it).
+                if (choices.path != null) Dots(index, steps.size, stringResource(R.string.setup_step, n.toString(), of.toString()))
                 val wide = Modifier.fillMaxWidth().widthIn(max = 480.dp).heightIn(min = 60.dp)
                 when (step) {
-                    Step.WELCOME -> {
-                        Button(onClick = { a.onChange { it.copy(path = Path.SIMPLE) }; go(Step.RECOMMENDED) }, modifier = wide.testTag("setupNext")) {
-                            Text(stringResource(R.string.btn_get_started), style = BigButtonText)
-                        }
-                        OutlinedButton(onClick = { a.onChange { it.copy(path = Path.HELPER) }; go(Step.HELPER) }, modifier = wide.testTag("setupHelper")) {
-                            Text(stringResource(R.string.btn_family_member), style = BigButtonText, textAlign = TextAlign.Center)
-                        }
+                    // Always full contrast (a faded button looks broken): tapping it too early says what to do.
+                    Step.WHO -> {
+                        if (askWho && choices.path == null) Text(stringResource(R.string.who_pick_one), style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
+                            modifier = Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })
+                        Button(onClick = { if (choices.path == null) askWho = true else go(Onboarding.next(step, choices)) },
+                            modifier = wide.testTag("setupNext")) { Text(stringResource(R.string.btn_next), style = BigButtonText) }
+                    }
+                    Step.WELCOME -> Button(onClick = { go(Onboarding.next(step, choices)) }, modifier = wide.testTag("setupNext")) {
+                        Text(stringResource(R.string.btn_get_started), style = BigButtonText)
                     }
                     Step.RECOMMENDED -> {
-                        Button(onClick = { a.onChange { Onboarding.recommended(it) }; go(Step.FAMILY) }, modifier = wide.testTag("setupRecommended")) {
+                        Button(onClick = { a.onChange { Onboarding.recommended(it) }; a.onFinish(true) }, modifier = wide.testTag("setupRecommended")) {
                             Text(stringResource(R.string.btn_use_recommended), style = BigButtonText, textAlign = TextAlign.Center)
                         }
                         OutlinedButton(onClick = { a.onChange { it.copy(path = Path.CUSTOM) }; go(Step.PRIVACY) }, modifier = wide.testTag("setupCustom")) {
@@ -183,6 +197,12 @@ fun SetupFlow(step: Step, choices: Onboarding.Choices, isReplay: Boolean, a: Set
                             a.onChange { it.copy(familyName = "", familyPhone = "") }
                             if (last) a.onFinish(true) else go(Onboarding.next(step, choices))
                         }, modifier = Modifier.heightIn(min = 56.dp)) { Text(stringResource(R.string.btn_skip_for_now), style = MaterialTheme.typography.bodyLarge) }
+                    }
+                    Step.HANDOVER -> {
+                        Button(onClick = { a.onFinish(true) }, modifier = wide.testTag("setupTour")) { Text(stringResource(R.string.btn_start_tour), style = BigButtonText) }
+                        TextButton(onClick = { a.onFinish(false) }, modifier = Modifier.heightIn(min = 56.dp).testTag("setupNoTour")) {
+                            Text(stringResource(R.string.btn_finish_no_tour), style = MaterialTheme.typography.bodyLarge)
+                        }
                     }
                     Step.DONE -> {
                         Button(onClick = { a.onFinish(true) }, modifier = wide.testTag("setupTour")) { Text(stringResource(R.string.btn_show_me_around), style = BigButtonText) }
@@ -216,6 +236,8 @@ private val BigButtonText @Composable get() = MaterialTheme.typography.labelLarg
 
 /** Screen title and one line, by step. Helper path: the family screen talks to the helper. */
 private fun titleOf(s: Step, c: Onboarding.Choices) = when (s) {
+    Step.WHO -> R.string.who_title
+    Step.HANDOVER -> R.string.handover_title_noname
     Step.WELCOME -> R.string.setup_welcome_title
     Step.RECOMMENDED -> R.string.setup_rec_title
     Step.PRIVACY -> R.string.setup_privacy_title
@@ -228,6 +250,8 @@ private fun titleOf(s: Step, c: Onboarding.Choices) = when (s) {
 }
 
 private fun lineOf(s: Step, c: Onboarding.Choices) = when (s) {
+    Step.WHO -> R.string.who_line
+    Step.HANDOVER -> R.string.handover_line
     Step.WELCOME -> R.string.setup_welcome_line
     Step.RECOMMENDED -> R.string.setup_rec_line
     Step.PRIVACY -> R.string.setup_privacy_line
@@ -249,12 +273,13 @@ private fun SetupPage(step: Step, c: Onboarding.Choices, content: @Composable Co
     ) {
         Box(Modifier.widthIn(max = 520.dp)) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Spacer(Modifier.height(if (step == Step.WELCOME) 16.dp else 8.dp))
+                Spacer(Modifier.height(if (step == Step.WELCOME || step == Step.WHO) 16.dp else 8.dp))
                 SetupIcon(step)
-                Text(stringResource(titleOf(step, c)), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold,
+                val name = c.familyName.trim()
+                Text(if (step == Step.HANDOVER && name.isNotEmpty()) stringResource(R.string.handover_title, name) else stringResource(titleOf(step, c)), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center, modifier = Modifier.semantics { heading() })
                 Text(stringResource(lineOf(step, c)), style = SetupLine, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-                if (step == Step.WELCOME) PrivacyPromise()
+                if (step == Step.WELCOME || step == Step.HANDOVER) PrivacyPromise()
                 Spacer(Modifier.height(4.dp))
                 content()
             }
@@ -278,6 +303,8 @@ fun PrivacyPromise() {
 
 @Composable
 private fun SetupIcon(step: Step) {
+    // No picture on the first question: all three answers must fit on the screen, even with large text.
+    if (step == Step.WHO) return
     if (step == Step.WELCOME) {
         Image(painterResource(R.drawable.scamguard_logo), contentDescription = null,
             modifier = Modifier.size(104.dp).clip(RoundedCornerShape(24.dp)))
@@ -291,6 +318,7 @@ private fun SetupIcon(step: Step) {
         Step.HELPER -> Icons.Filled.Settings
         Step.FAMILY -> Icons.Filled.Phone
         Step.PIN -> Icons.Filled.Lock
+        Step.HANDOVER -> Icons.Filled.Favorite
         else -> Icons.Filled.CheckCircle
     }
     Box(Modifier.size(96.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
@@ -351,6 +379,26 @@ fun YesNoDialog(title: String, text: String, yes: String, no: String, onYes: () 
             }
         },
     )
+}
+
+// ---------------------------------------------------------------- 1. who will use this phone
+
+/** Three big cards, one line each; nothing is picked until the user taps one. */
+@Composable
+private fun WhoChoices(current: Path?, onPick: (Path) -> Unit) {
+    val picked = when (current) { Path.SIMPLE, Path.CUSTOM -> Path.SIMPLE; else -> current }
+    Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        ChoiceCard(picked == Path.STANDARD, stringResource(R.string.who_me), stringResource(R.string.who_me_line), "who_me") { onPick(Path.STANDARD) }
+        ChoiceCard(picked == Path.SIMPLE, stringResource(R.string.who_simpler), stringResource(R.string.who_simpler_line), "who_simpler") { onPick(Path.SIMPLE) }
+        ChoiceCard(picked == Path.HELPER, stringResource(R.string.who_family), stringResource(R.string.who_family_line), "who_family") { onPick(Path.HELPER) }
+    }
+}
+
+/** "Normal", "Large" or "Extra large". */
+fun textSizeLabel(size: String) = when (size) {
+    AppPrefs.TEXT_XLARGE -> R.string.text_xlarge
+    AppPrefs.TEXT_LARGE -> R.string.text_large
+    else -> R.string.text_normal
 }
 
 // ---------------------------------------------------------------- 2. recommended
@@ -503,24 +551,23 @@ private fun DataChoices(choices: Onboarding.Choices, onChange: ((Onboarding.Choi
 @Composable
 private fun HelperChoices(c: Onboarding.Choices, a: SetupActions) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        TextSizeChoices(c.textSize) { size -> a.onChange { it.copy(textSize = size) }; a.onTextSize(size) }
+        TextSizeChoices(c.textSize) { size -> a.onChange { it.copy(textSize = size, textSizeChosen = true) }; a.onTextSize(size) }
         Group {
-            ToggleRow(stringResource(R.string.set_simple_mode), stringResource(R.string.set_simple_mode_line), c.simple) { v ->
-                a.onChange { it.copy(simple = v) }
-            }
-            HorizontalDivider(Modifier.padding(start = 16.dp))
             ToggleRow(stringResource(R.string.set_read_aloud), stringResource(R.string.set_read_aloud_line), c.readAloud) { v ->
-                a.onChange { it.copy(readAloud = v) }
+                a.onChange { it.copy(readAloud = v, readAloudChosen = true) }
             }
         }
     }
 }
 
-/** "Text size": Large / Extra large, each shown at its own size. */
+/** "Text size": Normal (the phone's size) / Large / Extra large. */
 @Composable
 fun TextSizeChoices(current: String, onPick: (String) -> Unit) {
     Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.set_text_size), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+        ChoiceCard(current == AppPrefs.TEXT_NORMAL, stringResource(R.string.text_normal), stringResource(R.string.text_normal_line), "text_normal") {
+            onPick(AppPrefs.TEXT_NORMAL)
+        }
         ChoiceCard(current == AppPrefs.TEXT_LARGE, stringResource(R.string.text_large), stringResource(R.string.text_size_sample), "text_large") {
             onPick(AppPrefs.TEXT_LARGE)
         }
@@ -556,15 +603,16 @@ fun ContactFields(name: String, phone: String, onName: (String) -> Unit, onPhone
 @Composable
 private fun SetupSummary(c: Onboarding.Choices) {
     val rows = buildList {
-        add(stringResource(R.string.set_text_size) to stringResource(if (c.textSize == AppPrefs.TEXT_XLARGE) R.string.text_xlarge else R.string.text_large))
-        add(stringResource(R.string.set_simple_mode) to stringResource(if (c.simple) R.string.on else R.string.off))
+        add(stringResource(R.string.set_app_style) to stringResource(if (c.simple) R.string.style_simple else R.string.style_standard))
+        add(stringResource(R.string.set_text_size) to stringResource(textSizeLabel(c.textSize)))
         add(stringResource(R.string.sum_privacy) to stringResource(privacyTagRes(c.privacy)))
-        if (c.path == Path.CUSTOM) {
+        if (c.path == Path.CUSTOM || c.path == Path.STANDARD) {
             add(stringResource(R.string.sum_server) to serverLabel(c))
             add(stringResource(R.string.data_save_sentence) to stringResource(if (c.saveSentence) R.string.on else R.string.off))
             add(stringResource(R.string.data_help_improve) to stringResource(if (c.helpImprove) R.string.on else R.string.off))
         }
-        add(stringResource(R.string.sum_family) to c.familyName.ifBlank { c.familyPhone }.ifBlank { stringResource(R.string.not_set) })
+        if (c.path == Path.HELPER || c.familyPhone.isNotBlank())
+            add(stringResource(R.string.sum_family) to c.familyName.ifBlank { c.familyPhone }.ifBlank { stringResource(R.string.not_set) })
         if (c.path == Path.HELPER) add(stringResource(R.string.sum_pin) to stringResource(if (c.pin.length == 4) R.string.on else R.string.off))
     }
     Group {

@@ -8,16 +8,17 @@ import com.example.scamdetect.R
  */
 object Onboarding {
     /** Bump when the setup gains a screen that existing users should see. Saved with the "completed" flag. */
-    const val VERSION = 1
+    const val VERSION = 2
 
-    enum class Step { WELCOME, RECOMMENDED, PRIVACY, SERVER, DATA, HELPER, FAMILY, PIN, DONE }
+    enum class Step { WHO, WELCOME, RECOMMENDED, PRIVACY, SERVER, DATA, HELPER, FAMILY, PIN, HANDOVER, DONE }
 
     /**
-     * Which way through the setup. SIMPLE (the default): Welcome, "Use recommended settings", family
-     * contact (3 screens). CUSTOM ("Choose myself"): the full choices. HELPER ("Set up for a family member"): text
-     * size, Simple mode and read-aloud for them, the contact, an optional PIN.
+     * Which way through the setup, from the first screen ("Who will use this phone?"); null = not chosen yet.
+     * STANDARD ("Me"): the full app and its 5-screen setup. SIMPLE ("Me, but simpler"): Simple mode, Welcome and
+     * "Use recommended settings"; CUSTOM is its "Choose myself". HELPER ("An older family member"): Simple mode set
+     * up by a helper: text size and read-aloud, the family contact, an optional PIN, then "Hand the phone to ...".
      */
-    enum class Path { SIMPLE, CUSTOM, HELPER }
+    enum class Path { STANDARD, SIMPLE, CUSTOM, HELPER }
 
     /** What the app does when it starts. */
     enum class Launch {
@@ -41,11 +42,15 @@ object Onboarding {
     }
 
     /** The screens, in order, for the way chosen. On-device needs no server, so that screen is left out. */
-    fun steps(c: Choices): List<Step> = when (c.path) {
-        Path.SIMPLE -> listOf(Step.WELCOME, Step.RECOMMENDED, Step.FAMILY)
-        Path.CUSTOM -> listOfNotNull(Step.WELCOME, Step.RECOMMENDED, Step.PRIVACY,
-            Step.SERVER.takeIf { c.privacy != PrivacyLevel.ON_DEVICE }, Step.DATA, Step.FAMILY, Step.DONE)
-        Path.HELPER -> listOf(Step.WELCOME, Step.HELPER, Step.FAMILY, Step.PIN, Step.DONE)
+    fun steps(c: Choices): List<Step> {
+        val server = Step.SERVER.takeIf { c.privacy != PrivacyLevel.ON_DEVICE }
+        return when (c.path) {
+            null -> listOf(Step.WHO)
+            Path.STANDARD -> listOfNotNull(Step.WHO, Step.WELCOME, Step.PRIVACY, server, Step.DATA, Step.DONE)
+            Path.SIMPLE -> listOf(Step.WHO, Step.WELCOME, Step.RECOMMENDED)
+            Path.CUSTOM -> listOfNotNull(Step.WHO, Step.WELCOME, Step.RECOMMENDED, Step.PRIVACY, server, Step.DATA, Step.DONE)
+            Path.HELPER -> listOf(Step.WHO, Step.HELPER, Step.FAMILY, Step.PIN, Step.HANDOVER)
+        }
     }
 
     fun next(step: Step, c: Choices): Step? = steps(c).let { s -> s.getOrNull(s.indexOf(step) + 1) }
@@ -61,36 +66,55 @@ object Onboarding {
         val server: Server = Server.NOT_CHECKED,
         val saveSentence: Boolean = false,
         val helpImprove: Boolean = false,
-        val path: Path = Path.SIMPLE,
-        val textSize: String = "large",
-        /** Simple mode: on for every new install (an install from before it keeps the full app). */
-        val simple: Boolean = true,
-        val readAloud: Boolean = true,
+        /** null until "Who will use this phone?" is answered (nothing is pre-selected). */
+        val path: Path? = null,
+        val textSize: String = AppStyle.textSize(simple = false),
+        val readAloud: Boolean = AppStyle.readAloud(simple = false),
+        /** The user picked the text size / read-aloud themselves: switching modes then keeps it. */
+        val textSizeChosen: Boolean = false,
+        val readAloudChosen: Boolean = false,
         val familyName: String = "",
         val familyPhone: String = "",
         /** A 4-digit PIN for Advanced settings and "For family" (helper setup only); "" = none. */
         val pin: String = "",
-    )
+    ) {
+        /** Simple mode: every way except "Me" (and Skip on the first screen). */
+        val simple: Boolean get() = path != null && path != Path.STANDARD
+    }
 
-    /** What Skip saves on a first launch: recommended settings (Cloud, both data switches off, Simple mode on). */
+    /** What Skip saves on a first launch: Standard mode, recommended settings (Cloud, both data switches off). */
     fun defaults(currentUrl: String) = Choices(serverUrl = currentUrl)
 
-    /** "Run setup again" starts from what is saved now, so Skip keeps it. */
+    /** An answer to "Who will use this phone?": the way through, and that mode's text size and read-aloud. */
+    fun choose(c: Choices, path: Path): Choices {
+        val simple = path != Path.STANDARD
+        return c.copy(
+            path = path,
+            textSize = if (c.textSizeChosen) c.textSize else AppStyle.textSize(simple),
+            readAloud = if (c.readAloudChosen) c.readAloud else AppStyle.readAloud(simple),
+        )
+    }
+
+    /** Skip before answering the first question = Standard mode. */
+    fun answered(c: Choices): Choices = if (c.path == null) choose(c, Path.STANDARD) else c
+
+    /** "Run setup again" starts from what is saved now (Skip keeps it), at the first question, nothing picked. */
     fun fromSaved(store: Store) = Choices(
         privacy = store.privacyLevel,
         serverUrl = store.gatewayUrl,
         saveSentence = store.saveRiskiestSentence,
         helpImprove = store.helpImproveDetection,
         textSize = store.textSize,
-        simple = simpleModeAtLaunch(store.simpleMode),
         readAloud = store.readAloud,
+        textSizeChosen = store.textSizeChosen,
+        readAloudChosen = store.readAloudChosen,
         familyName = store.familyName,
         familyPhone = store.familyPhone,
     )
 
-    /** "Use recommended settings": the most accurate checking, nothing kept, warnings read aloud. */
+    /** "Use recommended settings" (Simple mode): the most accurate checking, nothing kept, warnings read aloud. */
     fun recommended(c: Choices) = c.copy(privacy = PrivacyLevel.CLOUD, saveSentence = false, helpImprove = false,
-        readAloud = true, path = Path.SIMPLE)
+        readAloud = if (c.readAloudChosen) c.readAloud else true, path = Path.SIMPLE)
 
     /** The settings the setup reads and writes: AppPrefs on the phone, a map in tests. */
     interface Store {
@@ -103,9 +127,12 @@ object Onboarding {
         var onboardingVersion: Int
         var textSize: String
         var readAloud: Boolean
-        /** null = never written (an install from before Simple mode). */
+        var textSizeChosen: Boolean
+        var readAloudChosen: Boolean
+        /** null = never written (an install from before Simple mode: Standard). */
         var simpleMode: Boolean?
-        var simpleModeOffered: Boolean
+        /** The one-time "Try Simple mode in Settings → App style" tip on Home was shown and closed. */
+        var appStyleTipShown: Boolean
         var familyName: String
         var familyPhone: String
         /** Any setting saved by an earlier version of the app (or old history kept in settings). */
@@ -116,15 +143,18 @@ object Onboarding {
      * Saves the choices and marks the setup done. The server address is kept as it was for On-device (no server
      * screen) and for "Set up later". The PIN is saved separately (secure storage), by the caller.
      */
-    fun apply(c: Choices, store: Store) {
+    fun apply(choices: Choices, store: Store) {
+        val c = answered(choices)
         store.privacyLevel = c.privacy
         if (c.privacy != PrivacyLevel.ON_DEVICE && c.server != Server.LATER) store.gatewayUrl = c.serverUrl
         store.saveRiskiestSentence = c.saveSentence
         store.helpImproveDetection = c.helpImprove
+        store.simpleMode = c.simple
         store.textSize = c.textSize
         store.readAloud = c.readAloud
-        store.simpleMode = c.simple
-        store.simpleModeOffered = true
+        store.textSizeChosen = c.textSizeChosen
+        store.readAloudChosen = c.readAloudChosen
+        store.appStyleTipShown = true            // they just chose: no tip about it
         store.familyName = c.familyName.trim()
         store.familyPhone = c.familyPhone.trim()
         markCompleted(store)
@@ -140,16 +170,40 @@ object Onboarding {
         store.onboardingCompleted = false
     }
 
-    // ---- Simple mode for installs from before it
-
-    /** New installs save Simple mode in the setup; an install from before it (nothing saved) keeps the full app. */
-    fun simpleModeAtLaunch(saved: Boolean?): Boolean = saved ?: false
-
-    /** An existing user is offered Simple mode once (a card on Home), never switched over by itself. */
-    fun offerSimpleMode(saved: Boolean?, offered: Boolean): Boolean = saved == null && !offered
-
     /** "Step 2 of 5", for screen readers on the progress dots: (index, count). */
     fun progress(s: Step, c: Choices): Pair<Int, Int> = steps(c).let { all -> (all.indexOf(s) + 1) to all.size }
+}
+
+/**
+ * The two app styles. Standard: the full app (dashboard, insights, history, all settings), the phone's own text size,
+ * warnings not read aloud. Simple: Simple Home, "For family", short settings + Advanced, large text, read aloud.
+ * Both get the same red warning, "Be careful" banner and plain wording. Same rules on iOS (Logic/Onboarding.swift).
+ */
+object AppStyle {
+    fun textSize(simple: Boolean): String =
+        if (simple) com.example.scamdetect.data.AppPrefs.TEXT_LARGE else com.example.scamdetect.data.AppPrefs.TEXT_NORMAL
+
+    fun readAloud(simple: Boolean): Boolean = simple
+
+    /** Saved mode; nothing saved = an install from before Simple mode, which keeps the full app. */
+    fun simpleAtLaunch(saved: Boolean?): Boolean = saved ?: false
+
+    /**
+     * Settings → App style. Keeps the history, settings, contact and PIN; only the layout changes, and the text size
+     * and read-aloud follow the new style unless the user set them.
+     */
+    fun switchTo(simple: Boolean, store: Onboarding.Store) {
+        store.simpleMode = simple
+        if (!store.textSizeChosen) store.textSize = textSize(simple)
+        if (!store.readAloudChosen) store.readAloud = readAloud(simple)
+        store.appStyleTipShown = true
+    }
+
+    /** Leaving Simple mode needs the PIN when one is set, so a senior can't switch by accident. */
+    fun needsPin(fromSimple: Boolean, toSimple: Boolean, pinSet: Boolean): Boolean = fromSimple && !toSimple && pinSet
+
+    /** The one-time Home tip for users who were set up before the "Who will use this phone?" question. */
+    fun showTip(simple: Boolean, tipShown: Boolean): Boolean = !simple && !tipShown
 }
 
 /**

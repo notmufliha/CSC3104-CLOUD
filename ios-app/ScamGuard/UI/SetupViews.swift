@@ -1,7 +1,8 @@
 import SwiftUI
 
-// First-launch setup. Simple (the default): Welcome, "Use recommended settings", family contact.
-// "Choose myself": the full choices. "Set up for a family member": their settings, the contact, an optional PIN.
+// First-launch setup. First "Who will use this phone?": "Me" = Standard mode and the full setup; "Me, but simpler" =
+// Simple mode, Welcome and "Use recommended settings" ("Choose myself": the full choices); "An older family member" =
+// Simple mode set up by a helper: their settings, the contact, an optional PIN, then "Hand the phone to ...".
 // Same screens, wording and look as android-app ui/SetupScreens.kt.
 
 /// The setup. Swipe or Back / the big buttons between screens; Skip saves what is picked so far (recommended
@@ -9,6 +10,7 @@ import SwiftUI
 struct SetupView: View {
     @Environment(CallViewModel.self) private var vm
     @State private var confirmLeave = false
+    @State private var askWho = false
 
     var body: some View {
         let choices = vm.setupChoices
@@ -26,7 +28,8 @@ struct SetupView: View {
                     Button { confirmLeave = true } label: { Text("‹ " + L.s(.btn_back)).font(.body).frame(minWidth: 56, minHeight: 56) }
                 }
                 Spacer()
-                if step != .done {
+                // Skip on the first screen = Standard mode with recommended settings.
+                if step != .done && step != .handover {
                     Button { vm.finishSetup(startTour: false) } label: { Text(L.s(.btn_skip)).font(.body).frame(minWidth: 56, minHeight: 56) }
                         .accessibilityIdentifier("setupSkip")
                 }
@@ -45,21 +48,26 @@ struct SetupView: View {
             // bottom: progress dots and the main button(s)
             VStack(spacing: 12) {
                 let (n, of) = Onboarding.progress(step, choices)
-                Dots(index: index, count: steps.count, spoken: L.s(.setup_step, "\(n)", "\(of)"))
+                // No dots until the first question is answered (the number of screens depends on it).
+                if choices.path != nil {
+                    Dots(index: index, count: steps.count, spoken: L.s(.setup_step, "\(n)", "\(of)"))
+                }
                 switch step {
+                case .who:
+                    // Always full contrast (a faded button looks broken): tapping it too early says what to do.
+                    if askWho && choices.path == nil {
+                        Text(L.s(.who_pick_one)).font(.body.weight(.semibold)).multilineTextAlignment(.center)
+                            .accessibilityAddTraits(.updatesFrequently)
+                    }
+                    BigButton(title: L.s(.btn_next), id: "setupNext") {
+                        if choices.path == nil { askWho = true } else { go(Onboarding.next(step, choices)) }
+                    }
                 case .welcome:
-                    BigButton(title: L.s(.btn_get_started), id: "setupNext") {
-                        vm.updateSetup { $0.path = .simple }
-                        go(.recommended)
-                    }
-                    BigButton(title: L.s(.btn_family_member), id: "setupHelper", prominent: false) {
-                        vm.updateSetup { $0.path = .helper }
-                        go(.helper)
-                    }
+                    BigButton(title: L.s(.btn_get_started), id: "setupNext") { go(Onboarding.next(step, choices)) }
                 case .recommended:
                     BigButton(title: L.s(.btn_use_recommended), id: "setupRecommended") {
                         vm.updateSetup { $0 = Onboarding.recommended($0) }
-                        go(.family)
+                        vm.finishSetup(startTour: true)
                     }
                     BigButton(title: L.s(.btn_choose_myself), id: "setupCustom", prominent: false) {
                         vm.updateSetup { $0.path = .custom }
@@ -74,6 +82,12 @@ struct SetupView: View {
                         vm.updateSetup { $0.familyName = ""; $0.familyPhone = "" }
                         if last { vm.finishSetup(startTour: true) } else { go(Onboarding.next(step, vm.setupChoices)) }
                     } label: { Text(L.s(.btn_skip_for_now)).font(.body).frame(minHeight: 56) }
+                case .handover:
+                    BigButton(title: L.s(.btn_start_tour), id: "setupTour") { vm.finishSetup(startTour: true) }
+                    Button { vm.finishSetup(startTour: false) } label: {
+                        Text(L.s(.btn_finish_no_tour)).font(.body).frame(minHeight: 56)
+                    }
+                    .accessibilityIdentifier("setupNoTour")
                 case .done:
                     BigButton(title: L.s(.btn_show_me_around), id: "setupTour") { vm.finishSetup(startTour: true) }
                     BigButton(title: L.s(.btn_skip_tour), id: "setupNoTour", prominent: false) { vm.finishSetup(startTour: false) }
@@ -109,7 +123,13 @@ struct SetupView: View {
     @ViewBuilder
     private func pageContent(_ s: Onboarding.Step, _ c: Onboarding.Choices) -> some View {
         switch s {
-        case .welcome: EmptyView()
+        case .who:
+            WhoChoices(current: c.path) { path in
+                let next = Onboarding.choose(vm.setupChoices, path)
+                vm.updateSetup { $0 = Onboarding.choose($0, path) }
+                vm.previewTextSize(next.textSize)
+            }
+        case .welcome, .handover: EmptyView()
         case .recommended: RecommendedList()
         case .privacy: PrivacyChoices()
         case .server: ServerChoice()
@@ -184,9 +204,9 @@ private struct SetupPage<Content: View>: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
-                Spacer().frame(height: step == .welcome ? 16 : 0)
+                Spacer().frame(height: step == .welcome || step == .who ? 16 : 0)
                 SetupIcon(step: step)
-                Text(L.s(title))
+                Text(titleText)
                     .font(.title.bold())
                     .multilineTextAlignment(.center)
                     .accessibilityAddTraits(.isHeader)
@@ -195,7 +215,7 @@ private struct SetupPage<Content: View>: View {
                     .foregroundStyle(Theme.muted)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                if step == .welcome { PrivacyPromise() }
+                if step == .welcome || step == .handover { PrivacyPromise() }
                 Spacer().frame(height: 4)
                 content
             }
@@ -208,8 +228,16 @@ private struct SetupPage<Content: View>: View {
 
     private var helper: Bool { choices.path == .helper }
 
+    /// "Hand the phone to Mei Ling" uses the contact's name when there is one.
+    private var titleText: String {
+        let name = choices.familyName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return step == .handover && !name.isEmpty ? L.s(.handover_title, name) : L.s(title)
+    }
+
     private var title: K {
         switch step {
+        case .who: return .who_title
+        case .handover: return .handover_title_noname
         case .welcome: return .setup_welcome_title
         case .recommended: return .setup_rec_title
         case .privacy: return .setup_privacy_title
@@ -224,6 +252,8 @@ private struct SetupPage<Content: View>: View {
 
     private var line: K {
         switch step {
+        case .who: return .who_line
+        case .handover: return .handover_line
         case .welcome: return .setup_welcome_line
         case .recommended: return .setup_rec_line
         case .privacy: return .setup_privacy_line
@@ -256,7 +286,10 @@ private struct SetupIcon: View {
     let step: Onboarding.Step
 
     var body: some View {
-        if step == .welcome {
+        // No picture on the first question: all three answers must fit on the screen, even with large text.
+        if step == .who {
+            EmptyView()
+        } else if step == .welcome {
             Image("AppLogo")
                 .resizable()
                 .frame(width: 104, height: 104)
@@ -280,6 +313,7 @@ private struct SetupIcon: View {
         case .data: return "person.fill"
         case .helper: return "gearshape.fill"
         case .family: return "phone.fill"
+        case .handover: return "heart.fill"
         default: return "checkmark.circle.fill"
         }
     }
@@ -335,6 +369,32 @@ struct ChoiceCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(selected ? [.isSelected, .isButton] : [.isButton])
         .accessibilityIdentifier(id)
+    }
+}
+
+// ---------------------------------------------------------------- 1. who will use this phone
+
+/// Three big cards, one line each; nothing is picked until the user taps one.
+private struct WhoChoices: View {
+    let current: Onboarding.Path?
+    let onPick: (Onboarding.Path) -> Void
+
+    var body: some View {
+        let picked: Onboarding.Path? = current == .custom ? .simple : current
+        VStack(spacing: 12) {
+            ChoiceCard(selected: picked == .standard, title: L.s(.who_me), line: L.s(.who_me_line), id: "who_me") { onPick(.standard) }
+            ChoiceCard(selected: picked == .simple, title: L.s(.who_simpler), line: L.s(.who_simpler_line), id: "who_simpler") { onPick(.simple) }
+            ChoiceCard(selected: picked == .helper, title: L.s(.who_family), line: L.s(.who_family_line), id: "who_family") { onPick(.helper) }
+        }
+    }
+}
+
+/// "Normal", "Large" or "Extra large".
+func textSizeKey(_ size: String) -> K {
+    switch size {
+    case AppPrefs.textXLarge: return .text_xlarge
+    case AppPrefs.textLarge: return .text_large
+    default: return .text_normal
     }
 }
 
@@ -516,16 +576,12 @@ private struct HelperChoices: View {
     var body: some View {
         VStack(spacing: 16) {
             TextSizeChoices(current: vm.setupChoices.textSize) { size in
-                vm.updateSetup { $0.textSize = size }
-                vm.setTextSize(size)
+                vm.updateSetup { $0.textSize = size; $0.textSizeChosen = true }
+                vm.previewTextSize(size)
             }
             VStack(spacing: 0) {
-                Toggle(isOn: Binding(get: { vm.setupChoices.simple }, set: { v in vm.updateSetup { $0.simple = v } })) {
-                    ToggleLabel(title: L.s(.set_simple_mode), line: L.s(.set_simple_mode_line))
-                }
-                .padding(16).frame(minHeight: 64)
-                Divider().padding(.leading, 16)
-                Toggle(isOn: Binding(get: { vm.setupChoices.readAloud }, set: { v in vm.updateSetup { $0.readAloud = v } })) {
+                Toggle(isOn: Binding(get: { vm.setupChoices.readAloud },
+                                     set: { v in vm.updateSetup { $0.readAloud = v; $0.readAloudChosen = true } })) {
                     ToggleLabel(title: L.s(.set_read_aloud), line: L.s(.set_read_aloud_line))
                 }
                 .padding(16).frame(minHeight: 64)
@@ -536,7 +592,7 @@ private struct HelperChoices: View {
     }
 }
 
-/// "Text size": Large / Extra large.
+/// "Text size": Normal (the phone's size) / Large / Extra large.
 struct TextSizeChoices: View {
     let current: String
     let onPick: (String) -> Void
@@ -544,6 +600,9 @@ struct TextSizeChoices: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(L.s(.set_text_size)).font(.headline).accessibilityAddTraits(.isHeader)
+            ChoiceCard(selected: current == AppPrefs.textNormal, title: L.s(.text_normal), line: L.s(.text_normal_line), id: "text_normal") {
+                onPick(AppPrefs.textNormal)
+            }
             ChoiceCard(selected: current == AppPrefs.textLarge, title: L.s(.text_large), line: L.s(.text_size_sample), id: "text_large") {
                 onPick(AppPrefs.textLarge)
             }
@@ -604,17 +663,17 @@ private struct SetupSummary: View {
 
     private func rows(_ c: Onboarding.Choices) -> [(String, String)] {
         var r: [(String, String)] = [
-            (L.s(.set_text_size), L.s(c.textSize == AppPrefs.textXLarge ? .text_xlarge : .text_large)),
-            (L.s(.set_simple_mode), onOff(c.simple)),
+            (L.s(.set_app_style), L.s(c.simple ? .style_simple : .style_standard)),
+            (L.s(.set_text_size), L.s(textSizeKey(c.textSize))),
             (L.s(.sum_privacy), L.s(c.privacy.tagKey)),
         ]
-        if c.path == .custom {
+        if c.path == .custom || c.path == .standard {
             r.append((L.s(.sum_server), serverLabel(c)))
             r.append((L.s(.data_save_sentence), onOff(c.saveSentence)))
             r.append((L.s(.data_help_improve), onOff(c.helpImprove)))
         }
         let fam = c.familyName.isEmpty ? c.familyPhone : c.familyName
-        r.append((L.s(.sum_family), fam.isEmpty ? L.s(.not_set) : fam))
+        if c.path == .helper || !c.familyPhone.isEmpty { r.append((L.s(.sum_family), fam.isEmpty ? L.s(.not_set) : fam)) }
         if c.path == .helper { r.append((L.s(.sum_pin), onOff(c.pin.count == 4))) }
         return r
     }

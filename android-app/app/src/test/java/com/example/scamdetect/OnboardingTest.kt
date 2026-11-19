@@ -1,6 +1,8 @@
 package com.example.scamdetect
 
+import com.example.scamdetect.logic.AppStyle
 import com.example.scamdetect.logic.Onboarding
+import com.example.scamdetect.logic.Onboarding.Path
 import com.example.scamdetect.logic.Onboarding.Launch
 import com.example.scamdetect.logic.Onboarding.Server
 import com.example.scamdetect.logic.Onboarding.Step
@@ -35,18 +37,25 @@ class OnboardingTest {
         override var onboardingVersion: Int
             get() = saved["onboarding_version"] as Int? ?: 0
             set(v) { saved["onboarding_version"] = v }
+        // Not saved yet: the app style's default, as AppPrefs does.
         override var textSize: String
-            get() = saved["text_size"] as String? ?: "large"
+            get() = saved["text_size"] as String? ?: AppStyle.textSize(AppStyle.simpleAtLaunch(simpleMode))
             set(v) { saved["text_size"] = v }
         override var readAloud: Boolean
-            get() = saved["read_aloud"] as Boolean? ?: true
+            get() = saved["read_aloud"] as Boolean? ?: AppStyle.readAloud(AppStyle.simpleAtLaunch(simpleMode))
             set(v) { saved["read_aloud"] = v }
+        override var textSizeChosen: Boolean
+            get() = saved["text_size_chosen"] as Boolean? ?: false
+            set(v) { saved["text_size_chosen"] = v }
+        override var readAloudChosen: Boolean
+            get() = saved["read_aloud_chosen"] as Boolean? ?: false
+            set(v) { saved["read_aloud_chosen"] = v }
         override var simpleMode: Boolean?
             get() = saved["simple_mode"] as Boolean?
             set(v) { if (v == null) saved.remove("simple_mode") else saved["simple_mode"] = v }
-        override var simpleModeOffered: Boolean
-            get() = saved["simple_mode_offered"] as Boolean? ?: false
-            set(v) { saved["simple_mode_offered"] = v }
+        override var appStyleTipShown: Boolean
+            get() = saved["app_style_tip_shown"] as Boolean? ?: false
+            set(v) { saved["app_style_tip_shown"] = v }
         override var familyName: String
             get() = saved["family_name"] as String? ?: ""
             set(v) { saved["family_name"] = v }
@@ -141,76 +150,142 @@ class OnboardingTest {
         assertEquals(PrivacyLevel.ON_DEVICE, onDevice.privacyLevel)
     }
 
-    // ---- which screens
+    // ---- "Who will use this phone?" and the three ways through
 
-    private fun c(path: Onboarding.Path, privacy: PrivacyLevel = PrivacyLevel.CLOUD) =
-        Onboarding.defaults(DEFAULT_URL).copy(path = path, privacy = privacy)
+    private fun c(path: Path, privacy: PrivacyLevel = PrivacyLevel.CLOUD) =
+        Onboarding.choose(Onboarding.defaults(DEFAULT_URL).copy(privacy = privacy), path)
 
-    @Test fun simpleSetupIsThreeScreens() {
-        assertEquals(listOf(Step.WELCOME, Step.RECOMMENDED, Step.FAMILY), Onboarding.steps(c(Onboarding.Path.SIMPLE)))
-        assertNull(Onboarding.next(Step.FAMILY, c(Onboarding.Path.SIMPLE)))
-        assertEquals(2 to 3, Onboarding.progress(Step.RECOMMENDED, c(Onboarding.Path.SIMPLE)))
+    @Test fun theFirstQuestionComesFirstWithNothingPicked() {
+        val start = Onboarding.defaults(DEFAULT_URL)
+        assertNull(start.path)
+        assertFalse(start.simple)
+        assertEquals(listOf(Step.WHO), Onboarding.steps(start))
+        for (p in Path.entries) assertEquals(Step.WHO, Onboarding.steps(c(p)).first())
     }
 
-    @Test fun chooseMyselfKeepsTheFullChoicesAndSkipsServerForOnDevice() {
-        assertEquals(listOf(Step.WELCOME, Step.RECOMMENDED, Step.PRIVACY, Step.SERVER, Step.DATA, Step.FAMILY, Step.DONE),
-            Onboarding.steps(c(Onboarding.Path.CUSTOM)))
-        assertEquals(listOf(Step.WELCOME, Step.RECOMMENDED, Step.PRIVACY, Step.DATA, Step.FAMILY, Step.DONE),
-            Onboarding.steps(c(Onboarding.Path.CUSTOM, PrivacyLevel.ON_DEVICE)))
-        assertEquals(Step.DATA, Onboarding.next(Step.PRIVACY, c(Onboarding.Path.CUSTOM, PrivacyLevel.ON_DEVICE)))
-        assertEquals(Step.SERVER, Onboarding.next(Step.PRIVACY, c(Onboarding.Path.CUSTOM)))
-        assertNull(Onboarding.previous(Step.WELCOME, c(Onboarding.Path.CUSTOM)))
-        assertEquals(4 to 6, Onboarding.progress(Step.DATA, c(Onboarding.Path.CUSTOM, PrivacyLevel.ON_DEVICE)))
-    }
-
-    @Test fun familyHelperSetup() {
-        assertEquals(listOf(Step.WELCOME, Step.HELPER, Step.FAMILY, Step.PIN, Step.DONE), Onboarding.steps(c(Onboarding.Path.HELPER)))
+    @Test fun meIsStandardWithTheFullSetup() {
+        assertEquals(listOf(Step.WHO, Step.WELCOME, Step.PRIVACY, Step.SERVER, Step.DATA, Step.DONE), Onboarding.steps(c(Path.STANDARD)))
+        assertEquals(listOf(Step.WHO, Step.WELCOME, Step.PRIVACY, Step.DATA, Step.DONE), Onboarding.steps(c(Path.STANDARD, PrivacyLevel.ON_DEVICE)))
         val s = FakeStore()
-        Onboarding.apply(c(Onboarding.Path.HELPER).copy(textSize = "xlarge", simple = true, readAloud = false,
-            familyName = " Mei Ling ", familyPhone = " 9123 4567 ", pin = "2468"), s)
-        assertEquals("xlarge", s.textSize)
+        Onboarding.apply(c(Path.STANDARD, PrivacyLevel.HYBRID), s)
+        assertEquals(false, s.simpleMode)
+        assertEquals("normal", s.textSize)
+        assertFalse("read aloud is off in Standard mode", s.readAloud)
+        assertEquals(PrivacyLevel.HYBRID, s.privacyLevel)
+        assertFalse(Tour.steps(AppStyle.simpleAtLaunch(s.simpleMode)) == Tour.simpleSteps)   // the 7-step tour
+    }
+
+    @Test fun meButSimplerIsSimpleModeWithThreeScreensAndNoFamilySetup() {
+        assertEquals(listOf(Step.WHO, Step.WELCOME, Step.RECOMMENDED), Onboarding.steps(c(Path.SIMPLE)))
+        assertEquals(3 to 3, Onboarding.progress(Step.RECOMMENDED, c(Path.SIMPLE)))
+        assertFalse(Step.FAMILY in Onboarding.steps(c(Path.SIMPLE)) || Step.PIN in Onboarding.steps(c(Path.SIMPLE)))
+        val s = FakeStore()
+        Onboarding.apply(Onboarding.recommended(c(Path.SIMPLE, PrivacyLevel.ON_DEVICE)), s)
         assertEquals(true, s.simpleMode)
+        assertEquals("large", s.textSize)
+        assertTrue(s.readAloud)
+        assertEquals(PrivacyLevel.CLOUD, s.privacyLevel)
+        assertEquals("", s.familyPhone)
+        // "Choose myself": the detailed screens, still no family setup
+        assertEquals(listOf(Step.WHO, Step.WELCOME, Step.RECOMMENDED, Step.PRIVACY, Step.DATA, Step.DONE),
+            Onboarding.steps(c(Path.CUSTOM, PrivacyLevel.ON_DEVICE)))
+        assertTrue(c(Path.CUSTOM).simple)
+    }
+
+    @Test fun familyPathGoesThroughContactAndPinAndEndsSimple() {
+        assertEquals(listOf(Step.WHO, Step.HELPER, Step.FAMILY, Step.PIN, Step.HANDOVER), Onboarding.steps(c(Path.HELPER)))
+        assertEquals(Step.FAMILY, Onboarding.next(Step.HELPER, c(Path.HELPER)))
+        assertEquals(Step.HANDOVER, Onboarding.next(Step.PIN, c(Path.HELPER)))
+        assertNull(Onboarding.next(Step.HANDOVER, c(Path.HELPER)))
+        val s = FakeStore()
+        Onboarding.apply(c(Path.HELPER).copy(textSize = "xlarge", textSizeChosen = true, readAloud = false, readAloudChosen = true,
+            familyName = " Mei Ling ", familyPhone = " 9123 4567 ", pin = "2468"), s)
+        assertEquals(true, s.simpleMode)
+        assertEquals("xlarge", s.textSize)
         assertFalse(s.readAloud)
         assertEquals("Mei Ling", s.familyName)
         assertEquals("9123 4567", s.familyPhone)
         assertFalse("the PIN is never kept with the settings", s.saved.values.any { it == "2468" })
+        assertEquals(Tour.simpleSteps, Tour.steps(AppStyle.simpleAtLaunch(s.simpleMode)))
     }
 
-    @Test fun recommendedSettings() {
-        val r = Onboarding.recommended(c(Onboarding.Path.CUSTOM, PrivacyLevel.ON_DEVICE).copy(saveSentence = true, helpImprove = true, readAloud = false))
-        assertEquals(PrivacyLevel.CLOUD, r.privacy)
-        assertFalse(r.saveSentence || r.helpImprove)
-        assertTrue(r.readAloud)
-        assertEquals(Onboarding.Path.SIMPLE, r.path)
-    }
-
-    // ---- Simple mode: on for new installs, never forced on existing ones
-
-    @Test fun simpleModeDefaults() {
+    @Test fun skipIsStandardWithRecommendedSettings() {
         val s = FakeStore()
-        Onboarding.apply(Onboarding.defaults(DEFAULT_URL), s)          // a new install (finished or skipped)
-        assertEquals(true, s.simpleMode)
-        assertTrue(Onboarding.simpleModeAtLaunch(s.simpleMode))
-        assertFalse(Onboarding.offerSimpleMode(s.simpleMode, s.simpleModeOffered))
-        assertTrue(Onboarding.defaults(DEFAULT_URL).simple)
-        assertTrue(Onboarding.defaults(DEFAULT_URL).readAloud)
-        assertEquals("large", Onboarding.defaults(DEFAULT_URL).textSize)
+        Onboarding.apply(Onboarding.defaults(DEFAULT_URL), s)             // Skip on "Who will use this phone?"
+        assertEquals(false, s.simpleMode)
+        assertEquals("normal", s.textSize)
+        assertFalse(s.readAloud)
+        assertEquals(PrivacyLevel.CLOUD, s.privacyLevel)
+        assertFalse(s.saveRiskiestSentence || s.helpImproveDetection)
+        assertFalse("a new user gets no tip about the choice they just made", AppStyle.showTip(false, s.appStyleTipShown))
     }
 
-    @Test fun existingUsersKeepTheirModeAndAreOfferedSimpleModeOnce() {
-        val s = FakeStore(mutableMapOf("privacy_level" to "hybrid"))       // installed before Simple mode
-        assertEquals(Launch.EXISTING_USER, s.launch())
-        Onboarding.markCompleted(s)
-        assertNull(s.simpleMode)
-        assertFalse("keeps the full app", Onboarding.simpleModeAtLaunch(s.simpleMode))
-        assertTrue("offered once", Onboarding.offerSimpleMode(s.simpleMode, s.simpleModeOffered))
-        s.simpleModeOffered = true                                           // "No, thanks"
-        assertFalse(Onboarding.offerSimpleMode(s.simpleMode, s.simpleModeOffered))
-        assertFalse(Onboarding.simpleModeAtLaunch(s.simpleMode))
+    @Test fun changingTheAnswerResetsOnlyTheDefaults() {
+        val simpler = c(Path.SIMPLE)
+        assertEquals("large", simpler.textSize)
+        assertTrue(simpler.readAloud)
+        val back = Onboarding.choose(simpler, Path.STANDARD)
+        assertEquals("normal", back.textSize)
+        assertFalse(back.readAloud)
+        // a size the user picked stays
+        val picked = Onboarding.choose(simpler.copy(textSize = "xlarge", textSizeChosen = true), Path.STANDARD)
+        assertEquals("xlarge", picked.textSize)
+    }
+
+    @Test fun runSetupAgainStartsAtTheQuestionAndKeepsTheRest() {
+        val s = FakeStore()
+        Onboarding.apply(c(Path.HELPER, PrivacyLevel.HYBRID).copy(familyName = "Mei Ling", familyPhone = "91234567"), s)
+        val replay = Onboarding.fromSaved(s)
+        assertNull("nothing picked", replay.path)
+        assertEquals(listOf(Step.WHO), Onboarding.steps(replay))
+        assertEquals("91234567", replay.familyPhone)
+        assertEquals(PrivacyLevel.HYBRID, replay.privacy)
+    }
+
+    // ---- switching later (Settings → App style)
+
+    @Test fun switchingKeepsDataAndOnlyChangesDefaultsTheUserLeftAlone() {
+        val s = FakeStore()
+        Onboarding.apply(c(Path.HELPER, PrivacyLevel.HYBRID).copy(familyName = "Mei Ling", familyPhone = "91234567", saveSentence = true), s)
+        s.textSize = "xlarge"; s.textSizeChosen = true            // the user picked Extra large in Settings
+        AppStyle.switchTo(simple = false, s)
+        assertEquals(false, s.simpleMode)
+        assertEquals("xlarge", s.textSize)
+        assertFalse("read aloud follows Standard (not set by the user)", s.readAloud)
+        assertEquals("91234567", s.familyPhone)
         assertEquals(PrivacyLevel.HYBRID, s.privacyLevel)
-        // a user who already chose keeps the choice
-        assertFalse(Onboarding.offerSimpleMode(false, false))
-        assertFalse(Onboarding.simpleModeAtLaunch(false))
+        assertTrue(s.saveRiskiestSentence)
+        assertEquals(Launch.DONE, s.launch())
+        AppStyle.switchTo(simple = true, s)
+        assertTrue(s.readAloud)
+        assertEquals("xlarge", s.textSize)
+    }
+
+    @Test fun leavingSimpleModeAsksForThePinWhenSet() {
+        assertTrue(AppStyle.needsPin(fromSimple = true, toSimple = false, pinSet = true))
+        assertFalse(AppStyle.needsPin(fromSimple = true, toSimple = false, pinSet = false))
+        assertFalse("turning Simple on never asks", AppStyle.needsPin(fromSimple = false, toSimple = true, pinSet = true))
+        assertFalse(AppStyle.needsPin(fromSimple = true, toSimple = true, pinSet = true))
+    }
+
+    // ---- existing installs
+
+    @Test fun upgradeKeepsTheModeAndShowsTheTipOnce() {
+        // set up before Simple mode existed: Standard, phone-size text, tip once
+        val old = FakeStore(mutableMapOf("privacy_level" to "hybrid"))
+        assertEquals(Launch.EXISTING_USER, old.launch())
+        Onboarding.markCompleted(old)
+        assertFalse(AppStyle.simpleAtLaunch(old.simpleMode))
+        assertEquals("normal", old.textSize)
+        assertTrue(AppStyle.showTip(AppStyle.simpleAtLaunch(old.simpleMode), old.appStyleTipShown))
+        old.appStyleTipShown = true                                         // "Got it"
+        assertFalse(AppStyle.showTip(false, old.appStyleTipShown))
+        // already in Simple mode: stays Simple, no tip, no new question
+        val simple = FakeStore(mutableMapOf("simple_mode" to true, "onboarding_completed" to true, "onboarding_version" to 1))
+        assertEquals(Launch.DONE, simple.launch())
+        assertTrue(AppStyle.simpleAtLaunch(simple.simpleMode))
+        assertEquals("large", simple.textSize)
+        assertFalse(AppStyle.showTip(true, simple.appStyleTipShown))
     }
 
     // ---- wording (identical on iOS)

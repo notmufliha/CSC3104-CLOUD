@@ -40,12 +40,19 @@ Read each task exactly as written. Don't point at the screen or name buttons. If
 
 | # | Task (read aloud) | Success means | Time limit |
 |---|---|---|---|
-| 1 | (To the helper:) "Please set up this phone for your family member. Choose a comfortable text size, and add yourself as the family contact. You can add a PIN if you like." | Helper finishes the "Set up for a family member" path; text size and contact are set | 4 min |
+| 1 | (To the helper, on a freshly installed phone:) "Please set up this phone for your family member. Choose a comfortable text size, and add yourself as the family contact. You can add a PIN if you like. Then give them the phone." | On "Who will use this phone?" the helper picks **An older family member**, sets the text size, adds the contact (PIN optional) and reaches "Hand the phone to [name]"; the app ends in Simple mode | 4 min |
 | 2 | (To the participant:) "Please try a practice call." | Participant starts a practice call from Home and answers it | 2 min |
 | 3 | "Listen to the call. If something worries you, do what you think is right." | When the red warning appears, the participant taps **Hang up** (or **Call my family** / **Call 1799**) within 15 s of the warning | 3 min |
 | 4 | "You want to tell your family about the call. Show me how." | Taps **Tell [name]** (or **Call my family**) on the warning; Messages / the dialler opens with the message or number ready | 1 min |
 | 5 | "Find the calls you had today." | Finds "Recent calls" on Home (or the For family tab) and says what the last call was (e.g. "Scam") | 2 min |
 | 6 | "Make the writing on the screen bigger." | Settings → Text size → Extra large | 2 min |
+| 7 | (To the helper, after the session, on a second freshly installed phone or after Settings → Help → Run setup again:) "Now imagine this is your own phone. Set ScamGuard up for yourself, the way you would normally use it." | Picks **Me** on "Who will use this phone?", finishes the setup (or Skip) and lands on the full app (charts, call history, all settings); note whether "Me, but simpler" or "An older family member" confused them | 3 min |
+
+Observe during tasks 1 and 7, without prompting:
+
+- Did the helper read all three choices on "Who will use this phone?" before picking? Did they hesitate between
+  "Me, but simpler" and "An older family member"?
+- Did the helper understand they should hand the phone over at "Hand the phone to [name]"?
 
 Observe during task 3, without prompting:
 
@@ -80,18 +87,21 @@ Then ask two open questions and write down the answers word for word:
 | P1 | | 4 Tell family | | | | |
 | P1 | | 5 Find past calls | | | | |
 | P1 | | 6 Bigger text | | | | |
+| P1 (helper) | | 7 "Me" setup | | | | |
 | P2 | | 1 Family setup | | | | |
 | P2 | | 2 Practice call | | | | |
 | P2 | | 3 React to red warning | | | | |
 | P2 | | 4 Tell family | | | | |
 | P2 | | 5 Find past calls | | | | |
 | P2 | | 6 Bigger text | | | | |
+| P2 (helper) | | 7 "Me" setup | | | | |
 | P3 | | 1 Family setup | | | | |
 | P3 | | 2 Practice call | | | | |
 | P3 | | 3 React to red warning | | | | |
 | P3 | | 4 Tell family | | | | |
 | P3 | | 5 Find past calls | | | | |
 | P3 | | 6 Bigger text | | | | |
+| P3 (helper) | | 7 "Me" setup | | | | |
 
 Confidence and comments:
 
@@ -113,10 +123,12 @@ Confidence and comments:
 | 4 Tell family | | | | |
 | 5 Find past calls | | | | |
 | 6 Bigger text | | | | |
+| 7 "Me" setup (helper) | | | | |
 
 Median confidence: ____ / 5
 
-Targets for the app to count as ready: every participant completes task 3 alone within 15 s of the warning; at least
+Targets for the app to count as ready: every helper completes tasks 1 and 7 with the right choice on the first try;
+every participant completes task 3 alone within 15 s of the warning; at least
 4 of 5 complete tasks 2, 5 and 6 alone; median confidence 4 or higher. Anything below a target goes on the fix list,
 with the participant's own words.
 

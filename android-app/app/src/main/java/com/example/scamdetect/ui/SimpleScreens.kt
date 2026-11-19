@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
@@ -180,17 +181,13 @@ private fun RecentCallsCard(calls: List<CallRecord>) {
     }
 }
 
-/** An existing user's one-time card: "Try Simple mode?" [Turn on Simple mode] [No, thanks]. */
+/** Users set up before the "Who will use this phone?" question: a one-time tip about Settings → App style. */
 @Composable
-fun SimpleOfferCard(onYes: () -> Unit, onNo: () -> Unit) {
-    AppCard(color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.testTag("simpleOffer")) {
-        Text(stringResource(R.string.offer_title), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
-        Text(stringResource(R.string.offer_text), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
-        Button(onClick = onYes, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-            Text(stringResource(R.string.btn_offer_yes), style = MaterialTheme.typography.labelLarge)
-        }
-        OutlinedButton(onClick = onNo, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-            Text(stringResource(R.string.btn_offer_no), style = MaterialTheme.typography.labelLarge)
+fun AppStyleTipCard(onDismiss: () -> Unit) {
+    AppCard(color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.testTag("styleTip")) {
+        Text(stringResource(R.string.tip_app_style), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+        OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("styleTipOk")) {
+            Text(stringResource(R.string.btn_got_it), style = MaterialTheme.typography.labelLarge)
         }
     }
 }
@@ -222,15 +219,18 @@ fun SettingsRow(icon: ImageVector, title: String, value: String? = null, valueCo
 @Composable
 private fun Divider() = HorizontalDivider(Modifier.padding(start = 70.dp))
 
-/** Everything both modes put first: text size, read aloud, family contact. */
+/** Everything both modes put first: app style, text size, read aloud, family contact. */
 @Composable
 fun EverydaySettings(
-    textSize: String, readAloud: Boolean, familyName: String?,
+    simple: Boolean, textSize: String, readAloud: Boolean, familyName: String?,
     onOpen: (SettingsPage) -> Unit, onReadAloud: (Boolean) -> Unit,
 ) {
     Group {
+        SettingsRow(Icons.Filled.Face, stringResource(R.string.set_app_style),
+            stringResource(if (simple) R.string.style_simple else R.string.style_standard), tag = "rowAppStyle") { onOpen(SettingsPage.APP_STYLE) }
+        Divider()
         SettingsRow(AppIcons.TextSize, stringResource(R.string.set_text_size),
-            stringResource(if (textSize == AppPrefs.TEXT_XLARGE) R.string.text_xlarge else R.string.text_large), tag = "rowTextSize") { onOpen(SettingsPage.TEXT_SIZE) }
+            stringResource(textSizeLabel(textSize)), tag = "rowTextSize") { onOpen(SettingsPage.TEXT_SIZE) }
         HorizontalDivider(Modifier.padding(start = 16.dp))
         ToggleRow(stringResource(R.string.set_read_aloud), stringResource(R.string.set_read_aloud_line), readAloud, onReadAloud)
         HorizontalDivider(Modifier.padding(start = 16.dp))
@@ -248,7 +248,7 @@ fun SimpleSettingsMenu(
 ) {
     Page(stringResource(R.string.tab_settings)) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            EverydaySettings(textSize, readAloud, familyName, onOpen, onReadAloud)
+            EverydaySettings(true, textSize, readAloud, familyName, onOpen, onReadAloud)
             Group {
                 SettingsRow(Icons.Filled.Info, stringResource(R.string.set_help), tag = "rowHelp") { onOpen(SettingsPage.HELP) }
                 Divider()
@@ -264,14 +264,12 @@ fun SimpleSettingsMenu(
 /** What Advanced settings holds (and the full app's Settings shows directly). */
 @Composable
 fun AdvancedRows(
-    simple: Boolean, showCareful: Boolean, onShowCareful: (Boolean) -> Unit, onSimple: (Boolean) -> Unit,
+    simple: Boolean, showCareful: Boolean, onShowCareful: (Boolean) -> Unit,
     pinSet: Boolean, privacy: PrivacyLevel, connection: Boolean?, modelsUpdated: Boolean, callCount: Int,
     onOpen: (SettingsPage) -> Unit,
 ) {
     Group {
         ToggleRow(stringResource(R.string.set_show_careful), stringResource(R.string.set_show_careful_line), showCareful, onShowCareful)
-        HorizontalDivider(Modifier.padding(start = 16.dp))
-        ToggleRow(stringResource(R.string.set_simple_mode), stringResource(R.string.set_simple_mode_line), simple, onSimple)
         HorizontalDivider(Modifier.padding(start = 16.dp))
         SettingsRow(Icons.Filled.Lock, stringResource(R.string.set_pin),
             stringResource(if (pinSet) R.string.set_pin_line_on else R.string.set_pin_line_off), tag = "rowPin") { onOpen(SettingsPage.PIN) }
@@ -305,6 +303,37 @@ fun AdvancedPage(content: @Composable ColumnScope.() -> Unit, onBack: () -> Unit
 }
 
 // ---------------------------------------------------------------- pages
+
+/**
+ * Settings → App style: Standard or Simple, with a one-line preview of each. Leaving Simple mode asks for the PIN first
+ * when one is set (needsPin), so a senior can't switch by accident.
+ */
+@Composable
+fun AppStylePage(
+    simple: Boolean, needsPin: (toSimple: Boolean) -> Boolean, onPick: (Boolean) -> Unit,
+    onCheckPin: suspend (String) -> Boolean, onForgotPin: () -> Unit, onBack: () -> Unit,
+) {
+    var askPin by rememberSaveable { mutableStateOf(false) }
+    if (askPin) {
+        PinGate(
+            onCheck = { pin -> onCheckPin(pin).also { ok -> if (ok) { askPin = false; onPick(false) } } },
+            onForgot = { onForgotPin(); askPin = false; onPick(false) },
+            onBack = { askPin = false },
+        )
+        return
+    }
+    Page(stringResource(R.string.set_app_style), onBack) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(stringResource(R.string.style_page_line), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            ChoiceCard(!simple, stringResource(R.string.style_standard), stringResource(R.string.style_standard_line), "style_standard") {
+                if (simple) { if (needsPin(false)) askPin = true else onPick(false) }
+            }
+            ChoiceCard(simple, stringResource(R.string.style_simple), stringResource(R.string.style_simple_line), "style_simple") {
+                if (!simple) onPick(true)
+            }
+        }
+    }
+}
 
 @Composable
 fun TextSizePage(current: String, onPick: (String) -> Unit, onBack: () -> Unit) {

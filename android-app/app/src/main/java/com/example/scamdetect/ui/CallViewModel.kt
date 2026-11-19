@@ -29,6 +29,7 @@ import com.example.scamdetect.logic.Dashboard
 import com.example.scamdetect.logic.FinalReview
 import com.example.scamdetect.logic.ImplicitLabels
 import com.example.scamdetect.logic.Mask
+import com.example.scamdetect.logic.AppStyle
 import com.example.scamdetect.logic.Onboarding
 import com.example.scamdetect.logic.PrivacyLevel
 import com.example.scamdetect.logic.Reasons
@@ -143,12 +144,15 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     private val _showBeCareful = MutableStateFlow(prefs.showBeCareful)
     val showBeCareful: StateFlow<Boolean> = _showBeCareful.asStateFlow()
 
-    /** "Text size": AppPrefs.TEXT_LARGE (default) or TEXT_XLARGE. */
+    /** "Text size": AppPrefs.TEXT_NORMAL, TEXT_LARGE or TEXT_XLARGE (the app style's default until the user picks). */
     private val _textSize = MutableStateFlow(prefs.textSize)
     val textSize: StateFlow<String> = _textSize.asStateFlow()
-    fun setTextSize(size: String) { prefs.textSize = size; _textSize.value = prefs.textSize }
+    /** Settings → Text size: the user's own choice, kept when the app style changes. */
+    fun setTextSize(size: String) { prefs.textSize = size; prefs.textSizeChosen = true; _textSize.value = prefs.textSize }
+    /** The setup shows a text size before anything is saved (a replay that is left restores the saved one). */
+    fun previewTextSize(size: String) { _textSize.value = size }
 
-    fun setReadAloud(on: Boolean) { prefs.readAloud = on; _readAloud.value = on }
+    fun setReadAloud(on: Boolean) { prefs.readAloud = on; prefs.readAloudChosen = true; _readAloud.value = on }
     fun setShowBeCareful(on: Boolean) { prefs.showBeCareful = on; _showBeCareful.value = on }
 
     /** The trusted family contact (name, phone), null = none set. */
@@ -163,26 +167,37 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         _family.value = savedFamily()
     }
 
-    /** Simple mode (Home, For family, simple Settings). An install from before it keeps the full app. */
-    private val _simple = MutableStateFlow(Onboarding.simpleModeAtLaunch(prefs.simpleMode))
+    /** App style: Simple mode (Simple Home, For family, short Settings) or Standard (the full app). */
+    private val _simple = MutableStateFlow(AppStyle.simpleAtLaunch(prefs.simpleMode))
     val simpleMode: StateFlow<Boolean> = _simple.asStateFlow()
 
-    /** Home's one-time card for an existing user: "Try Simple mode?". */
-    private val _simpleOffer = MutableStateFlow(Onboarding.offerSimpleMode(prefs.simpleMode, prefs.simpleModeOffered))
-    val simpleOffer: StateFlow<Boolean> = _simpleOffer.asStateFlow()
+    /** Home's one-time tip for users set up before the "Who will use this phone?" question. */
+    private val _styleTip = MutableStateFlow(AppStyle.showTip(_simple.value, prefs.appStyleTipShown))
+    val appStyleTip: StateFlow<Boolean> = _styleTip.asStateFlow()
 
-    fun setSimpleMode(on: Boolean) {
-        prefs.simpleMode = on
-        prefs.simpleModeOffered = true
-        _simple.value = on
-        _simpleOffer.value = false
+    fun dismissAppStyleTip() {
+        prefs.appStyleTipShown = true
+        _styleTip.value = false
     }
 
-    /** "No, thanks" on the card: never asked again, the full app stays. */
-    fun declineSimpleOffer() {
-        prefs.simpleModeOffered = true
-        _simpleOffer.value = false
+    /** Settings → App style. Keeps the history, contact and PIN; text size / read-aloud follow unless the user set them. */
+    fun setAppStyle(simple: Boolean) {
+        AppStyle.switchTo(simple, prefs)
+        _simple.value = simple
+        _textSize.value = prefs.textSize
+        _readAloud.value = prefs.readAloud
+        _styleTip.value = false
     }
+
+    /** Debug builds only (--ez demoTip true): show the one-time tip again, for screenshots. */
+    fun demoAppStyleTip() {
+        if (!isDebugBuild) return
+        prefs.appStyleTipShown = false
+        _styleTip.value = AppStyle.showTip(_simple.value, false)
+    }
+
+    /** Leaving Simple mode asks for the PIN first when one is set. */
+    fun appStyleNeedsPin(toSimple: Boolean): Boolean = AppStyle.needsPin(_simple.value, toSimple, pinSet.value)
 
     /** The optional PIN (only its hash is stored, data/PinStore.kt). */
     private val pinStore = com.example.scamdetect.data.PinStore(app)
@@ -882,7 +897,7 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     val gate: StateFlow<Gate> = _gate.asStateFlow()
 
     /** The setup screen showing, and the choices made so far. Kept here so a rotation keeps them. */
-    private val _setupStep = MutableStateFlow(Onboarding.Step.WELCOME)
+    private val _setupStep = MutableStateFlow(Onboarding.Step.WHO)
     val setupStep: StateFlow<Onboarding.Step> = _setupStep.asStateFlow()
     private val _setupChoices = MutableStateFlow(Onboarding.defaults(prefs.gatewayUrl))
     val setupChoices: StateFlow<Onboarding.Choices> = _setupChoices.asStateFlow()
@@ -909,10 +924,18 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun decideGate(launch: Onboarding.Launch) {
         when (launch) {
-            Onboarding.Launch.SHOW_SETUP -> _gate.value = Gate.SETUP
+            Onboarding.Launch.SHOW_SETUP -> { setupTextSize(); _gate.value = Gate.SETUP }
             Onboarding.Launch.EXISTING_USER -> { Onboarding.markCompleted(prefs); openApp() }
             Onboarding.Launch.DONE -> openApp()
         }
+    }
+
+    /**
+     * Until "Who will use this phone?" is answered the setup is in large text (an older person may be reading it);
+     * the answer then shows that style's size. A size the user picked themselves stays.
+     */
+    private fun setupTextSize() {
+        if (!prefs.textSizeChosen) _textSize.value = AppStyle.textSize(simple = true)
     }
 
     /** The app opens: now (not during the setup) it may use the network. */
@@ -943,8 +966,8 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         _helpImprove.value = c.helpImprove
         _textSize.value = prefs.textSize
         _readAloud.value = prefs.readAloud
-        _simple.value = c.simple
-        _simpleOffer.value = false
+        _simple.value = prefs.simpleMode == true
+        _styleTip.value = false
         _family.value = savedFamily()
         if (!c.saveSentence) viewModelScope.launch { callHistory.forgetSentences() }
         if (!c.helpImprove) viewModelScope.launch { callHistory.forgetLabelSentences() }
@@ -958,14 +981,16 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     /** Back on the first screen of "Run setup again", confirmed: nothing is saved. */
     fun leaveSetup() {
         setupIsReplay = false
+        _textSize.value = prefs.textSize
         _gate.value = Gate.APP
     }
 
     /** Help & about: "Run setup again", starting from the current settings. */
     fun runSetupAgain() {
         _setupChoices.value = Onboarding.fromSaved(prefs)
-        _setupStep.value = Onboarding.Step.WELCOME
+        _setupStep.value = Onboarding.Step.WHO
         setupIsReplay = true
+        setupTextSize()
         _tourStep.value = null
         _gate.value = Gate.SETUP
     }
@@ -975,8 +1000,9 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         if (!isDebugBuild) return
         Onboarding.reset(prefs)
         _setupChoices.value = Onboarding.defaults(prefs.gatewayUrl)
-        _setupStep.value = Onboarding.Step.WELCOME
+        _setupStep.value = Onboarding.Step.WHO
         setupIsReplay = false
+        setupTextSize()
         _tourStep.value = null
         _gate.value = Gate.SETUP
     }
