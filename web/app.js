@@ -1,4 +1,4 @@
-// ScamGuard web app: the phone apps in a browser, so the system can be tried without Android Studio or Xcode. All
+// ScamGuard web app (POST v1/utterance, v1/call/end, v1/verify, v1/report, GET healthz): the phone apps in a browser, so the system can be tried without Android Studio or Xcode. All
 // three privacy levels: 1 Cloud (the gateway checks every line), 2 Hybrid and 3 On-device (checked in this page by
 // ondevice.js, the apps' own on-device models and rules; Hybrid asks the cloud's BERT only at unsure moments, with
 // the lines masked; On-device asks MobileBERT, run here with onnxruntime-web, and makes no request at all). Same gateway calls (POST v1/utterance, v1/call/end, GET healthz), the same screens in
@@ -234,7 +234,7 @@ function newCall(script) {
     script, id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random(),
     lines: [], verdict: null, combinedScore: null, callScores: {}, error: null, lastOutcomeSeq: 0,
     scamAlert: false, warningOpen: false, points: [], startedAt: 0, timers: [], ended: false,
-    reviewing: false, finalReview: null, copied: false,
+    reviewing: false, finalReview: null, copied: false, reportResult: null, reportSent: false, sending: false,
     level: "cloud", chain: Promise.resolve(),
   };
 }
@@ -488,6 +488,42 @@ function reportSummary(c) {
 async function copyText(text) {
   try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
 }
+// ---------------------------------------------------------------- report to the team (Workstream H.3)
+// "This was a scam" / "This was fine" on the summary: with the user's consent, the caller's lines (masked) go to the
+// review queue (POST v1/report), where a reviewer labels them for retraining (demo/LEARNING_LOOP.md). Cloud level only,
+// as in the apps (CallViewModel.sendReport): at levels 2 and 3 nothing about the call leaves the device.
+
+/** Exactly what a report would send: the caller's lines, masked. Shown on the consent screen first. */
+const reportPreview = (c) => c.lines.filter((l) => l.isCaller && l.text.trim()).map((l) => ({ seq: l.seq, text: Mask(l.text) }));
+async function sendReport(c, kind) {
+  const lines = reportPreview(c);
+  if (!lines.length) return [T("report_nothing"), false];
+  const text = lines.map((l) => l.text).join(" ");
+  const chinese = [...text].filter((ch) => ch >= "一" && ch <= "鿿").length;
+  const language = c.script.lang || (chinese * 10 > text.length * 3 ? "zh" : "en");   // the gateway's 30% rule
+  try {
+    const r = await api("v1/report", { call_id: c.id, kind, app_verdict: c.verdict || "", language, consent: true, lines, consent_version: 2 }, 8000);
+    if (r.ok) return [T("report_thanks", r.json?.lines_stored ?? lines.length), true];
+    if (r.status === 503) return [T("report_not_set_up"), false];
+    return [T("report_failed"), false];
+  } catch { return [T("report_failed"), false]; }
+}
+function consentSheet(c, kind) {
+  const lines = reportPreview(c);
+  return `<div class="scrim" data-act="consent-no"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="consent-title">
+    <h2 id="consent-title">${kind === "scam" ? "Share this scam call?" : "Share this call as a false alarm?"}</h2>
+    <p>Helps ScamGuard learn new scams. A team member reads it, labels it, and it may be used to retrain the checks.</p>
+    <p class="small">Sent: the caller's ${lines.length} lines below. We try to remove numbers, amounts, links and names,
+      but some can slip through, such as a name said in passing or digits read out as words. Check the text; if you see
+      anything private, choose Don't share.</p>
+    <p class="small">Not sent: your phone number, the caller's number, anything you said.</p>
+    <p class="small">Kept: deleted after 30 days, except lines a reviewer approves as training examples. Those stay
+      encrypted with no link to you, so they can't be withdrawn later.</p>
+    <div class="col">${lines.map((l) => `<div class="card">“${esc(l.text)}”</div>`).join("")}</div>
+    <div class="row"><button class="btn grow big" data-act="consent-no">Don't share</button>
+      <button class="btn fill grow big" data-act="consent-yes" data-kind="${kind}" ${lines.length ? "" : "disabled"}>${esc(T("btn_share"))}</button></div></div>`;
+}
+
 const telHref = (n) => "tel:" + String(n).replace(/[^\d+]/g, "");
 const smsHref = (n, body) => "sms:" + String(n).replace(/[^\d+]/g, "") + "?body=" + encodeURIComponent(body);
 
@@ -669,9 +705,15 @@ const SCREENS = {
         <button class="btn wide big outline" data-act="sheet-shared">${esc(T("after_shared"))}</button></div>` : ""}
       ${lvl !== "GREEN" && !hiddenYellow ? `<h2>${esc(T("sum_triggered"))}</h2>
         ${shown.length ? `<div class="chat">${shown.map((l) => bubble(l, risky.has(l.seq))).join("")}</div>` : `<p>${esc(T("sum_no_lines"))}</p>`}` : ""}
+      ${c.level === "cloud" ? `<div class="card"><h2>Help ScamGuard learn</h2>
+        <p class="small muted">Was this result right? You see exactly what would be shared before anything is sent.</p>
+        <div class="row"><button class="btn grow" data-act="learn-scam" ${c.reportSent || c.sending ? "disabled" : ""}>This was a scam</button>
+          <button class="btn grow" data-act="learn-fine" ${c.reportSent || c.sending ? "disabled" : ""}>This was fine</button></div>
+        ${c.sending ? `<p class="small" role="status">${esc(T("loading"))}</p>` : ""}
+        ${c.reportResult ? `<p class="small strong" role="status">${esc(c.reportResult)}</p>` : ""}</div>` : ""}
       <button class="btn fill wide big" data-act="done">${esc(T("btn_done"))}</button>
       ${after ? "" : `<a class="btn wide big outline red-outline" href="${SCAMSHIELD_URL}" target="_blank" rel="noopener">${esc(T("btn_report_scamshield"))}</a>`}
-      ${sheet ? stepsSheet(sheet) : ""}`;
+      ${sheet ? (sheet.startsWith("consent-") ? consentSheet(c, sheet.slice(8)) : stepsSheet(sheet)) : ""}`;
   },
 
   dashboard: () => {
@@ -923,6 +965,13 @@ document.addEventListener("click", async (e) => {
     case "sheet-block": sheet = "block"; render(); break;
     case "sheet-shared": sheet = "shared"; render(); break;
     case "sheet-close": sheet = null; render(); break;
+    case "learn-scam": case "learn-fine": if (c) { sheet = el.dataset.act === "learn-scam" ? "consent-scam" : "consent-fine"; render(); } break;
+    case "consent-no": sheet = null; if (c) c.reportResult = "Nothing was shared."; render(); break;
+    case "consent-yes":
+      if (!c) break;
+      sheet = null; c.sending = true; render();
+      [c.reportResult, c.reportSent] = await sendReport(c, el.dataset.kind);
+      c.sending = false; render(); break;
     case "quiz-start": case "quiz-again": {
       const avoid = new Set((quiz?.items || []).map((q) => q.text));
       quiz = { items: quizRound(avoid), i: 0, answer: null, score: 0, done: false };
