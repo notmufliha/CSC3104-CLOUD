@@ -55,6 +55,14 @@ actor OnDeviceServices {
         return nil
     }
 
+    /// Developer view: MobileBERT's status, version and size.
+    func mobileBertDevLine() -> String {
+        switch mobileBert() {
+        case .installed(let m): return "installed, \(m.config.version), " + String(format: "%.1f MB", Double(m.modelBytes) / 1e6)
+        case .notInstalled(let reason): return reason
+        }
+    }
+
     /// "MobileBERT installed (version)" or why not, for the Settings screen.
     func mobileBertStatusLine() -> String {
         switch mobileBert() {

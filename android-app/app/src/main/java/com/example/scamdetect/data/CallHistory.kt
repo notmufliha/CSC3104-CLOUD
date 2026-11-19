@@ -29,11 +29,14 @@ class CallHistory(context: Context, private val prefs: AppPrefs) {
     val allPoints: Flow<List<ScorePoint>> = dao.allPoints()
     val labels: Flow<List<ImplicitLabel>> = labelDao.labelsFlow()
 
-    /** Debug builds only: the made-up history from SampleHistory (ids "sample-…"). */
+    /** Developer view: the made-up history from SampleHistory (ids "sample-…"). */
     suspend fun insertSample(h: com.example.scamdetect.logic.SampleHistory.History) {
         h.calls.forEach { c -> dao.insert(c, h.points.filter { it.callId == c.id }) }
         h.labels.forEach { labelDao.insertLabel(it) }
     }
+
+    /** Developer view: remove the sample history again (real calls stay). */
+    suspend fun deleteSample() = db.deleteSample()
 
     suspend fun save(call: CallRecord, points: List<ScorePoint>) = dao.insert(call, points)
 

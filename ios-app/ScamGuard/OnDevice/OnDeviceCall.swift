@@ -66,7 +66,7 @@ nonisolated final class OnDeviceCall: @unchecked Sendable {
         let scores = scorer.score(text)
         remember(text)
         let d = rules.decide(lineOf(scores), nowMs: clock())
-        return response(callId, seq, scores, d, start)
+        return response(callId, seq, scores, d, start, bertStatus: "off")
     }
 
     /// Level 2. `verify` sends the masked lines to the cloud and returns BERT's score, or nil on timeout / error.
@@ -107,7 +107,7 @@ nonisolated final class OnDeviceCall: @unchecked Sendable {
         else if second?.bertScore != nil { status = "ok" }
         else { status = "error" }
         let d = rules.decide(line, nowMs: now, bert: second?.bertScore, bertStatus: status)
-        return Answer(response: response(callId, seq, scores, d, start), decision: d, second: second)
+        return Answer(response: response(callId, seq, scores, d, start, bertStatus: status), decision: d, second: second)
     }
 
     private func remember(_ text: String) {
@@ -118,16 +118,23 @@ nonisolated final class OnDeviceCall: @unchecked Sendable {
     private func lineOf(_ scores: [String: Float]) -> [Float?] { LocalRules.signals.map { scores[$0] } }
 
     private func response(_ callId: String, _ seq: Int, _ scores: [String: Float], _ d: LocalRules.Decision,
-                          _ startNanos: UInt64) -> UtteranceResponse {
+                          _ startNanos: UInt64, bertStatus: String) -> UtteranceResponse {
         var recent: [String: Float] = [:]
         for (s, v) in zip(LocalRules.signals, d.recent) { if let v { recent[s] = v } }
         let reasons = d.reasons.map { ServerReason(signal: $0.signal, score: $0.score, text: $0.text) }
         let level = Risk.level(d.verdict, nil)
-        return UtteranceResponse(
+        var r = UtteranceResponse(
             callId: callId, seq: seq, scored: true, duplicate: false, verdict: d.verdict, combinedScore: d.combined,
             language: "en", scores: scores.mapValues { Optional($0) }, missing: [], callScores: recent,
             callerLines: d.callerLines, latencyMs: Int((DispatchTime.now().uptimeNanoseconds - startNanos) / 1_000_000),
             reasons: reasons, action: LocalRules.actionFor(level) ?? "")
+        // For the Developer view only
+        r.liveAlert = d.verdict
+        r.fastScore = d.fast
+        r.bertScore = d.bert
+        r.bertStatus = bertStatus
+        r.rule = d.rule
+        return r
     }
 
     /// The on-device models are English only. Same 30% rule as the gateway's language detection: a line with more

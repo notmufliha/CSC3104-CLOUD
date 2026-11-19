@@ -54,6 +54,7 @@ object GatewayClient {
             .connectTimeout(2, TimeUnit.SECONDS)
             .callTimeout(4, TimeUnit.SECONDS)   // gateway promises an answer within 2 s
             .addInterceptor(logging)            // logs method, URL, status only (no body)
+            .addInterceptor(DevHttpLog)         // Developer view only: a masked copy, in memory (data/DevHttp.kt)
             .build()
 
         val api = Retrofit.Builder()

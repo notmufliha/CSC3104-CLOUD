@@ -141,6 +141,9 @@ final class ModelUpdaterTests: XCTestCase {
         XCTAssertEqual(ModelUpdater.modelsBase("http://localhost:8080/"), "http://localhost:8088/models/")
         XCTAssertEqual(ModelUpdater.modelsBase("192.168.1.23:8080"), "http://192.168.1.23:8088/models/")
         XCTAssertEqual(ModelUpdater.modelsBase("http://example.org/"), "http://example.org/models/")
+        // the gateway port with a path: the edge serves /models at its root (same cases as Android ModelUpdaterTest)
+        XCTAssertEqual(ModelUpdater.modelsBase("http://10.0.2.2:8080/gw/"), "http://10.0.2.2:8088/models/")
+        XCTAssertEqual(ModelUpdater.modelsBase("http://10.0.2.2:8080/"), "http://10.0.2.2:8088/models/")
     }
 
     private func tempDir() -> URL { FileManager.default.temporaryDirectory.appendingPathComponent("models-\(UUID().uuidString)") }

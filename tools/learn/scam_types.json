@@ -1,0 +1,93 @@
+{
+  "about": "Learn to spot scams: one card per scam type our call scripts cover, and the explanations for the practice quiz. Hand-written from our scripts (assets/scripts) and the SPF advisories linked in tools/testing/expected.json; general advice is ScamShield's (scamshield.gov.sg), which the app already links. No statistics or news. Edit this file, then run python3 tools/learn/build_learn.py (writes learn.json into both apps).",
+  "sources": {
+    "scamshield": {"name": "ScamShield", "url": "https://www.scamshield.gov.sg/"},
+    "spf_ica": {"name": "Singapore Police Force advisory", "url": "https://www.police.gov.sg/Media-Hub/News/2026/09/20260925_advisory_on_scams_involving_the_immigration_checkpoints_authority_ica"},
+    "spf_telco": {"name": "Singapore Police Force advisory", "url": "https://www.police.gov.sg/Media-Hub/News/2026/07/20260719_police_advisory_on_government_officials_impersonation_scams_involving_telephone_numbers"},
+    "spf_apple": {"name": "Singapore Police Force advisory", "url": "https://www.police.gov.sg/media-hub/news/2026/08/20260821_police_advisory_on_apple_impersonation_cryptocurrency_account_compromise_scams"},
+    "spf_card": {"name": "Singapore Police Force advisory", "url": "https://www.police.gov.sg/media-hub/news/2026/05/20260504_police_advisory_on_government_officials_impersonation_scams_involving_cash_transfers"},
+    "spf_brief": {"name": "Singapore Police Force, Annual Scam and Cybercrime Brief 2025", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/Scams/Annual-Scam-and-Cybercrime-Brief-2025.pdf"}
+  },
+  "types": [
+    {
+      "id": "bank_code", "script": "scam_en_11_bank_otp.json", "source": "scamshield",
+      "title": "A 'bank' asks for your code",
+      "signs": ["Says it is your bank and there is a strange payment.", "Says you must act within minutes.", "Asks you to read out a code sent to your phone, or your card number."],
+      "todo": "Hang up. Call your bank on the number on the back of your card. Never share a code.",
+      "quiz_why": "A real bank never asks you to read out a code or your card number."
+    },
+    {
+      "id": "fake_police", "script": "scam_en_10_gov_official.json", "source": "scamshield",
+      "title": "Fake police officer",
+      "signs": ["Your call is passed to someone who says they are the police.", "Says you will be arrested today and must tell no one.", "Asks you to move your savings to a 'safety account'."],
+      "todo": "Hang up. The police never ask you to move your money. Call 1799 if you are unsure.",
+      "quiz_why": "The police never ask you to move your money or to keep it a secret."
+    },
+    {
+      "id": "parcel", "script": "scam_en_12_parcel_customs.json", "source": "scamshield",
+      "title": "Parcel held at customs",
+      "signs": ["Says a parcel in your name is held at customs.", "Passes you to an 'officer' who threatens the police.", "Asks for a fee by PayNow within the hour."],
+      "todo": "Hang up. Check with the courier on its own app or website. Do not pay anyone who calls you.",
+      "quiz_why": "No one should make you pay a 'release fee' over the phone."
+    },
+    {
+      "id": "tech_support", "script": "scam_en_13_tech_support.json", "source": "scamshield",
+      "title": "Fake computer or internet support",
+      "signs": ["Says your router or computer has been hacked.", "Asks you to install an app or read out a code so they can see your screen.", "Asks you to log in to your bank, move money, or pay with gift cards."],
+      "todo": "Hang up. Never let a caller control your phone or computer.",
+      "quiz_why": "Real support staff never ask you to log in to your bank, move money or pay with gift cards."
+    },
+    {
+      "id": "relative", "script": "scam_en_14_friend_in_trouble.json", "source": "scamshield",
+      "title": "A 'relative' in trouble",
+      "signs": ["Asks you to guess who is calling, then says they changed their number.", "Says they are in trouble and need money today.", "Asks you to keep it secret and to PayNow quickly."],
+      "todo": "Hang up. Call the person on the number you already have, or ask the family.",
+      "quiz_why": "Asking for urgent money and for secrecy is a sign of a fake relative."
+    },
+    {
+      "id": "ica_police", "script": "scam_en_20_ica_to_china_police.json", "source": "spf_ica",
+      "title": "ICA officer, then 'China police'",
+      "signs": ["Says it is ICA and your passport was used for a crime.", "Passes you to 'police' from another country who threaten arrest.", "Asks you to move all your savings to a 'supervision account'."],
+      "todo": "Hang up. ICA never asks you to transfer money over the phone. Call 1799 if you are unsure.",
+      "quiz_why": "No officer asks you to move your savings so they can 'check' them."
+    },
+    {
+      "id": "telco_officer", "script": "scam_en_21_telco_to_mas_officer.json", "source": "spf_telco",
+      "title": "Phone company, then a 'MAS officer'",
+      "signs": ["Says a second phone line in your name is used for fraud.", "Passes you to an officer from the Monetary Authority of Singapore.", "Says your bank account will be frozen unless you move your money now."],
+      "todo": "Hang up. No real officer asks you to move your money to a 'safety account'. Call 1799 if you are unsure.",
+      "quiz_why": "No real officer asks you to move your money to a 'safety account'."
+    },
+    {
+      "id": "apple_crypto", "script": "scam_en_22_apple_support_crypto.json", "source": "spf_apple",
+      "title": "Fake Apple support and your coins",
+      "signs": ["Says someone is logging in to your Apple ID right now.", "Asks you to open your crypto app while they stay on the line.", "Asks you to move your coins to a 'secure wallet' and read out a code."],
+      "todo": "Hang up. Never move coins or share a code because a caller tells you to.",
+      "quiz_why": "Real support never asks you to move your coins or read out a code."
+    },
+    {
+      "id": "card_handover", "script": "scam_en_23_bank_card_handover.json", "source": "spf_card",
+      "title": "A 'bank officer' comes for your card",
+      "signs": ["Says your bank card was used and must be replaced today.", "Tells you not to go to the bank branch.", "Asks you to hand over your card and PIN, or your cash."],
+      "todo": "Hang up. Never give your card, PIN or cash to anyone. Call your bank on the number on your card.",
+      "quiz_why": "A real bank never asks for your PIN or asks you to hand over your card or cash."
+    },
+    {
+      "id": "job_task", "script": "scam_en_24_job_task_deposit.json", "source": "spf_brief",
+      "title": "Part-time job that asks you to pay",
+      "signs": ["Offers easy money for liking or reviewing products.", "Says you must pay first to get your earnings.", "Gives a deadline: pay in minutes or lose everything."],
+      "todo": "Stop. A real job never asks you to pay to get your pay.",
+      "quiz_why": "A real job never asks you to pay money to get your earnings."
+    }
+  ],
+  "safe_why": {
+    "normal_en_10_bank_reminder.json": "A real bank reminder: you pay it yourself, and the bank never asks for your code.",
+    "normal_en_11_clinic_appointment.json": "The clinic only confirms your visit; you pay at the counter.",
+    "normal_en_12_delivery_driver.json": "The driver is at your door with your own order.",
+    "normal_en_13_insurance_sales.json": "A sales call with no pressure and nothing to pay now.",
+    "normal_en_14_family_call.json": "A normal family chat. No one asks you for money.",
+    "normal_en_20_ica_passport_collection.json": "ICA points you to its own app and asks for no money.",
+    "normal_en_21_bank_fraud_check.json": "The bank only asks yes or no, and tells you to call back on the number on your card.",
+    "normal_en_22_telco_contract_renewal.json": "An offer with nothing to pay today and no hand-over to any officer."
+  }
+}

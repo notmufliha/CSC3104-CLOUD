@@ -15,7 +15,8 @@ measured already, with dates and commands, so you know what's proven and what yo
 Two add-ons have their own guides: [`STABLE_ADDRESS.md`](STABLE_ADDRESS.md) (Workstream E: one HTTPS
 address for the phone) and [`LEARNING_LOOP.md`](LEARNING_LOOP.md) (Workstream H: report a call, label it,
 retrain, release check, rolling update; all through `python demo/tools/learning.py`). `up` also builds the
-review service and the retraining image, so the stack is now 11 images.
+review service and the retraining image, and the web app image (`scam/web`: the page, the app's call scripts and
+on-device models, onnxruntime-web), so the stack is now 12 images.
 
 ## One-time setup (do this once, whenever)
 
@@ -59,9 +60,9 @@ automatically — you don't need to compute anything. Rough guide:
 .\demo\up.ps1          # Windows PowerShell
 ```
 
-This builds all 11 images (gateway, aggregator, 6 workers, BERT, review, retrain), starts minikube, loads the images into
-it, and deploys everything. **The BERT image needs internet** (it downloads the real trained model from
-Hugging Face at build time — nothing to set up by hand, see `demo/ARCHITECTURE.md`). If that download
+This builds all 12 images (gateway, aggregator, 6 workers, BERT, review, retrain, web), starts minikube, loads the images into
+it, and deploys everything. **The BERT and web images need internet** (BERT downloads the real trained model from
+Hugging Face at build time, web downloads onnxruntime-web from the npm CDN — nothing to set up by hand, see `demo/ARCHITECTURE.md`). If that download
 fails (blocked network, Hugging Face down), the script tells you and gives options — see the
 troubleshooting table below.
 

@@ -50,8 +50,14 @@ fun privacyColor(id: String) = when (id) {
     else -> PrivacyCloud
 }
 
-/** One coloured slice / segment with its label and value. */
-data class Slice(val label: String, val value: Int, val color: Color)
+/** One coloured slice / segment with its label and value. level = a risk slice: its legend shows the risk icon. */
+data class Slice(val label: String, val value: Int, val color: Color, val level: com.example.scamdetect.logic.Risk.Level? = null)
+
+/** A legend key: the risk icon for risk slices (never colour alone), else a colour dot. */
+@Composable
+fun SliceKey(s: Slice) {
+    if (s.level != null) RiskIcon(s.level, 22.dp) else Box(Modifier.size(14.dp).background(s.color, CircleShape))
+}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -59,7 +65,7 @@ fun Legend(slices: List<Slice>) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         slices.forEach { s ->
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(12.dp).background(s.color, CircleShape))
+                SliceKey(s)
                 Text("  ${s.label} ${s.value}", style = MaterialTheme.typography.bodyLarge)
             }
         }

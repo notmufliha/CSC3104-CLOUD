@@ -11,6 +11,8 @@ the cloud models learning new scams with no downtime (rolling updates).
 
 ## Check it yourself
 
+**Step-by-step run instructions (web version, Android Studio, Xcode): [HOW_TO_RUN.md](HOW_TO_RUN.md).**
+
 | I want to... | Do this | Time |
 |---|---|---|
 | Run the whole backend on a laptop with Docker only | [A. Docker Compose](#a-docker-compose-laptop-docker-only) | ~15 min first build |
@@ -30,8 +32,8 @@ docker compose ps                       # wait until everything is Up
 python tools/gateway_test.py --no-stop  # end-to-end check: scam line -> warning, calm line -> SAFE
 python tools/testing/replay.py --only scam_en_11 --caller-only   # replay one scripted call, line by line
 ```
-- **The app in a browser: http://127.0.0.1:8088/** (web/: the Android app's cloud mode, no install needed;
-  Android Studio is only needed for the Android app and its on-device privacy levels).
+- **The app in a browser: http://127.0.0.1:8088/** (web/: the phone app in a browser, no install needed, with all
+  three privacy levels: Cloud, Hybrid and On-device run in the page with the apps' own models).
 - The phone/emulator address is the **edge** (same job as the Kubernetes Ingress): `http://<laptop IP>:8088/api/`
   (emulator: `http://10.0.2.2:8088/api/`). `/models` and `/fl` (on-device model downloads and training uploads)
   are on the same address.
@@ -44,7 +46,7 @@ python tools/testing/replay.py --only scam_en_11 --caller-only   # replay one sc
 ### B. Kubernetes demo (minikube)
 
 ```powershell
-demo\up.ps1        # builds 11 images, starts minikube, deploys everything to namespace scamguard (bash: demo/up.sh)
+demo\up.ps1        # builds 12 images, starts minikube, deploys everything to namespace scamguard (bash: demo/up.sh)
 demo\expose.ps1    # prints the phone's HTTPS address, https://<laptop IP>:8443/api/ (leave it running);
                    # the web app is then at https://127.0.0.1:8443/
 python demo\tools\demo_flow.py      # reference run: 4 calls through the live cluster, verdict per line
@@ -60,9 +62,15 @@ On an 8 GB laptop `up.ps1` picks a "lite" profile automatically; always add `--m
 
 ### C. The app (browser or Android)
 
-**Browser:** open http://127.0.0.1:8088/ (compose) or https://127.0.0.1:8443/ (Kubernetes with `expose`). Same
-screens as the Android app (Home / Dashboard / Settings tabs, live risk bar, warning, summary, report with consent,
-dashboard chart); calls are checked by the server (privacy level 1). History stays in the browser.
+**Browser:** open http://127.0.0.1:8088/ (compose) or https://127.0.0.1:8443/ (Kubernetes with `expose`; the
+browser warns once about the demo CA). Same screens and wording as the phone apps (Standard and Simple mode, live
+risk bar, red warning, summary with "What to do now", Learn and the practice quiz, weekly summary, dashboard
+chart), and the same three privacy levels (Settings -> How calls are checked): Cloud (the server checks every
+line), Hybrid and On-device (checked in the page by `web/ondevice.js`, a port of the apps' on-device code with
+their own model files; Hybrid asks the server's BERT only at unsure moments with masked lines, On-device asks
+MobileBERT in the page via onnxruntime-web and sends nothing). The page is the `scam/web` image
+(`web/Dockerfile`), used by both compose and Kubernetes. History stays in the browser. Steps:
+[HOW_TO_RUN.md](HOW_TO_RUN.md#2-web-version-no-install); parity test: `node tools/testing/web_ondevice_parity.mjs`.
 
 **Android:** open `android-app/` in Android Studio and press **Run** (a debug build). In the app: **Settings** -> paste the
 address from A or B -> **Save** -> **Test connection** ("Connected: ok"). Debug builds already trust the
@@ -80,8 +88,10 @@ holds caller lines (masked), so it is never exposed to phones.
   money and impersonation (**Nothing suspicious** = No for all three) -> **Save**. **Reject whole report** deletes
   a junk report or one that still contains personal details. **Spot-check others** lets a second person
   agree/disagree with labels.
-- To get a report into it: in the app, finish a call, tap **This was a scam** (or **This was fine**) on the summary
-  and agree on the consent screen.
+- To get a report into it: `python demo/tools/learning.py report --url http://127.0.0.1:8088/api/` (compose) or
+  `python demo/tools/learning.py report` (Kubernetes). It plays a scam call through the gateway and reports it with
+  consent. (The apps no longer have the "This was a scam / This was fine" buttons after a call; the
+  `POST /v1/report` API is unchanged.)
 
 ## Architecture
 

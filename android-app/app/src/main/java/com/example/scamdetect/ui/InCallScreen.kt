@@ -42,6 +42,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -51,9 +54,15 @@ import androidx.compose.ui.unit.dp
 import com.example.scamdetect.logic.PrivacyLevel
 import com.example.scamdetect.logic.Risk
 import com.example.scamdetect.logic.Tour
+import com.example.scamdetect.logic.Tr
+import com.example.scamdetect.logic.Warnings
+import com.example.scamdetect.R
+import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.layout.heightIn
 import com.example.scamdetect.ui.theme.ScamDetectTheme
 
-val SafeGreen = Color(0xFF2E7D32)
+/** Safe green, #2B7530: at least 4.5:1 on cards as text (accessibility audit; was #2E7D32, 4.4:1). Same on iOS. */
+val SafeGreen = Color(0xFF2B7530)
 val WarnYellow = Color(0xFFF9A825)
 val ScamRed = Color(0xFFC62828)
 val NeutralGrey = Color(0xFF9E9E9E)
@@ -65,105 +74,125 @@ fun levelColor(level: Risk.Level) = when (level) {
     Risk.Level.ERROR, Risk.Level.LISTENING -> NeutralGrey
 }
 
-fun levelLabel(level: Risk.Level) = when (level) {
-    Risk.Level.LISTENING -> "Listening…"
-    Risk.Level.GREEN -> "Looks safe so far"
-    Risk.Level.YELLOW -> "Suspicious"
-    Risk.Level.RED -> "Likely scam"
-    Risk.Level.ERROR -> "Could not check"
-}
+/** The level's word for the live call ("Safe so far", "Be careful", "Scam", "Could not check", "Listening…"). */
+fun levelLabel(level: Risk.Level) = Tr.s(when (level) {
+    Risk.Level.LISTENING -> R.string.risk_listening
+    Risk.Level.GREEN -> R.string.risk_safe_so_far
+    Risk.Level.YELLOW -> R.string.risk_careful
+    Risk.Level.RED -> R.string.risk_scam
+    Risk.Level.ERROR -> R.string.risk_could_not_check
+})
 
-/** 4.4 In-call screen: risk bar, chips, banner, live transcript. 4.5 red alert pops over the top. */
+/**
+ * 4.4 In-call screen: risk bar (icon + word), warning signs, banner, live transcript. The red warning is drawn over
+ * it by the caller (WarningScreen). showCareful = false: a "Be careful" moment shows as "Listening…" (it is still
+ * saved as "Be careful").
+ */
 @Composable
-fun InCallScreen(state: CallUiState, onHangUp: () -> Unit) {
-    // Saveable so a screen rotation does not bring a dismissed pop-up back.
-    var alertDismissed by rememberSaveable { mutableStateOf(false) }
-
+fun InCallScreen(state: CallUiState, onHangUp: () -> Unit, showCareful: Boolean = true, simple: Boolean = false) {
+    // Very large text: everything scrolls as one page (the status stays at the top). Same rule as iOS.
+    val bigText = androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.6f
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(
             Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "On call · Unknown caller",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
-                PrivacyBadge(state.privacyLevel)
+            if (bigText) {
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    CallStatus(state, showCareful, simple)
+                    state.lines.forEach { ChatBubble(it, showNotes = !simple) }
+                }
+            } else {
+                CallStatus(state, showCareful, simple)
+                Transcript(state.lines, Modifier.weight(1f), showNotes = !simple)
             }
-            Box(Modifier.tourTarget(Tour.Target.RISK_BAR)) { RiskBar(state.level, state.combinedScore) }
-            Box(Modifier.tourTarget(Tour.Target.WARNING_CHIPS)) { SignalChips(state.lit) }
-            // Yellow / grey banner lives in the layout; the red one is the pop-up below until it is dismissed.
-            if (state.level != Risk.Level.RED || alertDismissed || !state.scamAlert) {
-                state.banner?.let { InfoBanner(it, levelColor(state.level)) }
-            }
-            Transcript(state.lines, Modifier.weight(1f))
             Button(
                 onClick = onHangUp,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ScamRed, contentColor = Color.White)
             ) {
-                Icon(Icons.Filled.Call, contentDescription = null)
+                Icon(Icons.Filled.Call, contentDescription = null, modifier = Modifier.rotate(135f))
                 Spacer(Modifier.size(8.dp))
-                Text("Hang up")
+                Text(stringResource(R.string.btn_hang_up), style = MaterialTheme.typography.labelLarge)
             }
         }
+    }
+}
 
-        // 4.5 full-width red alert, slides down from the top the first time the verdict is SCAM
-        AnimatedVisibility(
-            visible = state.scamAlert && !alertDismissed,
-            enter = slideInVertically { -it } + fadeIn(),
-            modifier = Modifier.align(Alignment.TopCenter).tourTarget(Tour.Target.RED_WARNING)
-        ) {
-            ScamAlert(
-                text = state.banner ?: "Likely scam.",
-                onHangUp = onHangUp,
-                onDismiss = { alertDismissed = true }
+/** The call's status: who, privacy badge, risk bar (icon + word), warning signs, banner. */
+@Composable
+private fun CallStatus(state: CallUiState, showCareful: Boolean, simple: Boolean) {
+    val shown = Risk.shown(state.level, showCareful)
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.call_on_call),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
             )
+            // Developer view's playback speed, when it isn't 1×
+            state.speedTag?.let { SpeedTag(it) }
+            // Simple mode: no technical words (no Cloud / Hybrid / On-device), no score, no chips.
+            if (!simple) PrivacyBadge(state.privacyLevel)
+        }
+        Box(Modifier.tourTarget(Tour.Target.RISK_BAR)) { RiskBar(shown, state.combinedScore, showScore = !simple) }
+        if (!simple) Box(Modifier.tourTarget(Tour.Target.WARNING_CHIPS)) { SignalChips(state.lit) }
+        when (shown) {
+            Risk.Level.YELLOW -> CarefulBanner(state.warningKind)
+            Risk.Level.RED -> if (!state.warningOpen) StateBanner(Risk.Level.RED,
+                stringResource(R.string.warn_title) + ". " + stringResource(Warnings.message(state.warningKind)))
+            Risk.Level.ERROR -> StateBanner(Risk.Level.ERROR, stringResource(R.string.error_banner))
+            else -> {}
         }
     }
 }
 
 @Composable
-fun RiskBar(level: Risk.Level, score: Float?) {
-    val color by animateColorAsState(levelColor(level), label = "riskColor")
+fun RiskBar(level: Risk.Level, score: Float?, showScore: Boolean = true) {
+    val barMs = com.example.scamdetect.logic.Motion.riskBarMs(reduceMotion())
+    val color by animateColorAsState(levelColor(level), androidx.compose.animation.core.tween(barMs), label = "riskColor")
     val hasVerdict = level != Risk.Level.LISTENING && level != Risk.Level.ERROR
     val target = if (hasVerdict) (score ?: 0f).coerceIn(0.08f, 1f) else 0f // always a sliver once there is a verdict
-    val progress by animateFloatAsState(target, label = "riskProgress")
+    val progress by animateFloatAsState(target, androidx.compose.animation.core.tween(barMs), label = "riskProgress")
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(levelLabel(level), fontWeight = FontWeight.SemiBold, color = color)
-            // An old score next to "Could not check" would read like a current result, so hide it.
-            if (hasVerdict) score?.let { Text("risk ${"%.2f".format(it)}", style = MaterialTheme.typography.labelMedium) }
-        }
+        RiskBadge(level, levelLabel(level))
         Box(
             Modifier.fillMaxWidth().height(14.dp).clip(RoundedCornerShape(7.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Box(Modifier.fillMaxWidth(progress).height(14.dp).background(color))
         }
+        // Under the bar, so the word above never has to squeeze. An old score next to "Could not check" would read
+        // like a current result, so it is hidden then.
+        if (hasVerdict && showScore) score?.let {
+            Text(stringResource(R.string.call_risk_score, "%.2f".format(it)), Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.End)
+        }
     }
 }
 
 @Composable
 fun SignalChips(lit: List<String>) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Risk.SIGNALS.forEach { signal ->
             val on = signal in lit
+            val label = chipLabel(signal)
             Surface(
                 shape = RoundedCornerShape(50),
                 color = if (on) ScamRed.copy(alpha = 0.15f) else Color.Transparent,
-                border = BorderStroke(1.dp, if (on) ScamRed else NeutralGrey),
+                border = BorderStroke(if (on) 2.dp else 1.dp, if (on) ScamRed else NeutralGrey),
+                modifier = Modifier.semantics { contentDescription = if (on) Tr.s(R.string.a11y_flagged_suffix, label) else label },
             ) {
                 Text(
-                    Risk.chipLabel(signal),
+                    chipLabel(signal),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
-                    color = if (on) ScamRed else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (on) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -177,10 +206,20 @@ fun PrivacyBadge(level: PrivacyLevel) {
         Text(
             level.badge,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                .semantics { contentDescription = "Privacy level: ${level.badge}" },
+                .semantics { contentDescription = Tr.s(R.string.a11y_privacy_badge, level.badge) },
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/** Developer view: "2× speed" / "4× speed" / "Instant" on the call screen. */
+@Composable
+fun SpeedTag(text: String) {
+    Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.tertiaryContainer,
+        modifier = Modifier.padding(end = 6.dp).semantics { contentDescription = "Playback $text" }) {
+        Text(text, Modifier.padding(horizontal = 10.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onTertiaryContainer, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -191,50 +230,29 @@ fun InfoBanner(text: String, color: Color) {
     }
 }
 
-@Composable
-fun ScamAlert(text: String, onHangUp: () -> Unit, onDismiss: () -> Unit) {
-    Surface(color = ScamRed, modifier = Modifier.fillMaxWidth(), shadowElevation = 8.dp) {
-        Column(Modifier.safeDrawingPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Warning, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
-                Spacer(Modifier.size(8.dp))
-                Text("WARNING", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-            }
-            Text(text, color = Color.White, style = MaterialTheme.typography.titleMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = onHangUp,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = ScamRed)
-                ) { Text("Hang up now") }
-                TextButton(onClick = onDismiss) { Text("Dismiss", color = Color.White) }
-            }
-        }
-    }
-}
-
 /** Chat view: Speaker 1 (caller) on the left, Speaker 2 (you) on the right. */
 @Composable
-fun Transcript(lines: List<ChatLine>, modifier: Modifier = Modifier) {
+fun Transcript(lines: List<ChatLine>, modifier: Modifier = Modifier, showNotes: Boolean = true) {
     val listState = rememberLazyListState()
     LaunchedEffect(lines.size) {
         if (lines.isNotEmpty()) listState.animateScrollToItem(lines.size - 1)
     }
     LazyColumn(modifier.fillMaxWidth(), state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(lines, key = { it.seq }) { ChatBubble(it) }
+        items(lines, key = { it.seq }) { ChatBubble(it, showNotes = showNotes) }
     }
 }
 
 /** riskyHere = B.5: one of the lines where the end-of-call review says "the conversation turned risky here". */
 @Composable
-fun ChatBubble(line: ChatLine, riskyHere: Boolean = false) {
+fun ChatBubble(line: ChatLine, riskyHere: Boolean = false, showNotes: Boolean = true) {
     val flagged = line.flags.isNotEmpty()
     Column(
         Modifier.fillMaxWidth(),
         horizontalAlignment = if (line.isCaller) Alignment.Start else Alignment.End
     ) {
         Text(
-            if (line.isCaller) "Speaker 1 · Caller" else "Speaker 2 · You",
-            style = MaterialTheme.typography.labelSmall,
+            stringResource(if (line.isCaller) R.string.call_caller else R.string.call_you),
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Surface(
@@ -246,21 +264,40 @@ fun ChatBubble(line: ChatLine, riskyHere: Boolean = false) {
             Text(line.text, Modifier.padding(12.dp), style = MaterialTheme.typography.bodyLarge)
         }
         if (riskyHere) Text(
-            "the conversation turned risky here",
-            style = MaterialTheme.typography.labelSmall, color = ScamRed, fontWeight = FontWeight.SemiBold
+            stringResource(R.string.call_risky_here),
+            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold
         )
-        line.cloudNote?.let {
-            Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+        if (showNotes) line.cloudNote?.let {
+            Text(noteText(it), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
         }
         when {
-            line.pending -> Text("checking…", style = MaterialTheme.typography.labelSmall, color = NeutralGrey)
-            line.failed -> Text("could not check", style = MaterialTheme.typography.labelSmall, color = NeutralGrey)
+            line.pending -> Text(stringResource(R.string.call_checking), style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            line.failed -> Text(stringResource(R.string.risk_could_not_check), style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
             flagged -> Text(
-                "flagged: " + line.flags.joinToString { Risk.chipLabel(it) },
-                style = MaterialTheme.typography.labelSmall, color = ScamRed
+                stringResource(R.string.call_flagged, line.flags.joinToString { chipLabel(it) }),
+                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold
             )
         }
     }
+}
+
+/** A bubble's note ("checked with cloud"…) in the app's wording; the view model keeps the English constants. */
+fun noteText(note: String) = when (note) {
+    CallViewModel.CLOUD_CHECKED -> Tr.s(R.string.note_cloud_checked)
+    CallViewModel.CLOUD_UNAVAILABLE -> Tr.s(R.string.note_cloud_unavailable)
+    CallViewModel.MOBILEBERT_CHECKED -> Tr.s(R.string.note_mb_checked)
+    CallViewModel.MOBILEBERT_FAILED -> Tr.s(R.string.note_mb_failed)
+    else -> note
+}
+
+/** A warning sign's short name. */
+fun chipLabel(signal: String) = when (signal) {
+    "urgency" -> Tr.s(R.string.chip_urgency)
+    "money" -> Tr.s(R.string.chip_money)
+    "impersonation" -> Tr.s(R.string.chip_impersonation)
+    else -> signal
 }
 
 @Preview(showBackground = true, heightDp = 760)

@@ -139,6 +139,10 @@ interface CallDao {
     @Query("DELETE FROM CallRecord")
     suspend fun deleteAll()
 
+    /** Developer view: the made-up calls only (SampleHistory ids start with "sample-"). */
+    @Query("DELETE FROM CallRecord WHERE id LIKE 'sample-%'")
+    suspend fun deleteSample()
+
     @Query("SELECT COUNT(*) FROM ScorePoint")
     suspend fun pointCount(): Int
 
@@ -177,6 +181,12 @@ interface LabelDao {
     /** "Help improve detection" turned off: the stored sentences go, the labels (numbers only) stay. */
     @Query("DELETE FROM LabelSentence")
     suspend fun deleteSentences()
+
+    @Query("DELETE FROM ImplicitLabel WHERE callId LIKE 'sample-%'")
+    suspend fun deleteSampleLabels()
+
+    @Query("DELETE FROM LabelSentence WHERE callId LIKE 'sample-%'")
+    suspend fun deleteSampleSentences()
 }
 
 /**
@@ -200,6 +210,13 @@ abstract class CallDatabase : RoomDatabase() {
         calls().deleteAll()
         labels().deleteLabels()
         labels().deleteSentences()
+    }
+
+    /** Developer view → "Delete sample history": the SampleHistory calls, their points and labels. */
+    suspend fun deleteSample() = withTransaction {
+        calls().deleteSample()
+        labels().deleteSampleLabels()
+        labels().deleteSampleSentences()
     }
 
     companion object {

@@ -8,18 +8,20 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- ScamGuard web app: the Android app's cloud mode (privacy level 1) in a browser, so the system can be tried
-       without Android Studio. Served by the compose "edge" (http://127.0.0.1:8088/) and by the Kubernetes Ingress
-       (https://<laptop IP>:8443/). It calls the same gateway as the phone, at api/ on the same address. -->
+  <!-- ScamGuard web app: the phone apps in a browser, all three privacy levels (ondevice.js runs levels 2 and 3 in the
+       page), so the system can be tried without Android Studio or Xcode. Built into the scam/web image (web/Dockerfile:
+       this folder + the apps' call scripts and on-device models + onnxruntime-web) and served by the compose "edge"
+       (http://127.0.0.1:8088/) and by the Kubernetes Ingress (https://<laptop IP>:8443/). It calls the same gateway as the phone, at api/ on the same address.
+       strings.json and learn.json are generated (tools/i18n/gen_strings.py, tools/learn/build_learn.py). -->
   <div id="phone">
     <main id="screen" aria-live="polite"></main>
     <nav id="tabs" aria-label="Main">
-      <button data-tab="home"><span class="ico">⌂</span>Home</button>
-      <button data-tab="dashboard"><span class="ico">☰</span>Dashboard</button>
-      <button data-tab="settings"><span class="ico">⚙</span>Settings</button>
+      <button data-tab="home"><span class="ico" aria-hidden="true">⌂</span><span class="lbl">Home</span></button>
+      <button data-tab="dashboard"><span class="ico" aria-hidden="true">☰</span><span class="lbl">Dashboard</span></button>
+      <button data-tab="settings"><span class="ico" aria-hidden="true">⚙</span><span class="lbl">Settings</span></button>
     </nav>
   </div>
-  <div id="overlay" hidden></div>
+  <script src="ondevice.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

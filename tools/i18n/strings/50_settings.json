@@ -1,0 +1,10 @@
+{
+  "models_updated": "Updated",
+  "models_built_in": "Built-in",
+  "calls_one": "1 call",
+  "calls_many": "{0} calls",
+  "home_full_line": "Simulate a call and watch the scam check work live.",
+  "btn_sim_scam": "Simulate scam call",
+  "btn_sim_normal": "Simulate normal call",
+  "btn_pick_script": "Choose a call script…"
+}
