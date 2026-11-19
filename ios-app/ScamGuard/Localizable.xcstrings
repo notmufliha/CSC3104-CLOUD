@@ -613,6 +613,18 @@
         }
       }
     },
+    "btn_dont_share": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Don't share"
+          }
+        }
+      }
+    },
     "btn_finish_no_tour": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
@@ -1441,6 +1453,78 @@
         }
       }
     },
+    "consent_kept": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kept: deleted after 30 days, except lines a reviewer approves as training examples. Those stay encrypted with no link to you, so they can't be withdrawn later."
+          }
+        }
+      }
+    },
+    "consent_not_sent": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not sent: your phone number, the caller's number, anything you said."
+          }
+        }
+      }
+    },
+    "consent_sent": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sent: the caller's %1$@ lines below. We try to remove numbers, amounts, links and names, but some can slip through, such as a name said in passing or digits read out as words. Check the text; if you see anything private, choose Don't share."
+          }
+        }
+      }
+    },
+    "consent_title_fine": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share this call as a false alarm?"
+          }
+        }
+      }
+    },
+    "consent_title_scam": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share this scam call?"
+          }
+        }
+      }
+    },
+    "consent_why": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helps ScamGuard learn new scams. A team member reads it, labels it, and it may be used to retrain the checks."
+          }
+        }
+      }
+    },
     "copy_footer": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
@@ -2133,6 +2217,78 @@
           "stringUnit": {
             "state": "translated",
             "value": "Someone you trust. On a scam warning you can call or message them with one tap. Kept only on this phone."
+          }
+        }
+      }
+    },
+    "fb_fine": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This was fine"
+          }
+        }
+      }
+    },
+    "fb_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Was this result right? You see exactly what would be shared before anything is sent."
+          }
+        }
+      }
+    },
+    "fb_not_shared": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing was shared."
+          }
+        }
+      }
+    },
+    "fb_scam": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This was a scam"
+          }
+        }
+      }
+    },
+    "fb_sending": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sending…"
+          }
+        }
+      }
+    },
+    "fb_title": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Help ScamGuard learn"
           }
         }
       }
