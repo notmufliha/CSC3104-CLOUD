@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Port of android-app ui/OtherScreens.kt: Home, script picker, paste text.
+// Port of android-app ui/OtherScreens.kt: Home, script picker.
 
 struct HomeView: View {
     @Environment(CallViewModel.self) private var vm
@@ -21,10 +21,11 @@ struct HomeView: View {
                 Button { path.append(.pick) } label: { wide(L.s(.btn_pick_script)) }
                     .buttonStyle(.bordered)
                     .tourTarget(.pickScript)
-                Button { path.append(.paste) } label: { wide(L.s(.btn_paste_text)) }
+                Button { path.append(.learn) } label: { wide(L.s(.btn_learn)) }
                     .buttonStyle(.bordered)
+                    .accessibilityIdentifier("learnButton")
                 if vm.scripts.isEmpty {
-                    Text(L.s(.pick_none)).foregroundStyle(Theme.warningInkAdaptive)
+                    EmptyState(text: L.s(.pick_none), systemImage: "info.circle", compact: true)
                 }
             }
             .padding(16)
@@ -149,30 +150,5 @@ private struct ScriptRow: View {
         .padding(.vertical, 4)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-    }
-}
-
-struct PasteTextView: View {
-    @Environment(CallViewModel.self) private var vm
-    @State private var text = ""
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(L.s(.paste_label)).font(.headline).foregroundStyle(Theme.muted)
-            TextEditor(text: $text)
-                .frame(minHeight: 180)
-                .padding(6)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.4)))
-            Button {
-                vm.startPasted(text.trimmingCharacters(in: .whitespacesAndNewlines))
-            } label: {
-                Text(L.s(.btn_check)).font(.title3.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 56)
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            Spacer()
-        }
-        .padding(16)
-        .navigationTitle(L.s(.paste_title))
     }
 }

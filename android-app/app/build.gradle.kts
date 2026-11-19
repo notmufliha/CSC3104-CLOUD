@@ -117,6 +117,8 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    // Accessibility Test Framework checks for Compose (DeveloperSettingsUiTest / AccessibilityAuditTest); version from the BOM
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4-accessibility")
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

@@ -17,6 +17,8 @@ enum DashboardRoute: Hashable {
     case call(String)
     case insights
     case history
+    /// "Share weekly summary".
+    case weekly
 }
 
 private func nowMs() -> Int64 { Int64(Date().timeIntervalSince1970 * 1000) }
@@ -97,19 +99,24 @@ struct PeriodSwitcher: View {
     }
 }
 
+/// The one empty state everywhere a list or chart can be empty: a friendly icon + one line (same on Android).
 struct EmptyState: View {
     let text: String
     var goHome: (() -> Void)?
+    var systemImage = "phone.fill"
+    /// Inside a card: smaller icon, less space.
+    var compact = false
 
     var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "phone.fill")
-                .font(.system(size: 44))
+        VStack(spacing: compact ? 12 : 20) {
+            Image(systemName: systemImage)
+                .font(.system(size: compact ? 28 : 44))
                 .foregroundStyle(Theme.brand)
-                .frame(width: 104, height: 104)
+                .frame(width: compact ? 64 : 104, height: compact ? 64 : 104)
                 .background(Theme.brandContainer, in: Circle())
                 .accessibilityHidden(true)
-            Text(text).font(.title2).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
+            Text(text).font(compact ? .body : .title2).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
             if let goHome {
                 Button(action: goHome) { Text(L.s(.btn_go_home)).font(.body).padding(.horizontal, 12).frame(minHeight: 56) }
                     .buttonStyle(.borderedProminent)
@@ -117,7 +124,9 @@ struct EmptyState: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 48)
+        .padding(.vertical, compact ? 12 : 48)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("emptyState")
     }
 }
 
@@ -196,9 +205,11 @@ struct DashboardView: View {
                 if calls.isEmpty {
                     EmptyState(text: L.s(.dash_empty), goHome: goHome)
                         .tourTarget(.dashboardHero)
+                    WeeklyButton()
                 } else {
                     PeriodSwitcher(periodRaw: $periodRaw)
                     hero(stats, period).tourTarget(.dashboardHero)
+                    WeeklyButton()
                     recent(calls)
                     topWarning(stats, period)
                     NavigationLink(value: DashboardRoute.insights) {
@@ -223,6 +234,7 @@ struct DashboardView: View {
             case .call(let id): CallDetailView(callId: id)
             case .insights: InsightsView()
             case .history: HistoryView(goHome: goHome)
+            case .weekly: WeeklySummaryView()
             }
         }
     }
@@ -481,7 +493,7 @@ struct HistoryView: View {
                             }
                         }
                     }
-                    if shown.isEmpty { Text(L.s(.hist_none)).font(.body).foregroundStyle(Theme.muted) }
+                    if shown.isEmpty { EmptyState(text: L.s(.hist_none), systemImage: "list.bullet", compact: true) }
                     ForEach([L.s(.pw_today), L.s(.pw_this_week), L.s(.pw_earlier)], id: \.self) { g in
                         if let list = groups[g] {
                             Text(g).font(.title2.weight(.semibold)).padding(.top, 8).accessibilityAddTraits(.isHeader)
@@ -563,7 +575,7 @@ struct CallDetailView: View {
         AppCard {
             Text(L.s(.det_risk)).font(.title2.weight(.semibold))
             if points.isEmpty {
-                Text(L.s(.det_no_scores)).font(.body)
+                EmptyState(text: L.s(.det_no_scores), systemImage: "info.circle", compact: true)
             } else {
                 RiskLineChart(values: points.map(\.combined),
                               description: "Risk during the call: \(points.count) points, highest \(String(format: "%.2f", points.compactMap(\.combined).max() ?? 0))",

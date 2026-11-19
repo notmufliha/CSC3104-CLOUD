@@ -22,6 +22,7 @@ struct WarningScreen: View {
     let actions: WarningActions
     var demo = false
     @State private var flash = 0.0
+    @State private var entered = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -48,12 +49,17 @@ struct WarningScreen: View {
                 .opacity(flash).ignoresSafeArea().allowsHitTesting(false).accessibilityHidden(true)
         }
         .accessibilityAddTraits(.isModal)
+        // Entrance: a short scale + fade (Logic/Motion.swift); with Reduce Motion it only fades in.
+        .scaleEffect(entered || demo ? 1 : Motion.warningStartScale(reduce: reduceMotion))
+        .onAppear {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: Double(Motion.warningEnterMs(reduce: false)) / 1000)) { entered = true }
+        }
         .task {
             guard !demo else { return }
             UIAccessibility.post(notification: .screenChanged, argument: "\(title). \(message) \(doLine)")
             // A gentle flash: three soft pulses, one a second (well under the 3-a-second seizure limit). Off with
             // Reduce Motion.
-            guard !reduceMotion else { return }
+            guard Motion.warningFlash(reduce: reduceMotion) else { return }
             for _ in 0..<3 {
                 withAnimation(.easeInOut(duration: 0.3)) { flash = 0.9 }
                 try? await Task.sleep(for: .milliseconds(300))

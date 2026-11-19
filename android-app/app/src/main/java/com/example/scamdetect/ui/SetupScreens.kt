@@ -3,6 +3,7 @@ package com.example.scamdetect.ui
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -121,6 +122,10 @@ fun SetupFlow(step: Step, choices: Onboarding.Choices, isReplay: Boolean, a: Set
     // The view model holds the step (it survives rotation); the pager follows it, and a swipe updates it.
     LaunchedEffect(index, steps.size) { if (pager.currentPage != index) pager.animateScrollToPage(index) }
     LaunchedEffect(pager.settledPage) { steps.getOrNull(pager.settledPage)?.let { if (it != step) a.onStep(it) } }
+    // A new screen drops the keyboard: otherwise it stays on the field of the screen just left (still composed in the
+    // pager), and the PIN typed on the next screen was added to the end of the phone number.
+    val focus = LocalFocusManager.current
+    LaunchedEffect(step) { focus.clearFocus(force = true) }
 
     fun go(to: Step?) { if (to != null) { a.onStep(to); scope.launch { pager.animateScrollToPage(Onboarding.steps(choices).indexOf(to).coerceAtLeast(0)) } } }
     val previous = Onboarding.previous(step, choices)
@@ -165,7 +170,7 @@ fun SetupFlow(step: Step, choices: Onboarding.Choices, isReplay: Boolean, a: Set
                 val (n, of) = Onboarding.progress(step, choices)
                 // No dots until the first question is answered (the number of screens depends on it).
                 if (choices.path != null) Dots(index, steps.size, stringResource(R.string.setup_step, n.toString(), of.toString()))
-                val wide = Modifier.fillMaxWidth().widthIn(max = 480.dp).heightIn(min = 60.dp)
+                val wide = Modifier.fillMaxWidth().widthIn(max = 480.dp).heightIn(min = 64.dp)
                 when (step) {
                     // Always full contrast (a faded button looks broken): tapping it too early says what to do.
                     Step.WHO -> {
@@ -358,12 +363,12 @@ fun YesNoDialog(title: String, text: String, yes: String, no: String, onYes: () 
         text = { Text(text, style = MaterialTheme.typography.bodyLarge) },
         confirmButton = {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = onYes, modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp),
+                OutlinedButton(onClick = onYes, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp),
                     border = BorderStroke(2.dp, if (yesIsDanger) ScamRed else MaterialTheme.colorScheme.primary)) {
                     Text(yes, style = MaterialTheme.typography.labelLarge, color = if (yesIsDanger) WarningInk else MaterialTheme.colorScheme.primary,
                         textAlign = TextAlign.Center)
                 }
-                OutlinedButton(onClick = onNo, modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp),
+                OutlinedButton(onClick = onNo, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp),
                     border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)) {
                     Text(no, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
                 }

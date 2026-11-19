@@ -2,6 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Launch screen: the ScamGuard icon on navy (the icon's own background), as on Android 12+. -->
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+		<key>UIImageName</key>
+		<string>LaunchIcon</string>
+	</dict>
 	<!-- DEMO ONLY: plain HTTP to the demo gateway on the Mac / local network. Remove before any real release. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>

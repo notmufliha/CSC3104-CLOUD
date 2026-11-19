@@ -53,6 +53,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.foundation.layout.height
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -183,13 +189,18 @@ fun PillChip(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun EmptyState(text: String, onGoHome: (() -> Unit)? = null) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 48.dp), horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        Box(Modifier.size(104.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
-            Icon(Icons.Filled.Phone, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(52.dp))
+fun EmptyState(text: String, onGoHome: (() -> Unit)? = null,
+               icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.Phone, compact: Boolean = false) {
+    // The one empty state everywhere a list or chart can be empty: a friendly icon + one line (same on iOS).
+    // compact: inside a card (smaller icon, less space).
+    Column(Modifier.fillMaxWidth().padding(vertical = if (compact) 12.dp else 48.dp).testTag("emptyState")
+        .semantics(mergeDescendants = true) {}, horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 20.dp)) {
+        Box(Modifier.size(if (compact) 64.dp else 104.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(if (compact) 32.dp else 52.dp))
         }
-        Text(text, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        Text(text, style = if (compact) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         if (onGoHome != null) Button(onClick = onGoHome, modifier = Modifier.heightIn(min = 56.dp)) {
             Text(Tr.s(R.string.btn_go_home), style = MaterialTheme.typography.bodyLarge)
         }
@@ -252,12 +263,18 @@ fun DashboardScreen(
     onGoHome: () -> Unit,
     /** Simple mode: this is the "For family" tab. */
     simple: Boolean = false,
+    /** "Share weekly summary". */
+    onWeekly: () -> Unit = {},
+    /** The history was read (until then: a placeholder). */
+    loaded: Boolean = true,
 ) {
     val now = System.currentTimeMillis()
     val stats = remember(calls, labels, period) { DashboardStats.compute(calls, labels, period, now, ZoneId.systemDefault()) }
     Page(Tr.s(if (simple) R.string.tab_family else R.string.dash_title)) {
+        if (!loaded) { LoadingPlaceholder(); return@Page }
         if (calls.isEmpty()) {
             Box(Modifier.tourTarget(Tour.Target.DASHBOARD_HERO)) { EmptyState(Tr.s(R.string.dash_empty), onGoHome) }
+            WeeklyButton(onWeekly)
             return@Page
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Space.gap)) {
@@ -278,6 +295,7 @@ fun DashboardScreen(
                     }
                 }
             }
+            WeeklyButton(onWeekly)
             // 2. recent calls
             AppCard(padding = 0.dp) {
                 Row(Modifier.fillMaxWidth().padding(start = Space.card, end = 8.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -458,9 +476,7 @@ fun HistoryScreen(calls: List<CallRecord>, points: List<ScorePoint>, onOpen: (St
                     }
                 }
             }
-            if (shown.isEmpty()) item {
-                Text(Tr.s(R.string.hist_none), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            if (shown.isEmpty()) item { EmptyState(Tr.s(R.string.hist_none), icon = Icons.AutoMirrored.Filled.List, compact = true) }
             listOf(Tr.s(R.string.pw_today), Tr.s(R.string.pw_this_week), Tr.s(R.string.pw_earlier)).forEach { g ->
                 val list = groups[g] ?: return@forEach
                 item(key = "h-$g") {
@@ -515,7 +531,7 @@ fun CallDetailScreen(call: CallRecord?, points: List<ScorePoint>, onBack: () -> 
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             AppCard {
                 Text(Tr.s(R.string.det_risk), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                if (sorted.isEmpty()) Text(Tr.s(R.string.det_no_scores), style = MaterialTheme.typography.bodyLarge)
+                if (sorted.isEmpty()) EmptyState(Tr.s(R.string.det_no_scores), icon = Icons.Filled.Info, compact = true)
                 else {
                     RiskLineChart(sorted.map { it.combined },
                         "Risk during the call: ${sorted.size} points, highest ${"%.2f".format(sorted.mapNotNull { it.combined }.maxOrNull() ?: 0f)}",
@@ -565,5 +581,34 @@ private fun DetailRow(key: String, value: String) {
     Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {
         Text(key, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+/** "Share weekly summary" (Dashboard and "For family"). */
+@Composable
+private fun WeeklyButton(onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp).testTag("weeklyButton").pressFeedback(),
+        border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)) {
+        Icon(Icons.Filled.Share, contentDescription = null)
+        Spacer(Modifier.size(10.dp))
+        Text(Tr.s(R.string.btn_weekly), style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+/**
+ * Placeholder while the history loads (Room answers a moment after the screen opens): grey blocks in the shape of the
+ * page, so it is never blank and never says "No calls yet" too early. A soft pulse unless reduce motion is on.
+ */
+@Composable
+fun LoadingPlaceholder(rows: Int = 3) {
+    val reduce = reduceMotion()
+    val pulse = if (reduce) null else androidx.compose.animation.core.rememberInfiniteTransition(label = "skeleton")
+    val alpha = pulse?.animateFloat(0.45f, 0.9f, androidx.compose.animation.core.infiniteRepeatable(
+        androidx.compose.animation.core.tween(800), androidx.compose.animation.core.RepeatMode.Reverse), label = "alpha")?.value ?: 0.7f
+    val c = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = alpha)
+    Column(Modifier.fillMaxWidth().testTag("loading").semantics { contentDescription = Tr.s(R.string.loading) },
+        verticalArrangement = Arrangement.spacedBy(Space.gap)) {
+        Box(Modifier.fillMaxWidth().height(140.dp).background(c, RoundedCornerShape(Space.corner)))
+        repeat(rows) { Box(Modifier.fillMaxWidth().height(64.dp).background(c, RoundedCornerShape(Space.corner))) }
     }
 }

@@ -1,0 +1,20 @@
+<!-- Same as ../values/themes.xml plus the launch screen (Android 12+). Keep both in step. -->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme: only seen before Compose draws (launch, status bar). Compose uses ui/theme/Theme.kt. -->
+    <style name="Theme.ScamDetect" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Primary brand color: the ScamGuard purple (same as iOS). -->
+        <item name="colorPrimary">@color/scamguard_purple_40</item>
+        <item name="colorPrimaryVariant">@color/scamguard_purple_30</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/scamguard_purple_grey_40</item>
+        <item name="colorSecondaryVariant">@color/scamguard_purple_grey_40</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="android:windowBackground">@color/scamguard_background_light</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <!-- Android 12+ launch screen: the ScamGuard icon on navy (the icon's own background), as on iOS. -->
+        <item name="android:windowSplashScreenBackground">@color/ic_launcher_background</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/ic_launcher_background</item>
+    </style>
+</resources>

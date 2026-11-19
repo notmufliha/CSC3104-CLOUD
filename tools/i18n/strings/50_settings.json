@@ -6,6 +6,5 @@
   "home_full_line": "Simulate a call and watch the scam check work live.",
   "btn_sim_scam": "Simulate scam call",
   "btn_sim_normal": "Simulate normal call",
-  "btn_pick_script": "Choose a call script…",
-  "btn_paste_text": "Paste text"
+  "btn_pick_script": "Choose a call script…"
 }

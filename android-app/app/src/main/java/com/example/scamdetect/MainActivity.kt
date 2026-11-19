@@ -44,7 +44,6 @@ import com.example.scamdetect.ui.HomeScreen
 import com.example.scamdetect.ui.InsightsScreen
 import com.example.scamdetect.ui.InCallScreen
 import com.example.scamdetect.ui.IncomingCallScreen
-import com.example.scamdetect.ui.PasteTextScreen
 import com.example.scamdetect.ui.Phase
 import com.example.scamdetect.ui.ScriptPickerScreen
 import com.example.scamdetect.ui.DataPage
@@ -86,14 +85,22 @@ import com.example.scamdetect.ui.WarningScreen
 import com.example.scamdetect.ui.SCAMSHIELD_HELPLINE
 import com.example.scamdetect.ui.dial
 import com.example.scamdetect.ui.textMessage
+import com.example.scamdetect.ui.LearnScreen
+import com.example.scamdetect.ui.ScamTypeScreen
+import com.example.scamdetect.ui.QuizScreen
+import com.example.scamdetect.ui.WeeklySummaryScreen
 
 enum class Screen {
-    HOME, PICK, CALL, PASTE, DASHBOARD, CALL_DETAIL, SETTINGS,
+    HOME, PICK, CALL, DASHBOARD, CALL_DETAIL, SETTINGS,
     SETTINGS_PRIVACY, SETTINGS_DATA, SETTINGS_HELP,
     SETTINGS_STYLE, SETTINGS_TEXT, SETTINGS_FAMILY, SETTINGS_ADVANCED, SETTINGS_PIN,
     /** The hidden Developer view: only once unlocked (Help & about → tap the version 7 times). */
     SETTINGS_DEVELOPER,
     INSIGHTS, HISTORY,
+    /** "Learn to spot scams", one scam type, the practice quiz. */
+    LEARN, LEARN_TYPE, QUIZ,
+    /** "Share weekly summary" (from the Dashboard / "For family"). */
+    WEEKLY,
 }
 
 private val SETTINGS_PAGES = setOf(
@@ -108,7 +115,7 @@ private val ADVANCED_PAGES = setOf(
 )
 
 /** Simple mode with a PIN: these need it ("For family" and Advanced settings). */
-private val PIN_SCREENS = ADVANCED_PAGES + setOf(Screen.SETTINGS_ADVANCED, Screen.DASHBOARD, Screen.INSIGHTS, Screen.HISTORY, Screen.CALL_DETAIL)
+private val PIN_SCREENS = ADVANCED_PAGES + setOf(Screen.SETTINGS_ADVANCED, Screen.DASHBOARD, Screen.INSIGHTS, Screen.HISTORY, Screen.CALL_DETAIL, Screen.WEEKLY)
 
 /** The three top-level screens, reached from the bottom tab bar. The app opens on HOME. */
 private enum class Tab(val screen: Screen, val label: Int, val simpleLabel: Int, val icon: ImageVector) {
@@ -170,6 +177,14 @@ fun AppRoot(vm: CallViewModel = viewModel()) {
     val gate by vm.gate.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
     DebugLaunchOptions(vm)
+    // The weekly reminder's notification opens the weekly summary (all builds).
+    LaunchedEffect(gate) {
+        val i = (context as? android.app.Activity)?.intent ?: return@LaunchedEffect
+        if (gate == CallViewModel.Gate.APP && i.getBooleanExtra(com.example.scamdetect.data.WeeklyReminderScheduler.EXTRA_OPEN, false)) {
+            i.removeExtra(com.example.scamdetect.data.WeeklyReminderScheduler.EXTRA_OPEN)
+            vm.demoScreen.value = "WEEKLY"
+        }
+    }
     when (gate) {
         CallViewModel.Gate.LOADING -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
         CallViewModel.Gate.SETUP -> {
@@ -234,6 +249,7 @@ private fun DebugLaunchOptions(vm: CallViewModel) {
             if (vm.gate.value != CallViewModel.Gate.APP) vm.finishSetup(startTour = false)
             vm.setAppStyle(v == "on")
         }
+        if (i.getBooleanExtra("demoDeleteHistory", false)) vm.deleteHistory()   // as iOS -demoDeleteHistory (empty states)
         if (i.getBooleanExtra("demoSample", false)) vm.loadSampleHistory()
         i.getStringExtra("demoPin")?.let { p -> if (p.isEmpty() || p == "off") vm.clearPin() else vm.setPin(p) }
         i.getStringExtra("demoSetup")?.let { name ->
@@ -254,11 +270,17 @@ private fun DebugLaunchOptions(vm: CallViewModel) {
         i.getStringExtra("demoLevel")?.let { vm.setPrivacyLevel(com.example.scamdetect.logic.PrivacyLevel.fromId(it)) }
         i.getStringExtra("demoSpeed")?.let { id -> com.example.scamdetect.logic.PlaybackSpeed.entries.firstOrNull { it.id == id }?.let(vm::setPlaybackSpeed) }
         if (i.getBooleanExtra("demoOverlay", false)) vm.setDevOverlay(true)
+        // --es demoSummary red|yellow (a finished pretend call's summary), --es demoLearnType bank_code,
+        // --es demoQuiz answered|result (with --es demoScreen QUIZ)
+        when (i.getStringExtra("demoSummary")) { "red" -> vm.demoSummary(true); "yellow" -> vm.demoSummary(false) }
+        i.getStringExtra("demoLearnType")?.let { vm.demoLearnType.value = it; vm.demoScreen.value = "LEARN_TYPE" }
+        vm.demoQuiz = i.getStringExtra("demoQuiz")
         when (i.getStringExtra("demoWarning")) { "red" -> vm.demoWarning(true); "yellow" -> vm.demoWarning(false) }
         // only once: a rotation re-creates the activity with the same intent
         i.removeExtra("demoReset"); i.removeExtra("demoSetup"); i.removeExtra("demoTour"); i.removeExtra("demoWarning")
         i.removeExtra("demoFamily"); i.removeExtra("demoConnection"); i.removeExtra("demoSimple"); i.removeExtra("demoSample")
         i.removeExtra("demoPin"); i.removeExtra("demoTip"); i.removeExtra("demoSpeed"); i.removeExtra("demoOverlay")
+        i.removeExtra("demoSummary"); i.removeExtra("demoLearnType"); i.removeExtra("demoQuiz"); i.removeExtra("demoDeleteHistory")
         i.getStringExtra("demoScreen")?.let { vm.demoScreen.value = it; i.removeExtra("demoScreen") }
         // --es demoScript scam_en_11_bank_otp.json: ring and answer that script (as iOS -demoScript)
         i.getStringExtra("demoScript")?.let { n -> vm.scripts.firstOrNull { it.fileName == n }?.let { vm.ring(it); vm.answer() }; i.removeExtra("demoScript") }
@@ -273,6 +295,8 @@ fun ScamGuardApp(vm: CallViewModel = viewModel(), tour: Int? = null) {
     /** Where the call detail page goes back to (Dashboard or History). */
     var detailBack by rememberSaveable { mutableStateOf(Screen.DASHBOARD) }
     var period by rememberSaveable { mutableStateOf(com.example.scamdetect.logic.DashboardStats.Period.WEEK) }
+    /** The scam type open in Learn. */
+    var learnType by rememberSaveable { mutableStateOf<String?>(null) }
 
     // A call started anywhere (Home, the script picker, a debug launch) takes the whole screen.
     val phase = vm.state.collectAsState().value.phase
@@ -281,6 +305,8 @@ fun ScamGuardApp(vm: CallViewModel = viewModel(), tour: Int? = null) {
     val pinSet by vm.pinSet.collectAsState()
     // Debug builds only: --es demoScreen opens a screen (screenshots).
     val demoScreen by vm.demoScreen.collectAsState()
+    val demoLearnType by vm.demoLearnType.collectAsState()
+    LaunchedEffect(demoLearnType) { demoLearnType?.let { learnType = it; vm.demoLearnType.value = null } }
     LaunchedEffect(demoScreen) {
         demoScreen?.let { name -> runCatching { Screen.valueOf(name) }.getOrNull()?.let { screen = it }; vm.demoScreen.value = null }
     }
@@ -292,7 +318,8 @@ fun ScamGuardApp(vm: CallViewModel = viewModel(), tour: Int? = null) {
         if (screen == Screen.CALL) vm.discard()   // B.5: during a call, tells the server; no summary, nothing saved
         screen = when (screen) {
             Screen.CALL_DETAIL -> detailBack
-            Screen.INSIGHTS, Screen.HISTORY -> Screen.DASHBOARD
+            Screen.INSIGHTS, Screen.HISTORY, Screen.WEEKLY -> Screen.DASHBOARD
+            Screen.LEARN_TYPE, Screen.QUIZ -> Screen.LEARN
             in ADVANCED_PAGES -> if (simple) Screen.SETTINGS_ADVANCED else Screen.SETTINGS
             in SETTINGS_PAGES -> Screen.SETTINGS
             else -> Screen.HOME
@@ -334,11 +361,11 @@ fun ScamGuardApp(vm: CallViewModel = viewModel(), tour: Int? = null) {
     }
     val content: @Composable () -> Unit = {
         if (locked) gate()
-        else ScreenContent(screen, vm, { screen = it }, openCallId, { id -> detailBack = if (screen == Screen.HISTORY) Screen.HISTORY else Screen.DASHBOARD; openCallId = id }, period, { period = it }, detailBack)
+        else ScreenContent(screen, vm, { screen = it }, learnType, { learnType = it }, openCallId, { id -> detailBack = if (screen == Screen.HISTORY) Screen.HISTORY else Screen.DASHBOARD; openCallId = id }, period, { period = it }, detailBack)
     }
     val tab = Tab.entries.firstOrNull { it.screen == screen }
     if (tab == null) {
-        // Calls, the script picker, paste text, call details and settings pages take the whole screen.
+        // Calls, the script picker, call details and settings pages take the whole screen.
         content()
         return
     }
@@ -370,6 +397,8 @@ private fun ScreenContent(
     screen: Screen,
     vm: CallViewModel,
     go: (Screen) -> Unit,
+    learnType: String?,
+    setLearnType: (String) -> Unit,
     openCallId: String?,
     setOpenCallId: (String) -> Unit,
     period: com.example.scamdetect.logic.DashboardStats.Period,
@@ -451,11 +480,12 @@ private fun ScreenContent(
             onPractice = { ringKind("scam") },
             onFix = { vm.recheckConnection(); vm.connection.value == true },
             onRefresh = vm::refreshConnection,
+            onLearn = { go(Screen.LEARN) },
         ) else HomeScreen(
             onScamCall = { ringKind("scam") },
             onNormalCall = { ringKind("normal") },
             onPickScript = { go(Screen.PICK) },
-            onPasteText = { go(Screen.PASTE) },
+            onLearn = { go(Screen.LEARN) },
             offer = if (styleTip) ({ AppStyleTipCard(onDismiss = vm::dismissAppStyleTip) }) else null,
         )
 
@@ -466,12 +496,17 @@ private fun ScreenContent(
             showTestCalls = devUnlocked,
         )
 
-        Screen.PASTE -> PasteTextScreen(
-            onCheck = { vm.startPasted(it); go(Screen.CALL) },
-            onBack = { go(Screen.HOME) },
-        )
+        Screen.LEARN -> LearnScreen(vm.learn, onQuiz = { go(Screen.QUIZ) }, onType = { setLearnType(it); go(Screen.LEARN_TYPE) },
+            onBack = { go(Screen.HOME) })
+        Screen.LEARN_TYPE -> ScamTypeScreen(vm.learn.types.firstOrNull { it.id == learnType },
+            onHear = { name -> vm.scripts.firstOrNull { it.fileName == name }?.let { vm.ring(it); go(Screen.CALL) } },
+            onBack = { go(Screen.LEARN) })
+        Screen.QUIZ -> QuizScreen(vm.learn, simple, vm.quizBest.collectAsState().value, onFinished = vm::recordQuiz, onBack = { go(Screen.LEARN) },
+            demo = vm.demoQuiz)
 
         Screen.CALL -> Box(Modifier.fillMaxSize()) {
+            // Covered by the red warning: hidden from TalkBack (only the warning is reachable), as on iOS.
+            Box(Modifier.fillMaxSize().then(if (state.warningOpen) Modifier.clearAndSetSemantics {} else Modifier)) {
             when (state.phase) {
                 Phase.RINGING -> IncomingCallScreen(
                     callerName = androidx.compose.ui.res.stringResource(R.string.call_unknown_caller),
@@ -482,14 +517,14 @@ private fun ScreenContent(
                 Phase.IN_CALL -> InCallScreen(state, onHangUp = vm::hangUp, showCareful = showCareful, simple = simple)
                 Phase.ENDED -> SummaryScreen(
                     state,
-                    reportPreview = { vm.reportPreview() },
-                    onReport = { kind -> vm.sendReport(kind) },
                     onDone = { vm.reset(); go(Screen.HOME) },
-                    onThisWasFine = vm::thisWasFine,
                     showCareful = showCareful,
                     simple = simple,
+                    family = family,
+                    includeLines = saveSentence,
                 )
                 Phase.IDLE -> LaunchedEffect(Unit) { go(Screen.HOME) }
+            }
             }
             // Developer view: live scores at the top; never over the red warning (it hides while that shows).
             if (DevOverlay.visible(devOverlay, devUnlocked, state.phase == Phase.IN_CALL, state.warningOpen)) {
@@ -524,6 +559,16 @@ private fun ScreenContent(
             onHistory = { go(Screen.HISTORY) },
             onGoHome = { go(Screen.HOME) },
             simple = simple,
+            onWeekly = { go(Screen.WEEKLY) },
+            loaded = vm.callsLoaded.collectAsState().value,
+        )
+
+        Screen.WEEKLY -> WeeklySummaryScreen(
+            text = remember(calls) { vm.weeklySummary(calls) },
+            reminder = vm.weeklyReminder.collectAsState().value,
+            onReminder = vm::setWeeklyReminder,
+            onPermission = vm::weeklyReminderPermission,
+            onBack = { go(Screen.DASHBOARD) },
         )
 
         Screen.INSIGHTS -> InsightsScreen(calls, labels, period, setPeriod, onBack = { go(Screen.DASHBOARD) })

@@ -4,6 +4,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Only for the optional weekly reminder; asked when the user turns it on (Dashboard → Share weekly summary). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Android 17 (API 37) blocks private addresses (10.0.2.2, the laptop's Wi-Fi IP) without this runtime permission. -->
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
 
@@ -29,6 +31,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- The weekly reminder's alarm (data/WeeklyReminderScheduler.kt); not reachable from other apps. -->
+        <receiver android:name=".data.WeeklyReminderReceiver" android:exported="false" />
     </application>
 
 </manifest>

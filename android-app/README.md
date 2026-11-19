@@ -51,7 +51,7 @@ Select **`app`** and your device in the toolbar → press **Run ▶**. The app i
 
 | Task | Screen | What it does |
 |---|---|---|
-| 4.1 | Home | Simulate scam call, Simulate normal call, Choose a call script, Paste text, History, Settings |
+| 4.1 | Home | Simulate scam call, Simulate normal call, Choose a call script, Learn to spot scams, History, Settings |
 | 4.2 | Call scripts | Loads every `.json` file in `assets/scripts/` |
 | 4.3 | Incoming call → In call | Answer plays the script line by line. Caller lines are sent to the gateway one at a time. |
 | 4.4 | In call | Chat transcript (Speaker 1 · Caller on the left, Speaker 2 · You on the right), risk bar, Urgency / Money / Impersonation chips, banner with reason and suggested action |
@@ -61,6 +61,28 @@ Select **`app`** and your device in the toolbar → press **Run ▶**. The app i
 | 4.8 | Settings → Developer view (hidden) | Gateway URL field, presets, Save, Test connection (`GET /healthz`). Normal Settings shows only "Connected ✓" / "Can't connect to ScamGuard" |
 
 ---
+
+## After a call, learning, the weekly summary (both apps)
+
+Same flow, wording and look on Android and iOS, in Standard and Simple mode. New wording is in
+`tools/i18n/strings/57_aftercall.json`, `58_learn.json` and `59_weekly.json`.
+
+- **"What to do now"** (summary screen, after a Scam or "Be careful" call only): Report to ScamShield (copies a short
+  summary first: date and time, result, reason, and the caller's flagged lines masked by Mask only if "Save the
+  riskiest sentence" is on; then opens scamshield.gov.sg and says "Summary copied: paste it into the report"),
+  Call 1799 (the phone app asks first), Tell my family (only with a contact), How to block this number and If I
+  already shared details (text-only step sheets). Nothing is uploaded.
+- **Learn to spot scams** (Simple Home: a big card; Standard Home: a button): one card per scam type our scripts cover
+  (3 warning signs, what to do, "Hear an example" plays the script as a practice call, the source), and a 5-question
+  practice quiz built from real script lines (never the learning-loop test scripts 90+). Only the best score is kept.
+  Simple mode shows a friendly result without the score. The content is one file shared by both apps:
+  edit `tools/learn/scam_types.json`, then run `python3 tools/learn/build_learn.py` (writes `learn.json` into both apps).
+- **Share weekly summary** (Dashboard / "For family"): a plain note about the last 7 days (counts and plain reasons;
+  no numbers, caller words or links) through the system share sheet. Optional **Weekly reminder** (off by default):
+  a local notification on Sundays at 10:00; notification permission is asked only when it is turned on.
+- **Polish:** launch screen (the icon on navy), press feedback and a light tap on big buttons, warning / error haptics,
+  the red warning's entrance and the risk bar animate (nothing scales or flashes with reduce motion), friendly empty
+  states everywhere a list or chart can be empty, and a placeholder while the history loads.
 
 ## Requirements
 
@@ -278,7 +300,7 @@ app/src/main/
         ├── CallViewModel.kt     plays the script, calls the gateway, holds call state
         ├── IncomingCallScreen.kt
         ├── InCallScreen.kt      chat, risk bar, chips, banner, red pop-up (+ Preview)
-        ├── OtherScreens.kt      Home, script picker, paste text, summary, history, settings
+        ├── OtherScreens.kt      Home, script picker, summary, history, settings
         └── theme/
 ```
 

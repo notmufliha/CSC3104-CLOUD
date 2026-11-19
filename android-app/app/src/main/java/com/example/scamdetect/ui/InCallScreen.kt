@@ -61,7 +61,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.heightIn
 import com.example.scamdetect.ui.theme.ScamDetectTheme
 
-val SafeGreen = Color(0xFF2E7D32)
+/** Safe green, #2B7530: at least 4.5:1 on cards as text (accessibility audit; was #2E7D32, 4.4:1). Same on iOS. */
+val SafeGreen = Color(0xFF2B7530)
 val WarnYellow = Color(0xFFF9A825)
 val ScamRed = Color(0xFFC62828)
 val NeutralGrey = Color(0xFF9E9E9E)
@@ -149,10 +150,11 @@ private fun CallStatus(state: CallUiState, showCareful: Boolean, simple: Boolean
 
 @Composable
 fun RiskBar(level: Risk.Level, score: Float?, showScore: Boolean = true) {
-    val color by animateColorAsState(levelColor(level), label = "riskColor")
+    val barMs = com.example.scamdetect.logic.Motion.riskBarMs(reduceMotion())
+    val color by animateColorAsState(levelColor(level), androidx.compose.animation.core.tween(barMs), label = "riskColor")
     val hasVerdict = level != Risk.Level.LISTENING && level != Risk.Level.ERROR
     val target = if (hasVerdict) (score ?: 0f).coerceIn(0.08f, 1f) else 0f // always a sliver once there is a verdict
-    val progress by animateFloatAsState(target, label = "riskProgress")
+    val progress by animateFloatAsState(target, androidx.compose.animation.core.tween(barMs), label = "riskProgress")
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         RiskBadge(level, levelLabel(level))

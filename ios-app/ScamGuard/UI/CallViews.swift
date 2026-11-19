@@ -139,6 +139,10 @@ struct RiskBar: View {
     let score: Float?
     var showScore = true
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Risk bar colour / fill changes (Logic/Motion.swift); none with Reduce Motion.
+    private var barAnimation: Animation? { reduceMotion ? nil : .easeInOut(duration: Double(Motion.riskBarMs(reduce: false)) / 1000) }
+
     var body: some View {
         let color = Theme.levelColor(level)
         let hasVerdict = level != .listening && level != .error
@@ -154,8 +158,8 @@ struct RiskBar: View {
             .frame(maxWidth: .infinity)
             .frame(height: 14)
             .clipShape(Capsule())
-            .animation(.easeInOut(duration: 0.3), value: target)
-            .animation(.easeInOut(duration: 0.3), value: level)
+            .animation(barAnimation, value: target)
+            .animation(barAnimation, value: level)
             // Under the bar, so the word above never has to squeeze. An old score next to "Could not check" would
             // read like a current result, so it is hidden then.
             if hasVerdict && showScore, let score {

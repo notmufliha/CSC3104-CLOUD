@@ -8,7 +8,6 @@
     "development": "en",
     "supported": [
       "Base",
-      "en",
     ],
   },
   "packages": [
@@ -23,12 +22,14 @@
   "files": [
     { "kind": "folder", "path": "ScamGuard", "target-membership": [ "ScamGuard" ] },
     { "kind": "folder", "path": "ScamGuardTests", "target-membership": [ "ScamGuardTests" ] },
+    { "kind": "folder", "path": "ScamGuardUITests", "target-membership": [ "ScamGuardUITests" ] },
     {
       "kind": "group",
       "name": "Products",
       "children": [
         { "path": "<PRODUCTS>/ScamGuard.app", "id": "26F96B2830ABFFF400EDAEBE", "type": "wrapper.application", "index": false },
         { "path": "<PRODUCTS>/ScamGuardTests.xctest", "id": "26F96B2830ABFFF400EDAEC0", "type": "wrapper.cfbundle", "index": false },
+        { "path": "<PRODUCTS>/ScamGuardUITests.xctest", "id": "26F96B2830ABFFF400EDAEC2", "type": "wrapper.cfbundle", "index": false },
       ],
     },
   ],
@@ -110,6 +111,31 @@
         "SWIFT_VERSION": "5.0",
         "TARGETED_DEVICE_FAMILY": "1,2",
         "TEST_HOST": "$(BUILT_PRODUCTS_DIR)/ScamGuard.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ScamGuard",
+      },
+    }, {
+      "name": "ScamGuardUITests",
+      "id": "26F96B2730ABFFF400EDAEC3",
+      "product": "Products/ScamGuardUITests.xctest",
+      "product-type": "bundle.ui-testing",
+      "dependencies": [
+        "ScamGuard",
+      ],
+      "build-phases": [
+        "compile-sources",
+        "frameworks",
+        "resources",
+      ],
+      "build-settings": {
+        "CODE_SIGN_STYLE": "Automatic",
+        "CURRENT_PROJECT_VERSION": "1",
+        "GENERATE_INFOPLIST_FILE": "YES",
+        "MARKETING_VERSION": "1.0",
+        "PRODUCT_BUNDLE_IDENTIFIER": "com.rhaylene.ScamGuardUITests",
+        "PRODUCT_NAME": "$(TARGET_NAME)",
+        "SWIFT_APPROACHABLE_CONCURRENCY": "YES",
+        "SWIFT_VERSION": "5.0",
+        "TARGETED_DEVICE_FAMILY": "1,2",
+        "TEST_TARGET_NAME": "ScamGuard",
       },
     },
   ],

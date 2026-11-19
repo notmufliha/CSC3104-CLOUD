@@ -62,8 +62,9 @@ final class AlertPlayer: NSObject, WarningAlerts, AVSpeechSynthesizerDelegate {
         })
     }
 
+    /// "Be careful": the system's warning haptic, no sound (red uses .error; taps a light impact: Logic/Motion.swift).
     func yellow() {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
     }
 
     func stop() {

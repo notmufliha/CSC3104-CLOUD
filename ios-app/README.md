@@ -106,11 +106,33 @@ For demos and debugging; normal users never see it.
   stay).
 - The script picker's **Test calls (learning loop)** section (scripts 90+) shows only while unlocked.
 
+## After a call, learning, the weekly summary (both apps)
+
+Same flow, wording and look on Android and iOS, in Standard and Simple mode. New wording is in
+`tools/i18n/strings/57_aftercall.json`, `58_learn.json` and `59_weekly.json`.
+
+- **"What to do now"** (summary screen, after a Scam or "Be careful" call only): Report to ScamShield (copies a short
+  summary first: date and time, result, reason, and the caller's flagged lines masked by Mask only if "Save the
+  riskiest sentence" is on; then opens scamshield.gov.sg and says "Summary copied: paste it into the report"),
+  Call 1799 (the phone app asks first), Tell my family (only with a contact), How to block this number and If I
+  already shared details (text-only step sheets). Nothing is uploaded.
+- **Learn to spot scams** (Simple Home: a big card; Standard Home: a button): one card per scam type our scripts cover
+  (3 warning signs, what to do, "Hear an example" plays the script as a practice call, the source), and a 5-question
+  practice quiz built from real script lines (never the learning-loop test scripts 90+). Only the best score is kept.
+  Simple mode shows a friendly result without the score. The content is one file shared by both apps:
+  edit `tools/learn/scam_types.json`, then run `python3 tools/learn/build_learn.py` (writes `learn.json` into both apps).
+- **Share weekly summary** (Dashboard / "For family"): a plain note about the last 7 days (counts and plain reasons;
+  no numbers, caller words or links) through the system share sheet. Optional **Weekly reminder** (off by default):
+  a local notification on Sundays at 10:00; notification permission is asked only when it is turned on.
+- **Polish:** launch screen (the icon on navy), press feedback and a light tap on big buttons, warning / error haptics,
+  the red warning's entrance and the risk bar animate (nothing scales or flashes with reduce motion), friendly empty
+  states everywhere a list or chart can be empty, and a placeholder while the history loads.
+
 ## Features by phase
 
 | Phase | What it does |
 |---|---|
-| 1. Cloud | Tabs Home / Dashboard / Settings. Simulate scam / normal call (random script of that kind), script picker (25 scripts, filter & sort), paste text; incoming call; in-call risk bar, 3 chips (≥ 0.5 from `recent_scores`, fallback `call_scores`), privacy badge, chat transcript with "flagged: …" / "could not check", yellow banner, red WARNING pop-up (Hang up now / Dismiss) with one error haptic on the first SCAM; summary with the final verdict from `POST /v1/call/end` (3 s wait, else "Final review unavailable"), "During the call: …", reason + action, "What triggered it" (`top_window_seqs`), Report to ScamShield, This was a scam / This was fine with the consent sheet of masked lines → `POST /v1/report`. Developer view (hidden): URL, presets, Save, Test connection; normal Settings shows only Connected ✓ / Can't connect to ScamGuard. Handles duplicate, `ignored: true`, `already_ended`, `UNKNOWN`, HTTP errors and timeouts like Android. |
+| 1. Cloud | Tabs Home / Dashboard / Settings. Simulate scam / normal call (random script of that kind), script picker (25 scripts, filter & sort); incoming call; in-call risk bar, 3 chips (≥ 0.5 from `recent_scores`, fallback `call_scores`), privacy badge, chat transcript with "flagged: …" / "could not check", yellow banner, red WARNING pop-up (Hang up now / Dismiss) with one error haptic on the first SCAM; summary with the final verdict from `POST /v1/call/end` (3 s wait, else "Final review unavailable"), "During the call: …", reason + action, "What triggered it" (`top_window_seqs`), Report to ScamShield (the "This was a scam / This was fine" buttons and their consent sheet were removed; `POST /v1/report` stays in the view model). Developer view (hidden): URL, presets, Save, Test connection; normal Settings shows only Connected ✓ / Can't connect to ScamGuard. Handles duplicate, `ignored: true`, `already_ended`, `UNKNOWN`, HTTP errors and timeouts like Android. |
 | 2. Dashboard | SwiftData store with Android's 4 tables (CallRecord, ScorePoint, ImplicitLabel, LabelSentence). Most common reasons (by reason code), past calls (verdict dot, time, reason, privacy badge), call detail with a Swift Charts risk-over-time chart (combined + urgency, money, impersonation; dashed lines at 0.45 and 0.6). "Save the riskiest sentence", "Help improve detection" (off by default; keeps labels and masked caller lines locally), "Delete my history" (all 4 tables). Implicit labels (G.12) as on Android. Nothing is uploaded. |
 | 3. Hybrid + On-device | Swift ports of the three workers' text cleaning (Python regex semantics), the linear models (format 1 and the hashing format 2 with Murmur3), OnDeviceScorer, LocalRules (policy.rs) and OnDeviceCall. Hybrid sends only masked 5-line windows to `POST /v1/verify` (from the 3rd caller line, at ≥ 0.45 / a rule BERT can change / the 5th-line spot check, never once red, 1.5 s timeout, English only). On-device makes no network request at all. Privacy-level picker; "Check for model updates" (manifest → download → SHA-256 → Application Support; the bundled models are the fallback). |
 | 4. MobileBERT | ONNX Runtime 1.24.2 via Swift Package Manager, bundled `model.onnx` (26.6 MB int8) + `vocab.txt` + `bert_config.json`, WordPiece tokenizer port (uncased, NFKC, last 5 caller lines joined with " \| ", left truncation to 128, softmax(logits / 1.2908)[1]). Level 3 asks MobileBERT by the same rules as Hybrid asks the cloud. Status shown in Settings. About 15 ms per window on the Simulator. |

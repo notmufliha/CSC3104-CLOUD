@@ -1,11 +1,27 @@
-// ScamGuard web app: the Android app's cloud mode (privacy level 1) in a browser. Same gateway calls
-// (POST v1/utterance, v1/call/end, v1/report, GET healthz), same screens and the same rules for colours, reasons
-// and history. Kept in step with android-app/.../ui/CallViewModel.kt, logic/Risk.kt, logic/Mask.kt.
-// The call scripts are the app's own (android-app/app/src/main/assets/scripts), served at scripts/.
-// History stays in this browser (localStorage), like the phone's on-device database.
+// ScamGuard web app: the phone apps' cloud mode (privacy level 1) in a browser, so the system can be tried without
+// Android Studio or Xcode. Same gateway calls (POST v1/utterance, v1/call/end, GET healthz), the same screens in
+// Standard and Simple mode, and the same wording: strings.json is generated from tools/i18n/strings/*.json together
+// with the apps' string tables (tools/i18n/gen_strings.py), and learn.json is the apps' Learn content
+// (tools/learn/build_learn.py). Kept in step with android-app ui/CallViewModel.kt, logic/Risk.kt, logic/Warnings.kt,
+// logic/AfterCall.kt, logic/Learn.kt, logic/WeeklySummary.kt and logic/Mask.kt.
+// The call scripts are the apps' own (android-app/app/src/main/assets/scripts), served at scripts/.
+// Everything the phone keeps on the phone (history, settings, family contact, quiz score) stays in this browser
+// (localStorage). Nothing new is uploaded.
+// Not in the browser: real phone calls and messages (Call / Tell my family open the computer's tel: / sms: handler,
+// if any), the weekly reminder notification, on-device checking (privacy levels 2 and 3), the PIN lock.
 "use strict";
 
-// ---------------------------------------------------------------- constants (as in the app)
+// ---------------------------------------------------------------- wording (the apps' string table)
+
+let STR = {};
+/** The apps' text for a key, with {0} {1} filled in. */
+function T(key, ...args) {
+  const s = STR[key];
+  if (s === undefined) return key;
+  return s.replace(/\{(\d+)\}/g, (_, i) => (args[+i] ?? ""));
+}
+
+// ---------------------------------------------------------------- constants (as in the apps)
 
 const SIGNALS = ["urgency", "money", "impersonation"];
 const SIGNAL_ON = 0.5;                 // Risk.SIGNAL_ON
@@ -13,18 +29,16 @@ const DEFAULT_DELAY_MS = 1500;
 const FINAL_REVIEW_WAIT_MS = 3000;
 const UNSURE_LINE = 0.45, SCAM_LINE = 0.6;   // the aggregator's default thresholds, drawn on the chart
 const SCAMSHIELD_URL = "https://www.scamshield.gov.sg/";
+const HELPLINE = "1799";
 const COLORS = { GREEN: "var(--safe)", YELLOW: "var(--warn)", RED: "var(--scam)", ERROR: "var(--grey)", LISTENING: "var(--grey)" };
-const LABELS = { LISTENING: "Listening…", GREEN: "Looks safe so far", YELLOW: "Suspicious", RED: "Likely scam", ERROR: "Could not check" };
-const REASON_TEXT = {
-  money: "Asked for your OTP or money",
-  impersonation: "Claims to be police, a bank or the government",
-  urgency: "Pressuring you to act now",
-  bert: "The conversation as a whole sounds like a scam",
-  several: "Several small warning signs together",
-  none: "No warning signs",
-  server_not_reached: "Server not reached",
-  no_lines: "Ended before any line was checked",
-};
+/** The word for a level (the apps' riskWord / levelLabel). */
+const levelWord = (lvl, live = false) => T({
+  LISTENING: "risk_listening", GREEN: live ? "risk_safe_so_far" : "risk_safe", YELLOW: "risk_careful",
+  RED: "risk_scam", ERROR: "risk_could_not_check",
+}[lvl]);
+const ICON = { GREEN: "✓", YELLOW: "!", RED: "✕", ERROR: "?", LISTENING: "…" };
+const chipLabel = (s) => T("chip_" + s);
+const reasonText = (code) => (STR["reason_" + code] ? T("reason_" + code) : code || "");
 
 // ---------------------------------------------------------------- storage (every access guarded)
 
@@ -35,6 +49,10 @@ const store = {
   },
   set(key, value) { try { localStorage.setItem("scamguard." + key, JSON.stringify(value)); } catch { /* private mode */ } },
 };
+const simple = () => store.get("simple", false);
+const textSize = () => store.get("textSize", simple() ? "large" : "normal");
+const family = () => { const p = store.get("familyPhone", ""); return p ? { name: store.get("familyName", "") || p, phone: p } : null; };
+const showCareful = () => store.get("showCareful", true);
 
 /** "api/" (same address as this page) unless Settings saved another. */
 function gatewayUrl() { return store.get("gatewayUrl", "api/"); }
@@ -46,7 +64,7 @@ function normalize(url) {
   return u;
 }
 
-// ---------------------------------------------------------------- risk rules (logic/Risk.kt)
+// ---------------------------------------------------------------- risk rules (logic/Risk.kt, logic/Warnings.kt)
 
 function level(verdict, error) {
   if (verdict === "SCAM") return "RED";
@@ -57,26 +75,19 @@ function level(verdict, error) {
 }
 const SEVERITY = { LISTENING: 0, GREEN: 1, ERROR: 2, YELLOW: 3, RED: 4 };
 const litSignals = (scores) => SIGNALS.filter((s) => (scores?.[s] ?? 0) >= SIGNAL_ON);
-const chipLabel = (s) => ({ urgency: "Urgency", money: "Money / OTP", impersonation: "Impersonation" }[s] || s);
-function reasonFor(lit, texts) {
+
+/** Warnings.kind: money (OTP when the caller said it), then a fake official, then rushing; else the reason code. */
+function warningKind(lit, texts, reasonCode) {
   const all = texts.join(" ").toLowerCase();
-  if (lit.includes("money") && (all.includes("otp") || all.includes("one-time") || all.includes("验证码"))) return "asking for your OTP";
-  if (lit.includes("money")) return "asking you to transfer money";
-  if (lit.includes("impersonation")) return "pretending to be an official (police, bank, government)";
-  if (lit.includes("urgency")) return "pressuring you to act right now";
-  return "several small warning signs together";
+  const otp = all.includes("otp") || all.includes("one-time") || all.includes("验证码");
+  if (lit.includes("money")) return otp ? "otp" : "money";
+  if (lit.includes("impersonation")) return "official";
+  if (lit.includes("urgency")) return "rush";
+  return { money: otp ? "otp" : "money", impersonation: "official", urgency: "rush", several: "several", earlier: "earlier" }[reasonCode] || "general";
 }
-function actionFor(lit) {
-  if (lit.includes("money")) return "Hang up and call your bank on the number on your card.";
-  if (lit.includes("impersonation")) return "Hang up and call the agency back on its official number.";
-  return "Don't share personal details. Real organisations give you time to check.";
-}
-function bannerFor(lvl, lit, texts) {
-  if (lvl === "RED") return `Likely scam: ${reasonFor(lit, texts)}. ${actionFor(lit)}`;
-  if (lvl === "YELLOW") return `Be careful: ${reasonFor(lit, texts)}. ${actionFor(lit)}`;
-  if (lvl === "ERROR") return "Could not check this call. The server can't be reached — this does NOT mean it is safe.";
-  return null;
-}
+const warnMessage = (k) => T("warn_msg_" + k);
+const warnDo = (k) => T(k === "otp" ? "warn_do_otp" : k === "money" ? "warn_do_money" : "warn_do_details");
+const carefulLine = (k) => T({ otp: "careful_msg_money", money: "careful_msg_money", official: "careful_msg_official", rush: "careful_msg_rush" }[k] || "careful_msg_general");
 
 // ---------------------------------------------------------------- masking (logic/Mask.kt, backend/review/mask.py)
 
@@ -122,7 +133,15 @@ async function api(path, body, timeoutMs = 4000, base = gatewayUrl()) {
   } finally { clearTimeout(timer); }
 }
 
-// ---------------------------------------------------------------- scripts
+/** Plain connection status for Home and Settings: null = checking, true / false. */
+let connected = null;
+async function checkConnection() {
+  connected = null; render();
+  try { const r = await api("healthz"); connected = r.ok && r.json?.status === "ok"; } catch { connected = false; }
+  render();
+}
+
+// ---------------------------------------------------------------- scripts and learn content
 
 let scripts = [];
 async function loadScripts() {
@@ -137,6 +156,7 @@ async function loadScripts() {
         return {
           file, kind: (parts[0] || "unknown").toLowerCase(),
           lang: ["en", "zh"].includes(parts[1]) ? parts[1] : null,
+          num: parseInt(parts[2], 10),
           title: title ? title[0].toUpperCase() + title.slice(1) : file,
           lines: lines.filter((l) => l.text && l.text.trim()),
         };
@@ -144,29 +164,40 @@ async function loadScripts() {
     }))).filter(Boolean);
   } catch { scripts = []; }
 }
+/** Learning-loop test scripts (90+) are for the developer view in the apps; not offered here. */
+const isTestCall = (file) => { const n = parseInt((file || "").split("_")[2], 10); return n >= 90; };
 const isCaller = (l) => ["caller", "speaker 1", "speaker1", "speaker_1"].includes((l.speaker || "").trim().toLowerCase());
 let lastRandom = null;
 function randomScript(kind) {
-  const pool = scripts.filter((s) => s.kind === kind);
+  const pool = scripts.filter((s) => s.kind === kind && !isTestCall(s.file));
   const others = pool.filter((s) => s.file !== lastRandom);
   const pick = (others.length ? others : pool)[Math.floor(Math.random() * (others.length || pool.length))];
   lastRandom = pick?.file;
   return pick;
 }
 
+let learn = null;                // { types, quiz } from learn.json; null while loading
+async function loadLearn() {
+  try { learn = await (await fetch("learn.json")).json(); } catch { learn = { types: [], quiz: [] }; }
+}
+
 // ---------------------------------------------------------------- state
 
-let screen = "home";           // home | pick | paste | ringing | call | summary | dashboard | detail | settings
+// home | pick | ringing | call | summary | dashboard | detail | weekly | settings | learn | learnType | quiz
+let screen = "home";
 let call = null;               // the current call (see newCall)
 let openCallId = null;
+let learnTypeId = null;
+let quiz = null;               // { items, i, answer, score, done }
 let pickFilter = { kind: null, lang: null };
+let sheet = null;              // "block" | "shared" on the summary
 
 function newCall(script) {
   return {
     script, id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random(),
     lines: [], verdict: null, combinedScore: null, callScores: {}, error: null, lastOutcomeSeq: 0,
-    scamAlert: false, alertShown: false, points: [], startedAt: 0, timers: [], ended: false,
-    reviewing: false, finalReview: null, reportResult: null, sending: false,
+    scamAlert: false, warningOpen: false, points: [], startedAt: 0, timers: [], ended: false,
+    reviewing: false, finalReview: null, copied: false,
   };
 }
 const callLevel = (c) => level(c.verdict, c.error);
@@ -178,6 +209,7 @@ function summaryLevel(c) {
   if (fr?.reviewed) return fin;
   return SEVERITY[fin] >= SEVERITY[live] ? fin : live;
 }
+const callKind = (c) => warningKind(litSignals(c.callScores), flaggedTexts(c), reasonCode(summaryLevel(c), c.callScores, c.finalReview?.reason));
 
 // ---------------------------------------------------------------- call lifecycle (CallViewModel.kt)
 
@@ -234,11 +266,15 @@ function applyAnswer(c, seq, body) {
     c.error = null;
   }
   if (c.verdict === "SCAM" && !c.scamAlert) {
-    c.scamAlert = true;
+    c.scamAlert = true; c.warningOpen = true;
     try { navigator.vibrate?.(600); } catch { /* not supported */ }
-    showAlert(c);
+    if (store.get("readAloud", simple())) speak(T("warn_spoken", warnDo(callKind(c))));
   }
   render();
+}
+
+function speak(text) {
+  try { const u = new SpeechSynthesisUtterance(text); u.lang = "en-SG"; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch { /* no voice */ }
 }
 
 function markError(c, seq, msg) {
@@ -250,13 +286,13 @@ function markError(c, seq, msg) {
 
 function stopTimers() { if (call) { call.timers.forEach(clearTimeout); call.timers = []; } }
 
-/** Back during a call: the server is told (so it clears the call's memory); no summary, nothing saved. */
+/** Leave without saving: the server is told (so it clears the call's memory); no summary, nothing saved. */
 function discard() {
   if (call && screen === "call" && !call.ended) {
     call.ended = true; stopTimers();
     sendEnd(call, "user_discarded");
   }
-  call = null; closeOverlay(); go("home");
+  call = null; go("home");
 }
 
 function sendEnd(c, endedBy) {
@@ -270,9 +306,9 @@ function sendEnd(c, endedBy) {
 async function endCall(c, endedBy) {
   if (c.ended || c !== call) return;
   c.ended = true; stopTimers();
+  try { speechSynthesis.cancel(); } catch { /* no voice */ }
   c.lines.forEach((l) => { if (l.pending) { l.pending = false; l.failed = true; } });
-  c.reviewing = true;
-  closeOverlay();
+  c.reviewing = true; c.warningOpen = false;
   go("summary");
   const resp = await Promise.race([sendEnd(c, endedBy), sleep(FINAL_REVIEW_WAIT_MS).then(() => null)]);
   const verdict = ["SAFE", "UNSURE", "SCAM"].includes(resp?.final_verdict) ? resp.final_verdict : null;
@@ -285,21 +321,25 @@ async function endCall(c, endedBy) {
   if (c === call) render();
 }
 
-// ---------------------------------------------------------------- history (B.7, in this browser)
+// ---------------------------------------------------------------- history (in this browser)
 
 const history = () => store.get("calls", []);
 const historyVerdict = (lvl) => ({ RED: "SCAM", YELLOW: "UNSURE", GREEN: "SAFE" }[lvl] || "NOT CHECKED");
+const SERVER_REASONS = {
+  money: "Asked for your OTP or money", impersonation: "Claims to be police, a bank or the government",
+  urgency: "Pressuring you to act now", bert: "The conversation as a whole sounds like a scam",
+  several: "Several small warning signs together",
+};
 function reasonCode(lvl, scores, serverReason) {
   if (lvl === "RED" || lvl === "YELLOW") {
-    const fromServer = Object.entries(REASON_TEXT).find(([, t]) => t.toLowerCase() === (serverReason || "").trim().toLowerCase());
+    const fromServer = Object.entries(SERVER_REASONS).find(([, t]) => t.toLowerCase() === (serverReason || "").trim().toLowerCase());
     if (fromServer) return fromServer[0];
-    const lit = SIGNALS.filter((s) => (scores[s] ?? 0) >= SIGNAL_ON).sort((a, b) => scores[b] - scores[a]);
+    const lit = SIGNALS.filter((s) => (scores?.[s] ?? 0) >= SIGNAL_ON).sort((a, b) => scores[b] - scores[a]);
     return lit[0] || "several";
   }
   return { GREEN: "none", ERROR: "server_not_reached" }[lvl] || "no_lines";
 }
 function saveHistory(c) {
-  if (c.script.kind === "pasted") return;
   const lvl = summaryLevel(c);
   const verdict = historyVerdict(lvl);
   let sentence = null;
@@ -317,185 +357,389 @@ function saveHistory(c) {
   });
   store.set("calls", calls.slice(0, 200));
 }
+const levelOfRow = (r) => level(r.finalVerdict === "NOT CHECKED" ? null : r.finalVerdict, r.finalVerdict === "NOT CHECKED");
 
-// ---------------------------------------------------------------- report (H.3)
+// ---------------------------------------------------------------- after the call (logic/AfterCall.kt)
 
-async function sendReport(c, kind) {
-  const lines = reportPreview(c);
-  if (!lines.length) return "Nothing to report: the caller said nothing.";
-  const text = lines.map((l) => l.text).join(" ");
-  const chinese = [...text].filter((ch) => ch >= "一" && ch <= "鿿").length;
-  const language = c.script.lang || (chinese * 10 > text.length * 3 ? "zh" : "en");
-  try {
-    const r = await api("v1/report", { call_id: c.id, kind, app_verdict: c.verdict || "", language, consent: true, lines, consent_version: 2 });
-    if (r.ok) return `Thank you. Shared ${r.json?.lines_stored ?? lines.length} lines; lines not approved for training are deleted after 30 days.`;
-    if (r.status === 503) return "Reporting is not set up on this server.";
-    return `Could not send the report (server answered ${r.status}).`;
-  } catch (e) { return "Could not send the report: " + (e.name || "error"); }
+const afterCardShows = (lvl) => lvl === "RED" || (lvl === "YELLOW" && showCareful());
+/** "19 Nov 2026, 2:45 PM" (as in the apps). */
+function whenText(ms) {
+  const d = new Date(ms);
+  const mon = d.toLocaleString("en-GB", { month: "short" });
+  let h = d.getHours(); const ap = h >= 12 ? "PM" : "AM"; h = h % 12 || 12;
+  return `${d.getDate()} ${mon} ${d.getFullYear()}, ${h}:${String(d.getMinutes()).padStart(2, "0")} ${ap}`;
 }
-const reportPreview = (c) => c.lines.filter((l) => l.isCaller && l.text.trim()).map((l) => ({ seq: l.seq, text: Mask(l.text) }));
+/** The text copied before ScamShield opens: masked caller lines only if "Save the riskiest sentence" is on. */
+function reportSummary(c) {
+  const lvl = summaryLevel(c);
+  const out = [T("copy_title"), T("copy_when", whenText(c.startedAt || Date.now())), T("copy_result", levelWord(lvl)),
+    T("copy_why", warnMessage(callKind(c)))];
+  if (store.get("saveSentence", false)) {
+    const masked = [...new Set(flaggedTexts(c).map((t) => Mask(t).trim()).filter(Boolean))];
+    if (masked.length) { out.push(T("copy_lines")); masked.forEach((m) => out.push(`- "${m}"`)); }
+  }
+  out.push(T("copy_footer"));
+  return out.join("\n");
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
+}
+const telHref = (n) => "tel:" + String(n).replace(/[^\d+]/g, "");
+const smsHref = (n, body) => "sms:" + String(n).replace(/[^\d+]/g, "") + "?body=" + encodeURIComponent(body);
+
+// ---------------------------------------------------------------- weekly summary (logic/WeeklySummary.kt)
+
+function weekLabel(first, last) {
+  const m = (d) => d.toLocaleString("en-GB", { month: "short" });
+  return first.getMonth() === last.getMonth() ? `${first.getDate()}–${last.getDate()} ${m(last)}`
+    : `${first.getDate()} ${m(first)} – ${last.getDate()} ${m(last)}`;
+}
+function weeklyText(calls, now = Date.now()) {
+  const today = new Date(now); const first = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+  const inWeek = calls.filter((c) => c.endedAt >= first.getTime() && c.endedAt <= now && ["SAFE", "UNSURE", "SCAM"].includes(c.finalVerdict));
+  const head = T("weekly_head", weekLabel(first, today)), end = T("weekly_end");
+  if (!inWeek.length) return `${head} ${T("weekly_none")} ${end}`;
+  const ORDER = ["weekly_r_money", "weekly_r_imp", "weekly_r_urgency", "weekly_r_other"];
+  const words = (code) => ({ money: "weekly_r_money", impersonation: "weekly_r_imp", urgency: "weekly_r_urgency" }[code] || "weekly_r_other");
+  const scams = inWeek.filter((c) => c.finalVerdict === "SCAM");
+  const careful = inWeek.filter((c) => c.finalVerdict === "UNSURE").length;
+  const parts = [head, inWeek.length === 1 ? T("weekly_calls_one") : T("weekly_calls_many", inWeek.length)];
+  if (!scams.length) parts.push(T("weekly_scam_zero"));
+  else {
+    const counts = {}; scams.forEach((c) => { const k = words(c.reasonCode); counts[k] = (counts[k] || 0) + 1; });
+    const reasons = Object.entries(counts).sort((a, b) => b[1] - a[1] || ORDER.indexOf(a[0]) - ORDER.indexOf(b[0])).map(([k]) => T(k)).join("; ");
+    parts.push(scams.length === 1 ? T("weekly_scam_one", reasons) : T("weekly_scam_many", scams.length, reasons));
+  }
+  if (careful) parts.push(careful === 1 ? T("weekly_careful_one") : T("weekly_careful_many", careful));
+  parts.push(end);
+  return parts.join(" ");
+}
+
+// ---------------------------------------------------------------- quiz (logic/Learn.kt)
+
+const QUIZ_SIZE = 5, QUIZ_MIN_EACH = 2;
+const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+function quizRound(avoid = new Set()) {
+  const pool = (learn?.quiz || []).filter((q) => !isTestCall(q.script));
+  const pick = (items, n, taken) => {
+    const fresh = shuffle(items.filter((q) => !avoid.has(q.text) && !taken.has(q.text)));
+    const old = shuffle(items.filter((q) => avoid.has(q.text) && !taken.has(q.text)));
+    return [...fresh, ...old].slice(0, n);
+  };
+  const scam = pick(pool.filter((q) => q.scam), QUIZ_MIN_EACH, new Set());
+  const safe = pick(pool.filter((q) => !q.scam), QUIZ_MIN_EACH, new Set());
+  const taken = new Set([...scam, ...safe].map((q) => q.text));
+  return shuffle([...scam, ...safe, ...pick(pool, QUIZ_SIZE - scam.length - safe.length, taken)]);
+}
+const quizResultLine = (s, of = QUIZ_SIZE) => T(s >= of ? "quiz_r5" : s === of - 1 ? "quiz_r4" : s === of - 2 ? "quiz_r3" : "quiz_r_low");
 
 // ---------------------------------------------------------------- rendering helpers
 
 const $ = (sel) => document.querySelector(sel);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
-const fmtDate = (ms) => new Date(ms).toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-const banner = (text, color) => `<div class="banner" style="border-color:${color};background:color-mix(in srgb, ${color} 15%, transparent)">${esc(text)}</div>`;
-const back = (to, label = "‹ Back") => `<button class="link" data-go="${to}">${label}</button>`;
+const fmtDate = (ms) => new Date(ms).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+const back = (to) => `<button class="link" data-go="${to}" aria-label="${esc(T("a11y_back"))}">‹ ${esc(T("btn_back"))}</button>`;
+const badge = (lvl, word, big = false) => `<div class="badge ${big ? "big" : ""}"><span class="badge-dot" style="background:${COLORS[lvl]}" aria-hidden="true">${ICON[lvl]}</span><span>${esc(word)}</span></div>`;
+const stateBanner = (lvl, text) => `<div class="banner" style="border-color:${COLORS[lvl]}"><span class="badge-dot small" style="background:${COLORS[lvl]}" aria-hidden="true">${ICON[lvl]}</span><span>${esc(text)}</span></div>`;
+const emptyState = (icon, text) => `<div class="empty"><div class="empty-ico" aria-hidden="true">${icon}</div><p>${esc(text)}</p></div>`;
 
 function bubble(l, risky = false) {
-  const state = l.pending ? `<div class="state">checking…</div>` : l.failed ? `<div class="state">could not check</div>` : "";
-  const flags = l.flags?.length ? `<div class="flags">⚑ ${l.flags.map(chipLabel).join(", ")}</div>` : "";
+  const state = l.pending ? `<div class="state">${esc(T("call_checking"))}</div>` : l.failed ? `<div class="state">${esc(T("risk_not_checked"))}</div>` : "";
+  const flags = l.flags?.length && !simple() ? `<div class="flags">⚑ ${esc(T("call_flagged", l.flags.map(chipLabel).join(", ")))}</div>` : "";
   return `<div class="bubble ${l.isCaller ? "" : "me"} ${l.flags?.length ? "flagged" : ""} ${risky ? "risky" : ""}">
-    <div class="who">${l.isCaller ? "Caller" : "You"}${risky ? " · where it turned risky" : ""}</div>${esc(l.text)}${flags}${state}</div>`;
+    <div class="who">${esc(l.isCaller ? T("call_caller") : T("call_you"))}${risky ? " · " + esc(T("call_risky_here")) : ""}</div>${esc(l.text)}${flags}${state}</div>`;
 }
 
-function go(to) { screen = to; render(); if (to === "call" || to === "home") $("#screen").scrollTop = 0; }
+function go(to) { screen = to; sheet = null; render(); $("#screen").scrollTop = 0; }
 
 // ---------------------------------------------------------------- screens
 
+function statusCard() {
+  const [cls, title, line] = connected === null ? ["", T("home_status_checking"), ""]
+    : connected ? ["ok", T("home_status_ok") + " ✓", T("home_status_ok_line")]
+    : ["bad", T("risk_could_not_check"), T("error_banner")];
+  return `<div class="status ${cls}" role="status"><span class="badge-dot" aria-hidden="true">${connected ? "✓" : connected === false ? "!" : "…"}</span>
+    <div class="grow"><div class="status-title">${esc(title)}</div>${line ? `<div>${esc(line)}</div>` : ""}</div>
+    ${connected === false ? `<button class="btn" data-act="recheck">${esc(T("btn_try_again"))}</button>` : ""}</div>`;
+}
+function learnCard() {
+  return `<button class="learn-card" data-go="learn"><span class="badge-dot" aria-hidden="true">★</span>
+    <span class="grow"><span class="lc-title">${esc(T("learn_title"))}</span><span>${esc(T("learn_card_line"))}</span></span><span aria-hidden="true">›</span></button>`;
+}
+function callRow(r) {
+  const lvl = levelOfRow(r);
+  return `<button class="card click row callrow" data-open="${esc(r.id)}">${badge(lvl, levelWord(lvl))}
+    <span class="grow right small muted">${esc(fmtDate(r.endedAt))}</span></button>`;
+}
+
 const SCREENS = {
-  home: () => `
-    <h1>ScamGuard</h1>
-    <p class="muted">Simulate a call and watch the scam check work live.</p>
-    <button class="btn fill wide" data-act="scam">Simulate scam call</button>
-    <button class="btn fill wide" data-act="normal">Simulate normal call</button>
-    <button class="btn wide" data-go="pick">Choose a call script…</button>
-    <button class="btn wide" data-go="paste">Paste text</button>
-    ${scripts.length ? "" : `<div class="note">No call scripts found at <code>scripts/</code>. Paste text still works.</div>`}
-    <div class="note small">Web version of the ScamGuard Android app. It checks calls with the ScamGuard server
-      (privacy level 1, Cloud). The on-device privacy levels need the Android app.</div>`,
+  home: () => simple() ? `
+    <h1>${esc(T("app_name_text"))}</h1>
+    ${statusCard()}
+    <button class="btn fill wide big" data-act="scam">📞 ${esc(T("btn_practice_call"))}</button>
+    <p class="muted center">${esc(T("home_practice_line"))}</p>
+    ${learnCard()}
+    <div class="card"><h2>${esc(T("home_recent"))}</h2>
+      ${history().length ? history().slice(0, 3).map(callRow).join("") : emptyState("📞", T("home_no_calls"))}</div>
+    <div class="note small">${webNote()}</div>` : `
+    <h1>${esc(T("app_name_text"))}</h1>
+    <p class="muted">${esc(T("home_full_line"))}</p>
+    <button class="btn fill wide" data-act="scam">${esc(T("btn_sim_scam"))}</button>
+    <button class="btn fill wide" data-act="normal">${esc(T("btn_sim_normal"))}</button>
+    <button class="btn wide" data-go="pick">${esc(T("btn_pick_script"))}</button>
+    <button class="btn wide" data-go="learn">${esc(T("btn_learn"))}</button>
+    ${scripts.length ? "" : emptyState("ℹ", T("pick_none"))}
+    ${connected === false ? stateBanner("ERROR", T("error_banner")) : ""}
+    <div class="note small">${webNote()}</div>`,
 
   pick: () => {
-    const shown = scripts.filter((s) => (!pickFilter.kind || s.kind === pickFilter.kind) && (!pickFilter.lang || s.lang === pickFilter.lang));
-    const chip = (key, val, label) => `<button class="chip ${pickFilter[key] === val ? "sel" : ""}" data-filter="${key}:${val ?? ""}">${label}</button>`;
-    return `${back("home")}<h1>Call scripts</h1>
-      <div class="chips">${chip("kind", null, "All")}${chip("kind", "scam", "Scam")}${chip("kind", "normal", "Normal")}
-        ${chip("lang", null, "Any language")}${chip("lang", "en", "English")}${chip("lang", "zh", "中文")}</div>
-      ${shown.map((s) => `<div class="card click row" data-script="${esc(s.file)}">
-        <div class="grow"><div style="font-weight:600">${esc(s.title)}</div>
-          <div class="small muted">${s.lines.length} lines · ${s.lang === "zh" ? "Mandarin" : s.lang === "en" ? "English" : "auto"}</div></div>
-        <span class="tag" style="background:${s.kind === "scam" ? "var(--scam)" : "var(--safe)"}">${s.kind === "scam" ? "Scam" : "Normal"}</span>
-      </div>`).join("") || `<p class="muted">No scripts match.</p>`}`;
+    const shown = scripts.filter((s) => !isTestCall(s.file) && (!pickFilter.kind || s.kind === pickFilter.kind) && (!pickFilter.lang || s.lang === pickFilter.lang));
+    const chip = (key, val, label) => `<button class="chip ${pickFilter[key] === val ? "sel" : ""}" data-filter="${key}:${val ?? ""}" aria-pressed="${pickFilter[key] === val}">${esc(label)}</button>`;
+    return `${back("home")}<h1>${esc(T("pick_title"))}</h1>
+      <div class="chips">${chip("kind", null, T("pick_all"))}${chip("kind", "scam", T("pick_scam"))}${chip("kind", "normal", T("pick_normal"))}</div>
+      <div class="chips">${chip("lang", null, T("pick_all"))}${chip("lang", "en", T("pick_english"))}${chip("lang", "zh", T("pick_chinese"))}</div>
+      ${shown.map((s) => `<button class="card click row" data-script="${esc(s.file)}">
+        <span class="grow"><span class="tag" style="background:${s.kind === "scam" ? "var(--scam)" : "var(--safe)"}">${esc(T(s.kind === "scam" ? "pick_kind_scam" : "pick_kind_normal"))}</span>
+          <span class="block strong">${esc(s.title)}</span>
+          <span class="block small muted">${esc(T("pick_lines", s.lang === "zh" ? T("pick_chinese") : s.lang === "en" ? T("pick_english") : T("pick_auto"), s.lines.length))}</span></span>
+      </button>`).join("") || emptyState("ℹ", T("hist_none"))}`;
   },
 
-  paste: () => `${back("home")}<h1>Paste text</h1>
-    <p class="muted small">Paste what a caller said (a message, a transcript). It is checked as one caller line.</p>
-    <textarea id="pasted" placeholder="e.g. This is the police. Transfer the money to the safe account now."></textarea>
-    <button class="btn fill wide" data-act="check-pasted">Check</button>`,
-
   ringing: () => `<div class="ringing">
-      <div><p class="muted">Incoming call</p><div class="avatar">👤</div>
-        <h1>Unknown caller</h1><p class="muted">Private number</p>
-        <p class="small muted" style="margin-top:8px">Script: ${esc(call.script.title)}</p></div>
+      <div><p class="muted">${esc(T("call_incoming"))}</p><div class="avatar" aria-hidden="true">👤</div>
+        <h1>${esc(T("call_unknown_caller"))}</h1><p class="muted">${esc(T("call_private_number"))}</p></div>
       <div class="answer-row">
-        <div><button class="round" style="background:var(--scam)" data-act="decline" aria-label="Decline">✕</button><span class="small">Decline</span></div>
-        <div><button class="round" style="background:var(--safe)" data-act="answer" aria-label="Answer">✆</button><span class="small">Answer</span></div>
+        <div><button class="round" style="background:var(--scam)" data-act="decline" aria-label="${esc(T("btn_decline"))}">✕</button><span>${esc(T("btn_decline"))}</span></div>
+        <div><button class="round" style="background:var(--safe)" data-act="answer" aria-label="${esc(T("btn_answer"))}">✆</button><span>${esc(T("btn_answer"))}</span></div>
       </div></div>`,
 
   call: () => {
     const c = call, lvl = callLevel(c), lit = litSignals(c.callScores), color = COLORS[lvl];
     const has = ["SAFE", "UNSURE", "SCAM"].includes(c.verdict);
     const progress = lvl === "LISTENING" ? 0 : lvl === "ERROR" ? 1 : Math.max(0.04, Math.min(1, c.combinedScore ?? 0));
-    const b = bannerFor(lvl, lit, flaggedTexts(c));
-    return `<div class="row"><div class="grow"><div style="font-weight:600">Unknown caller</div>
-        <div class="small muted">${esc(c.script.title)} · Cloud</div></div></div>
+    const kind = warningKind(lit, flaggedTexts(c), null);
+    const banner = lvl === "RED" ? stateBanner("RED", warnMessage(kind) + " " + warnDo(kind))
+      : lvl === "YELLOW" && showCareful() ? stateBanner("YELLOW", carefulLine(kind))
+      : lvl === "ERROR" ? stateBanner("ERROR", T("error_banner")) : "";
+    const word = lvl === "YELLOW" && !showCareful() ? T("risk_safe_so_far") : levelWord(lvl, true);
+    return `<div ${c.warningOpen ? 'aria-hidden="true" inert' : ""} class="col">
+      <div class="strong">${esc(T("call_on_call"))}</div>
+      ${simple() ? "" : `<div class="small muted">${esc(c.script.title)}</div>`}
       <div class="riskbar">
-        <div class="row"><span class="grow" style="font-weight:600;color:${color}">${LABELS[lvl]}</span>
-          ${has && c.combinedScore != null ? `<span class="small">risk ${c.combinedScore.toFixed(2)}</span>` : ""}</div>
+        <div class="row"><span class="grow strong" style="font-size:1.25rem">${esc(word)}</span>
+          ${has && c.combinedScore != null && !simple() ? `<span class="small">${esc(T("call_risk_score", c.combinedScore.toFixed(2)))}</span>` : ""}</div>
         <div class="track"><div class="bar" style="width:${progress * 100}%;background:${color}"></div></div>
       </div>
-      <div class="chips">${SIGNALS.map((s) => `<span class="chip ${lit.includes(s) ? "on" : ""}">${chipLabel(s)}</span>`).join("")}</div>
-      ${b ? banner(b, color) : ""}
+      ${simple() ? "" : `<div class="chips">${SIGNALS.map((s) => `<span class="chip ${lit.includes(s) ? "on" : ""}">${esc(chipLabel(s))}</span>`).join("")}</div>`}
+      ${banner}
       <div class="chat">${c.lines.map((l) => bubble(l)).join("")}</div>
-      <div class="sticky-bottom"><button class="btn red wide" data-act="hangup">Hang up</button></div>`;
+      <div class="sticky-bottom"><button class="btn red wide big" data-act="hangup">${esc(T("btn_hang_up"))}</button>
+        <button class="link center" data-act="discard">${esc(T("btn_discard_call"))}</button></div></div>
+      ${c.warningOpen ? warningScreen(c) : ""}`;
   },
 
   summary: () => {
     const c = call;
-    if (c.reviewing) return `<h1>Call summary</h1><h2>Final review…</h2><p class="small muted">Checking the whole call once more.</p>`;
-    const lvl = summaryLevel(c), fr = c.finalReview, risky = new Set(fr?.topWindowSeqs || []), lit = litSignals(c.callScores);
-    const reason = fr?.reason && (lvl === "RED" || lvl === "YELLOW") ? fr.reason : null;
-    const b = reason ? `${reason}. ${actionFor(lit)}` : bannerFor(lvl, lit, flaggedTexts(c));
+    if (c.reviewing) return `<h1>${esc(T("summary_title"))}</h1><div class="row"><span class="spinner" aria-hidden="true"></span><h2>${esc(T("sum_checking"))}</h2></div><p>${esc(T("sum_checking_line"))}</p>`;
+    const lvl = summaryLevel(c), fr = c.finalReview, risky = new Set(fr?.topWindowSeqs || []);
+    const hiddenYellow = lvl === "YELLOW" && !showCareful();
+    const kind = callKind(c);
+    const banner = hiddenYellow ? "" : lvl === "RED" ? stateBanner("RED", warnMessage(kind) + " " + warnDo(kind))
+      : lvl === "YELLOW" ? stateBanner("YELLOW", carefulLine(kind)) : lvl === "ERROR" ? stateBanner("ERROR", T("error_banner")) : "";
     const shown = c.lines.filter((l) => l.isCaller && (l.flags.length || risky.has(l.seq)));
-    const sent = (c.reportResult || "").startsWith("Thank you");
-    return `<h1>Call summary</h1>
-      <h2 style="font-size:24px;color:${COLORS[lvl]}">${LABELS[lvl].toUpperCase()}</h2>
-      <p class="small muted">During the call: ${LABELS[callLevel(c)]}${fr?.reviewed ? "" : " · Final review unavailable"}</p>
-      ${b ? banner(b, COLORS[lvl]) : ""}
-      <h2>What triggered it</h2>
-      ${shown.length ? `<div class="chat">${shown.map((l) => bubble(l, risky.has(l.seq))).join("")}</div>` : `<p>No caller lines were flagged.</p>`}
-      <a class="btn red wide" href="${SCAMSHIELD_URL}" target="_blank" rel="noopener">Report to ScamShield</a>
-      <div class="row">
-        <button class="btn grow" data-act="report-scam" ${sent || c.sending ? "disabled" : ""}>This was a scam</button>
-        <button class="btn grow" data-act="report-fine" ${sent || c.sending ? "disabled" : ""}>This was fine</button>
-      </div>
-      ${c.sending ? `<p class="small">Sending…</p>` : ""}
-      ${c.reportResult ? `<p class="small">${esc(c.reportResult)}</p>` : ""}
-      <button class="btn wide" data-act="done">Done</button>`;
+    const after = afterCardShows(lvl);
+    const fam = family();
+    return `<h1>${esc(T("summary_title"))}</h1>
+      ${hiddenYellow ? badge("LISTENING", T("risk_call_ended"), true) : badge(lvl, levelWord(lvl), true)}
+      ${simple() ? "" : `<p class="muted">${esc(T(fr?.reviewed ? "sum_during" : "sum_during_unavailable", levelWord(callLevel(c), true)))}</p>`}
+      ${banner}
+      ${after ? `<div class="after card">
+        <h2>${esc(T("after_title"))}</h2>
+        <button class="btn red wide big" data-act="report">${esc(T("after_report"))}</button>
+        <p class="muted">${esc(c.copied ? T("after_copied") : T("after_report_line"))}</p>
+        <a class="btn wide big outline" href="${telHref(HELPLINE)}">${esc(T("btn_call_1799"))}</a>
+        ${fam ? `<a class="btn wide big outline" href="${esc(smsHref(fam.phone, T("sms_family")))}">${esc(T("after_tell_family"))}</a>` : ""}
+        <button class="btn wide big outline" data-act="sheet-block">${esc(T("after_block"))}</button>
+        <button class="btn wide big outline" data-act="sheet-shared">${esc(T("after_shared"))}</button></div>` : ""}
+      ${lvl !== "GREEN" && !hiddenYellow ? `<h2>${esc(T("sum_triggered"))}</h2>
+        ${shown.length ? `<div class="chat">${shown.map((l) => bubble(l, risky.has(l.seq))).join("")}</div>` : `<p>${esc(T("sum_no_lines"))}</p>`}` : ""}
+      <button class="btn fill wide big" data-act="done">${esc(T("btn_done"))}</button>
+      ${after ? "" : `<a class="btn wide big outline red-outline" href="${SCAMSHIELD_URL}" target="_blank" rel="noopener">${esc(T("btn_report_scamshield"))}</a>`}
+      ${sheet ? stepsSheet(sheet) : ""}`;
   },
 
   dashboard: () => {
     const calls = history();
+    if (!calls.length) return `<h1>${esc(T(simple() ? "tab_family" : "dash_title"))}</h1>${emptyState("📞", T("dash_empty"))}
+      <button class="btn fill wide" data-go="home">${esc(T("btn_go_home"))}</button>
+      <button class="btn wide" data-go="weekly">${esc(T("btn_weekly"))}</button>`;
+    const week = calls.filter((c) => c.endedAt >= Date.now() - 7 * 864e5);
+    const scams = week.filter((c) => c.finalVerdict === "SCAM").length;
+    const hero = !week.length ? T("pw_hero_none", T("pw_period_week")) : scams === 0 ? T("pw_hero_no_scams", T("pw_period_week"))
+      : scams === 1 ? T("pw_hero_one", T("pw_period_week")) : T("pw_hero_many", scams, T("pw_period_week"));
     const counts = {};
-    calls.filter((c) => c.finalVerdict === "SCAM" || c.finalVerdict === "UNSURE")
-      .forEach((c) => { const t = REASON_TEXT[c.reasonCode] || c.reasonCode; counts[t] = (counts[t] || 0) + 1; });
-    const top = Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 3);
+    calls.filter((c) => c.finalVerdict === "SCAM" || c.finalVerdict === "UNSURE").forEach((c) => { counts[c.reasonCode] = (counts[c.reasonCode] || 0) + 1; });
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
     const save = store.get("saveSentence", false);
-    return `<h1>Dashboard</h1>
-      <div class="card"><div style="font-weight:600">Most common warning reasons</div>
-        ${top.length ? top.map(([r, n]) => `<div class="row"><span class="grow">${esc(r)}</span><b>${n}×</b></div>`).join("") : `<p class="small">No warnings yet.</p>`}</div>
-      <h2>Past calls (${calls.length})</h2>
-      ${calls.length ? calls.map((c) => `<div class="card click row" data-open="${esc(c.id)}">
-          <span class="dot" style="background:${COLORS[level(c.finalVerdict === "NOT CHECKED" ? null : c.finalVerdict, c.finalVerdict === "NOT CHECKED")]}"></span>
-          <div class="grow"><div class="row"><b class="grow" style="color:${COLORS[level(c.finalVerdict === "NOT CHECKED" ? null : c.finalVerdict, c.finalVerdict === "NOT CHECKED")]}">${esc(c.finalVerdict)}</b>
-            <span class="tiny muted">${fmtDate(c.endedAt)}</span></div>
-            <div class="row"><span class="grow small">${esc(REASON_TEXT[c.reasonCode] || c.reasonCode)}</span><span class="tiny muted">Cloud · Web</span></div></div>
-        </div>`).join("") : `<p>No calls yet.</p>`}
-      <hr><h2>Privacy</h2>
-      <label class="switch"><span class="grow"><span>Save the riskiest sentence</span><br>
-        <span class="small muted">Keeps the one caller line that scored highest in calls that ended with a warning. Off: no words from your calls are kept, only verdicts and scores.</span></span>
+    return `<h1>${esc(T(simple() ? "tab_family" : "dash_title"))}</h1>
+      <div class="card hero"><div class="hero-text">${esc(hero)}</div><div class="muted">${esc(week.length === 1 ? T("calls_one") : T("calls_many", week.length))} · ${esc(T("period_week"))}</div></div>
+      <button class="btn fill wide big" data-go="weekly">${esc(T("btn_weekly"))}</button>
+      ${simple() ? "" : `<div class="card"><h2>${esc(T("ins_why"))}</h2>
+        ${top.length ? top.map(([r, n]) => `<div class="row"><span class="grow">${esc(reasonText(r))}</span><b>${n}×</b></div>`).join("") : `<p>${esc(T("pw_no_flagged"))}</p>`}</div>`}
+      <h2>${esc(T("hist_title"))} (${calls.length})</h2>
+      ${calls.map(callRow).join("")}
+      <hr><h2>${esc(T("set_my_data"))}</h2>
+      <label class="switch"><span class="grow"><span>Save the riskiest sentence</span></span>
         <input type="checkbox" id="save-sentence" ${save ? "checked" : ""}></label>
-      <p class="small muted">Your history stays in this browser. Nothing on this screen is uploaded.</p>
-      <button class="btn wide" data-act="delete-history" ${calls.length ? "" : "disabled"}>Delete my history</button>`;
+      <p class="small muted">${esc(T("data_info"))}</p>
+      <button class="btn wide red-outline" data-act="delete-history">${esc(T("btn_delete_history"))}</button>`;
   },
 
   detail: () => {
     const c = history().find((x) => x.id === openCallId);
-    if (!c) return `${back("dashboard")}<p>Call not found.</p>`;
-    const color = COLORS[level(c.finalVerdict === "NOT CHECKED" ? null : c.finalVerdict, c.finalVerdict === "NOT CHECKED")];
-    return `${back("dashboard")}<h1>Call details</h1>
-      <h2 style="font-size:22px;color:${color}">${esc(c.finalVerdict)}</h2>
-      <p class="small muted">${fmtDate(c.startedAt)} · ${esc(c.title || "")} · during the call: ${esc(c.liveVerdict)} · review: ${esc(c.review)}</p>
-      <div class="card"><b>Reason</b><p>${esc(REASON_TEXT[c.reasonCode] || c.reasonCode)}</p></div>
-      <h2>Risk during the call</h2>${chart(c.points || [])}
-      <p class="tiny muted">Dashed lines: UNSURE (${UNSURE_LINE}) and SCAM (${SCAM_LINE}) thresholds.</p>
-      ${c.riskiestSentence ? `<div class="card"><b>Riskiest sentence</b><p>“${esc(c.riskiestSentence)}”</p></div>` : ""}`;
+    if (!c) return `${back("dashboard")}<p>${esc(T("det_gone"))}</p>`;
+    const lvl = levelOfRow(c);
+    return `${back("dashboard")}<h1>${esc(levelWord(lvl))}</h1>${badge(lvl, levelWord(lvl), true)}
+      <p class="muted">${esc(fmtDate(c.startedAt || c.endedAt))}${simple() ? "" : " · " + esc(c.title || "")}</p>
+      <div class="card"><p>${esc(reasonText(c.reasonCode))}</p></div>
+      <h2>${esc(T("det_risk"))}</h2>${(c.points || []).length ? chart(c.points) : emptyState("📈", T("det_no_scores"))}
+      ${c.riskiestSentence ? `<div class="card"><b>${esc(T("det_sentence"))}</b><p>“${esc(c.riskiestSentence)}”</p></div>` : ""}`;
+  },
+
+  weekly: () => {
+    const text = weeklyText(history());
+    return `${back("dashboard")}<h1>${esc(T("weekly_title"))}</h1>
+      <p>${esc(T("weekly_line"))}</p>
+      <p class="muted">${esc(T("weekly_preview"))}</p>
+      <div class="card preview" id="weekly-text">${esc(text)}</div>
+      <button class="btn fill wide big" data-act="weekly-share" id="weekly-share">${esc(T("btn_share"))}</button>
+      <p class="small" id="weekly-result" role="status"></p>
+      <div class="card"><h2>${esc(T("weekly_reminder"))}</h2><p class="muted">${esc(T("weekly_reminder_line"))}</p>
+        <p class="small muted">Web version: the reminder is in the Android and iOS apps only.</p></div>`;
+  },
+
+  learn: () => {
+    if (!learn) return `${back("home")}<h1>${esc(T("learn_title"))}</h1>${emptyState("…", T("loading"))}`;
+    return `${back("home")}<h1>${esc(T("learn_title"))}</h1><p class="muted">${esc(T("learn_line"))}</p>
+      <button class="learn-card" data-act="quiz-start"><span class="badge-dot" aria-hidden="true">?</span>
+        <span class="grow"><span class="lc-title">${esc(T("learn_quiz"))}</span><span>${esc(T("learn_quiz_line"))}</span>
+        ${!simple() && store.get("quizBest", null) != null ? `<span class="small">${esc(T("quiz_best", store.get("quizBest"), QUIZ_SIZE))}</span>` : ""}</span><span aria-hidden="true">›</span></button>
+      <h2>${esc(T("learn_types"))}</h2>
+      ${learn.types.length ? learn.types.map((t) => `<button class="card click row" data-learn="${esc(t.id)}"><span class="grow strong">${esc(t.title)}</span><span aria-hidden="true">›</span></button>`).join("") : emptyState("★", T("empty_learn"))}`;
+  },
+
+  learnType: () => {
+    const t = learn?.types.find((x) => x.id === learnTypeId);
+    if (!t) return `${back("learn")}${emptyState("★", T("empty_learn"))}`;
+    return `${back("learn")}<h1>${esc(t.title)}</h1>
+      <div class="card"><h2>${esc(T("learn_signs"))}</h2><ul>${t.signs.map((s) => `<li>${esc(s)}</li>`).join("")}</ul></div>
+      <div class="card"><h2>${esc(T("learn_todo"))}</h2><p>${esc(t.todo)}</p></div>
+      ${scripts.some((s) => s.file === t.script) ? `<button class="btn fill wide big" data-script="${esc(t.script)}">▶ ${esc(T("learn_hear"))}</button>
+      <p class="muted">${esc(T("learn_hear_line"))}</p>` : ""}
+      <p class="small muted">${esc(T("learn_source", ""))}<a href="${esc(t.source_url)}" target="_blank" rel="noopener">${esc(t.source_name)}</a></p>`;
+  },
+
+  quiz: () => {
+    const q = quiz;
+    if (!q || !q.items.length) return `${back("learn")}${emptyState("★", T("empty_learn"))}`;
+    if (q.done) {
+      const best = store.get("quizBest", null);
+      return `${back("learn")}<h1>${esc(T("quiz_title"))}</h1>
+        <div class="card center">${simple() ? "" : `<div class="hero-text">${esc(T("quiz_score", q.score, q.items.length))}</div>`}
+          <p class="big-line">${esc(quizResultLine(q.score, q.items.length))}</p>
+          ${simple() || best == null ? "" : `<p class="muted">${esc(T("quiz_best", best, QUIZ_SIZE))}</p>`}</div>
+        <div class="sticky-bottom"><button class="btn fill wide big" data-act="quiz-again">${esc(T("btn_try_again"))}</button>
+          <button class="btn wide big" data-go="learn">${esc(T("btn_done"))}</button></div>`;
+    }
+    const item = q.items[q.i], a = q.answer;
+    const right = a != null && a === item.scam;
+    return `${back("learn")}<h1>${esc(T("quiz_title"))}</h1>
+      <p class="muted">${esc(T("quiz_progress", q.i + 1, q.items.length))}</p>
+      <p class="muted">${esc(T("quiz_caller_says"))}</p>
+      <div class="card quote-big">“${esc(item.text)}”</div>
+      <h2>${esc(T("quiz_question"))}</h2>
+      ${a == null ? "" : `<div class="banner" style="border-color:${right ? "var(--safe)" : "var(--scam)"}" role="status">
+        <div><div class="strong">${esc(T(right ? "quiz_right" : "quiz_wrong"))} ${esc(T(item.scam ? "quiz_was_scam" : "quiz_was_safe"))}</div><p>${esc(item.why)}</p></div></div>`}
+      <div class="sticky-bottom">${a == null ? `<div class="row"><button class="btn red grow big" data-act="quiz-answer" data-scam="1">${esc(T("quiz_scam"))}</button>
+          <button class="btn green grow big" data-act="quiz-answer" data-scam="0">${esc(T("quiz_safe"))}</button></div>`
+        : `<button class="btn fill wide big" data-act="quiz-next">${esc(q.i + 1 < q.items.length ? T("btn_next") : T("quiz_see_result"))}</button>`}</div>`;
   },
 
   settings: () => {
     const url = gatewayUrl();
     const encrypted = /^https:\/\//i.test(url) || (!/^http:\/\//i.test(url) && location.protocol === "https:");
-    return `<h1>Settings</h1>
-      <label class="field">Gateway URL<input type="text" id="url" value="${esc(url)}" spellcheck="false"></label>
-      <p class="small" style="color:${encrypted ? "var(--primary)" : "var(--scam)"}">${encrypted ? "Encrypted (HTTPS)" : "Not encrypted: transcripts are sent as plain text"}</p>
+    const fam = family();
+    const size = textSize();
+    const radio = (name, val, cur, title, line) => `<label class="choice ${cur === val ? "on" : ""}"><input type="radio" name="${name}" value="${val}" ${cur === val ? "checked" : ""}>
+      <span><span class="strong block">${esc(title)}</span>${line ? `<span class="small muted block">${esc(line)}</span>` : ""}</span></label>`;
+    return `<h1>${esc(T("tab_settings"))}</h1>
+      <h2>${esc(T("set_app_style"))}</h2><p class="small muted">${esc(T("style_page_line"))}</p>
+      <div class="col" role="radiogroup">${radio("style", "standard", simple() ? "simple" : "standard", T("style_standard"), T("style_standard_line"))}
+        ${radio("style", "simple", simple() ? "simple" : "standard", T("style_simple"), T("style_simple_line"))}</div>
+      <h2>${esc(T("set_text_size"))}</h2>
+      <div class="col" role="radiogroup">${radio("size", "normal", size, T("text_normal"), T("text_normal_line"))}${radio("size", "large", size, T("text_large"))}${radio("size", "xlarge", size, T("text_xlarge"))}</div>
+      <hr><h2>${esc(T("set_family"))}</h2><p class="small muted">${esc(T("family_page_line"))}</p>
+      <label class="field">${esc(T("field_name"))}<input type="text" id="fam-name" value="${esc(store.get("familyName", ""))}" autocomplete="off"></label>
+      <label class="field">${esc(T("field_phone"))}<input type="tel" id="fam-phone" value="${esc(store.get("familyPhone", ""))}" placeholder="${esc(T("field_phone_hint"))}" autocomplete="off"></label>
+      <button class="btn fill wide" data-act="fam-save">${esc(T("btn_save"))}</button>
+      ${fam ? `<button class="btn wide red-outline" data-act="fam-remove">${esc(T("btn_remove_contact"))}</button>` : ""}
+      <p class="small strong" id="fam-result" role="status"></p>
+      <hr><h2>${esc(T("set_group_warnings"))}</h2>
+      <label class="switch"><span class="grow"><span class="block">${esc(T("set_read_aloud"))}</span><span class="small muted">${esc(T("set_read_aloud_line"))}</span></span>
+        <input type="checkbox" id="read-aloud" ${store.get("readAloud", simple()) ? "checked" : ""}></label>
+      <label class="switch"><span class="grow"><span class="block">${esc(T("set_show_careful"))}</span><span class="small muted">${esc(T("set_show_careful_line"))}</span></span>
+        <input type="checkbox" id="show-careful" ${showCareful() ? "checked" : ""}></label>
+      <hr><h2>${esc(T("set_connection"))}</h2>
+      ${statusCard()}
+      ${simple() ? "" : `<label class="field">Server address<input type="text" id="url" value="${esc(url)}" spellcheck="false"></label>
+      <p class="small" style="color:${encrypted ? "var(--safe)" : "var(--scam)"}">${esc(encrypted ? T("srv_encrypted") : T("srv_not_encrypted"))}</p>
       <p class="small muted"><b>api/</b> (the default) means the server this page came from: the docker compose edge
-        (http://127.0.0.1:8088/) or the Kubernetes Ingress (https://&lt;laptop IP&gt;:8443/). Another server must allow
-        this page's address (CORS).</p>
-      <div class="row"><button class="btn fill" data-act="save-url">Save</button><button class="btn" data-act="test-url">Test connection</button></div>
-      <p id="url-result" class="small"></p>
-      <hr><h2>Privacy level</h2>
-      <div class="radio"><input type="radio" checked><div><div>1. Cloud (default)</div>
-        <div class="small muted">Every caller sentence is checked by the ScamGuard server. Nothing is stored there.</div></div></div>
-      <div class="radio off"><input type="radio" disabled><div><div>2. Hybrid</div>
-        <div class="small muted">Android app only: checked on the phone, only unsure moments go to the server.</div></div></div>
-      <div class="radio off"><input type="radio" disabled><div><div>3. On-device</div>
-        <div class="small muted">Android app only: everything is checked on the phone, even in airplane mode.</div></div></div>
-      <p class="small muted">On-device models, federated learning on the phone and levels 2 and 3 need the Android app
-        (android-app/ in Android Studio).</p>`;
+        (http://127.0.0.1:8088/) or the Kubernetes Ingress (https://&lt;laptop IP&gt;:8443/).</p>
+      <div class="row"><button class="btn fill" data-act="save-url">${esc(T("btn_save"))}</button><button class="btn" data-act="test-url">${esc(T("btn_test"))}</button></div>
+      <p id="url-result" class="small" role="status"></p>
+      <hr><h2>${esc(T("set_how_checked"))}</h2>
+      <div class="choice on"><span><span class="strong block">${esc(T("privacy_tag_cloud"))}</span><span class="small muted block">${esc(T("privacy_plain_cloud"))}</span></span></div>
+      <div class="choice off"><span><span class="strong block">${esc(T("privacy_tag_hybrid"))}</span><span class="small muted block">${esc(T("privacy_plain_hybrid"))} (phone apps only)</span></span></div>
+      <div class="choice off"><span><span class="strong block">${esc(T("privacy_tag_on_device"))}</span><span class="small muted block">${esc(T("privacy_plain_on_device"))} (phone apps only)</span></span></div>`}
+      <hr><h2>${esc(T("help_colours"))}</h2>
+      ${badge("GREEN", T("risk_safe") + " – " + T("help_safe_line"))}${badge("YELLOW", T("risk_careful") + " – " + T("help_careful_line"))}
+      ${badge("RED", T("risk_scam") + " – " + T("help_scam_line"))}${badge("ERROR", T("risk_not_checked") + " – " + T("help_notchecked_line"))}`;
   },
 };
+
+function webNote() {
+  return "Web version of the ScamGuard app (the backup for trying it without installing). Calls are checked online by " +
+    "the ScamGuard server. Phone calls, messages, the weekly reminder and on-device checking need the Android or iOS app.";
+}
+
+function warningScreen(c) {
+  const kind = warningKind(litSignals(c.callScores), flaggedTexts(c), null);
+  const fam = family();
+  return `<div class="warning" role="alertdialog" aria-modal="true" aria-labelledby="warn-title">
+    <div class="warn-icon" aria-hidden="true">⚠</div>
+    <h1 id="warn-title">${esc(T("warn_title"))}</h1>
+    <p class="warn-msg">${esc(warnMessage(kind))}</p>
+    <p class="warn-do">${esc(warnDo(kind))}</p>
+    <div class="col warn-actions">
+      <button class="btn white wide big" data-act="hangup">${esc(T("btn_hang_up"))}</button>
+      ${fam ? `<a class="btn outline-white wide big" href="${telHref(fam.phone)}" data-act="hangup-then">${esc(T("btn_call_family"))}</a>
+      <a class="btn outline-white wide big" href="${esc(smsHref(fam.phone, T("sms_family")))}">${esc(T("btn_tell_family", fam.name))}</a>` : ""}
+      <a class="btn outline-white wide big" href="${telHref(HELPLINE)}">${esc(T("btn_call_1799"))}</a>
+      <button class="link white center" data-act="close-warning">${esc(T("btn_close_warning"))}</button>
+    </div></div>`;
+}
+
+function stepsSheet(kind) {
+  const block = [["Android", ["block_android_1", "block_android_2", "block_android_3", "block_android_4"]],
+                 ["iPhone", ["block_ios_1", "block_ios_2", "block_ios_3", "block_ios_4"]]];
+  const body = kind === "block"
+    ? `<h2>${esc(T("block_title"))}</h2>${block.map(([os, keys]) => `<p class="strong">${os}</p><ol>${keys.map((k) => `<li>${esc(T(k))}</li>`).join("")}</ol>`).join("")}`
+    : `<h2>${esc(T("shared_title"))}</h2><p>${esc(T("shared_line"))}</p><ol><li>${esc(T("shared_bank"))}</li><li>${esc(T("shared_passwords"))}</li><li>${esc(T("shared_1799"))}</li></ol>
+       <a class="btn fill wide big" href="${telHref(HELPLINE)}">${esc(T("btn_call_1799"))}</a>`;
+  return `<div class="scrim" data-act="sheet-close"></div><div class="sheet" role="dialog" aria-modal="true">${body}
+    <button class="btn wide big" data-act="sheet-close">${esc(T("btn_close"))}</button></div>`;
+}
 
 function chart(points) {
   const pts = points.filter(([, v]) => v != null).sort((a, b) => a[0] - b[0]);
@@ -504,94 +748,98 @@ function chart(points) {
   const x = (t) => pad + (t / maxT) * (w - 2 * pad), y = (v) => h - pad - Math.min(1, Math.max(0, v)) * (h - 2 * pad);
   const line = (v, col) => `<line x1="${pad}" x2="${w - pad}" y1="${y(v)}" y2="${y(v)}" stroke="${col}" stroke-dasharray="4 4"/>`;
   const path = pts.map(([t, v], i) => `${i ? "L" : "M"}${x(t).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
-  return `<svg class="chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Risk score over the call">
+  return `<svg class="chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="${esc(T("det_risk"))}">
     ${line(UNSURE_LINE, "var(--warn)")}${line(SCAM_LINE, "var(--scam)")}
-    ${pts.length ? `<path d="${path}" fill="none" stroke="var(--primary)" stroke-width="2.5"/>` +
-      pts.map(([t, v]) => `<circle cx="${x(t)}" cy="${y(v)}" r="3" fill="var(--primary)"/>`).join("") :
-      `<text x="${w / 2}" y="${h / 2}" text-anchor="middle" fill="var(--muted)" font-size="13">No scores</text>`}</svg>`;
-}
-
-// ---------------------------------------------------------------- overlays
-
-function closeOverlay() { const o = $("#overlay"); o.hidden = true; o.innerHTML = ""; }
-function showAlert(c) {
-  if (c.alertShown) return;
-  c.alertShown = true;
-  const lit = litSignals(c.callScores);
-  const o = $("#overlay");
-  o.innerHTML = `<div class="alert" role="alertdialog" aria-label="Scam warning">
-    <div style="font-size:22px;font-weight:700">⚠ WARNING</div>
-    <div>This call looks like a scam: ${esc(reasonFor(lit, flaggedTexts(c)))}.</div><div>${esc(actionFor(lit))}</div>
-    <div class="row"><button class="btn white grow" data-act="hangup">Hang up now</button><button class="btn" data-act="dismiss">Dismiss</button></div></div>`;
-  o.hidden = false;
-}
-function showConsent(c, kind) {
-  const lines = reportPreview(c);
-  const o = $("#overlay");
-  o.innerHTML = `<div class="dialog" role="dialog" aria-label="Share this call">
-    <h2 style="font-size:20px">${kind === "scam" ? "Share this scam call?" : "Share this call as a false alarm?"}</h2>
-    <p>Helps ScamGuard learn new scams. A team member reads it, labels it, and it may be used to retrain the detectors.</p>
-    <p class="small">Sent: the caller's ${lines.length} lines below. We try to remove numbers, amounts, links and names,
-      but some can slip through, such as a name said in passing or digits read out as words. Check the text; if you see
-      anything private, choose Don't share.</p>
-    <p class="small">Not sent: your phone number, the caller's number, anything you said.</p>
-    <p class="small">Kept: deleted after 30 days, except lines a reviewer approves as training examples. Those stay
-      encrypted with no link to you, so they can't be withdrawn later.</p><hr>
-    <div>${lines.map((l) => `<div class="quote">“${esc(l.text)}”</div>`).join("")}</div>
-    <div class="actions"><button class="btn" data-act="consent-no">Don't share</button>
-      <button class="btn fill" data-act="consent-yes" data-kind="${kind}" ${lines.length ? "" : "disabled"}>Share</button></div></div>`;
-  o.hidden = false;
+    <path d="${path}" fill="none" stroke="var(--primary)" stroke-width="2.5"/>
+    ${pts.map(([t, v]) => `<circle cx="${x(t)}" cy="${y(v)}" r="3" fill="var(--primary)"/>`).join("")}</svg>`;
 }
 
 // ---------------------------------------------------------------- render + events
 
-const TAB_OF = { home: "home", dashboard: "dashboard", detail: "dashboard", settings: "settings" };
+const TAB_OF = { home: "home", dashboard: "dashboard", detail: "dashboard", weekly: "dashboard", settings: "settings" };
+function applyLook() {
+  document.documentElement.dataset.size = textSize();
+  document.documentElement.dataset.simple = simple() ? "yes" : "no";
+  const dash = document.querySelector('#tabs button[data-tab="dashboard"] .lbl');
+  if (dash) dash.textContent = T(simple() ? "tab_family" : "tab_dashboard");
+  document.querySelector('#tabs button[data-tab="home"] .lbl').textContent = T("tab_home");
+  document.querySelector('#tabs button[data-tab="settings"] .lbl').textContent = T("tab_settings");
+}
 function render() {
   const keepScroll = screen === "call" ? null : $("#screen").scrollTop;
+  applyLook();
   $("#screen").innerHTML = SCREENS[screen]();
   const tab = TAB_OF[screen];
-  $("#tabs").hidden = !tab || screen === "detail";
-  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
-  if (screen === "call") { const s = $("#screen"); s.scrollTop = s.scrollHeight; }
+  $("#tabs").hidden = !tab;
+  document.querySelectorAll("#tabs button").forEach((b) => { b.classList.toggle("on", b.dataset.tab === tab); b.setAttribute("aria-current", b.dataset.tab === tab ? "page" : "false"); });
+  if (screen === "call" && !call?.warningOpen) { const s = $("#screen"); s.scrollTop = s.scrollHeight; }
   else if (keepScroll != null) $("#screen").scrollTop = keepScroll;
+  if (call?.warningOpen && screen === "call") $(".warning h1")?.focus?.();
 }
 
 document.addEventListener("click", async (e) => {
-  const el = e.target.closest("[data-go],[data-act],[data-tab],[data-script],[data-open],[data-filter]");
+  const el = e.target.closest("[data-go],[data-act],[data-tab],[data-script],[data-open],[data-filter],[data-learn]");
   if (!el) return;
   if (el.dataset.tab) return go(el.dataset.tab);
   if (el.dataset.go) return go(el.dataset.go);
-  if (el.dataset.script) return ring(scripts.find((s) => s.file === el.dataset.script));
+  if (el.dataset.script) { const s = scripts.find((x) => x.file === el.dataset.script); if (s) ring(s); return; }
   if (el.dataset.open) { openCallId = el.dataset.open; return go("detail"); }
+  if (el.dataset.learn) { learnTypeId = el.dataset.learn; return go("learnType"); }
   if (el.dataset.filter) { const [k, v] = el.dataset.filter.split(":"); pickFilter[k] = v || null; return render(); }
   const c = call;
   switch (el.dataset.act) {
-    case "scam": case "normal": { const s = randomScript(el.dataset.act); if (s) ring(s); else alertNoScripts(); break; }
-    case "check-pasted": {
-      const text = $("#pasted").value.trim();
-      if (!text) return;
-      call = newCall({ file: "pasted", kind: "pasted", lang: null, title: "Pasted text", lines: [{ speaker: "caller", text, delay_ms: 0 }] });
-      answer(); break;
-    }
+    case "scam": case "normal": { const s = randomScript(el.dataset.act); if (s) ring(s); else render(); break; }
     case "answer": answer(); break;
     case "decline": stopTimers(); call = null; go("home"); break;
     case "hangup": if (c) endCall(c, "user_hung_up"); break;
-    case "dismiss": closeOverlay(); break;
+    case "hangup-then": if (c) setTimeout(() => endCall(c, "user_hung_up"), 0); break;   // the tel: link still opens
+    case "discard": discard(); break;
+    case "close-warning": if (c) { c.warningOpen = false; render(); } break;
     case "done": call = null; go("home"); break;
-    case "report-scam": case "report-fine": showConsent(c, el.dataset.act === "report-scam" ? "scam" : "fine"); break;
-    case "consent-no": closeOverlay(); c.reportResult = "Nothing was shared."; render(); break;
-    case "consent-yes":
-      closeOverlay(); c.sending = true; render();
-      c.reportResult = await sendReport(c, el.dataset.kind); c.sending = false; render(); break;
-    case "delete-history":
-      if (confirm("Delete my history?\n\nDeletes every saved call in this browser: verdicts, charts and saved sentences. This can't be undone.")) {
-        store.set("calls", []); render();
-      }
+    case "recheck": checkConnection(); break;
+    case "report":
+      if (c) { c.copied = await copyText(reportSummary(c)); window.open(SCAMSHIELD_URL, "_blank", "noopener"); render(); }
       break;
-    case "save-url": store.set("gatewayUrl", $("#url").value.trim() || "api/"); $("#url-result").textContent = "Saved"; break;
+    case "sheet-block": sheet = "block"; render(); break;
+    case "sheet-shared": sheet = "shared"; render(); break;
+    case "sheet-close": sheet = null; render(); break;
+    case "quiz-start": case "quiz-again": {
+      const avoid = new Set((quiz?.items || []).map((q) => q.text));
+      quiz = { items: quizRound(avoid), i: 0, answer: null, score: 0, done: false };
+      go("quiz"); break;
+    }
+    case "quiz-answer": {
+      const said = el.dataset.scam === "1";
+      quiz.answer = said; if (said === quiz.items[quiz.i].scam) quiz.score++;
+      render(); break;
+    }
+    case "quiz-next":
+      if (quiz.i + 1 < quiz.items.length) { quiz.i++; quiz.answer = null; }
+      else { quiz.done = true; store.set("quizBest", Math.max(store.get("quizBest", 0) ?? 0, quiz.score)); }
+      render(); $("#screen").scrollTop = 0; break;
+    case "weekly-share": {
+      const text = weeklyText(history());
+      const out = $("#weekly-result");
+      try {
+        if (navigator.share) { await navigator.share({ text }); out.textContent = ""; }
+        else { out.textContent = (await copyText(text)) ? T("after_copied").split(":")[0] : ""; }
+      } catch { /* share closed */ }
+      break;
+    }
+    case "fam-save": {
+      const phone = $("#fam-phone").value.trim(), name = $("#fam-name").value.trim();
+      if (!phone) { $("#fam-result").textContent = T("family_need_phone"); break; }
+      store.set("familyName", name); store.set("familyPhone", phone);
+      render(); $("#fam-result").textContent = T("saved") + " ✓"; break;
+    }
+    case "fam-remove": store.set("familyName", ""); store.set("familyPhone", ""); render(); break;
+    case "delete-history":
+      if (confirm(T("delete_title") + "\n\n" + T("delete_text"))) { store.set("calls", []); render(); }
+      break;
+    case "save-url": store.set("gatewayUrl", $("#url").value.trim() || "api/"); $("#url-result").textContent = T("saved") + " ✓"; checkConnection(); break;
     case "test-url": {
       const out = $("#url-result");
-      out.textContent = "Testing…";
+      out.textContent = T("mdl_res_checking");
       try {
         const r = await api("healthz", undefined, 4000, $("#url").value);
         out.textContent = !r.ok ? `Server answered ${r.status}${r.status === 404 ? ": check the address (it should end in /api/)" : ""}`
@@ -602,19 +850,35 @@ document.addEventListener("click", async (e) => {
   }
 });
 document.addEventListener("change", (e) => {
-  if (e.target.id === "save-sentence") {
-    store.set("saveSentence", e.target.checked);
-    if (!e.target.checked) store.set("calls", history().map((c) => ({ ...c, riskiestSentence: null })));
+  const t = e.target;
+  if (t.id === "save-sentence") {
+    store.set("saveSentence", t.checked);
+    if (!t.checked) store.set("calls", history().map((c) => ({ ...c, riskiestSentence: null })));
   }
+  if (t.id === "read-aloud") store.set("readAloud", t.checked);
+  if (t.id === "show-careful") store.set("showCareful", t.checked);
+  if (t.name === "style") {
+    const toSimple = t.value === "simple";
+    store.set("simple", toSimple);
+    if (store.get("textSize", null) === null || toSimple) store.set("textSize", toSimple ? "large" : textSize());
+    render();
+  }
+  if (t.name === "size") { store.set("textSize", t.value); render(); }
 });
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
-  if (!$("#overlay").hidden && screen !== "call") return closeOverlay();
-  if (screen === "call") return discard();
-  if (["pick", "paste", "ringing"].includes(screen)) { stopTimers(); call = null; go("home"); }
-  else if (screen === "detail") go("dashboard");
+  if (sheet) { sheet = null; return render(); }
+  if (screen === "call") { if (call?.warningOpen) { call.warningOpen = false; return render(); } return discard(); }
+  if (["pick", "ringing"].includes(screen)) { stopTimers(); call = null; go("home"); }
+  else if (screen === "detail" || screen === "weekly") go("dashboard");
+  else if (screen === "learnType" || screen === "quiz") go("learn");
+  else if (screen === "learn") go("home");
 });
-function alertNoScripts() { $("#screen").insertAdjacentHTML("beforeend", `<div class="note">No call scripts could be loaded.</div>`); }
 
-render();
-loadScripts().then(render);
+(async () => {
+  try { STR = await (await fetch("strings.json")).json(); } catch { STR = {}; }
+  render();
+  await Promise.all([loadScripts(), loadLearn()]);
+  render();
+  checkConnection();
+})();

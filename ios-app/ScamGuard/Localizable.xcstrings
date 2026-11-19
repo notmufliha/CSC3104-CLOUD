@@ -253,6 +253,90 @@
         }
       }
     },
+    "after_block": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How to block this number"
+          }
+        }
+      }
+    },
+    "after_copied": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Summary copied: paste it into the report"
+          }
+        }
+      }
+    },
+    "after_report": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Report to ScamShield"
+          }
+        }
+      }
+    },
+    "after_report_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We copy a short summary first, so you can paste it into the report."
+          }
+        }
+      }
+    },
+    "after_shared": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If I already shared details"
+          }
+        }
+      }
+    },
+    "after_tell_family": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tell my family"
+          }
+        }
+      }
+    },
+    "after_title": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What to do now"
+          }
+        }
+      }
+    },
     "app_name_text": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
@@ -261,6 +345,114 @@
           "stringUnit": {
             "state": "translated",
             "value": "ScamGuard"
+          }
+        }
+      }
+    },
+    "block_android_1": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open the Phone app."
+          }
+        }
+      }
+    },
+    "block_android_2": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap Recents and find this call."
+          }
+        }
+      }
+    },
+    "block_android_3": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap the call, then tap Block."
+          }
+        }
+      }
+    },
+    "block_android_4": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap Block again to confirm."
+          }
+        }
+      }
+    },
+    "block_ios_1": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open the Phone app."
+          }
+        }
+      }
+    },
+    "block_ios_2": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap Recents and find this call."
+          }
+        }
+      }
+    },
+    "block_ios_3": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap ⓘ next to the number."
+          }
+        }
+      }
+    },
+    "block_ios_4": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap Block this Caller."
+          }
+        }
+      }
+    },
+    "block_title": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How to block this number"
           }
         }
       }
@@ -333,18 +525,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Change the PIN"
-          }
-        }
-      }
-    },
-    "btn_check": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Check"
           }
         }
       }
@@ -517,6 +697,18 @@
         }
       }
     },
+    "btn_learn": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Learn to spot scams"
+          }
+        }
+      }
+    },
     "btn_leave": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
@@ -549,18 +741,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "No"
-          }
-        }
-      }
-    },
-    "btn_no_dont_share": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No, don't share"
           }
         }
       }
@@ -609,18 +789,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Open the ScamShield website"
-          }
-        }
-      }
-    },
-    "btn_paste_text": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Paste text"
           }
         }
       }
@@ -765,6 +933,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Set up later"
+          }
+        }
+      }
+    },
+    "btn_share": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share"
           }
         }
       }
@@ -949,26 +1129,14 @@
         }
       }
     },
-    "btn_was_fine": {
+    "btn_weekly": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This was fine"
-          }
-        }
-      }
-    },
-    "btn_was_scam": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This was a scam"
+            "value": "Share weekly summary"
           }
         }
       }
@@ -993,18 +1161,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yes, delete it"
-          }
-        }
-      }
-    },
-    "btn_yes_share": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Yes, share it"
           }
         }
       }
@@ -1285,74 +1441,74 @@
         }
       }
     },
-    "consent_kept": {
+    "copy_footer": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kept: deleted after 30 days, except lines chosen to teach ScamGuard. Those are kept safely with no link to you, so they can't be taken back later."
+            "value": "From the ScamGuard app."
           }
         }
       }
     },
-    "consent_not_sent": {
+    "copy_lines": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not sent: your phone number, the caller's number, anything you said."
+            "value": "What the caller said (numbers and names removed):"
           }
         }
       }
     },
-    "consent_sent": {
+    "copy_result": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sent: the caller's %1$@ lines below. We try to remove numbers, amounts, links and names, but some can slip through. Read the text; if you see anything private, tap No."
+            "value": "Result: %1$@"
           }
         }
       }
     },
-    "consent_title_fine": {
+    "copy_title": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Share this call as a false alarm?"
+            "value": "ScamGuard call summary"
           }
         }
       }
     },
-    "consent_title_scam": {
+    "copy_when": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Share this scam call?"
+            "value": "When: %1$@"
           }
         }
       }
     },
-    "consent_why": {
+    "copy_why": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "It helps ScamGuard learn new scams. A team member reads it, labels it, and it may be used to improve the checks."
+            "value": "Why: %1$@"
           }
         }
       }
@@ -1472,7 +1628,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Save the riskiest sentence: keeps the one caller line that scored highest in calls that ended with a warning. Off: no words from your calls are kept, only the results.\n\nHelp improve detection: the app keeps simple notes on this phone (for example, you hung up right after a warning, or tapped \"This was fine\"). On: the caller's lines of those calls are kept too, with numbers and names removed. Nothing is uploaded.\n\nYour history stays on this phone."
+            "value": "Save the riskiest sentence: keeps the one caller line that scored highest in calls that ended with a warning. Off: no words from your calls are kept, only the results.\n\nHelp improve detection: the app keeps simple notes on this phone (for example, you hung up right after a warning). On: the caller's lines of those calls are kept too, with numbers and names removed. Nothing is uploaded.\n\nYour history stays on this phone."
           }
         }
       }
@@ -1929,6 +2085,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "This call couldn't be checked."
+          }
+        }
+      }
+    },
+    "empty_learn": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lessons will appear here."
           }
         }
       }
@@ -2629,6 +2797,150 @@
         }
       }
     },
+    "learn_card_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Short lessons and a practice quiz."
+          }
+        }
+      }
+    },
+    "learn_hear": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hear an example"
+          }
+        }
+      }
+    },
+    "learn_hear_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plays this scam as a practice call. Nothing is real."
+          }
+        }
+      }
+    },
+    "learn_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "See how common scams sound, then test yourself."
+          }
+        }
+      }
+    },
+    "learn_quiz": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Practice quiz"
+          }
+        }
+      }
+    },
+    "learn_quiz_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 short questions: is it a scam or not?"
+          }
+        }
+      }
+    },
+    "learn_signs": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warning signs"
+          }
+        }
+      }
+    },
+    "learn_source": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source: %1$@"
+          }
+        }
+      }
+    },
+    "learn_title": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Learn to spot scams"
+          }
+        }
+      }
+    },
+    "learn_todo": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What to do"
+          }
+        }
+      }
+    },
+    "learn_types": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scams to know"
+          }
+        }
+      }
+    },
+    "loading": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading…"
+          }
+        }
+      }
+    },
     "mdl_check": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
@@ -2905,6 +3217,42 @@
         }
       }
     },
+    "notif_channel": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weekly reminder"
+          }
+        }
+      }
+    },
+    "notif_weekly_text": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your ScamGuard weekly summary is ready to share"
+          }
+        }
+      }
+    },
+    "notif_weekly_title": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ScamGuard"
+          }
+        }
+      }
+    },
     "off": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
@@ -2925,30 +3273,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "On"
-          }
-        }
-      }
-    },
-    "paste_label": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "What the caller said"
-          }
-        }
-      }
-    },
-    "paste_title": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Paste text"
           }
         }
       }
@@ -4141,6 +4465,210 @@
         }
       }
     },
+    "quiz_best": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Best so far: %1$@ of %2$@"
+          }
+        }
+      }
+    },
+    "quiz_caller_says": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The caller says:"
+          }
+        }
+      }
+    },
+    "quiz_progress": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Question %1$@ of %2$@"
+          }
+        }
+      }
+    },
+    "quiz_question": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Is this a scam?"
+          }
+        }
+      }
+    },
+    "quiz_r3": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Good try!"
+          }
+        }
+      }
+    },
+    "quiz_r4": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Well done!"
+          }
+        }
+      }
+    },
+    "quiz_r5": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Excellent! You spotted them all."
+          }
+        }
+      }
+    },
+    "quiz_r_low": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep practising. You will get better each time."
+          }
+        }
+      }
+    },
+    "quiz_right": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right!"
+          }
+        }
+      }
+    },
+    "quiz_safe": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Safe"
+          }
+        }
+      }
+    },
+    "quiz_scam": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scam"
+          }
+        }
+      }
+    },
+    "quiz_score": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ of %2$@"
+          }
+        }
+      }
+    },
+    "quiz_see_result": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "See my result"
+          }
+        }
+      }
+    },
+    "quiz_title": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Practice quiz"
+          }
+        }
+      }
+    },
+    "quiz_was_safe": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This was safe."
+          }
+        }
+      }
+    },
+    "quiz_was_scam": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This was a scam."
+          }
+        }
+      }
+    },
+    "quiz_wrong": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not quite."
+          }
+        }
+      }
+    },
     "reason_bert": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
@@ -4981,6 +5509,66 @@
         }
       }
     },
+    "shared_1799": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Call 1799 ScamShield Helpline for help."
+          }
+        }
+      }
+    },
+    "shared_bank": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Call your bank on the number on your card. Ask them to block your card and stop payments."
+          }
+        }
+      }
+    },
+    "shared_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do these now, one by one:"
+          }
+        }
+      }
+    },
+    "shared_passwords": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change your passwords, starting with your bank and email."
+          }
+        }
+      }
+    },
+    "shared_title": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If you already shared details"
+          }
+        }
+      }
+    },
     "sms_family": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
@@ -5281,18 +5869,6 @@
         }
       }
     },
-    "sum_not_shared": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nothing was shared."
-          }
-        }
-      }
-    },
     "sum_pin": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
@@ -5313,18 +5889,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "How calls are checked"
-          }
-        }
-      }
-    },
-    "sum_sending": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sending…"
           }
         }
       }
@@ -5877,6 +6441,246 @@
           "stringUnit": {
             "state": "translated",
             "value": "This may be a scam"
+          }
+        }
+      }
+    },
+    "weekly_calls_many": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ calls checked."
+          }
+        }
+      }
+    },
+    "weekly_calls_one": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 call checked."
+          }
+        }
+      }
+    },
+    "weekly_careful_many": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 'be careful'."
+          }
+        }
+      }
+    },
+    "weekly_careful_one": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 'be careful'."
+          }
+        }
+      }
+    },
+    "weekly_end": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stay safe! Call 1799 if unsure."
+          }
+        }
+      }
+    },
+    "weekly_head": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ScamGuard weekly summary (%1$@):"
+          }
+        }
+      }
+    },
+    "weekly_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A short note for your family about this week's calls. It has no phone numbers and nothing the callers said."
+          }
+        }
+      }
+    },
+    "weekly_none": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no calls checked this week."
+          }
+        }
+      }
+    },
+    "weekly_preview": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is what will be shared:"
+          }
+        }
+      }
+    },
+    "weekly_r_imp": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pretended to be an official"
+          }
+        }
+      }
+    },
+    "weekly_r_money": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "asked for money or a code"
+          }
+        }
+      }
+    },
+    "weekly_r_other": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sounded like a scam"
+          }
+        }
+      }
+    },
+    "weekly_r_urgency": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "rushed you"
+          }
+        }
+      }
+    },
+    "weekly_reminder": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weekly reminder"
+          }
+        }
+      }
+    },
+    "weekly_reminder_denied": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notifications are off for ScamGuard. Turn them on in your phone's Settings to get the reminder."
+          }
+        }
+      }
+    },
+    "weekly_reminder_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Once a week, a note on this phone reminds you to share the summary."
+          }
+        }
+      }
+    },
+    "weekly_scam_many": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ scam calls warned (%2$@)."
+          }
+        }
+      }
+    },
+    "weekly_scam_one": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 scam call warned (%1$@)."
+          }
+        }
+      }
+    },
+    "weekly_scam_zero": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No scam calls."
+          }
+        }
+      }
+    },
+    "weekly_title": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weekly summary"
           }
         }
       }

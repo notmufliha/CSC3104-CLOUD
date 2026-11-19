@@ -65,6 +65,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.joinAll
@@ -193,6 +194,9 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     private val callHistory = CallHistory(app, prefs)
     val calls: StateFlow<List<CallRecord>> =
         callHistory.calls.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    /** The history has been read at least once (until then screens show a placeholder, not "No calls yet"). */
+    val callsLoaded: StateFlow<Boolean> =
+        callHistory.calls.map { true }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     private val _saveSentence = MutableStateFlow(prefs.saveRiskiestSentence)
     val saveSentence: StateFlow<Boolean> = _saveSentence.asStateFlow()
@@ -201,8 +205,68 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { callHistory.migrateLegacy() }   // the old SharedPreferences History, once
     }
 
+    /** "Learn to spot scams": the bundled cards and quiz lines (assets/learn/learn.json, shared with iOS). */
+    val learn: com.example.scamdetect.logic.LearnContent by lazy {
+        runCatching { com.example.scamdetect.logic.Learn.parse(app.assets.open("learn/learn.json").bufferedReader().use { it.readText() }) }
+            .getOrDefault(com.example.scamdetect.logic.LearnContent())
+    }
+    private val _quizBest = MutableStateFlow(prefs.quizBest)
+    /** The practice quiz's best score, null = never played. */
+    val quizBest: StateFlow<Int?> = _quizBest.asStateFlow()
+    fun recordQuiz(score: Int) {
+        prefs.quizBest = com.example.scamdetect.logic.Quiz.best(prefs.quizBest, score)
+        _quizBest.value = prefs.quizBest
+    }
+
+    // ---------------------------------------------------------------- weekly summary (logic/WeeklySummary.kt)
+
+    /** The note for the family: the last 7 days of this phone's history, counts and plain reasons only. */
+    fun weeklySummary(history: List<CallRecord> = calls.value): String = com.example.scamdetect.logic.WeeklySummary.text(
+        history.map { com.example.scamdetect.logic.WeeklySummary.Call(it.endedAt, it.finalVerdict, it.reasonCode) },
+        System.currentTimeMillis())
+
+    private val _weeklyReminder = MutableStateFlow(prefs.weeklyReminder)
+    val weeklyReminder: StateFlow<Boolean> = _weeklyReminder.asStateFlow()
+
+    /** The "Weekly reminder" switch. Returns ASK_PERMISSION when the screen must ask first (only when turning it on). */
+    fun setWeeklyReminder(on: Boolean): com.example.scamdetect.logic.WeeklyReminder.Action {
+        val app = getApplication<Application>()
+        val action = com.example.scamdetect.logic.WeeklyReminder.onToggle(on, com.example.scamdetect.data.WeeklyReminderScheduler.permitted(app))
+        applyReminder(action, on)
+        return action
+    }
+
+    /** The notification question was answered. */
+    fun weeklyReminderPermission(granted: Boolean) {
+        val (on, action) = com.example.scamdetect.logic.WeeklyReminder.afterPermission(granted)
+        applyReminder(action, on)
+    }
+
+    private fun applyReminder(action: com.example.scamdetect.logic.WeeklyReminder.Action, on: Boolean) {
+        val app = getApplication<Application>()
+        when (action) {
+            com.example.scamdetect.logic.WeeklyReminder.Action.SCHEDULE -> { prefs.weeklyReminder = true; com.example.scamdetect.data.WeeklyReminderScheduler.schedule(app) }
+            com.example.scamdetect.logic.WeeklyReminder.Action.CANCEL -> { prefs.weeklyReminder = false; com.example.scamdetect.data.WeeklyReminderScheduler.cancel(app) }
+            com.example.scamdetect.logic.WeeklyReminder.Action.NOTHING -> prefs.weeklyReminder = on
+            com.example.scamdetect.logic.WeeklyReminder.Action.ASK_PERMISSION -> {}   // stays off until the answer
+        }
+        _weeklyReminder.value = prefs.weeklyReminder
+    }
+
+    init {
+        // App start: re-arm a reminder that is on (after a phone restart, for example). Never asks for anything.
+        if (com.example.scamdetect.logic.WeeklyReminder.atLaunch(prefs.weeklyReminder,
+                com.example.scamdetect.data.WeeklyReminderScheduler.permitted(app)) == com.example.scamdetect.logic.WeeklyReminder.Action.SCHEDULE)
+            com.example.scamdetect.data.WeeklyReminderScheduler.schedule(app)
+    }
+
     /** Red warning sound, vibration and speech; the yellow buzz. */
-    private val alerts = Alerts(app).also { it.warmUp() }
+    private val alerts = Alerts(app)
+
+    init {
+        // Start-up: let the first screen draw first, then warm up text-to-speech (only needed at the first red warning).
+        viewModelScope.launch { delay(START_DELAY_MS); alerts.warmUp() }
+    }
 
     /** "Read warnings aloud" and "Show 'Be careful' warnings" (Settings). */
     private val _readAloud = MutableStateFlow(prefs.readAloud)
@@ -320,6 +384,28 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Debug builds only (screenshots): a screen to open (MainActivity's Screen name). */
     val demoScreen = MutableStateFlow<String?>(null)
+    /** Debug builds only (screenshots): the scam type Learn opens, and the quiz's state ("answered" / "result"). */
+    val demoLearnType = MutableStateFlow<String?>(null)
+    var demoQuiz: String? = null
+
+    /**
+     * Debug builds only (screenshots, accessibility checks): a finished pretend call on its summary screen, Scam (red)
+     * or "Be careful". Nothing is sent and nothing is saved (no call id).
+     */
+    fun demoSummary(red: Boolean) {
+        if (!isDebugBuild) return
+        playJob?.cancel()
+        callId = ""
+        val base = tourDemoCall(redAlert = false).copy(phase = Phase.ENDED, privacyLevel = prefs.privacyLevel)
+        _state.value = if (red) base.copy(scamAlert = true,
+            finalReview = FinalReview("SCAM", "", reviewed = true, topWindowSeqs = setOf(2L, 3L), callScore = 0.97f))
+        else base.copy(
+            verdict = "UNSURE", combinedScore = 0.52f,
+            callScores = mapOf("urgency" to 0.2f, "money" to 0.62f, "impersonation" to 0.1f),
+            lines = listOf(ChatLine(1, false, Tr.s(R.string.demo_line_hello)), ChatLine(2, true, Tr.s(R.string.demo_line_parcel), listOf("money"))),
+            finalReview = FinalReview("UNSURE", "", reviewed = true, topWindowSeqs = setOf(2L), callScore = 0.55f),
+        )
+    }
 
     /** Debug builds only (screenshots): the server check's result without a server. */
     fun demoConnection(ok: Boolean?) { if (isDebugBuild) { _connection.value = ok; connectionFixed = true } }
@@ -373,6 +459,9 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch {
+            // Only the Developer view shows this status, and level 3 loads the model itself when a call starts: so the
+            // 26 MB model is read after the first screen has drawn, not during start-up.
+            delay(START_DELAY_MS)
             _mobileBert.value = when (val s = MobileBert.get(getApplication())) {
                 is MobileBert.Status.Installed -> {
                     mobileBertDev = "installed, ${s.model.config.version}, " +
@@ -1194,6 +1283,9 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
             _simple.value = AppStyle.simpleAtLaunch(prefs.simpleMode)
             _styleTip.value = false
             _family.value = savedFamily()
+            _quizBest.value = prefs.quizBest
+            com.example.scamdetect.data.WeeklyReminderScheduler.cancel(getApplication())
+            _weeklyReminder.value = prefs.weeklyReminder
             _modelStatus.value = ModelUpdater.describe(getApplication())
             _modelCheck.value = ""
             _trainResult.value = ""
@@ -1229,6 +1321,8 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
 
     companion object {
         private const val DEFAULT_DELAY_MS = 1_500L
+        /** Start-up work that can wait (text-to-speech warm-up, MobileBERT status) begins this long after launch. */
+        private const val START_DELAY_MS = 3_000L
         /** B.5: how long the summary waits for the end-of-call answer before using the live verdict. */
         private const val FINAL_REVIEW_WAIT_MS = 3_000L
         private const val ENDED_SCRIPT = "script_finished"
