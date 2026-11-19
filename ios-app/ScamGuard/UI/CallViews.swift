@@ -112,6 +112,8 @@ struct InCallContent: View {
             HStack {
                 Text(L.s(.call_on_call)).font(.headline).foregroundStyle(Theme.muted)
                 Spacer()
+                // Developer view's playback speed, when it isn't 1×
+                if let tag = s.speedTag { SpeedTag(text: tag) }
                 if !simple { PrivacyBadge(level: s.privacyLevel) }
             }
             // Capped so the yellow or red message below stays on the first screen at the largest text sizes.
@@ -186,6 +188,18 @@ struct SignalChips: View {
 }
 
 /// The privacy level this call runs at, as a small pill.
+/// Developer view: "2× speed" / "4× speed" / "Instant" on the call screen.
+struct SpeedTag: View {
+    let text: String
+    var body: some View {
+        Text(text).font(.caption.weight(.semibold))
+            .padding(.horizontal, 10).padding(.vertical, 4)
+            .background(Theme.brandContainer, in: Capsule())
+            .accessibilityLabel("Playback \(text)")
+            .accessibilityIdentifier("speedTag")
+    }
+}
+
 struct PrivacyBadge: View {
     let level: PrivacyLevel
 

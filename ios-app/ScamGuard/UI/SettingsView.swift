@@ -48,7 +48,7 @@ private struct MenuRow: View {
     }
 }
 
-enum SettingsRoute: String, Hashable { case privacy, server, models, data, help, appStyle, textSize, family, advanced, pin }
+enum SettingsRoute: String, Hashable, CaseIterable { case privacy, data, help, appStyle, textSize, family, advanced, pin, developer }
 
 /// Settings. Simple mode: the everyday rows, Help, and "Advanced settings" (PIN-protected if set). The full app:
 /// the everyday rows, everything Advanced settings holds, and Help.
@@ -56,6 +56,7 @@ struct SettingsView: View {
     @Environment(CallViewModel.self) private var vm
 
     var body: some View {
+        ScrollViewReader { proxy in
         List {
             EverydaySettings()
             if vm.simpleMode {
@@ -75,15 +76,25 @@ struct SettingsView: View {
                         .accessibilityIdentifier("rowHelp")
                 }
                 .listRowBackground(Theme.card)
+                if vm.devUnlocked { DeveloperRow() }
             }
+            Color.clear.frame(height: 1).listRowBackground(Color.clear).id("settingsEnd")
+        }
+        #if DEBUG
+        // -demoSettingsBottom YES: scrolled to the end (screenshots)
+        .task {
+            if UserDefaults.standard.bool(forKey: "demoSettingsBottom") {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                proxy.scrollTo("settingsEnd", anchor: .bottom)
+            }
+        }
+        #endif
         }
         .settingsList()
         .navigationTitle(L.s(.tab_settings))
         .navigationDestination(for: SettingsRoute.self) { route in
             switch route {
             case .privacy: PrivacyPage()
-            case .server: ServerPage()
-            case .models: ModelsPage()
             case .data: DataPage()
             case .help: HelpPage()
             case .appStyle: AppStylePage()
@@ -91,6 +102,7 @@ struct SettingsView: View {
             case .family: FamilyPage()
             case .advanced: AdvancedPage()
             case .pin: PinSettingsPage()
+            case .developer: if vm.devUnlocked { DeveloperView() }
             }
         }
         .task { await vm.refreshConnection() }
@@ -147,72 +159,6 @@ struct PrivacyPage: View {
     }
 }
 
-// ---------------------------------------------------------------- Server
-
-struct ServerPage: View {
-    @Environment(CallViewModel.self) private var vm
-    @State private var url = ""
-    @State private var result: String?
-    @State private var testing = false
-    @State private var loaded = false
-
-    static let presets = [
-        ("Simulator", "http://localhost:8080/"),
-        ("Simulator edge", "http://localhost:8088/api/"),
-        ("Mac on Wi-Fi", "http://192.168.1.23:8080/"),
-        ("HTTPS", "https://192.168.1.23:8443/api/"),
-    ]
-
-    var body: some View {
-        List {
-            Section {
-                InfoRow(title: L.s(.srv_title), text: L.s(.srv_info_ios))
-            }
-            Section {
-                StatusChip(text: testing ? L.s(.status_checking) : connectionLabel(vm.connection), color: testing ? Theme.muted : connectionColor(vm.connection))
-                TextField(L.s(.field_server), text: $url)
-                    .font(.body)
-                    .keyboardType(.URL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                let encrypted = url.trimmingCharacters(in: .whitespaces).lowercased().hasPrefix("https://")
-                Label(L.s(encrypted ? .srv_encrypted : .srv_not_encrypted), systemImage: encrypted ? "lock.fill" : "exclamationmark.triangle.fill")
-                    .font(.body).foregroundStyle(encrypted ? Theme.safeGreen : Theme.scamRed)
-            }
-            .listRowBackground(Theme.card)
-            Section(L.s(.srv_presets)) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(Self.presets, id: \.0) { p in Button(p.0) { url = p.1 }.buttonStyle(.bordered).font(.body) }
-                    }
-                }
-            }
-            .listRowBackground(Theme.card)
-            Section {
-                HStack(spacing: 12) {
-                    Button { vm.saveGatewayUrl(url); url = vm.gatewayUrl; result = L.s(.saved) } label: {
-                        Text(L.s(.btn_save)).font(.title3.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 56)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .foregroundStyle(Theme.onBrand)
-                    Button {
-                        testing = true
-                        let u = url
-                        Task { result = await vm.testConnection(u); testing = false }
-                    } label: { Text(L.s(.btn_test)).font(.title3.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 56) }
-                    .buttonStyle(.bordered)
-                }
-                .font(.body)
-                if let result { Text(result).font(.body) }
-            }
-            .listRowBackground(Color.clear)
-        }
-        .settingsList()
-        .navigationTitle(L.s(.srv_title))
-        .onAppear { if !loaded { url = vm.gatewayUrl; loaded = true } }
-    }
-}
-
 struct StatusChip: View {
     let text: String
     let color: Color
@@ -225,55 +171,6 @@ struct StatusChip: View {
         .padding(.horizontal, 14).padding(.vertical, 8)
         .background(color.opacity(0.15), in: Capsule())
     }
-}
-
-// ---------------------------------------------------------------- On-device models
-
-struct ModelsPage: View {
-    @Environment(CallViewModel.self) private var vm
-
-    var body: some View {
-        List {
-            Section {
-                InfoRow(title: L.s(.mdl_title), text: L.s(.mdl_info))
-            }
-            Section {
-                ForEach(vm.modelStatus.split(separator: "\n").map(String.init), id: \.self) { line in
-                    let name = line.split(separator: ":").first.map { $0.prefix(1).uppercased() + $0.dropFirst() } ?? line
-                    KeyValueRow(key: name == "Money" ? "Money / OTP" : name,
-                                value: line.contains("federated") ? L.s(.mdl_updated_v, line.components(separatedBy: "federated ").last?.components(separatedBy: " (").first ?? "") : L.s(.models_built_in))
-                }
-                KeyValueRow(key: "MobileBERT", value: L.s(vm.mobileBertStatus.hasPrefix("MobileBERT installed") ? .mdl_installed : .mdl_not_installed))
-            }
-            .listRowBackground(Theme.card)
-            Section {
-                Button { Task { _ = await vm.checkModelUpdates() } } label: { Text(L.s(.mdl_check)).font(.title3.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 56) }
-                    .buttonStyle(.borderedProminent)
-                    .foregroundStyle(Theme.onBrand)
-                if !vm.modelCheck.isEmpty {
-                    Text(friendlyModelCheck(vm.modelCheck)).font(.body).foregroundStyle(Theme.brand)
-                        .accessibilityHint(vm.modelCheck)
-                }
-                Button {} label: { Text(L.s(.mdl_train)).font(.title3.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 56) }
-                    .buttonStyle(.bordered).disabled(true)
-                Text(L.s(.mdl_soon)).font(.body).foregroundStyle(Theme.muted)
-            }
-            .font(.body)
-            .listRowBackground(Color.clear)
-        }
-        .settingsList()
-        .navigationTitle(L.s(.mdl_title))
-    }
-}
-
-/// The update check's result in plain words (same wording on Android).
-func friendlyModelCheck(_ msg: String) -> String {
-    if msg.hasPrefix("Checking") { return L.s(.mdl_res_checking) }
-    if msg.hasPrefix("No model service") || msg.hasPrefix("Bad server address") { return L.s(.mdl_res_unreachable) }
-    if msg.hasPrefix("The registry has no phone models") { return L.s(.mdl_res_none) }
-    if msg.hasPrefix("Kept the current models") { return L.s(.mdl_res_failed) }
-    if msg.hasPrefix("Updated") { return L.s(.mdl_res_updated) }
-    return msg
 }
 
 struct KeyValueRow: View {
@@ -357,9 +254,6 @@ struct ToggleLabel: View {
 
 struct HelpPage: View {
     @Environment(CallViewModel.self) private var vm
-    @Environment(\.openURL) private var openURL
-    @State private var loaded = false
-
     var body: some View {
         List {
             Section { PrivacyPromise() }
@@ -387,26 +281,7 @@ struct HelpPage: View {
                     ForEach(PrivacyLevel.allCases) { l in Bullet(text: "\(l.badge) (\(L.s(l.tagKey))): \(L.s(l.plainKey))") }
                 } header: { SectionTitle(text: L.s(.help_privacy_levels)) }
                 .listRowBackground(Theme.card)
-                Section {
-                    KeyValueRow(key: L.s(.about_version), value: appVersion)
-                    ForEach(vm.modelStatus.split(separator: "\n").map(String.init), id: \.self) { line in
-                        KeyValueRow(key: (line.split(separator: ":").first.map { $0.prefix(1).uppercased() + $0.dropFirst() } ?? "") + " model",
-                                    value: line.contains("federated") ? (line.components(separatedBy: "federated ").last?.components(separatedBy: " (").first ?? "") : "built-in")
-                    }
-                    KeyValueRow(key: "MobileBERT", value: vm.mobileBertStatus.firstMatch(of: /\((mobilebert[^)]*)\)/).map { String($0.1) } ?? "not installed")
-                } header: { SectionTitle(text: L.s(.about_versions)) }
-                .listRowBackground(Theme.card)
             }
-            #if DEBUG
-            Section {
-                Button { vm.loadSampleHistory(); loaded = true } label: { Text("Load sample history").font(.title3.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 56) }
-                    .buttonStyle(.bordered).font(.body)
-                if loaded { Text("Added about 60 sample calls.").font(.body) }
-                Button { vm.resetOnboarding() } label: { Text("Reset first-launch setup").font(.title3.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 56) }
-                    .buttonStyle(.bordered).font(.body)
-            } header: { SectionTitle(text: "Debug build") }
-            .listRowBackground(Color.clear)
-            #endif
         }
         .settingsList()
         .navigationTitle(L.s(.set_help))
@@ -416,6 +291,9 @@ struct HelpPage: View {
 /// Phase 6: who made the app, that it isn't a government app, and how to check a scam (1799, ScamShield).
 struct AboutSection: View {
     @Environment(\.openURL) private var openURL
+    @Environment(CallViewModel.self) private var vm
+    @State private var taps = 0
+    @State private var message: String?
 
     var body: some View {
         Section {
@@ -424,9 +302,40 @@ struct AboutSection: View {
             Text(L.s(.about_verify)).font(.body).fixedSize(horizontal: false, vertical: true)
             BigButton(title: L.s(.btn_call_1799), id: "about1799") { if let u = PhoneLinks.telURL(PhoneLinks.helpline) { openURL(u) } }
             BigButton(title: L.s(.btn_open_scamshield), id: "aboutScamShield", prominent: false) { openURL(scamShieldURL) }
+            // Tapping the version 7 times unlocks the hidden Developer view (like Android's developer options).
             Text(L.s(.about_version) + " " + appVersion).font(.body).foregroundStyle(Theme.muted)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture { tap() }
+                .accessibilityIdentifier("aboutVersion")
+                .accessibilityAddTraits(.isButton)
+            if let message {
+                // Android shows a toast; here a short line under the version, gone after 2 s.
+                Text(message).font(.body.weight(.semibold)).foregroundStyle(Theme.brand)
+                    .accessibilityIdentifier("devToast")
+                    .transition(.opacity)
+            }
         } header: { SectionTitle(text: L.s(.about_title)) }
         .listRowBackground(Theme.card)
+    }
+
+    private func tap() {
+        let t = vm.developerTap(taps)
+        taps = t.count
+        let text: String?
+        switch t.outcome {
+        case .none: text = nil
+        case .stepsLeft: text = L.s(.dev_taps_left, "\(t.left)")
+        case .unlocked: text = L.s(.dev_unlocked)
+        case .already: text = L.s(.dev_already)
+        }
+        guard let text else { return }
+        withAnimation { message = text }
+        UIAccessibility.post(notification: .announcement, argument: text)
+        Task {
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            if message == text { withAnimation { message = nil } }
+        }
     }
 }
 

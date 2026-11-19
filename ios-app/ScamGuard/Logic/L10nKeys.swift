@@ -39,7 +39,6 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case btn_discard_call
     case btn_done
     case btn_finish_no_tour
-    case btn_fix_it
     case btn_forgot_pin
     case btn_get_started
     case btn_go_home
@@ -106,6 +105,10 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case chip_impersonation
     case chip_money
     case chip_urgency
+    case conn_fail
+    case conn_fail_line
+    case conn_not_needed
+    case conn_ok
     case consent_kept
     case consent_not_sent
     case consent_sent
@@ -150,6 +153,9 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case det_show
     case det_signs
     case det_when_at
+    case dev_already
+    case dev_taps_left
+    case dev_unlocked
     case ds_what_calmed
     case ds_what_off
     case ds_what_off_r
@@ -165,9 +171,6 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case field_phone_hint
     case field_pin
     case field_server
-    case fix_ok
-    case fix_text
-    case fix_title
     case handover_line
     case handover_title
     case handover_title_noname
@@ -189,8 +192,6 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case home_practice_line
     case home_recent
     case home_status_checking
-    case home_status_off
-    case home_status_off_line
     case home_status_ok
     case home_status_ok_line
     case ins_answers
@@ -372,6 +373,7 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case set_advanced_line
     case set_app_style
     case set_connection
+    case set_developer
     case set_family
     case set_group_app
     case set_group_checking

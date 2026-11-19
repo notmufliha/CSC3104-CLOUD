@@ -8,7 +8,7 @@ nonisolated enum Onboarding {
     static let version = 2
 
     enum Step: Int, CaseIterable, Hashable, Sendable {
-        case who, welcome, recommended, privacy, server, data, helper, family, pin, handover, done
+        case who, welcome, recommended, privacy, data, helper, family, pin, handover, done
     }
 
     /// Which way through the setup, from the first screen ("Who will use this phone?"); nil = not chosen yet.
@@ -37,14 +37,14 @@ nonisolated enum Onboarding {
         }
     }
 
-    /// The screens, in order, for the way chosen. On-device needs no server, so that screen is left out.
+    /// The screens, in order, for the way chosen. There is no server screen: the setup uses the saved (or default)
+    /// address without asking; the server address is set in the hidden Developer view.
     static func steps(_ c: Choices) -> [Step] {
-        let server: [Step] = c.privacy == .onDevice ? [] : [.server]
         switch c.path {
         case nil: return [.who]
-        case .standard?: return [.who, .welcome, .privacy] + server + [.data, .done]
+        case .standard?: return [.who, .welcome, .privacy, .data, .done]
         case .simple?: return [.who, .welcome, .recommended]
-        case .custom?: return [.who, .welcome, .recommended, .privacy] + server + [.data, .done]
+        case .custom?: return [.who, .welcome, .recommended, .privacy, .data, .done]
         case .helper?: return [.who, .helper, .family, .pin, .handover]
         }
     }
@@ -61,13 +61,9 @@ nonisolated enum Onboarding {
         return s[i - 1]
     }
 
-    /// Where the server screen left things.
-    enum Server: Sendable { case notChecked, connected, cantReach, later }
 
     struct Choices: Equatable, Sendable {
         var privacy: PrivacyLevel = .defaultLevel
-        var serverUrl: String
-        var server: Server = .notChecked
         var saveSentence = false
         var helpImprove = false
         /// nil until "Who will use this phone?" is answered (nothing is pre-selected).
@@ -87,7 +83,7 @@ nonisolated enum Onboarding {
     }
 
     /// What Skip saves on a first launch: Standard mode, recommended settings (Cloud, both data switches off).
-    static func defaults(_ currentUrl: String) -> Choices { Choices(serverUrl: currentUrl) }
+    static func defaults() -> Choices { Choices() }
 
     /// An answer to "Who will use this phone?": the way through, and that mode's text size and read-aloud.
     static func choose(_ c: Choices, _ path: Path) -> Choices {
@@ -104,7 +100,7 @@ nonisolated enum Onboarding {
 
     /// "Run setup again" starts from what is saved now (Skip keeps it), at the first question, nothing picked.
     static func fromSaved(_ store: OnboardingStore) -> Choices {
-        var c = Choices(privacy: store.privacyLevel, serverUrl: store.gatewayUrl,
+        var c = Choices(privacy: store.privacyLevel,
                         saveSentence: store.saveRiskiestSentence, helpImprove: store.helpImproveDetection)
         c.textSize = store.textSize
         c.readAloud = store.readAloud
@@ -126,12 +122,11 @@ nonisolated enum Onboarding {
         return r
     }
 
-    /// Saves the choices and marks the setup done. The server address is kept as it was for On-device (no server
-    /// screen) and for "Set up later". The PIN is saved separately (Keychain), by the caller.
+    /// Saves the choices and marks the setup done. The server address is never changed here (the saved or default one
+    /// is used). The PIN is saved separately (Keychain), by the caller.
     static func apply(_ choices: Choices, _ store: OnboardingStore) {
         let c = answered(choices)
         store.privacyLevel = c.privacy
-        if c.privacy != .onDevice && c.server != .later { store.gatewayUrl = c.serverUrl }
         store.saveRiskiestSentence = c.saveSentence
         store.helpImproveDetection = c.helpImprove
         store.simpleMode = c.simple

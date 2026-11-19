@@ -40,9 +40,11 @@ Android Studio → **File → Open** → select the **`android-app`** folder (no
 Select **`app`** and your device in the toolbar → press **Run ▶**. The app installs and opens as **ScamGuard**.
 
 ### 5. First launch
-1. Tap **Allow** on the "nearby devices" (local network) prompt.
-
-2. **Settings** → check the gateway URL (emulator: `http://10.0.2.2:8080/`, real phone: `http://<laptop IP>:8080/`) → **Save** → **Test connection** → "Connected: ok".
+1. Go through the setup ("Who will use this phone?"). It has no server screen: it uses the saved address, or
+   `http://10.0.2.2:8080/` (the emulator's name for the laptop). As it finishes, tap **Allow** on the
+   "nearby devices" (local network) prompt.
+2. Emulator + Docker Compose needs nothing else: Settings → Connection says **Connected ✓**. For any other address
+   (real phone, HTTPS), set it in the hidden **Developer view** (see [Developer view](#developer-view-hidden)).
 3. Home → **Simulate scam call** → **Answer**. The bar goes yellow, then red, and the red pop-up appears.
 
 ## Features
@@ -56,7 +58,7 @@ Select **`app`** and your device in the toolbar → press **Run ▶**. The app i
 | 4.5 | Red alert | On the first SCAM verdict: one vibration and a full-width red pop-up, e.g. *"Likely scam: asking for your OTP. Hang up and call your bank on the number on your card."* |
 | 4.6 | Summary | Verdict, the caller lines that triggered it, **Report to ScamShield** (opens https://www.scamshield.gov.sg/) |
 | 4.7 | History | Past calls: date, verdict, top reason. Up to 100 rows, newest first. Clear history button. |
-| 4.8 | Settings | Gateway URL field, presets, Save, Test connection (`GET /healthz`) |
+| 4.8 | Settings → Developer view (hidden) | Gateway URL field, presets, Save, Test connection (`GET /healthz`). Normal Settings shows only "Connected ✓" / "Can't connect to ScamGuard" |
 
 ---
 
@@ -111,9 +113,16 @@ The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk` on both 
 
 ## Pointing the app at the backend
 
-**First launch (Android 17 / API 37 and newer):** the app asks for **local network access** (shown as a "nearby devices" prompt). Tap **Allow**. Android 17 blocks apps from reaching private addresses like `10.0.2.2` or `192.168.x.x` without it. If you refused it, every call shows "Could not check" and Test connection says "Could not connect: allow Local network access…". Turn it back on in Android Settings → Apps → ScamGuard → Permissions.
+**First launch (Android 17 / API 37 and newer):** the app asks for **local network access** (shown as a "nearby devices" prompt). Tap **Allow**. Android 17 blocks apps from reaching private addresses like `10.0.2.2` or `192.168.x.x` without it. If you refused it, every call shows "Could not check" and Test connection (Developer view) says "Could not connect: allow Local network access…". Turn it back on in Android Settings → Apps → ScamGuard → Permissions.
 
-Set the gateway URL in **Settings**, then press **Test connection**. "Connected: ok" means the gateway answered.
+Normal users never see the address. Settings and Simple Home show only **Connected ✓** or **Can't connect to
+ScamGuard** ("Ask the person who set up this phone for help" + **Try again**). To change the address:
+
+1. Settings → **Help** → tap **Version 1.0** 7 times → "Developer view unlocked".
+2. Settings → **Developer view** (at the bottom; in Simple mode under **Advanced settings**, behind the PIN if one is set).
+3. **1. Connection → Server address**: type the URL or tap a preset (Emulator, Emulator HTTPS, Mac on Wi-Fi, HTTPS) →
+   **Save** → **Test connection**. "Connected: ok" means the gateway answered; otherwise the full error is shown.
+4. Optional: turn the **Developer view** switch at the top off to hide it again (the address stays saved).
 
 | Setup | Gateway URL | Run first |
 |---|---|---|
@@ -124,7 +133,7 @@ Set the gateway URL in **Settings**, then press **Test connection**. "Connected:
 | Emulator + minikube (HTTP fallback) | `http://10.0.2.2:8080/` | `demo/port-forward.ps1` / `.sh` |
 
 - `10.0.2.2` is the emulator's name for the laptop.
-- **HTTPS addresses (Workstream E):** install `demo/tls/ca.crt` on the device once first; see [demo/STABLE_ADDRESS.md](../demo/STABLE_ADDRESS.md#install-the-demo-ca-on-a-device-once-per-device). The HTTPS address goes through the Kubernetes Ingress, so it stays the same when the cluster or the gateway pod restarts. Settings shows "Not encrypted" in red for any `http://` address.
+- **HTTPS addresses (Workstream E):** install `demo/tls/ca.crt` on the device once first; see [demo/STABLE_ADDRESS.md](../demo/STABLE_ADDRESS.md#install-the-demo-ca-on-a-device-once-per-device). The HTTPS address goes through the Kubernetes Ingress, so it stays the same when the cluster or the gateway pod restarts. The Developer view shows "Not encrypted" in red for any `http://` address.
 - Venue Wi-Fi often blocks phone-to-laptop traffic. Use a phone hotspot, or fall back to the emulator.
 
 **Find the laptop's IP**
@@ -300,9 +309,42 @@ app/src/main/
 
 ---
 
+## Developer view (hidden)
+
+For demos and debugging; normal users never see it. Unlock: Settings → Help → tap the version number 7 times.
+It sits at the bottom of Settings (Standard) or under Advanced settings (Simple, behind the PIN). It works in debug
+and release builds. Only the "unlocked" flag is saved (`developer_view_unlocked`); everything else is in memory only,
+cleared when the app closes, by **Delete my history** and by locking the view. Caller text is always masked
+(`logic/Mask.kt`) in the view and in "Copy diagnostics". It never changes detection, thresholds or what is sent.
+
+| Section | Shows / does |
+|---|---|
+| 1. Connection | Gateway URL, last /healthz (result + time), privacy level, app version/build, Android version, local network permission. **Server address**: URL field, presets, Save, Test connection (full error) |
+| 2. Models | Bundled model versions + SHA-256 (from `assets/models/manifest.json`), downloaded ones, MobileBERT status/version/size, the server's `model_versions` from its last reply; **Check for model updates**; "Train on my calls" (disabled) |
+| 3. Last call | call_id, ended_by, one row per caller line: time into call, U / M / I, combined, BERT score + status, rule (on the phone), live alert, verdict, where it was checked (cloud / phone / phone + cloud BERT / phone + MobileBERT) and latency; the end-of-call reply |
+| 4. Raw replies | The last 20 requests/replies (method, path, status, ms, masked JSON). Tap one to open it |
+| 5. Tools | **Call playback speed** 1× / 2× / 4× / Instant; **Show live scores during calls**; Load / Delete sample history; Copy diagnostics (sections 1-3); **Reset setup only**; **Reset app to first launch** |
+
+- **Call playback speed** scales each script line's `delay_ms` (scripted and pasted calls). Instant waits 150 ms
+  between lines so the screen and requests stay in order. The call screen shows a "2× speed" / "4× speed" / "Instant"
+  tag. The end message is still sent at every speed. In memory only; back to 1× when the view is locked.
+- **Live scores** (off by default): a small dark panel at the top of the call screen with the newest caller line's
+  numbers. Tap it to collapse. It hides while the red warning shows.
+- **Reset setup only** keeps history and settings and shows "Who will use this phone?" again.
+- **Reset app to first launch** (asks first) deletes the database (all tables), every setting (the unlocked flag
+  too), the PIN, downloaded models and the logs, then starts at "Who will use this phone?". Bundled models and scripts
+  stay.
+- With the view unlocked, the script picker has a **Test calls (learning loop)** section (scripts numbered 90+); they
+  are never picked for a random practice call while it is locked.
+
+Debug-only launch options for screenshots: `--ez demoDev true`, `--es demoSpeed 4x`, `--ez demoOverlay true`,
+`--es demoLevel hybrid`, `--es demoScript scam_en_11_bank_otp.json`, `--es demoScreen SETTINGS_DEVELOPER`.
+
+---
+
 ## Testing checklist
 
-- [ ] First launch: allow local network access; Settings → Test connection shows "Connected: ok"
+- [ ] First launch: setup has no server screen; allow local network access; Settings → Connection shows "Connected ✓"
 - [ ] Preview pane shows `InCallPreview` in the red SCAM state (no backend needed)
 - [ ] Backend off → Simulate scam call → bubbles appear on time, grey "Could not check", never green
 - [ ] Backend on → Simulate scam call → bar goes yellow, then red; chips light; red pop-up + one vibration
@@ -311,7 +353,8 @@ app/src/main/
 - [ ] Normal call → stays green, no pop-up
 - [ ] Summary lists the flagged lines; Report to ScamShield opens the website
 - [ ] History shows each call with the right verdict; Clear history empties it
-- [ ] Change the URL in Settings → next call uses it without restarting
+- [ ] Change the URL in Developer view → next call uses it without restarting
+- [ ] Help → tap the version 7 times → "Developer view unlocked"; the switch inside hides it again
 
 ---
 
@@ -323,7 +366,8 @@ app/src/main/
 | Test connection: "Could not connect: SocketTimeoutException" or "ConnectException" | Wrong IP or port, port-forward closed, or firewall blocking 8080 |
 | Test connection: "Could not connect: allow Local network access…" (Android 17+) | Local network access was refused. Allow it in Android Settings → Apps → ScamGuard → Permissions |
 | Test connection shows "Connected: ok" but every call shows "Could not check" | The gateway is up but answers HTTP 503: workers still loading. Check `docker compose ps` or `kubectl -n scamguard get pods` |
-| Test connection: "Not a valid address" | Fix the URL in Settings, e.g. `http://10.0.2.2:8080/` |
+| Test connection: "Not a valid address" | Fix the URL in Developer view → Server address, e.g. `http://10.0.2.2:8080/` |
+| Settings says "Can't connect to ScamGuard" | Unlock the Developer view (Help → tap the version 7 times) and use Test connection there to see the full error |
 | No vibration | Normal on the emulator; test on a real phone |
 | "No scripts found" | Files must be in `assets/scripts/` and end in `.json`; check Logcat tag `ScriptRepository` |
 | Gradle can't find the SDK | Open the project in Android Studio once (creates `local.properties`) or set `ANDROID_HOME` |

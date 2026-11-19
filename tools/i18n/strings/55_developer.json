@@ -1,0 +1,10 @@
+{
+  "conn_ok": "Connected ✓",
+  "conn_fail": "Can't connect to ScamGuard",
+  "conn_fail_line": "Ask the person who set up this phone for help",
+  "conn_not_needed": "Not needed: calls are checked on this phone",
+  "set_developer": "Developer view",
+  "dev_unlocked": "Developer view unlocked",
+  "dev_already": "Developer view is already unlocked",
+  "dev_taps_left": "{0} more taps to unlock Developer view"
+}

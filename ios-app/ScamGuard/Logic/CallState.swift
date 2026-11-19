@@ -39,6 +39,8 @@ nonisolated struct CallUiState: Equatable, Sendable {
     var warningOpen = false
     /// The yellow "Be careful" tap was given in this call (once per call).
     var carefulAlerted = false
+    /// Developer view: "2× speed" etc. on the call screen when the playback isn't 1×; nil normally.
+    var speedTag: String?
 
     /// What the red warning / yellow banner say (no scores): the strongest reason heard so far.
     var warningKind: Warnings.Kind {

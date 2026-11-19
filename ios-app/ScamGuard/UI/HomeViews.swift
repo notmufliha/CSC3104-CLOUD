@@ -62,8 +62,12 @@ struct ScriptPickerView: View {
     @State private var sort: Sort = .type
     @State private var filtersOpen = false
 
+    /// The learning-loop test calls live in their own section, only while the Developer view is unlocked.
+    private var everyday: [CallScript] { vm.scripts.filter { !DevScripts.isTestCall($0.fileName) } }
+    private var testCalls: [CallScript] { vm.devUnlocked ? vm.scripts.filter { DevScripts.isTestCall($0.fileName) } : [] }
+
     private var shown: [CallScript] {
-        let list = vm.scripts.filter { (kind == nil || $0.kind == kind) && (lang == nil || $0.lang == lang) }
+        let list = everyday.filter { (kind == nil || $0.kind == kind) && (lang == nil || $0.lang == lang) }
         switch sort {
         case .type: return list.sorted { a, b in (a.kind == "scam") != (b.kind == "scam") ? a.kind == "scam" : a.title < b.title }
         case .title: return list.sorted { $0.title < $1.title }
@@ -102,13 +106,24 @@ struct ScriptPickerView: View {
                         .buttonStyle(.plain)
                 }
             }
+            if !testCalls.isEmpty {
+                Section {
+                    ForEach(testCalls) { s in
+                        Button { vm.ring(s) } label: { ScriptRow(script: s) }
+                            .buttonStyle(.plain)
+                    }
+                } header: {
+                    Text("Test calls (learning loop)").font(.headline).foregroundStyle(Color.primary).textCase(nil)
+                        .accessibilityIdentifier("testCallsHeader")
+                }
+            }
         }
         .navigationTitle(L.s(.pick_title))
     }
 
     private var activeSummary: String {
         let parts = [kind.map { $0 == "scam" ? L.s(.pick_scam) : L.s(.pick_normal) }, lang.map(Theme.langLabel), sort.label].compactMap { $0 }
-        return L.s(.pick_count, parts.joined(separator: " · "), "\(shown.count)", "\(vm.scripts.count)")
+        return L.s(.pick_count, parts.joined(separator: " · "), "\(shown.count)", "\(everyday.count)")
     }
 }
 

@@ -157,10 +157,20 @@ final class CallStore {
         labels().map { LabelRow(callId: $0.callId, label: $0.label, source: $0.source, time: $0.time) }
     }
 
-    /// Debug builds only: the made-up history from SampleHistory (ids "sample-…").
+    /// Developer view: the made-up history from SampleHistory (ids "sample-…").
     func insertSample(_ h: SampleHistory.History) {
         for c in h.calls { save(c, points: h.points.filter { $0.callId == c.id }) }
         for l in h.labels { insertLabel(callId: l.callId, label: l.label, source: l.source, time: l.time) }
+    }
+
+    /// Developer view → "Delete sample history": the SampleHistory calls (ids "sample-…"), their points and labels.
+    func deleteSample() {
+        let p = SampleHistory.idPrefix
+        for m in (try? context.fetch(FetchDescriptor<ScorePoint>())) ?? [] where m.callId.hasPrefix(p) { context.delete(m) }
+        for m in (try? context.fetch(FetchDescriptor<CallRecord>())) ?? [] where m.id.hasPrefix(p) { context.delete(m) }
+        for m in (try? context.fetch(FetchDescriptor<ImplicitLabel>())) ?? [] where m.callId.hasPrefix(p) { context.delete(m) }
+        for m in (try? context.fetch(FetchDescriptor<LabelSentence>())) ?? [] where m.callId.hasPrefix(p) { context.delete(m) }
+        try? context.save()
     }
 
     /// "Save the riskiest sentence" turned off: forget the ones already saved too.

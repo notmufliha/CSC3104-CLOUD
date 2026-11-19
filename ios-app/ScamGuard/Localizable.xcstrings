@@ -445,18 +445,6 @@
         }
       }
     },
-    "btn_fix_it": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fix it"
-          }
-        }
-      }
-    },
     "btn_forgot_pin": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
@@ -1249,6 +1237,54 @@
         }
       }
     },
+    "conn_fail": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can't connect to ScamGuard"
+          }
+        }
+      }
+    },
+    "conn_fail_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask the person who set up this phone for help"
+          }
+        }
+      }
+    },
+    "conn_not_needed": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not needed: calls are checked on this phone"
+          }
+        }
+      }
+    },
+    "conn_ok": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connected ✓"
+          }
+        }
+      }
+    },
     "consent_kept": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
@@ -1777,6 +1813,42 @@
         }
       }
     },
+    "dev_already": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Developer view is already unlocked"
+          }
+        }
+      }
+    },
+    "dev_taps_left": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ more taps to unlock Developer view"
+          }
+        }
+      }
+    },
+    "dev_unlocked": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Developer view unlocked"
+          }
+        }
+      }
+    },
     "ds_what_calmed": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
@@ -1953,42 +2025,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Server address"
-          }
-        }
-      }
-    },
-    "fix_ok": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connected again"
-          }
-        }
-      }
-    },
-    "fix_text": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Check that Wi-Fi or mobile data is on, then try again. If it still doesn't work, ask your family helper."
-          }
-        }
-      }
-    },
-    "fix_title": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Still not connected"
           }
         }
       }
@@ -2241,30 +2277,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Checking the connection…"
-          }
-        }
-      }
-    },
-    "home_status_off": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Not connected"
-          }
-        }
-      }
-    },
-    "home_status_off_line": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ScamGuard can't check calls right now."
           }
         }
       }
@@ -4437,6 +4449,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Connection"
+          }
+        }
+      }
+    },
+    "set_developer": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Developer view"
           }
         }
       }
