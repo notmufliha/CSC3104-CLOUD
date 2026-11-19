@@ -62,9 +62,10 @@ On an 8 GB laptop `up.ps1` picks a "lite" profile automatically; always add `--m
 
 ### C. The app (browser or Android)
 
-**Browser:** open http://127.0.0.1:8088/ (compose) or https://127.0.0.1:8443/ (Kubernetes with `expose`). Same
-screens and wording as the phone apps (Standard and Simple mode, live risk bar, red warning, summary with
-"What to do now", Learn and the practice quiz, weekly summary, dashboard chart); calls are checked by the server (privacy level 1). History stays in the browser.
+**Browser:** open http://127.0.0.1:8088/ (compose) or https://127.0.0.1:8443/ (Kubernetes with `expose`), or
+`http://<laptop IP>:8088/` from a phone. A replica of the iOS app ([web/README.md](web/README.md)): the same screens,
+wording and look in Standard and Simple mode, all three privacy levels (Hybrid and On-device run the small models in
+the browser), Learn, the weekly summary, the dashboard charts and the Developer view. History stays in the browser.
 
 **Android:** open `android-app/` in Android Studio and press **Run** (a debug build). In the app: **Settings** -> paste the
 address from A or B -> **Save** -> **Test connection** ("Connected: ok"). Debug builds already trust the

@@ -18,7 +18,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 SCRIPTS = os.path.join(ROOT, "android-app", "app", "src", "main", "assets", "scripts")
 OUTS = [os.path.join(ROOT, "android-app", "app", "src", "main", "assets", "learn", "learn.json"),
         os.path.join(ROOT, "ios-app", "ScamGuard", "Resources", "Learn", "learn.json"),
-        os.path.join(ROOT, "web", "learn.json")]   # the web app (flat: the Kubernetes ConfigMap holds web/'s files)
+        os.path.join(ROOT, "web", "assets", "learn.json")]   # the web app
 
 
 def is_test_script(name):

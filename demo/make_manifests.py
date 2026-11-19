@@ -838,41 +838,23 @@ spec:
 
 
 def web_yaml() -> str:
-    # The ScamGuard web app (web/: the Android app's cloud mode in a browser) and the app's call scripts, served by a
-    # small nginx at https://<laptop IP>:8443/ through the same Ingress as /api/, so the page calls the gateway on its
-    # own address (no CORS). The files go in ConfigMaps, made here from the repo, so no image has to be built.
+    # The ScamGuard web app (web/: a replica of the iOS app in a browser), served by a small nginx image built from
+    # web/Dockerfile (demo/up.sh: scam/web) at https://<laptop IP>:8443/ through the same Ingress as /api/, so the
+    # page calls the gateway on its own address (no CORS). Its files (about 2.5 MB with the on-device models) are too
+    # big for ConfigMaps, so they are baked into the image. The hash of web/'s served files is an annotation: a
+    # changed page changes it, so `kubectl apply` rolls the pod (after demo/up.sh rebuilt and loaded the image).
     import hashlib
-    import json
     root = Path(__file__).resolve().parent.parent
     web_dir = root / "web"
-    scripts_dir = root / "android-app" / "app" / "src" / "main" / "assets" / "scripts"
-
-    def configmap(name: str, files: dict) -> str:
-        body = "".join(f"  {k}: {json.dumps(v, ensure_ascii=False)}\n" for k, v in sorted(files.items()))
-        return f"""apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {name}
-  namespace: {NAMESPACE}
-data:
-{body}"""
-
-    web_files = {f.name: f.read_text(encoding="utf-8") for f in sorted(web_dir.iterdir()) if f.is_file()}
-    script_files = {f.name: f.read_text(encoding="utf-8") for f in sorted(scripts_dir.glob("*.json"))}
-    nginx_conf = """server {
-    listen 8080;
-    root /usr/share/nginx/html;
-    add_header Cache-Control "no-cache";
-    location / { index index.html; }
-    location /scripts/ { alias /usr/share/nginx/scripts/; autoindex on; autoindex_format json; }
-    location = /healthz { return 200 "ok"; }
-}
-"""
-    files_hash = hashlib.sha256(json.dumps([web_files, script_files], sort_keys=True).encode()).hexdigest()[:12]
+    h = hashlib.sha256()
+    for part in ["index.html", "manifest.webmanifest", "nginx.conf", "css", "js", "vendor", "icons", "assets"]:
+        p = web_dir / part
+        for f in sorted([p] if p.is_file() else p.rglob("*")):
+            if f.is_file():
+                h.update(str(f.relative_to(web_dir)).encode())
+                h.update(f.read_bytes())
+    files_hash = h.hexdigest()[:12]
     return "---\n".join([
-        configmap("web-files", web_files),
-        configmap("web-scripts", script_files),
-        configmap("web-nginx", {"default.conf": nginx_conf}),
         f"""apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -887,26 +869,19 @@ spec:
     metadata:
       labels: {{ app: web }}
       annotations:
-        # a changed page or script changes this hash, so `kubectl apply` rolls the pod and it serves the new files
+        # a changed page changes this hash, so `kubectl apply` rolls the pod and it serves the new image
         scamguard/files-hash: "{files_hash}"
     spec:
       containers:
         - name: nginx
-          image: nginx:1.27-alpine
+          image: scam/web:{IMAGE_TAG}
+          imagePullPolicy: IfNotPresent
           ports: [{{ containerPort: 8080 }}]
           resources:
             requests: {{ cpu: 10m, memory: 16Mi }}
             limits: {{ cpu: 100m, memory: 64Mi }}
           readinessProbe:
             httpGet: {{ path: /healthz, port: 8080 }}
-          volumeMounts:
-            - {{ name: files, mountPath: /usr/share/nginx/html }}
-            - {{ name: scripts, mountPath: /usr/share/nginx/scripts }}
-            - {{ name: conf, mountPath: /etc/nginx/conf.d }}
-      volumes:
-        - {{ name: files, configMap: {{ name: web-files }} }}
-        - {{ name: scripts, configMap: {{ name: web-scripts }} }}
-        - {{ name: conf, configMap: {{ name: web-nginx }} }}
 """,
         f"""apiVersion: v1
 kind: Service

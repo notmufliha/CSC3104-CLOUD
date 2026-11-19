@@ -82,7 +82,7 @@ if ($LASTEXITCODE -ne 0) { Die "minikube addons enable ingress failed. Try 'mini
 # in testing on Windows with minikube's default containerd runtime: "SSH_AGENT_START: starting an SSH
 # agent on Windows is not yet supported". `minikube image load` works regardless of driver/runtime and
 # was verified end-to-end, so it's what this script uses -- slightly slower, far more reliable.)
-Say "Building all 11 images on the host Docker, then loading them into minikube"
+Say "Building all 12 images on the host Docker, then loading them into minikube"
 
 function Build-Image($name, $dockerfile) {
     Write-Host "--- building scam/${name}:${ImageTag} ---"
@@ -108,6 +108,12 @@ docker build -t "scam/retrain:${ImageTag}" -f backend/retrain/Dockerfile .
 if ($LASTEXITCODE -ne 0) { Die "build failed for retrain -- see the error above." }
 minikube image load "scam/retrain:${ImageTag}"
 if ($LASTEXITCODE -ne 0) { Die "minikube image load failed for retrain. Is 'minikube status' Running?" }
+# The web app (static files; web/Dockerfile).
+Write-Host "--- building scam/web:${ImageTag} ---"
+docker build -t "scam/web:${ImageTag}" web
+if ($LASTEXITCODE -ne 0) { Die "build failed for web -- see the error above." }
+minikube image load "scam/web:${ImageTag}"
+if ($LASTEXITCODE -ne 0) { Die "minikube image load failed for web. Is 'minikube status' Running?" }
 
 Say "Building bert (downloads the real model from Hugging Face at build time -- needs internet)"
 docker build -t "scam/bert:${ImageTag}" -f backend/workers/bert/Dockerfile backend
