@@ -53,6 +53,7 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case btn_delete_history
     case btn_discard_call
     case btn_done
+    case btn_dont_share
     case btn_finish_no_tour
     case btn_forgot_pin
     case btn_get_started
@@ -122,6 +123,12 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case conn_fail_line
     case conn_not_needed
     case conn_ok
+    case consent_kept
+    case consent_not_sent
+    case consent_sent
+    case consent_title_fine
+    case consent_title_scam
+    case consent_why
     case copy_footer
     case copy_lines
     case copy_result
@@ -180,6 +187,12 @@ nonisolated enum K: String, CaseIterable, Sendable {
     case error_banner
     case family_need_phone
     case family_page_line
+    case fb_fine
+    case fb_line
+    case fb_not_shared
+    case fb_scam
+    case fb_sending
+    case fb_title
     case field_name
     case field_phone
     case field_phone_hint

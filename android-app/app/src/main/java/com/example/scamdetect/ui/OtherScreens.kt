@@ -287,8 +287,34 @@ fun SummaryScreen(
     family: CallViewModel.Family? = null,
     /** "Save the riskiest sentence": only then does the copied report summary include the (masked) caller lines. */
     includeLines: Boolean = false,
+    /** H.3: exactly what a report would send (the caller's lines, masked), for the consent screen. */
+    reportPreview: () -> List<ReportLine> = { emptyList() },
+    /** H.3: sends the report after consent; returns the message for the screen and whether it was sent. */
+    onReport: suspend (kind: String) -> Pair<String, Boolean> = { "" to false },
+    /** G.12: "This was fine" tapped (kept as a local label; sharing still goes through the consent screen). */
+    onThisWasFine: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    // H.3: which button opened the consent screen ("scam" / "fine"), and the result once sent. Saveable: rotating the
+    // phone must not re-enable the buttons and let one call be reported twice.
+    var asking by rememberSaveable { mutableStateOf<String?>(null) }
+    var reportResult by rememberSaveable { mutableStateOf<String?>(null) }
+    var reportSent by rememberSaveable { mutableStateOf(false) }
+    var sending by rememberSaveable { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val notShared = stringResource(R.string.fb_not_shared)
+    asking?.let { kind ->
+        ConsentDialog(
+            kind = kind,
+            lines = remember(kind) { reportPreview() },
+            onShare = {
+                asking = null
+                sending = true
+                scope.launch { val (msg, ok) = onReport(kind); reportResult = msg; reportSent = ok; sending = false }
+            },
+            onCancel = { asking = null; reportResult = notShared },
+        )
+    }
     if (state.reviewing) {
         Page(stringResource(R.string.summary_title)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -334,6 +360,31 @@ fun SummaryScreen(
                 if (shown.isEmpty()) Text(stringResource(R.string.sum_no_lines), style = MaterialTheme.typography.bodyLarge)
                 shown.forEach { ChatBubble(it, riskyHere = it.seq in risky, showNotes = !simple) }
             }
+            // H.3: help ScamGuard learn (the learning loop, demo/LEARNING_LOOP.md). Off once sent: one call is shared
+            // at most once. At levels 2 and 3 calls aren't shared: no consent screen, nothing is sent.
+            Card(Modifier.fillMaxWidth().testTag("feedbackCard")) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(stringResource(R.string.fb_title), style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.semantics { heading() })
+                    if (!simple) Text(stringResource(R.string.fb_line), style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val canShare = state.privacyLevel.cloudCall
+                    val nothing = CallViewModel.nothingShared()
+                    fun share(kind: String) { if (canShare) asking = kind else reportResult = nothing }
+                    val enabled = !reportSent && !sending
+                    OutlinedButton(onClick = { share("scam") }, enabled = enabled,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("reportScam")) {
+                        Text(stringResource(R.string.fb_scam), style = MaterialTheme.typography.labelLarge)
+                    }
+                    OutlinedButton(onClick = { onThisWasFine(); share("fine") }, enabled = enabled,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("reportFine")) {
+                        Text(stringResource(R.string.fb_fine), style = MaterialTheme.typography.labelLarge)
+                    }
+                    if (sending) Text(stringResource(R.string.fb_sending), style = MaterialTheme.typography.bodyMedium)
+                    reportResult?.let { Text(it, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.testTag("reportResult")) }
+                }
+            }
             val wide = Modifier.fillMaxWidth().heightIn(min = 64.dp)
             Button(onClick = onDone, modifier = wide.testTag("summaryDone")) {
                 Text(stringResource(R.string.btn_done), style = MaterialTheme.typography.labelLarge)
@@ -352,6 +403,33 @@ fun SummaryScreen(
             Spacer(Modifier.height(8.dp))
         }
     }
+}
+
+/** H.3: shows exactly what would leave the phone before anything is sent. Nothing is sent on "Don't share". */
+@Composable
+private fun ConsentDialog(kind: String, lines: List<ReportLine>, onShare: () -> Unit, onCancel: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text(stringResource(if (kind == "scam") R.string.consent_title_scam else R.string.consent_title_fine)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.consent_why), style = MaterialTheme.typography.bodyMedium)
+                Text(Tr.s(R.string.consent_sent, lines.size.toString()), style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.consent_not_sent), style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.consent_kept), style = MaterialTheme.typography.bodySmall)
+                HorizontalDivider()
+                LazyColumn(Modifier.heightIn(max = 200.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(lines, key = { it.seq }) { Text("“${it.text}”", style = MaterialTheme.typography.bodyMedium) }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onShare, enabled = lines.isNotEmpty(), modifier = Modifier.testTag("consentShare")) {
+                Text(stringResource(R.string.btn_share))
+            }
+        },
+        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.btn_dont_share)) } },
+    )
 }
 
 private val WARNING_LEVELS = setOf(Risk.Level.RED, Risk.Level.YELLOW)

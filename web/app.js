@@ -511,16 +511,13 @@ async function sendReport(c, kind) {
 function consentSheet(c, kind) {
   const lines = reportPreview(c);
   return `<div class="scrim" data-act="consent-no"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="consent-title">
-    <h2 id="consent-title">${kind === "scam" ? "Share this scam call?" : "Share this call as a false alarm?"}</h2>
-    <p>Helps ScamGuard learn new scams. A team member reads it, labels it, and it may be used to retrain the checks.</p>
-    <p class="small">Sent: the caller's ${lines.length} lines below. We try to remove numbers, amounts, links and names,
-      but some can slip through, such as a name said in passing or digits read out as words. Check the text; if you see
-      anything private, choose Don't share.</p>
-    <p class="small">Not sent: your phone number, the caller's number, anything you said.</p>
-    <p class="small">Kept: deleted after 30 days, except lines a reviewer approves as training examples. Those stay
-      encrypted with no link to you, so they can't be withdrawn later.</p>
+    <h2 id="consent-title">${esc(T(kind === "scam" ? "consent_title_scam" : "consent_title_fine"))}</h2>
+    <p>${esc(T("consent_why"))}</p>
+    <p class="small">${esc(T("consent_sent", lines.length))}</p>
+    <p class="small">${esc(T("consent_not_sent"))}</p>
+    <p class="small">${esc(T("consent_kept"))}</p>
     <div class="col">${lines.map((l) => `<div class="card">“${esc(l.text)}”</div>`).join("")}</div>
-    <div class="row"><button class="btn grow big" data-act="consent-no">Don't share</button>
+    <div class="row"><button class="btn grow big" data-act="consent-no">${esc(T("btn_dont_share"))}</button>
       <button class="btn fill grow big" data-act="consent-yes" data-kind="${kind}" ${lines.length ? "" : "disabled"}>${esc(T("btn_share"))}</button></div></div>`;
 }
 
@@ -705,11 +702,11 @@ const SCREENS = {
         <button class="btn wide big outline" data-act="sheet-shared">${esc(T("after_shared"))}</button></div>` : ""}
       ${lvl !== "GREEN" && !hiddenYellow ? `<h2>${esc(T("sum_triggered"))}</h2>
         ${shown.length ? `<div class="chat">${shown.map((l) => bubble(l, risky.has(l.seq))).join("")}</div>` : `<p>${esc(T("sum_no_lines"))}</p>`}` : ""}
-      ${c.level === "cloud" ? `<div class="card"><h2>Help ScamGuard learn</h2>
-        <p class="small muted">Was this result right? You see exactly what would be shared before anything is sent.</p>
-        <div class="row"><button class="btn grow" data-act="learn-scam" ${c.reportSent || c.sending ? "disabled" : ""}>This was a scam</button>
-          <button class="btn grow" data-act="learn-fine" ${c.reportSent || c.sending ? "disabled" : ""}>This was fine</button></div>
-        ${c.sending ? `<p class="small" role="status">${esc(T("loading"))}</p>` : ""}
+      ${c.level === "cloud" ? `<div class="card"><h2>${esc(T("fb_title"))}</h2>
+        ${simple() ? "" : `<p class="small muted">${esc(T("fb_line"))}</p>`}
+        <div class="row"><button class="btn grow" data-act="learn-scam" ${c.reportSent || c.sending ? "disabled" : ""}>${esc(T("fb_scam"))}</button>
+          <button class="btn grow" data-act="learn-fine" ${c.reportSent || c.sending ? "disabled" : ""}>${esc(T("fb_fine"))}</button></div>
+        ${c.sending ? `<p class="small" role="status">${esc(T("fb_sending"))}</p>` : ""}
         ${c.reportResult ? `<p class="small strong" role="status">${esc(c.reportResult)}</p>` : ""}</div>` : ""}
       <button class="btn fill wide big" data-act="done">${esc(T("btn_done"))}</button>
       ${after ? "" : `<a class="btn wide big outline red-outline" href="${SCAMSHIELD_URL}" target="_blank" rel="noopener">${esc(T("btn_report_scamshield"))}</a>`}
@@ -966,7 +963,7 @@ document.addEventListener("click", async (e) => {
     case "sheet-shared": sheet = "shared"; render(); break;
     case "sheet-close": sheet = null; render(); break;
     case "learn-scam": case "learn-fine": if (c) { sheet = el.dataset.act === "learn-scam" ? "consent-scam" : "consent-fine"; render(); } break;
-    case "consent-no": sheet = null; if (c) c.reportResult = "Nothing was shared."; render(); break;
+    case "consent-no": sheet = null; if (c) c.reportResult = T("fb_not_shared"); render(); break;
     case "consent-yes":
       if (!c) break;
       sheet = null; c.sending = true; render();
