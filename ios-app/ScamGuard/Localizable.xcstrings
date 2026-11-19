@@ -433,14 +433,14 @@
         }
       }
     },
-    "btn_family_member": {
+    "btn_finish_no_tour": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Set up for a family member"
+            "value": "Finish without the tour"
           }
         }
       }
@@ -489,6 +489,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Go to Home"
+          }
+        }
+      }
+    },
+    "btn_got_it": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Got it"
           }
         }
       }
@@ -585,30 +597,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "No"
-          }
-        }
-      }
-    },
-    "btn_offer_no": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No, thanks"
-          }
-        }
-      }
-    },
-    "btn_offer_yes": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Turn on Simple mode"
           }
         }
       }
@@ -861,6 +849,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Skip tour"
+          }
+        }
+      }
+    },
+    "btn_start_tour": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start the tour"
           }
         }
       }
@@ -1993,6 +1993,42 @@
         }
       }
     },
+    "handover_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A short tour shows them what a scam warning looks like."
+          }
+        }
+      }
+    },
+    "handover_title": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hand the phone to %1$@"
+          }
+        }
+      }
+    },
+    "handover_title_noname": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hand the phone to your family member"
+          }
+        }
+      }
+    },
     "help_again": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
@@ -2865,30 +2901,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Off"
-          }
-        }
-      }
-    },
-    "offer_text": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bigger buttons and fewer choices. You can change this later in Settings."
-          }
-        }
-      }
-    },
-    "offer_title": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Try Simple mode?"
           }
         }
       }
@@ -4405,6 +4417,18 @@
         }
       }
     },
+    "set_app_style": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App style"
+          }
+        }
+      }
+    },
     "set_connection": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
@@ -4593,30 +4617,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Off: only scam warnings show. Every call is still saved."
-          }
-        }
-      }
-    },
-    "set_simple_mode": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Simple mode"
-          }
-        }
-      }
-    },
-    "set_simple_mode_line": {
-      "comment": "Source: tools/i18n/strings/*.json",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bigger buttons and fewer choices"
           }
         }
       }
@@ -5113,6 +5113,66 @@
         }
       }
     },
+    "style_page_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your calls, family contact and PIN stay the same."
+          }
+        }
+      }
+    },
+    "style_simple": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simple"
+          }
+        }
+      }
+    },
+    "style_simple_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bigger text, fewer buttons, warnings read aloud."
+          }
+        }
+      }
+    },
+    "style_standard": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard"
+          }
+        }
+      }
+    },
+    "style_standard_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Charts, call history and all the settings."
+          }
+        }
+      }
+    },
     "sum_checking": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
@@ -5341,6 +5401,30 @@
         }
       }
     },
+    "text_normal": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Normal"
+          }
+        }
+      }
+    },
+    "text_normal_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The same size as your phone's other apps."
+          }
+        }
+      }
+    },
     "text_size_sample": {
       "comment": "Source: tools/i18n/strings/*.json",
       "extractionState": "manual",
@@ -5361,6 +5445,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Extra large"
+          }
+        }
+      }
+    },
+    "tip_app_style": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Setting this up for a parent? Try Simple mode in Settings → App style."
           }
         }
       }
@@ -5769,6 +5865,114 @@
           "stringUnit": {
             "state": "translated",
             "value": "What does this mean?"
+          }
+        }
+      }
+    },
+    "who_family": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An older family member"
+          }
+        }
+      }
+    },
+    "who_family_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set it up for them, with you as their family contact."
+          }
+        }
+      }
+    },
+    "who_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can change this later in Settings."
+          }
+        }
+      }
+    },
+    "who_me": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Me"
+          }
+        }
+      }
+    },
+    "who_me_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The full app, with charts and all the settings."
+          }
+        }
+      }
+    },
+    "who_pick_one": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose one of the three to go on."
+          }
+        }
+      }
+    },
+    "who_simpler": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Me, but simpler"
+          }
+        }
+      }
+    },
+    "who_simpler_line": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bigger text and fewer buttons."
+          }
+        }
+      }
+    },
+    "who_title": {
+      "comment": "Source: tools/i18n/strings/*.json",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Who will use this phone?"
           }
         }
       }

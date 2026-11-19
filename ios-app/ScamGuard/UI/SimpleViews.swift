@@ -124,21 +124,19 @@ struct SimpleHomeView: View {
     }
 }
 
-/// An existing user's one-time card: "Try Simple mode?" [Turn on Simple mode] [No, thanks].
-struct SimpleOfferCard: View {
+/// Users set up before the "Who will use this phone?" question: a one-time tip about Settings → App style.
+struct AppStyleTipCard: View {
     @Environment(CallViewModel.self) private var vm
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(L.s(.offer_title)).font(.title2.bold())
-            Text(L.s(.offer_text)).font(.body).fixedSize(horizontal: false, vertical: true)
-            BigButton(title: L.s(.btn_offer_yes), id: "offerYes") { vm.setSimpleMode(true) }
-            BigButton(title: L.s(.btn_offer_no), id: "offerNo", prominent: false) { vm.declineSimpleOffer() }
+            Text(L.s(.tip_app_style)).font(.body).fixedSize(horizontal: false, vertical: true)
+            BigButton(title: L.s(.btn_got_it), id: "styleTipOk", prominent: false) { vm.dismissAppStyleTip() }
         }
         .foregroundStyle(Theme.onBrandContainer)
         .padding(20)
         .background(Theme.brandContainer, in: RoundedRectangle(cornerRadius: 24))
-        .accessibilityIdentifier("simpleOffer")
+        .accessibilityIdentifier("styleTip")
     }
 }
 
@@ -176,15 +174,19 @@ struct SettingsRowLabel: View {
     }
 }
 
-/// What both modes put first: text size, read aloud, family contact.
+/// What both modes put first: app style, text size, read aloud, family contact.
 struct EverydaySettings: View {
     @Environment(CallViewModel.self) private var vm
 
     var body: some View {
         Section {
+            NavigationLink(value: SettingsRoute.appStyle) {
+                SettingsRowLabel(icon: "face.smiling", title: L.s(.set_app_style),
+                                 value: L.s(vm.simpleMode ? .style_simple : .style_standard))
+            }
+            .accessibilityIdentifier("rowAppStyle")
             NavigationLink(value: SettingsRoute.textSize) {
-                SettingsRowLabel(icon: "textformat.size", title: L.s(.set_text_size),
-                                 value: L.s(vm.textSize == AppPrefs.textXLarge ? .text_xlarge : .text_large))
+                SettingsRowLabel(icon: "textformat.size", title: L.s(.set_text_size), value: L.s(textSizeKey(vm.textSize)))
             }
             .accessibilityIdentifier("rowTextSize")
             Toggle(isOn: Binding(get: { vm.readAloud }, set: { vm.setReadAloud($0) })) {
@@ -212,10 +214,6 @@ struct AdvancedSections: View {
         Section {
             Toggle(isOn: Binding(get: { vm.showBeCareful }, set: { vm.setShowBeCareful($0) })) {
                 ToggleLabel(title: L.s(.set_show_careful), line: L.s(.set_show_careful_line))
-            }
-            .frame(minHeight: 64)
-            Toggle(isOn: Binding(get: { vm.simpleMode }, set: { vm.setSimpleMode($0) })) {
-                ToggleLabel(title: L.s(.set_simple_mode), line: L.s(.set_simple_mode_line))
             }
             .frame(minHeight: 64)
             NavigationLink(value: SettingsRoute.pin) {
@@ -268,6 +266,48 @@ struct AdvancedPage: View {
             List { AdvancedSections(simple: true) }
                 .settingsListStyle()
                 .navigationTitle(L.s(.set_advanced))
+        }
+    }
+}
+
+/// Settings → App style: Standard or Simple, with a one-line preview of each. Leaving Simple mode asks for the PIN
+/// first when one is set, so a senior can't switch by accident.
+struct AppStylePage: View {
+    @Environment(CallViewModel.self) private var vm
+    @Environment(PinUnlock.self) private var unlock
+    @State private var askPin = false
+
+    var body: some View {
+        Group {
+            if askPin {
+                PinGateView()
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(L.s(.style_page_line)).font(.body).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+                        ChoiceCard(selected: !vm.simpleMode, title: L.s(.style_standard), line: L.s(.style_standard_line),
+                                   id: "style_standard") { pick(simple: false) }
+                        ChoiceCard(selected: vm.simpleMode, title: L.s(.style_simple), line: L.s(.style_simple_line),
+                                   id: "style_simple") { pick(simple: true) }
+                    }
+                    .padding(16)
+                }
+            }
+        }
+        .background(Theme.background)
+        .navigationTitle(L.s(.set_app_style))
+        // the right PIN, or "Forgot PIN" (which removes it): then switch
+        .onChange(of: unlock.open) { _, open in if open && askPin { askPin = false; vm.setAppStyle(simple: false) } }
+        .onChange(of: vm.pinSet) { _, set in if !set && askPin { askPin = false; vm.setAppStyle(simple: false) } }
+    }
+
+    private func pick(simple: Bool) {
+        guard simple != vm.simpleMode else { return }
+        if vm.appStyleNeedsPin(toSimple: simple) {
+            unlock.open = false
+            askPin = true
+        } else {
+            vm.setAppStyle(simple: simple)
         }
     }
 }

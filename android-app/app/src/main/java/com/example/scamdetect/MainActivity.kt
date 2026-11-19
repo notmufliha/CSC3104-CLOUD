@@ -66,7 +66,8 @@ import com.example.scamdetect.ui.tourDemoCall
 import com.example.scamdetect.ui.SetupActions
 import com.example.scamdetect.ui.PinGate
 import com.example.scamdetect.ui.SimpleHomeScreen
-import com.example.scamdetect.ui.SimpleOfferCard
+import com.example.scamdetect.ui.AppStyleTipCard
+import com.example.scamdetect.ui.AppStylePage
 import com.example.scamdetect.ui.SimpleSettingsMenu
 import com.example.scamdetect.ui.AdvancedPage
 import com.example.scamdetect.ui.AdvancedRows
@@ -83,13 +84,13 @@ import com.example.scamdetect.ui.textMessage
 enum class Screen {
     HOME, PICK, CALL, PASTE, DASHBOARD, CALL_DETAIL, SETTINGS,
     SETTINGS_PRIVACY, SETTINGS_SERVER, SETTINGS_MODELS, SETTINGS_DATA, SETTINGS_HELP,
-    SETTINGS_TEXT, SETTINGS_FAMILY, SETTINGS_ADVANCED, SETTINGS_PIN,
+    SETTINGS_STYLE, SETTINGS_TEXT, SETTINGS_FAMILY, SETTINGS_ADVANCED, SETTINGS_PIN,
     INSIGHTS, HISTORY,
 }
 
 private val SETTINGS_PAGES = setOf(
     Screen.SETTINGS_PRIVACY, Screen.SETTINGS_SERVER, Screen.SETTINGS_MODELS, Screen.SETTINGS_DATA, Screen.SETTINGS_HELP,
-    Screen.SETTINGS_TEXT, Screen.SETTINGS_FAMILY, Screen.SETTINGS_ADVANCED, Screen.SETTINGS_PIN,
+    Screen.SETTINGS_STYLE, Screen.SETTINGS_TEXT, Screen.SETTINGS_FAMILY, Screen.SETTINGS_ADVANCED, Screen.SETTINGS_PIN,
 )
 
 /** Simple mode: the pages inside Advanced settings (Back goes to it, and the PIN guards them). */
@@ -123,7 +124,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             val vm: CallViewModel = viewModel()
             val textSize by vm.textSize.collectAsState()
-            ScamDetectTheme(textScale = if (textSize == com.example.scamdetect.data.AppPrefs.TEXT_XLARGE) 1.15f else 1f) { AppRoot(vm) }
+            ScamDetectTheme(
+                textScale = if (textSize == com.example.scamdetect.data.AppPrefs.TEXT_XLARGE) 1.15f else 1f,
+                seniorType = textSize != com.example.scamdetect.data.AppPrefs.TEXT_NORMAL,
+            ) { AppRoot(vm) }
         }
     }
 }
@@ -153,7 +157,7 @@ fun AppRoot(vm: CallViewModel = viewModel()) {
                 onTest = vm::testSetupServer,
                 onFinish = vm::finishSetup,
                 onLeave = { if (vm.setupIsReplay) vm.leaveSetup() else leaveApp(context) },
-                onTextSize = vm::setTextSize,
+                onTextSize = vm::previewTextSize,
             ))
         }
         CallViewModel.Gate.APP -> {
@@ -183,7 +187,9 @@ fun AppRoot(vm: CallViewModel = viewModel()) {
  *   --es demoWarning red|yellow (a pretend call with the red warning / yellow banner; nothing sent or saved)
  *   --es demoFamily "Mei Ling|91234567"   --es demoConnection ok|fail
  *   --es demoTextSize large|xlarge   --es demoSimple on|off   --ez demoSample true   --es demoPin 2468|off
- *   --es demoScreen SETTINGS|SETTINGS_ADVANCED|DASHBOARD…   --es demoPath simple|custom|helper (with demoSetup)
+ *   --es demoScreen SETTINGS|SETTINGS_ADVANCED|DASHBOARD…   --es demoSetup WHO|WELCOME|HELPER|HANDOVER…
+ *   --es demoPath standard|simple|custom|helper (with demoSetup; none = nothing picked on "Who will use this phone?")
+ *   --ez demoTip true (show the one-time App style tip again)
  */
 @Composable
 private fun DebugLaunchOptions(vm: CallViewModel) {
@@ -195,7 +201,7 @@ private fun DebugLaunchOptions(vm: CallViewModel) {
         // --es demoSimple on|off: finish a pending setup and set Simple mode;  --ez demoSample true: sample history
         i.getStringExtra("demoSimple")?.let { v ->
             if (vm.gate.value != CallViewModel.Gate.APP) vm.finishSetup(startTour = false)
-            vm.setSimpleMode(v == "on")
+            vm.setAppStyle(v == "on")
         }
         if (i.getBooleanExtra("demoSample", false)) vm.loadSampleHistory()
         i.getStringExtra("demoPin")?.let { p -> if (p.isEmpty() || p == "off") vm.clearPin() else vm.setPin(p) }
@@ -206,13 +212,15 @@ private fun DebugLaunchOptions(vm: CallViewModel) {
                 "connected" -> vm.updateSetup { it.copy(server = com.example.scamdetect.logic.Onboarding.Server.CONNECTED) }
                 "cantReach" -> vm.updateSetup { it.copy(server = com.example.scamdetect.logic.Onboarding.Server.CANT_REACH) }
             }
-            when (i.getStringExtra("demoPath")) {
-                "custom" -> vm.updateSetup { it.copy(path = com.example.scamdetect.logic.Onboarding.Path.CUSTOM) }
-                "helper" -> vm.updateSetup { it.copy(path = com.example.scamdetect.logic.Onboarding.Path.HELPER) }
-                else -> vm.updateSetup { it.copy(path = com.example.scamdetect.logic.Onboarding.Path.SIMPLE) }
+            i.getStringExtra("demoPath")?.let { name ->
+                runCatching { com.example.scamdetect.logic.Onboarding.Path.valueOf(name.uppercase()) }.getOrNull()?.let { path ->
+                    vm.updateSetup { com.example.scamdetect.logic.Onboarding.choose(it, path) }
+                    vm.previewTextSize(vm.setupChoices.value.textSize)
+                }
             }
             runCatching { com.example.scamdetect.logic.Onboarding.Step.valueOf(name) }.getOrNull()?.let(vm::setSetupStep)
         }
+        if (i.getBooleanExtra("demoTip", false)) vm.demoAppStyleTip()
         if (i.hasExtra("demoTour")) vm.startTour(i.getIntExtra("demoTour", 0))
         i.getStringExtra("demoFamily")?.let { f -> vm.setFamily(f.substringBefore("|"), f.substringAfter("|", "")) }
         when (i.getStringExtra("demoConnection")) { "ok" -> vm.demoConnection(true); "fail" -> vm.demoConnection(false) }
@@ -220,7 +228,7 @@ private fun DebugLaunchOptions(vm: CallViewModel) {
         // only once: a rotation re-creates the activity with the same intent
         i.removeExtra("demoReset"); i.removeExtra("demoSetup"); i.removeExtra("demoTour"); i.removeExtra("demoWarning")
         i.removeExtra("demoFamily"); i.removeExtra("demoConnection"); i.removeExtra("demoSimple"); i.removeExtra("demoSample")
-        i.removeExtra("demoPin")
+        i.removeExtra("demoPin"); i.removeExtra("demoTip")
         i.getStringExtra("demoScreen")?.let { vm.demoScreen.value = it; i.removeExtra("demoScreen") }
     }
 }
@@ -351,7 +359,7 @@ private fun ScreenContent(
     val family by vm.family.collectAsState()
     val showCareful by vm.showBeCareful.collectAsState()
     val simple by vm.simpleMode.collectAsState()
-    val simpleOffer by vm.simpleOffer.collectAsState()
+    val styleTip by vm.appStyleTip.collectAsState()
     val pinSet by vm.pinSet.collectAsState()
     val textSize by vm.textSize.collectAsState()
     val readAloud by vm.readAloud.collectAsState()
@@ -372,6 +380,7 @@ private fun ScreenContent(
         SettingsPage.MODELS -> Screen.SETTINGS_MODELS
         SettingsPage.DATA -> Screen.SETTINGS_DATA
         SettingsPage.HELP -> Screen.SETTINGS_HELP
+        SettingsPage.APP_STYLE -> Screen.SETTINGS_STYLE
         SettingsPage.TEXT_SIZE -> Screen.SETTINGS_TEXT
         SettingsPage.FAMILY -> Screen.SETTINGS_FAMILY
         SettingsPage.ADVANCED -> Screen.SETTINGS_ADVANCED
@@ -395,7 +404,7 @@ private fun ScreenContent(
             onNormalCall = { ringKind("normal") },
             onPickScript = { go(Screen.PICK) },
             onPasteText = { go(Screen.PASTE) },
-            offer = if (simpleOffer) ({ SimpleOfferCard(onYes = { vm.setSimpleMode(true) }, onNo = vm::declineSimpleOffer) }) else null,
+            offer = if (styleTip) ({ AppStyleTipCard(onDismiss = vm::dismissAppStyleTip) }) else null,
         )
 
         Screen.PICK -> ScriptPickerScreen(
@@ -489,13 +498,17 @@ private fun ScreenContent(
             onOpen = ::open,
             textSize = textSize, readAloud = readAloud, onReadAloud = vm::setReadAloud,
             familyName = family?.name, showCareful = showCareful, onShowCareful = vm::setShowBeCareful,
-            onSimple = vm::setSimpleMode, pinSet = pinSet,
+            pinSet = pinSet,
         )
 
         Screen.SETTINGS_ADVANCED -> AdvancedPage({
-            AdvancedRows(true, showCareful, vm::setShowBeCareful, { on -> vm.setSimpleMode(on); if (!on) go(Screen.SETTINGS) },
+            AdvancedRows(true, showCareful, vm::setShowBeCareful,
                 pinSet, privacyLevel, connection, modelsUpdated, calls.size, ::open)
         }, ::back)
+        Screen.SETTINGS_STYLE -> AppStylePage(
+            simple = simple, needsPin = vm::appStyleNeedsPin, onPick = vm::setAppStyle,
+            onCheckPin = vm::verifyPin, onForgotPin = vm::clearPin, onBack = ::back,
+        )
         Screen.SETTINGS_TEXT -> TextSizePage(textSize, vm::setTextSize, ::back)
         Screen.SETTINGS_FAMILY -> FamilyPage(family?.name.orEmpty().takeIf { family?.name != family?.phone }.orEmpty(), family?.phone.orEmpty(),
             vm::setFamily, ::back)

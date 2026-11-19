@@ -20,9 +20,12 @@ nonisolated final class AppPrefs: OnboardingStore, @unchecked Sendable {
     static let keyReadAloud = "read_aloud"
     static let keyShowCareful = "show_be_careful"
     static let keySimple = "simple_mode"
-    static let keySimpleOffered = "simple_mode_offered"
+    static let keyStyleTip = "app_style_tip_shown"
+    static let keyTextSizeChosen = "text_size_chosen"
+    static let keyReadAloudChosen = "read_aloud_chosen"
     static let keyFamilyName = "family_name"
     static let keyFamilyPhone = "family_phone"
+    static let textNormal = "normal"
     static let textLarge = "large"
     static let textXLarge = "xlarge"
     /// Keys an earlier version of the app could have saved: any of them means "not a new install".
@@ -75,16 +78,30 @@ nonisolated final class AppPrefs: OnboardingStore, @unchecked Sendable {
 
     // ---- elderly-friendly settings (new keys only; the same names and defaults on Android)
 
-    /// "large" (default) or "xlarge".
+    /// "normal" (the phone's size), "large" or "xlarge". Not saved yet: the app style's default (AppStyle).
     var textSize: String {
-        get { defaults.string(forKey: Self.keyTextSize) ?? Self.textLarge }
+        get { defaults.string(forKey: Self.keyTextSize) ?? AppStyle.textSize(simple: AppStyle.simpleAtLaunch(simpleMode)) }
         set { defaults.set(newValue, forKey: Self.keyTextSize) }
     }
 
-    /// "Read warnings aloud". On by default.
+    /// "Read warnings aloud". Not saved yet: on in Simple mode, off in Standard.
     var readAloud: Bool {
-        get { defaults.object(forKey: Self.keyReadAloud) == nil ? true : defaults.bool(forKey: Self.keyReadAloud) }
+        get {
+            defaults.object(forKey: Self.keyReadAloud) == nil
+                ? AppStyle.readAloud(simple: AppStyle.simpleAtLaunch(simpleMode)) : defaults.bool(forKey: Self.keyReadAloud)
+        }
         set { defaults.set(newValue, forKey: Self.keyReadAloud) }
+    }
+
+    /// The user set the text size / read-aloud themselves: switching the app style keeps it.
+    var textSizeChosen: Bool {
+        get { defaults.bool(forKey: Self.keyTextSizeChosen) }
+        set { defaults.set(newValue, forKey: Self.keyTextSizeChosen) }
+    }
+
+    var readAloudChosen: Bool {
+        get { defaults.bool(forKey: Self.keyReadAloudChosen) }
+        set { defaults.set(newValue, forKey: Self.keyReadAloudChosen) }
     }
 
     /// "Show 'Be careful' warnings". On by default; off = only red warnings show (calls are still saved).
@@ -93,16 +110,16 @@ nonisolated final class AppPrefs: OnboardingStore, @unchecked Sendable {
         set { defaults.set(newValue, forKey: Self.keyShowCareful) }
     }
 
-    /// Simple mode; nil = never written (an install from before Simple mode: it keeps the full app).
+    /// Simple mode; nil = never written (an install from before Simple mode: Standard).
     var simpleMode: Bool? {
         get { defaults.object(forKey: Self.keySimple) == nil ? nil : defaults.bool(forKey: Self.keySimple) }
         set { if let newValue { defaults.set(newValue, forKey: Self.keySimple) } else { defaults.removeObject(forKey: Self.keySimple) } }
     }
 
-    /// An existing user was offered Simple mode once (yes or no).
-    var simpleModeOffered: Bool {
-        get { defaults.bool(forKey: Self.keySimpleOffered) }
-        set { defaults.set(newValue, forKey: Self.keySimpleOffered) }
+    /// The one-time "Try Simple mode in Settings → App style" tip on Home was closed (or not needed).
+    var appStyleTipShown: Bool {
+        get { defaults.bool(forKey: Self.keyStyleTip) }
+        set { defaults.set(newValue, forKey: Self.keyStyleTip) }
     }
 
     /// The trusted family contact, on this phone only. Empty = none.

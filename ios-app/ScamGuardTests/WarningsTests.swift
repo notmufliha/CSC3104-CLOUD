@@ -169,7 +169,7 @@ final class WarningCallTests: XCTestCase {
     func testRedWarningOpensSpeaksAndStaysUntilTheUserActs() async throws {
         serve(["UNSURE", "SCAM"])
         let alerts = RecordingAlerts()
-        let vm = try makeVM(alerts)
+        let vm = try makeVM(alerts) { $0.readAloud = true }   // on by default only in Simple mode
         vm.ring(script())
         vm.answer()
         try await waitUntil("the summary") { vm.state.phase == .ended && !vm.state.reviewing }
@@ -184,7 +184,7 @@ final class WarningCallTests: XCTestCase {
     func testSpokenWarningSaysWhatToDo() async throws {
         serve(["SCAM"])
         let alerts = RecordingAlerts()
-        let vm = try makeVM(alerts)
+        let vm = try makeVM(alerts) { $0.readAloud = true }   // on by default only in Simple mode
         vm.ring(script(["Read me the OTP 123456 now."]))
         vm.answer()
         try await waitUntil("the warning") { vm.state.warningOpen }

@@ -50,8 +50,10 @@ struct AppRoot: View {
 
     #if DEBUG
     /// Debug builds only, for screenshots and UI tests:
-    ///   -demoReset YES (first-launch setup again), -demoSetup welcome|privacy|server|data|done [-demoPrivacy hybrid]
+    ///   -demoReset YES (first-launch setup again), -demoSetup who|welcome|privacy|server|data|helper|handover|done
+    ///   [-demoPath standard|simple|custom|helper] (none = nothing picked) [-demoPrivacy hybrid]
     ///   [-demoServer connected|cantReach], -demoTour 0-6 (a tour step over the app; skips a pending setup)
+    ///   -demoTip YES (show the one-time App style tip again)
     private func demoOnboarding() {
         let d = UserDefaults.standard
         // -demoPin 2468|off (Keychain)  -demoFamily "Mei Ling|91234567"  -demoConnection ok|fail  -demoWarning red|yellow
@@ -71,6 +73,7 @@ struct AppRoot: View {
         default: break
         }
         if d.bool(forKey: "demoReset") { vm.resetOnboarding() }
+        if d.bool(forKey: "demoTip") { vm.demoAppStyleTip() }
         if let name = d.string(forKey: "demoSetup"),
            let step = Onboarding.Step.allCases.first(where: { "\($0)" == name }) {
             vm.demoSetup(step, privacy: d.string(forKey: "demoPrivacy").map(PrivacyLevel.fromId),
@@ -295,11 +298,14 @@ struct CallFlowView: View {
 }
 
 extension View {
-    /// Big type for older users, the same sizes as Android (ui/theme/Type.kt): never smaller than Dynamic Type's
-    /// xxLarge (body 21 pt, title 31 pt), or xxxLarge (body 23 pt) for "Text size: Extra large". The phone's larger
-    /// accessibility sizes still apply on top; screens scroll instead of shrinking.
+    /// "Text size", the same sizes as Android (ui/theme/Type.kt). Normal (Standard mode's default): the phone's own
+    /// Dynamic Type size. Large: never smaller than xxLarge (body 21 pt, title 31 pt); Extra large: xxxLarge (body
+    /// 23 pt). The phone's larger accessibility sizes still apply on top; screens scroll instead of shrinking.
     func seniorTextSize(_ size: String) -> some View {
-        dynamicTypeSize(size == AppPrefs.textXLarge ? DynamicTypeSize.xxxLarge ... .accessibility5
-                                                    : DynamicTypeSize.xxLarge ... .accessibility5)
+        switch size {
+        case AppPrefs.textXLarge: return dynamicTypeSize(DynamicTypeSize.xxxLarge ... .accessibility5)
+        case AppPrefs.textLarge: return dynamicTypeSize(DynamicTypeSize.xxLarge ... .accessibility5)
+        default: return dynamicTypeSize(DynamicTypeSize.xSmall ... .accessibility5)
+        }
     }
 }

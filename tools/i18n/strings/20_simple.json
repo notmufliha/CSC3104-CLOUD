@@ -13,10 +13,6 @@
   "home_recent": "Recent calls",
   "home_no_calls": "No calls yet.",
 
-  "offer_title": "Try Simple mode?",
-  "offer_text": "Bigger buttons and fewer choices. You can change this later in Settings.",
-  "btn_offer_yes": "Turn on Simple mode",
-  "btn_offer_no": "No, thanks",
 
   "tab_home": "Home",
   "tab_family": "For family",
@@ -34,8 +30,6 @@
   "set_group_everyday": "Everyday",
   "set_group_checking": "Checking calls",
   "set_group_app": "App",
-  "set_simple_mode": "Simple mode",
-  "set_simple_mode_line": "Bigger buttons and fewer choices",
   "set_how_checked": "How calls are checked",
   "set_connection": "Connection",
   "set_updates": "Updates",
@@ -85,5 +79,16 @@
   "tour_dash_title": "Your dashboard",
   "tour_dash_line": "Your safety at a glance.",
   "tour_privacy_title": "Privacy level",
-  "tour_privacy_line": "Change privacy anytime."
+  "tour_privacy_line": "Change privacy anytime.",
+
+  "text_normal": "Normal",
+  "text_normal_line": "The same size as your phone's other apps.",
+  "set_app_style": "App style",
+  "style_standard": "Standard",
+  "style_standard_line": "Charts, call history and all the settings.",
+  "style_simple": "Simple",
+  "style_simple_line": "Bigger text, fewer buttons, warnings read aloud.",
+  "style_page_line": "Your calls, family contact and PIN stay the same.",
+  "tip_app_style": "Setting this up for a parent? Try Simple mode in Settings → App style.",
+  "btn_got_it": "Got it"
 }

@@ -93,8 +93,10 @@ fun ScamDetectTheme(
     // Off: on Android 12+ dynamic colour replaces the ScamGuard purple with the wallpaper's colours (that is what
     // made the app look blue). Kept as a parameter so it can still be tried.
     dynamicColor: Boolean = false,
-    /** "Text size": 1 = Large (the default sizes), 1.15 = Extra large. On top of the phone's own font size. */
+    /** "Text size": 1 = Normal / Large, 1.15 = Extra large. On top of the phone's own font size. */
     textScale: Float = 1f,
+    /** false = "Normal" (Material's sizes), true = the big senior sizes ("Large" / "Extra large"). */
+    seniorType: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -114,7 +116,7 @@ fun ScamDetectTheme(
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = Typography,
+            typography = if (seniorType) SeniorTypography else StandardTypography,
             content = content
         )
     }

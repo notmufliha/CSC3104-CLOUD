@@ -9,11 +9,12 @@ import androidx.compose.ui.unit.sp
  * Big, plain type for older users (the same sizes as iOS, see ios-app UI/Theme.swift): body text 20 sp, buttons
  * (labelLarge) 22 sp, titles 28 sp and up. Every size is in sp, so the phone's own font size still scales it, and
  * "Text size: Extra large" multiplies everything by 1.15 (ui/theme/Theme.kt). Screens scroll instead of shrinking.
+ * Used for "Large" and "Extra large" (Simple mode's default).
  */
 private fun style(size: Int, line: Int, weight: FontWeight = FontWeight.Normal, spacing: Double = 0.0) =
     TextStyle(fontSize = size.sp, lineHeight = line.sp, fontWeight = weight, letterSpacing = spacing.sp)
 
-val Typography = Typography(
+val SeniorTypography = Typography(
     displayLarge = style(48, 56),
     displayMedium = style(40, 48),
     displaySmall = style(36, 44),
@@ -30,3 +31,6 @@ val Typography = Typography(
     labelMedium = style(18, 24, FontWeight.Medium),
     labelSmall = style(17, 22, FontWeight.Medium),
 )
+
+/** "Text size: Normal" (Standard mode's default): Material's own sizes, scaled by the phone's font size only. */
+val StandardTypography = Typography()

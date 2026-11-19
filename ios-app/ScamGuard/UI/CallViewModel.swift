@@ -44,10 +44,10 @@ final class CallViewModel {
     private(set) var family: Family?
 
     struct Family: Equatable { let name: String; let phone: String }
-    /// Simple mode (Home, For family, simple Settings). An install from before it keeps the full app.
+    /// App style: Simple mode (Simple Home, For family, short Settings) or Standard (the full app).
     private(set) var simpleMode = false
-    /// Home's one-time card for an existing user: "Try Simple mode?".
-    private(set) var simpleOffer = false
+    /// Home's one-time tip for users set up before the "Who will use this phone?" question.
+    private(set) var appStyleTip = false
     /// The optional PIN (only its salted hash is kept, in the Keychain).
     let pins: PinStore
     private(set) var pinSet = false
@@ -58,7 +58,7 @@ final class CallViewModel {
     enum Gate: Equatable { case setup, app }
     private(set) var gate: Gate = .app
     /// The setup screen showing, and the choices made so far.
-    private(set) var setupStep: Onboarding.Step = .welcome
+    private(set) var setupStep: Onboarding.Step = .who
     private(set) var setupChoices: Onboarding.Choices
     /// true = opened from Settings ("Run setup again"): leaving it goes back to the app without saving.
     private(set) var setupIsReplay = false
@@ -120,8 +120,9 @@ final class CallViewModel {
         textSize = prefs.textSize
         showBeCareful = prefs.showBeCareful
         family = Self.savedFamily(prefs)
-        simpleMode = Onboarding.simpleModeAtLaunch(prefs.simpleMode)
-        simpleOffer = Onboarding.offerSimpleMode(prefs.simpleMode, offered: prefs.simpleModeOffered)
+        let simple = AppStyle.simpleAtLaunch(prefs.simpleMode)
+        simpleMode = simple
+        appStyleTip = AppStyle.showTip(simple: simple, tipShown: prefs.appStyleTipShown)
         self.pins = pins
         pinSet = pins.isSet
         gatewayUrl = prefs.gatewayUrl
@@ -137,7 +138,7 @@ final class CallViewModel {
         let hasSettings = prefs.hasAnySetting()
         let hasHistory = completed == nil && !hasSettings && !store.calls().isEmpty
         switch Onboarding.atLaunch(completed: completed, hasSettings: hasSettings, hasHistory: hasHistory) {
-        case .showSetup: gate = .setup
+        case .showSetup: setupTextSize(); gate = .setup
         case .existingUser: Onboarding.markCompleted(prefs); openApp()
         case .done: openApp()
         }
@@ -451,22 +452,29 @@ final class CallViewModel {
     func familyMessage() -> String { Warnings.familyMessage() }
 
     /// "Text size": AppPrefs.textLarge (default) or textXLarge.
-    private(set) var textSize: String = AppPrefs.textLarge
-    func setTextSize(_ size: String) { prefs.textSize = size; textSize = prefs.textSize }
+    private(set) var textSize: String = AppPrefs.textNormal
+    /// Settings → Text size: the user's own choice, kept when the app style changes.
+    func setTextSize(_ size: String) { prefs.textSize = size; prefs.textSizeChosen = true; textSize = prefs.textSize }
+    /// The setup shows a text size before anything is saved (a replay that is left restores the saved one).
+    func previewTextSize(_ size: String) { textSize = size }
 
     // ------------------------------------------------------------ Simple mode, PIN
 
-    func setSimpleMode(_ on: Bool) {
-        prefs.simpleMode = on
-        prefs.simpleModeOffered = true
-        simpleMode = on
-        simpleOffer = false
+    /// Settings → App style. Keeps the history, contact and PIN; text size / read-aloud follow unless the user set them.
+    func setAppStyle(simple: Bool) {
+        AppStyle.switchTo(simple: simple, prefs)
+        simpleMode = simple
+        textSize = prefs.textSize
+        readAloud = prefs.readAloud
+        appStyleTip = false
     }
 
-    /// "No, thanks" on the card: never asked again, the full app stays.
-    func declineSimpleOffer() {
-        prefs.simpleModeOffered = true
-        simpleOffer = false
+    /// Leaving Simple mode asks for the PIN first when one is set.
+    func appStyleNeedsPin(toSimple: Bool) -> Bool { AppStyle.needsPin(fromSimple: simpleMode, toSimple: toSimple, pinSet: pinSet) }
+
+    func dismissAppStyleTip() {
+        prefs.appStyleTipShown = true
+        appStyleTip = false
     }
 
     func verifyPin(_ pin: String) -> Bool { pins.verify(pin) }
@@ -474,7 +482,7 @@ final class CallViewModel {
     /// "Forgot PIN" / "Turn off the PIN": removes only the PIN; the call history is not touched.
     func clearPin() { pins.clear(); pinSet = pins.isSet }
 
-    func setReadAloud(_ on: Bool) { prefs.readAloud = on; readAloud = on }
+    func setReadAloud(_ on: Bool) { prefs.readAloud = on; prefs.readAloudChosen = true; readAloud = on }
     func setShowBeCareful(_ on: Bool) { prefs.showBeCareful = on; showBeCareful = on }
 
     func setFamily(name: String, phone: String) {
@@ -746,8 +754,8 @@ final class CallViewModel {
         helpImprove = c.helpImprove
         textSize = prefs.textSize
         readAloud = prefs.readAloud
-        simpleMode = c.simple
-        simpleOffer = false
+        simpleMode = prefs.simpleMode == true
+        appStyleTip = false
         family = Self.savedFamily(prefs)
         if Pin.isValid(c.pin) { setPin(c.pin) }
         if !c.saveSentence { store.forgetSentences() }
@@ -760,16 +768,24 @@ final class CallViewModel {
         if startTour { self.startTour() } else { tourStep = nil }
     }
 
+    /// Until "Who will use this phone?" is answered the setup is in large text (an older person may be reading it);
+    /// the answer then shows that style's size. A size the user picked themselves stays.
+    func setupTextSize() {
+        if !prefs.textSizeChosen { textSize = AppStyle.textSize(simple: true) }
+    }
+
     /// Leaving "Run setup again" from its first screen: nothing is saved.
     func leaveSetup() {
         setupIsReplay = false
+        textSize = prefs.textSize
         gate = .app
     }
 
     /// Help & about: "Run setup again", starting from the current settings.
     func runSetupAgain() {
         setupChoices = Onboarding.fromSaved(prefs)
-        setupStep = .welcome
+        setupStep = .who
+        setupTextSize()
         setupIsReplay = true
         tourStep = nil
         gate = .setup
@@ -780,19 +796,29 @@ final class CallViewModel {
     func resetOnboarding() {
         Onboarding.reset(prefs)
         setupChoices = Onboarding.defaults(prefs.gatewayUrl)
-        setupStep = .welcome
+        setupStep = .who
+        setupTextSize()
         setupIsReplay = false
         tourStep = nil
         gate = .setup
     }
 
+    /// Debug builds only (-demoTip YES): show the one-time App style tip again, for screenshots.
+    func demoAppStyleTip() {
+        prefs.appStyleTipShown = false
+        appStyleTip = AppStyle.showTip(simple: simpleMode, tipShown: false)
+    }
+
     /// Debug builds only (-demoSetup): open the setup at one screen, for screenshots.
     func demoSetup(_ step: Onboarding.Step, privacy: PrivacyLevel?, server: String?, path: String? = nil) {
+        setupChoices = Onboarding.fromSaved(prefs)          // as "Run setup again" (Android does the same)
+        setupTextSize()
+        setupIsReplay = prefs.onboardingCompleted == true
         if let privacy { setupChoices.privacy = privacy }
-        switch path {
-        case "custom": setupChoices.path = .custom
-        case "helper": setupChoices.path = .helper
-        default: break
+        let paths: [String: Onboarding.Path] = ["standard": .standard, "simple": .simple, "custom": .custom, "helper": .helper]
+        if let p = path.flatMap({ paths[$0] }) {
+            setupChoices = Onboarding.choose(setupChoices, p)
+            previewTextSize(setupChoices.textSize)
         }
         switch server {
         case "connected": setupChoices.server = .connected

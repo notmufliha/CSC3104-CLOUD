@@ -9,7 +9,7 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                if vm.simpleOffer { SimpleOfferCard() }
+                if vm.appStyleTip { AppStyleTipCard() }
                 Text(L.s(.home_full_line))
                     .foregroundStyle(Theme.muted)
                     .padding(.bottom, 4)
