@@ -4,7 +4,6 @@ import com.example.scamdetect.logic.AppStyle
 import com.example.scamdetect.logic.Onboarding
 import com.example.scamdetect.logic.Onboarding.Path
 import com.example.scamdetect.logic.Onboarding.Launch
-import com.example.scamdetect.logic.Onboarding.Server
 import com.example.scamdetect.logic.Onboarding.Step
 import com.example.scamdetect.logic.PrivacyLevel
 import com.example.scamdetect.logic.Tour
@@ -78,7 +77,7 @@ class OnboardingTest {
 
     @Test fun completedNeverShowsAgain() {
         val s = FakeStore()
-        Onboarding.apply(Onboarding.defaults(DEFAULT_URL), s)
+        Onboarding.apply(Onboarding.defaults(), s)
         assertEquals(true, s.onboardingCompleted)
         assertEquals(Onboarding.VERSION, s.onboardingVersion)
         assertEquals(Launch.DONE, s.launch())
@@ -106,11 +105,10 @@ class OnboardingTest {
     }
 
     @Test fun replayStartsFromSavedSettingsAndSkipKeepsThem() {
-        val s = FakeStore()
-        Onboarding.apply(Onboarding.Choices(PrivacyLevel.HYBRID, "http://mac:8080/", Server.CONNECTED, true, true), s)
+        val s = FakeStore(mutableMapOf("gateway_url" to "http://mac:8080/"))
+        Onboarding.apply(Onboarding.Choices(PrivacyLevel.HYBRID, saveSentence = true, helpImprove = true), s)
         val replay = Onboarding.fromSaved(s)
         assertEquals(PrivacyLevel.HYBRID, replay.privacy)
-        assertEquals("http://mac:8080/", replay.serverUrl)
         assertTrue(replay.saveSentence && replay.helpImprove)
         Onboarding.apply(replay, s)   // Skip right away
         assertEquals(PrivacyLevel.HYBRID, s.privacyLevel)
@@ -123,7 +121,7 @@ class OnboardingTest {
 
     @Test fun skipOnFirstLaunchSavesDefaults() {
         val s = FakeStore()
-        Onboarding.apply(Onboarding.defaults(s.gatewayUrl), s)
+        Onboarding.apply(Onboarding.defaults(), s)
         assertEquals(PrivacyLevel.CLOUD, s.privacyLevel)
         assertEquals(DEFAULT_URL, s.gatewayUrl)
         assertFalse(s.saveRiskiestSentence)
@@ -133,30 +131,48 @@ class OnboardingTest {
 
     @Test fun choicesAreSaved() {
         val s = FakeStore()
-        Onboarding.apply(Onboarding.Choices(PrivacyLevel.HYBRID, "https://10.0.2.2:8443/api/", Server.CONNECTED, true, false), s)
+        Onboarding.apply(Onboarding.Choices(PrivacyLevel.HYBRID, saveSentence = true, helpImprove = false), s)
         assertEquals(PrivacyLevel.HYBRID, s.privacyLevel)
-        assertEquals("https://10.0.2.2:8443/api/", s.gatewayUrl)
         assertTrue(s.saveRiskiestSentence)
         assertFalse(s.helpImproveDetection)
     }
 
-    @Test fun setUpLaterAndOnDeviceKeepTheOldAddress() {
-        val later = FakeStore(mutableMapOf("gateway_url" to "http://old/"))
-        Onboarding.apply(Onboarding.Choices(PrivacyLevel.CLOUD, "http://typed-but-not-used/", Server.LATER), later)
-        assertEquals("http://old/", later.gatewayUrl)
-        val onDevice = FakeStore(mutableMapOf("gateway_url" to "http://old/"))
-        Onboarding.apply(Onboarding.Choices(PrivacyLevel.ON_DEVICE, "http://other/"), onDevice)
-        assertEquals("http://old/", onDevice.gatewayUrl)
-        assertEquals(PrivacyLevel.ON_DEVICE, onDevice.privacyLevel)
+    /** Developer view: the setup has no server screen and never changes the saved (or default) address. */
+    @Test fun setupKeepsTheSavedAddressSilently() {
+        for (level in PrivacyLevel.entries) for (path in Path.entries) {
+            val s = FakeStore(mutableMapOf("gateway_url" to "http://old/"))
+            Onboarding.apply(c(path, level), s)
+            assertEquals("http://old/", s.gatewayUrl)
+            assertEquals(Launch.DONE, s.launch())
+            assertFalse("$path $level", Onboarding.steps(c(path, level)).any { it.name.contains("SERVER") })
+        }
+        val fresh = FakeStore()
+        Onboarding.apply(Onboarding.defaults(), fresh)
+        assertEquals(DEFAULT_URL, fresh.gatewayUrl)
+    }
+
+    /** Without the server screen every way through still reaches its last screen and finishes. */
+    @Test fun setupWithoutTheServerScreenStillCompletes() {
+        for (path in Path.entries) for (level in PrivacyLevel.entries) {
+            val choices = c(path, level)
+            var step: Step? = Step.WHO
+            var last = step
+            var guard = 0
+            while (step != null && guard++ < 20) { last = step; step = Onboarding.next(step, choices) }
+            assertEquals("$path", if (path == Path.SIMPLE) Step.RECOMMENDED else if (path == Path.HELPER) Step.HANDOVER else Step.DONE, last)
+            val s = FakeStore()
+            Onboarding.apply(choices, s)
+            assertEquals(Launch.DONE, s.launch())
+        }
     }
 
     // ---- "Who will use this phone?" and the three ways through
 
     private fun c(path: Path, privacy: PrivacyLevel = PrivacyLevel.CLOUD) =
-        Onboarding.choose(Onboarding.defaults(DEFAULT_URL).copy(privacy = privacy), path)
+        Onboarding.choose(Onboarding.defaults().copy(privacy = privacy), path)
 
     @Test fun theFirstQuestionComesFirstWithNothingPicked() {
-        val start = Onboarding.defaults(DEFAULT_URL)
+        val start = Onboarding.defaults()
         assertNull(start.path)
         assertFalse(start.simple)
         assertEquals(listOf(Step.WHO), Onboarding.steps(start))
@@ -164,7 +180,7 @@ class OnboardingTest {
     }
 
     @Test fun meIsStandardWithTheFullSetup() {
-        assertEquals(listOf(Step.WHO, Step.WELCOME, Step.PRIVACY, Step.SERVER, Step.DATA, Step.DONE), Onboarding.steps(c(Path.STANDARD)))
+        assertEquals(listOf(Step.WHO, Step.WELCOME, Step.PRIVACY, Step.DATA, Step.DONE), Onboarding.steps(c(Path.STANDARD)))
         assertEquals(listOf(Step.WHO, Step.WELCOME, Step.PRIVACY, Step.DATA, Step.DONE), Onboarding.steps(c(Path.STANDARD, PrivacyLevel.ON_DEVICE)))
         val s = FakeStore()
         Onboarding.apply(c(Path.STANDARD, PrivacyLevel.HYBRID), s)
@@ -211,7 +227,7 @@ class OnboardingTest {
 
     @Test fun skipIsStandardWithRecommendedSettings() {
         val s = FakeStore()
-        Onboarding.apply(Onboarding.defaults(DEFAULT_URL), s)             // Skip on "Who will use this phone?"
+        Onboarding.apply(Onboarding.defaults(), s)             // Skip on "Who will use this phone?"
         assertEquals(false, s.simpleMode)
         assertEquals("normal", s.textSize)
         assertFalse(s.readAloud)

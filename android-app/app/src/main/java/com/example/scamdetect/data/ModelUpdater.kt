@@ -44,11 +44,28 @@ object ModelUpdater {
     fun dir(context: Context) = File(context.filesDir, "models")
     private fun installedFile(context: Context) = File(dir(context), "installed.json")
 
-    /** "https://1.2.3.4:8443/api/" -> "https://1.2.3.4:8443/models/" (the Ingress serves /models next to /api). */
-    fun modelsBase(gatewayUrl: String): String {
+    /**
+     * The model service lives next to /api/ on the edge / Ingress (`:8080/models/manifest` is a 404), so:
+     *   https://1.2.3.4:8443/api/ -> https://1.2.3.4:8443/models/
+     *   http://10.0.2.2:8088/api/ -> http://10.0.2.2:8088/models/
+     *   http://10.0.2.2:8080/     -> http://10.0.2.2:8088/models/   (the gateway port -> the compose edge)
+     * Same rules as iOS ModelUpdater.modelsBase. null = not a usable address.
+     */
+    fun modelsBase(gatewayUrl: String): String? {
         val u = GatewayClient.normalize(gatewayUrl)
-        return (if (u.endsWith("/api/")) u.removeSuffix("api/") else u) + "models/"
+        if (u.endsWith("/api/")) return u.removeSuffix("api/") + "models/"
+        val uri = try { java.net.URI(u) } catch (e: Exception) { return null }
+        if (uri.host.isNullOrEmpty()) return null
+        val s = if (uri.port == 8080) {
+            // the gateway's own port: the compose edge on 8088 serves /models (the path is dropped, as on iOS)
+            uri.scheme + "://" + (uri.rawUserInfo?.let { "$it@" } ?: "") + uri.host + ":8088/" +
+                (uri.rawQuery?.let { "?$it" } ?: "") + (uri.rawFragment?.let { "#$it" } ?: "")
+        } else u
+        return (if (s.endsWith("/")) s else "$s/") + "models/"
     }
+
+    /** Real-phone training's upload inbox, next to /models: https://<address>:8443/fl/updates. null = bad address. */
+    fun flUpdatesUrl(gatewayUrl: String): String? = modelsBase(gatewayUrl)?.removeSuffix("models/")?.plus("fl/updates")
 
     data class Installed(val version: String, val sha256: String, val installedAt: Long)
 
@@ -73,7 +90,7 @@ object ModelUpdater {
 
     /** Check the manifest and install anything newer. Returns a short message for the Settings screen. */
     suspend fun update(context: Context, gatewayUrl: String): String = withContext(Dispatchers.IO) {
-        val base = try { modelsBase(gatewayUrl) } catch (e: Exception) { return@withContext "Bad server address" }
+        val base = modelsBase(gatewayUrl) ?: return@withContext "Bad server address"
         val manifest = try {
             get(base + "manifest").let { Gson().fromJson(String(it), JsonObject::class.java)["models"].asJsonObject }
         } catch (e: Exception) {
@@ -128,7 +145,7 @@ object ModelUpdater {
      * /models on the same address: https://<address>:8443/fl/updates. gzip-compressed. Returns a short message.
      */
     suspend fun upload(gatewayUrl: String, json: String): String = withContext(Dispatchers.IO) {
-        val url = modelsBase(gatewayUrl).removeSuffix("models/") + "fl/updates"
+        val url = flUpdatesUrl(gatewayUrl) ?: return@withContext "Upload failed: bad server address"
         val body = java.io.ByteArrayOutputStream().also { out ->
             java.util.zip.GZIPOutputStream(out).use { it.write(json.toByteArray()) }
         }.toByteArray()

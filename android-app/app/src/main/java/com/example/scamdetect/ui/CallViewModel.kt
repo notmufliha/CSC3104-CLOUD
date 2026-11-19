@@ -39,6 +39,15 @@ import com.example.scamdetect.logic.Tour
 import com.example.scamdetect.logic.Tr
 import com.example.scamdetect.R
 import com.example.scamdetect.logic.Warnings
+import com.example.scamdetect.logic.DevEnd
+import com.example.scamdetect.logic.DevHealth
+import com.example.scamdetect.logic.DevLine
+import com.example.scamdetect.logic.DevScripts
+import com.example.scamdetect.logic.DevUnlock
+import com.example.scamdetect.logic.Playback
+import com.example.scamdetect.logic.PlaybackSpeed
+import com.example.scamdetect.data.AppReset
+import com.example.scamdetect.data.Dev
 import com.example.scamdetect.ondevice.MobileBert
 import com.example.scamdetect.ondevice.OnDeviceCall
 import com.example.scamdetect.ondevice.OnDeviceScorer
@@ -104,6 +113,8 @@ data class CallUiState(
     val warningOpen: Boolean = false,
     /** The yellow "Be careful" buzz was given in this call (once per call). */
     val carefulAlerted: Boolean = false,
+    /** Developer view: "2× speed" etc. on the call screen when the playback isn't 1×; null normally. */
+    val speedTag: String? = null,
 ) {
     /** The live level: the in-call bar. */
     val level get() = Risk.level(verdict, gatewayError)
@@ -122,6 +133,61 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _state = MutableStateFlow(CallUiState())
     val state: StateFlow<CallUiState> = _state.asStateFlow()
+
+    // ---------------------------------------------------------------- Developer view (hidden; logic/Developer.kt)
+    // Only the "unlocked" flag is saved. The overlay switch, the playback speed and the log live in memory.
+
+    private val dev = com.example.scamdetect.logic.DevSession(prefs, Dev.log)
+    private val _devUnlocked = MutableStateFlow(dev.unlocked)
+    val devUnlocked: StateFlow<Boolean> = _devUnlocked.asStateFlow()
+    private val _devOverlay = MutableStateFlow(false)
+    /** "Show live scores during calls". */
+    val devOverlay: StateFlow<Boolean> = _devOverlay.asStateFlow()
+    private val _speed = MutableStateFlow(PlaybackSpeed.X1)
+    /** "Call playback speed": scripted and pasted calls. */
+    val playbackSpeed: StateFlow<PlaybackSpeed> = _speed.asStateFlow()
+    private val _devLatest = MutableStateFlow<DevLine?>(null)
+    /** The newest caller line's numbers (the overlay). */
+    val devLatest: StateFlow<DevLine?> = _devLatest.asStateFlow()
+    private val _devTick = MutableStateFlow(0)
+    /** Bumped when the log changes, so the Developer view redraws. */
+    val devTick: StateFlow<Int> = _devTick.asStateFlow()
+
+    /** Help & about: one tap on the version number. Returns what to tell the user. */
+    fun developerTap(count: Int): DevUnlock.Tap = dev.tap(count).also { syncDev() }
+
+    /** The switch in Developer view; off hides it again and forgets everything it held. */
+    fun setDeveloperUnlocked(on: Boolean) { dev.setUnlocked(on); syncDev() }
+
+    fun setDevOverlay(on: Boolean) { dev.setOverlay(on); syncDev() }
+    fun setPlaybackSpeed(speed: PlaybackSpeed) { dev.setSpeed(speed); syncDev() }
+
+    private fun syncDev() {
+        _devUnlocked.value = dev.unlocked
+        _devOverlay.value = dev.overlay
+        _speed.value = dev.speed
+        if (!dev.unlocked) _devLatest.value = null
+        _devTick.value++
+    }
+    fun refreshDevView() { _devTick.value++ }
+
+    /** When each line of this call appeared (ms since it started), for the Developer view. Main thread only. */
+    private val lineShownAt = mutableMapOf<Long, Long>()
+
+    /** One answered caller line into the Developer view's memory (numbers only; nothing if it's locked). */
+    private fun devRecord(seq: Long, body: UtteranceResponse, where: String, latencyMs: Long) {
+        if (!Dev.log.recording) return
+        val id = callId
+        Dev.log.addLine(id, DevLine(
+            seq = seq, tMs = lineShownAt[seq] ?: 0L,
+            urgency = body.scores?.get("urgency"), money = body.scores?.get("money"), impersonation = body.scores?.get("impersonation"),
+            combined = body.combinedScore, bertScore = body.bertScore, bertStatus = body.bertStatus, rule = body.rule,
+            liveAlert = body.liveAlert, verdict = body.verdict, where = where, latencyMs = latencyMs,
+        ))
+        body.modelVersions?.let { Dev.log.setModelVersions(it) }
+        _devLatest.value = Dev.log.latestLine(id)
+        _devTick.value++
+    }
 
     /** B.7: past calls, on the phone only (Room). Newest first. */
     private val callHistory = CallHistory(app, prefs)
@@ -260,8 +326,9 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     /** Debug builds only: a demo connection state stays (no real check replaces it). */
     private var connectionFixed = false
 
+    /** Developer view (and debug launch options): about 60 made-up calls. */
     fun loadSampleHistory() {
-        if (!isDebugBuild) return
+        if (!isDebugBuild && !_devUnlocked.value) return
         viewModelScope.launch {
             val zone = java.time.ZoneId.systemDefault()
             val now = System.currentTimeMillis()
@@ -270,13 +337,26 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Developer view: remove the made-up calls again (real calls stay). */
+    fun deleteSampleHistory() {
+        if (!_devUnlocked.value) return
+        viewModelScope.launch { callHistory.deleteSample() }
+    }
+
     /** Settings: the server's state from the last check ("Connected" / "Can't reach"), null = not checked yet. */
     private val _connection = MutableStateFlow<Boolean?>(null)
     val connection: StateFlow<Boolean?> = _connection.asStateFlow()
 
+    /** "Try again" on the plain connection status: checks the saved address now (not at On-device). */
+    suspend fun recheckConnection() {
+        if (connectionFixed || prefs.privacyLevel == PrivacyLevel.ON_DEVICE) return
+        testConnection(prefs.gatewayUrl)
+    }
+
     /** Quiet GET /healthz on the saved address, for the Settings list. */
     fun refreshConnection() {
-        if (connectionFixed) return
+        // At On-device nothing may touch the network, and the status says "not needed".
+        if (connectionFixed || prefs.privacyLevel == PrivacyLevel.ON_DEVICE) return
         viewModelScope.launch { _connection.value = testConnection(prefs.gatewayUrl).startsWith("Connected") }
     }
 
@@ -285,17 +365,62 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** G.4: "MobileBERT installed (version)" or why not, for the Settings screen and the benchmark. */
+    /** Developer view: MobileBERT's status, version and size. */
+    private var mobileBertDev = "checking…"
+
     private val _mobileBert = MutableStateFlow("Checking MobileBERT…")
     val mobileBertStatus: StateFlow<String> = _mobileBert.asStateFlow()
 
     init {
         viewModelScope.launch {
             _mobileBert.value = when (val s = MobileBert.get(getApplication())) {
-                is MobileBert.Status.Installed -> "MobileBERT installed (${s.model.config.version}): second opinion on this phone"
-                is MobileBert.Status.NotInstalled -> s.reason + ": level 3 uses the small models only"
+                is MobileBert.Status.Installed -> {
+                    mobileBertDev = "installed, ${s.model.config.version}, " +
+                        String.format(java.util.Locale.US, "%.1f MB", s.model.modelBytes / 1e6)
+                    "MobileBERT installed (${s.model.config.version}): second opinion on this phone"
+                }
+                is MobileBert.Status.NotInstalled -> { mobileBertDev = s.reason; s.reason + ": level 3 uses the small models only" }
             }
         }
     }
+
+    /** Developer view → 1. Connection. */
+    fun devConnectionRows(version: String, build: String): List<Pair<String, String>> {
+        val app = getApplication<Application>()
+        val h = Dev.log.health()
+        val net = when {
+            Build.VERSION.SDK_INT < 37 -> "not needed (Android ${Build.VERSION.RELEASE} < 17)"
+            ContextCompat.checkSelfPermission(app, LOCAL_NETWORK_PERMISSION) == PackageManager.PERMISSION_GRANTED -> "granted"
+            else -> "not granted"
+        }
+        return listOf(
+            "gateway URL" to prefs.gatewayUrl,
+            "last /healthz" to (h?.let { "${if (it.ok) "ok" else "failed"} at ${com.example.scamdetect.logic.DevFormat.time(it.timeMs)}: ${it.message}" } ?: "not checked since unlocking"),
+            "privacy level" to prefs.privacyLevel.id,
+            "app version" to "$version (build $build)",
+            "platform" to "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}), ${Build.MANUFACTURER} ${Build.MODEL}",
+            "local network permission" to net,
+        )
+    }
+
+    /** Developer view → 2. Models. */
+    fun devModelRows(): List<Pair<String, String>> {
+        val app = getApplication<Application>()
+        val bundled = runCatching { app.assets.open("models/manifest.json").bufferedReader().use { it.readText() } }.getOrNull()
+        val installed = runCatching { java.io.File(ModelUpdater.dir(app), "installed.json").readText() }.getOrNull()
+        val downloaded = com.example.scamdetect.logic.DevModels.downloaded(installed)
+        val server = Dev.log.modelVersions()
+        return com.example.scamdetect.logic.DevModels.bundled(bundled) +
+            downloaded.ifEmpty { listOf("downloaded" to "none") } +
+            listOf(
+                "MobileBERT" to mobileBertDev,
+                "server model_versions" to (server.entries.sortedBy { it.key }.joinToString(", ") { "${it.key} ${it.value}" }.ifEmpty { "none yet (from the last reply)" }),
+            )
+    }
+
+    /** Developer view → Tools → "Copy diagnostics": sections 1-3, no caller text. */
+    fun devDiagnostics(version: String, build: String): String =
+        com.example.scamdetect.logic.Diagnostics.text(devConnectionRows(version, build), devModelRows(), Dev.log.lastCall())
 
     /** G.10: which on-device model versions this phone runs, and the result of the last update check. */
     private val _modelStatus = MutableStateFlow(ModelUpdater.describe(getApplication()))
@@ -378,7 +503,7 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
 
     /** A random script of this kind, avoiding the one picked last time when there is another to choose. */
     fun randomScript(kind: String): CallScript? {
-        val pool = scripts.filter { it.kind == kind }
+        val pool = scripts.filter { it.kind == kind && (_devUnlocked.value || !DevScripts.isTestCall(it.fileName)) }
         val pick = pool.filter { it.fileName != lastRandom }.randomOrNull() ?: pool.randomOrNull()
         lastRandom = pick?.fileName
         return pick
@@ -431,8 +556,11 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         points.clear()
         alertAt = null
         callStartedAt = System.currentTimeMillis()
+        lineShownAt.clear()
         val level = prefs.privacyLevel
-        _state.update { it.copy(phase = Phase.IN_CALL, privacyLevel = level) }
+        Dev.log.startCall(callId, level.id)
+        _devLatest.value = null
+        _state.update { it.copy(phase = Phase.IN_CALL, privacyLevel = level, speedTag = _speed.value.tag) }
         if (level.scoresOnPhone) {
             playOnDevice(script, level)
             return
@@ -445,22 +573,25 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
             null
         }
 
+        val speed = _speed.value
         playJob = viewModelScope.launch {
             val sends = mutableListOf<Job>()
-            script.lines.forEachIndexed { i, line ->
-                delay(line.delayMs ?: DEFAULT_DELAY_MS)
+            // Playback.play scales each line's wait (Developer view's playback speed; 1× normally) and always ends.
+            Playback.play(script.lines, speed, DEFAULT_DELAY_MS, sleep = { delay(it) }, onLine = { i, line ->
                 val seq = (i + 1).toLong()           // caller and receiver share one count, as the gateway expects
                 val text = line.text.orEmpty()
                 val waiting = line.isCaller && api != null
+                lineShownAt[seq] = System.currentTimeMillis() - callStartedAt
                 _state.update {
                     it.copy(lines = it.lines + ChatLine(seq, line.isCaller, text, pending = waiting, failed = line.isCaller && api == null))
                 }
                 if (waiting) sends += launch { send(api!!, seq, text, script.lang) }
+            }) {
+                withTimeoutOrNull(5_000) { sends.joinAll() } // let the last answers arrive
+                sends.forEach { it.cancel() }                 // nothing may change the call after this point
+                delay(Playback.gap(1_500, speed))             // a moment to read the final state
+                endCall(ENDED_SCRIPT)
             }
-            withTimeoutOrNull(5_000) { sends.joinAll() } // let the last answers arrive
-            sends.forEach { it.cancel() }                 // nothing may change the call after this point
-            delay(1_500)                                  // a moment to read the final state
-            endCall(ENDED_SCRIPT)
         }
     }
 
@@ -482,15 +613,18 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
             val mobileBert = if (hybrid) null else (MobileBert.get(getApplication()) as? MobileBert.Status.Installed)?.model
             val inOrder = Mutex()
             val jobs = mutableListOf<Job>()
-            script.lines.forEachIndexed { i, line ->
-                delay(line.delayMs ?: DEFAULT_DELAY_MS)
+            val speed = _speed.value
+            Playback.play(script.lines, speed, DEFAULT_DELAY_MS, sleep = { delay(it) }, onLine = { i, line ->
                 val seq = (i + 1).toLong()
                 val text = line.text.orEmpty()
+                lineShownAt[seq] = System.currentTimeMillis() - callStartedAt
                 _state.update { it.copy(lines = it.lines + ChatLine(seq, line.isCaller, text, pending = line.isCaller)) }
-                if (!line.isCaller) return@forEachIndexed
+                if (!line.isCaller) return@play
                 jobs += launch {
                     inOrder.withLock {
                         val local = loading.await()
+                        val started = System.currentTimeMillis()
+                        fun took() = System.currentTimeMillis() - started
                         when {
                             local == null -> markError(seq, "On-device models could not be loaded")
                             !OnDeviceCall.isEnglish(script.lang, text) -> markError(seq, "On-device checks are English only")
@@ -500,6 +634,11 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
                                 }
                                 applyAnswer(seq, a.response)
                                 a.second?.let { c -> markCloud(seq, if (c.bertScore != null) CLOUD_CHECKED else CLOUD_UNAVAILABLE) }
+                                devRecord(seq, a.response, when {
+                                    a.second == null -> "phone"
+                                    a.second.bertScore != null -> "phone + cloud BERT"
+                                    else -> "phone (cloud BERT unavailable)"
+                                }, took())
                             }
                             mobileBert != null -> {
                                 // G.4: same rule as Hybrid, but MobileBERT reads the lines on the phone (not masked:
@@ -509,16 +648,26 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
                                 }
                                 applyAnswer(seq, a.response)
                                 a.second?.let { c -> markCloud(seq, if (c.bertScore != null) MOBILEBERT_CHECKED else MOBILEBERT_FAILED) }
+                                devRecord(seq, a.response, when {
+                                    a.second == null -> "phone"
+                                    a.second.bertScore != null -> "phone + MobileBERT"
+                                    else -> "phone (MobileBERT failed)"
+                                }, took())
                             }
-                            else -> applyAnswer(seq, withContext(Dispatchers.Default) { local.answer(id, seq, text) })
+                            else -> {
+                                val r = withContext(Dispatchers.Default) { local.answer(id, seq, text) }
+                                applyAnswer(seq, r)
+                                devRecord(seq, r, "phone", took())
+                            }
                         }
                     }
                 }
+            }) {
+                withTimeoutOrNull(5_000) { jobs.joinAll() }  // let the last answers arrive
+                jobs.forEach { it.cancel() }
+                delay(Playback.gap(1_500, speed))            // a moment to read the final state
+                endCall(ENDED_SCRIPT)
             }
-            withTimeoutOrNull(5_000) { jobs.joinAll() }  // let the last answers arrive
-            jobs.forEach { it.cancel() }
-            delay(1_500)                                  // a moment to read the final state
-            endCall(ENDED_SCRIPT)
         }
     }
 
@@ -531,6 +680,7 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         return withTimeoutOrNull(OnDeviceCall.VERIFY_TIMEOUT_MS) {
             try {
                 val resp = api.verify(VerifyRequest(maskedLines))
+                resp.body()?.modelVersion?.let { Dev.log.setModelVersions(mapOf("bert" to it)) }
                 if (resp.isSuccessful) resp.body()?.score?.takeIf { it in 0f..1f } else null
             } catch (e: CancellationException) {
                 throw e
@@ -596,6 +746,8 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val resp = answer?.let { withTimeoutOrNull(FINAL_REVIEW_WAIT_MS) { it.await() } }
             val review = resp?.let { FinalReview.from(it) } ?: if (onPhone) FinalReview.ON_DEVICE else FinalReview.UNAVAILABLE
+            Dev.log.endCall(id, endedBy, resp?.let { DevEnd(it.finalVerdict, it.callScore, it.review, it.topWindowSeqs.orEmpty()) })
+            _devTick.value++
             if (callId == id) _state.update { it.copy(reviewing = false, finalReview = review) }
             saveHistory(id, s.copy(reviewing = false, finalReview = review), pts, startedAt, endedAt)
             // G.12: hung up soon after the red alert, or a very sure end-of-call review
@@ -697,6 +849,7 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------------------------------------------------------- networking
 
     private suspend fun send(api: GatewayApi, seq: Long, text: String, lang: String?) {
+        val started = System.currentTimeMillis()
         val resp = try {
             api.utterance(UtteranceRequest(callId, seq, "caller", text, lang))
         } catch (e: CancellationException) {
@@ -715,6 +868,7 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         applyAnswer(seq, body)
+        if (body.ignored != true) devRecord(seq, body, "cloud", System.currentTimeMillis() - started)
     }
 
     /**
@@ -826,6 +980,8 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     /** GET /healthz on the given URL; returns a short message for the Settings screen. */
     suspend fun testConnection(url: String): String = checkConnection(url).also {
         if (GatewayClient.normalize(url) == prefs.gatewayUrl) _connection.value = it.startsWith("Connected")
+        Dev.log.setHealth(DevHealth(it.startsWith("Connected"), "$it (${GatewayClient.normalize(url)})", System.currentTimeMillis()))
+        _devTick.value++
     }
 
     private suspend fun checkConnection(url: String): String = try {
@@ -862,6 +1018,10 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     /** B.7 "Delete my history": every saved call, its chart points and any saved sentence; G.12's labels too. */
     fun deleteHistory() {
         viewModelScope.launch { callHistory.deleteAll() }
+        // The Developer view's memory goes too (it holds numbers from the last call).
+        dev.historyDeleted()
+        _devLatest.value = null
+        _devTick.value++
     }
 
     /** B.7 "Save the riskiest sentence". Turning it off also forgets the sentences already saved. */
@@ -899,7 +1059,7 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
     /** The setup screen showing, and the choices made so far. Kept here so a rotation keeps them. */
     private val _setupStep = MutableStateFlow(Onboarding.Step.WHO)
     val setupStep: StateFlow<Onboarding.Step> = _setupStep.asStateFlow()
-    private val _setupChoices = MutableStateFlow(Onboarding.defaults(prefs.gatewayUrl))
+    private val _setupChoices = MutableStateFlow(Onboarding.defaults())
     val setupChoices: StateFlow<Onboarding.Choices> = _setupChoices.asStateFlow()
     /** true = opened from Settings ("Run setup again"): leaving it goes back to the app without saving. */
     var setupIsReplay = false
@@ -950,9 +1110,6 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
 
     fun updateSetup(change: (Onboarding.Choices) -> Onboarding.Choices) { _setupChoices.value = change(_setupChoices.value) }
 
-    /** Setup's Test connection: tries the typed address without saving it. */
-    suspend fun testSetupServer(url: String): Boolean = checkConnection(url).startsWith("Connected")
-
     /** Skip, "Show me around" or "Skip tour": saves the choices (Skip = what is picked so far, defaults for the rest). */
     fun finishSetup(startTour: Boolean) {
         val c = _setupChoices.value
@@ -995,16 +1152,58 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
         _gate.value = Gate.SETUP
     }
 
-    /** Debug builds only: forget that the setup was done and show it as on a first launch. */
+    /**
+     * Developer view → "Reset setup only" (and a debug launch option): show the setup as on a first launch. The
+     * history and settings stay until the setup saves its choices.
+     */
     fun resetOnboarding() {
-        if (!isDebugBuild) return
+        if (!isDebugBuild && !_devUnlocked.value) return
         Onboarding.reset(prefs)
-        _setupChoices.value = Onboarding.defaults(prefs.gatewayUrl)
+        _setupChoices.value = Onboarding.defaults()
         _setupStep.value = Onboarding.Step.WHO
         setupIsReplay = false
         setupTextSize()
         _tourStep.value = null
         _gate.value = Gate.SETUP
+    }
+
+    /**
+     * Developer view → "Reset app to first launch": deletes the call history (all tables), every setting (the
+     * Developer view's flag too), the PIN, the downloaded models and the in-memory logs, then starts at "Who will
+     * use this phone?". Bundled models and scripts stay.
+     */
+    fun resetApp() {
+        if (!_devUnlocked.value) return
+        alerts.stop()
+        playJob?.cancel()
+        callId = ""
+        _state.value = CallUiState()
+        viewModelScope.launch {
+            AppReset.clearAll(getApplication(), callHistory, prefs, pinStore)
+            dev.wasReset()
+            syncDev()
+            _connection.value = null
+            connectionFixed = false
+            _privacyLevel.value = prefs.privacyLevel
+            _gatewayUrl.value = prefs.gatewayUrl
+            _saveSentence.value = prefs.saveRiskiestSentence
+            _helpImprove.value = prefs.helpImproveDetection
+            _readAloud.value = prefs.readAloud
+            _showBeCareful.value = prefs.showBeCareful
+            _textSize.value = prefs.textSize
+            _simple.value = AppStyle.simpleAtLaunch(prefs.simpleMode)
+            _styleTip.value = false
+            _family.value = savedFamily()
+            _modelStatus.value = ModelUpdater.describe(getApplication())
+            _modelCheck.value = ""
+            _trainResult.value = ""
+            _setupChoices.value = Onboarding.defaults()
+            _setupStep.value = Onboarding.Step.WHO
+            setupIsReplay = false
+            setupTextSize()
+            _tourStep.value = null
+            _gate.value = Gate.SETUP
+        }
     }
 
     /** The tour shown: Simple mode's 3 steps or the full app's 7, fixed when it starts. */

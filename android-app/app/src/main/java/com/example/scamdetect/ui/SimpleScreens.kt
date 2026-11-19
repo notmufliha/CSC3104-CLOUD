@@ -63,6 +63,7 @@ import com.example.scamdetect.data.AppPrefs
 import com.example.scamdetect.data.db.CallRecord
 import com.example.scamdetect.logic.Dashboard
 import com.example.scamdetect.logic.Onboarding
+import com.example.scamdetect.logic.ConnectionStatus
 import com.example.scamdetect.logic.PrivacyLevel
 import com.example.scamdetect.logic.Risk
 import com.example.scamdetect.logic.Tour
@@ -73,7 +74,7 @@ import kotlinx.coroutines.launch
 
 // ---------------------------------------------------------------- Home (Simple mode)
 
-/** Home's status: protecting (green ✓), not connected (yellow, "Fix it"), or still checking. */
+/** Home's status: protecting (green ✓), can't connect (yellow, "Try again"), or still checking. No address or error code. */
 enum class HomeStatus { PROTECTING, NOT_CONNECTED, CHECKING }
 
 fun homeStatus(privacy: PrivacyLevel, connection: Boolean?): HomeStatus = when {
@@ -92,15 +93,12 @@ fun SimpleHomeScreen(
     onRefresh: () -> Unit,
 ) {
     LaunchedEffect(Unit) { onRefresh() }
-    var fixFailed by rememberSaveable { mutableStateOf(false) }
     var fixing by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     Page(stringResource(R.string.app_name_text)) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            StatusCard(status, fixing) {
-                fixing = true
-                scope.launch { fixFailed = !onFix(); fixing = false }
-            }
+            val retry = withLocalNetwork { fixing = true; scope.launch { onFix(); fixing = false } }
+            StatusCard(status, fixing, retry)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = onPractice,
@@ -118,21 +116,13 @@ fun SimpleHomeScreen(
             Spacer(Modifier.size(8.dp))
         }
     }
-    if (fixFailed) YesNoDialog(
-        title = stringResource(R.string.fix_title),
-        text = stringResource(R.string.fix_text),
-        yes = stringResource(R.string.btn_try_again),
-        no = stringResource(R.string.btn_close),
-        onYes = { fixFailed = false; fixing = true; scope.launch { fixFailed = !onFix(); fixing = false } },
-        onNo = { fixFailed = false },
-    )
 }
 
 @Composable
 private fun StatusCard(status: HomeStatus, fixing: Boolean, onFix: () -> Unit) {
     val (level, title, line) = when (status) {
         HomeStatus.PROTECTING -> Triple(Risk.Level.GREEN, R.string.home_status_ok, R.string.home_status_ok_line)
-        HomeStatus.NOT_CONNECTED -> Triple(Risk.Level.YELLOW, R.string.home_status_off, R.string.home_status_off_line)
+        HomeStatus.NOT_CONNECTED -> Triple(Risk.Level.YELLOW, R.string.conn_fail, R.string.conn_fail_line)
         HomeStatus.CHECKING -> Triple(Risk.Level.LISTENING, R.string.home_status_checking, null)
     }
     Surface(
@@ -154,7 +144,7 @@ private fun StatusCard(status: HomeStatus, fixing: Boolean, onFix: () -> Unit) {
             if (status == HomeStatus.NOT_CONNECTED) Button(
                 onClick = onFix, enabled = !fixing,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp).testTag("fixIt"),
-            ) { Text(stringResource(if (fixing) R.string.status_checking else R.string.btn_fix_it), style = MaterialTheme.typography.labelLarge) }
+            ) { Text(stringResource(if (fixing) R.string.status_checking else R.string.btn_try_again), style = MaterialTheme.typography.labelLarge) }
         }
     }
 }
@@ -265,8 +255,9 @@ fun SimpleSettingsMenu(
 @Composable
 fun AdvancedRows(
     simple: Boolean, showCareful: Boolean, onShowCareful: (Boolean) -> Unit,
-    pinSet: Boolean, privacy: PrivacyLevel, connection: Boolean?, modelsUpdated: Boolean, callCount: Int,
+    pinSet: Boolean, privacy: PrivacyLevel, connection: Boolean?, callCount: Int,
     onOpen: (SettingsPage) -> Unit,
+    onRetry: suspend () -> Unit,
 ) {
     Group {
         ToggleRow(stringResource(R.string.set_show_careful), stringResource(R.string.set_show_careful_line), showCareful, onShowCareful)
@@ -280,16 +271,53 @@ fun AdvancedRows(
             if (simple) stringResource(privacyTagRes(privacy)) else "${privacy.shortTitle()} · ${stringResource(privacyTagRes(privacy))}",
             modifier = if (simple) Modifier else Modifier.tourTarget(Tour.Target.PRIVACY_ROW)) { onOpen(SettingsPage.PRIVACY) }
         Divider()
-        SettingsRow(Icons.Filled.Share, stringResource(R.string.set_connection), connectionLabel(connection), connectionColor(connection)) {
-            onOpen(SettingsPage.SERVER)
-        }
-        Divider()
-        SettingsRow(Icons.Filled.Build, stringResource(R.string.set_updates),
-            stringResource(if (modelsUpdated) R.string.models_updated else R.string.models_built_in)) { onOpen(SettingsPage.MODELS) }
+        ConnectionStatusRow(privacy, connection, onRetry)
     }
     Group {
         SettingsRow(Icons.Filled.Person, stringResource(R.string.set_my_data), callsCount(callCount)) { onOpen(SettingsPage.DATA) }
     }
+}
+
+/**
+ * The plain connection status: "Connected ✓" or "Can't connect to ScamGuard" with one line of help and "Try again"
+ * (it checks again). No address, IP or error code: those are in the hidden Developer view.
+ */
+@Composable
+fun ConnectionStatusRow(privacy: PrivacyLevel, connection: Boolean?, onRetry: suspend () -> Unit) {
+    val state = ConnectionStatus.of(privacy, connection)
+    var checking by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val retry = withLocalNetwork { checking = true; scope.launch { onRetry(); checking = false } }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp).testTag("connectionStatus"),
+        verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(Modifier.size(40.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.Share, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.set_connection), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(connectionStatusRes(if (checking) ConnectionStatus.State.CHECKING else state)), style = MaterialTheme.typography.bodyLarge,
+                    color = when (state) {
+                        ConnectionStatus.State.CONNECTED -> SafeGreen
+                        ConnectionStatus.State.CANT_CONNECT -> ScamRed
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    })
+                if (state == ConnectionStatus.State.CANT_CONNECT) Text(stringResource(R.string.conn_fail_line), style = MaterialTheme.typography.bodyLarge)
+            }
+        }
+        if (state == ConnectionStatus.State.CANT_CONNECT) OutlinedButton(onClick = retry, enabled = !checking,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("connectionRetry")) {
+            Text(stringResource(if (checking) R.string.status_checking else R.string.btn_try_again), style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+fun connectionStatusRes(s: ConnectionStatus.State) = when (s) {
+    ConnectionStatus.State.CONNECTED -> R.string.conn_ok
+    ConnectionStatus.State.CANT_CONNECT -> R.string.conn_fail
+    ConnectionStatus.State.CHECKING -> R.string.status_checking
+    ConnectionStatus.State.NOT_NEEDED -> R.string.conn_not_needed
 }
 
 @Composable
