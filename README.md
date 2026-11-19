@@ -11,6 +11,8 @@ the cloud models learning new scams with no downtime (rolling updates).
 
 ## Check it yourself
 
+**Step-by-step run instructions (web version, Android Studio, Xcode): [HOW_TO_RUN.md](HOW_TO_RUN.md).**
+
 | I want to... | Do this | Time |
 |---|---|---|
 | Run the whole backend on a laptop with Docker only | [A. Docker Compose](#a-docker-compose-laptop-docker-only) | ~15 min first build |
@@ -61,8 +63,8 @@ On an 8 GB laptop `up.ps1` picks a "lite" profile automatically; always add `--m
 ### C. The app (browser or Android)
 
 **Browser:** open http://127.0.0.1:8088/ (compose) or https://127.0.0.1:8443/ (Kubernetes with `expose`). Same
-screens as the Android app (Home / Dashboard / Settings tabs, live risk bar, warning, summary, report with consent,
-dashboard chart); calls are checked by the server (privacy level 1). History stays in the browser.
+screens and wording as the phone apps (Standard and Simple mode, live risk bar, red warning, summary with
+"What to do now", Learn and the practice quiz, weekly summary, dashboard chart); calls are checked by the server (privacy level 1). History stays in the browser.
 
 **Android:** open `android-app/` in Android Studio and press **Run** (a debug build). In the app: **Settings** -> paste the
 address from A or B -> **Save** -> **Test connection** ("Connected: ok"). Debug builds already trust the
@@ -80,8 +82,10 @@ holds caller lines (masked), so it is never exposed to phones.
   money and impersonation (**Nothing suspicious** = No for all three) -> **Save**. **Reject whole report** deletes
   a junk report or one that still contains personal details. **Spot-check others** lets a second person
   agree/disagree with labels.
-- To get a report into it: in the app, finish a call, tap **This was a scam** (or **This was fine**) on the summary
-  and agree on the consent screen.
+- To get a report into it: `python demo/tools/learning.py report --url http://127.0.0.1:8088/api/` (compose) or
+  `python demo/tools/learning.py report` (Kubernetes). It plays a scam call through the gateway and reports it with
+  consent. (The apps no longer have the "This was a scam / This was fine" buttons after a call; the
+  `POST /v1/report` API is unchanged.)
 
 ## Architecture
 
