@@ -522,6 +522,9 @@ private fun ScreenContent(
                     simple = simple,
                     family = family,
                     includeLines = saveSentence,
+                    reportPreview = vm::reportPreview,
+                    onReport = { kind -> vm.sendReport(kind) },
+                    onThisWasFine = vm::thisWasFine,
                 )
                 Phase.IDLE -> LaunchedEffect(Unit) { go(Screen.HOME) }
             }

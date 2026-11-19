@@ -14,7 +14,7 @@ spec:
       annotations:
         # a changed page, script or model changes this hash, so `kubectl apply` rolls the pod onto the rebuilt image
         # (up.ps1 reloads scam/web under the same tag; without a new pod the old one would keep serving the old files)
-        scamguard/files-hash: "36ea112c371a"
+        scamguard/files-hash: "0749187e867b"
     spec:
       containers:
         - name: nginx

@@ -53,6 +53,7 @@
     <string name="btn_delete_history">Delete my history</string>
     <string name="btn_discard_call">Leave without saving</string>
     <string name="btn_done">Done</string>
+    <string name="btn_dont_share">Don\'t share</string>
     <string name="btn_finish_no_tour">Finish without the tour</string>
     <string name="btn_forgot_pin">Forgot PIN</string>
     <string name="btn_get_started">Get started</string>
@@ -122,6 +123,12 @@
     <string name="conn_fail_line">Ask the person who set up this phone for help</string>
     <string name="conn_not_needed">Not needed: calls are checked on this phone</string>
     <string name="conn_ok">Connected ✓</string>
+    <string name="consent_kept">Kept: deleted after 30 days, except lines a reviewer approves as training examples. Those stay encrypted with no link to you, so they can\'t be withdrawn later.</string>
+    <string name="consent_not_sent">Not sent: your phone number, the caller\'s number, anything you said.</string>
+    <string name="consent_sent">Sent: the caller\'s %1$s lines below. We try to remove numbers, amounts, links and names, but some can slip through, such as a name said in passing or digits read out as words. Check the text; if you see anything private, choose Don\'t share.</string>
+    <string name="consent_title_fine">Share this call as a false alarm?</string>
+    <string name="consent_title_scam">Share this scam call?</string>
+    <string name="consent_why">Helps ScamGuard learn new scams. A team member reads it, labels it, and it may be used to retrain the checks.</string>
     <string name="copy_footer">From the ScamGuard app.</string>
     <string name="copy_lines">What the caller said (numbers and names removed):</string>
     <string name="copy_result">Result: %1$s</string>
@@ -180,6 +187,12 @@
     <string name="error_banner">Could not check this call. This does not mean it is safe.</string>
     <string name="family_need_phone">Please add a phone number.</string>
     <string name="family_page_line">Someone you trust. On a scam warning you can call or message them with one tap. Kept only on this phone.</string>
+    <string name="fb_fine">This was fine</string>
+    <string name="fb_line">Was this result right? You see exactly what would be shared before anything is sent.</string>
+    <string name="fb_not_shared">Nothing was shared.</string>
+    <string name="fb_scam">This was a scam</string>
+    <string name="fb_sending">Sending…</string>
+    <string name="fb_title">Help ScamGuard learn</string>
     <string name="field_name">Name</string>
     <string name="field_phone">Phone number</string>
     <string name="field_phone_hint">For example 9123 4567</string>
