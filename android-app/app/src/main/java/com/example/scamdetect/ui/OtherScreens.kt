@@ -69,6 +69,9 @@ import com.example.scamdetect.logic.Tour
 import com.example.scamdetect.logic.Warnings
 import com.example.scamdetect.R
 import androidx.compose.ui.res.stringResource
+import com.example.scamdetect.logic.ScriptTitles
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -221,31 +224,45 @@ fun ScriptPickerScreen(
                 }
             }
         }
+        // H's learning-loop test calls go last, in their own section (ScriptTitles): they are meant to be missed.
+        // They are listed only while the Developer view is unlocked (testCalls).
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(shown + testCalls, key = { it.fileName }) { s ->
-                if (s == testCalls.firstOrNull()) Text("Test calls (learning loop)", style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp).testTag("testCallsHeader"))
-                val color = kindColor(s.kind)
-                Card(onClick = { onPick(s) }, modifier = Modifier.fillMaxWidth()) {
-                    Row(Modifier.height(IntrinsicSize.Min)) {
-                        Box(Modifier.width(6.dp).fillMaxHeight().background(color))
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                kindLabel(s.kind),
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.labelSmall,
-                                modifier = Modifier.background(color, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                            Text(s.title, fontWeight = FontWeight.SemiBold)
-                            Text(
-                                Tr.s(R.string.pick_lines, langLabel(s.lang), s.lines.size.toString()),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+            items(shown, key = { it.fileName }) { s -> ScriptCard(s, onPick) }
+            if (testCalls.isNotEmpty()) {
+                item(key = "learning-tests-header") {
+                    Column(Modifier.padding(top = 16.dp, bottom = 4.dp).testTag("testCallsHeader"), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(ScriptTitles.TEST_SECTION, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.semantics { heading() })
+                        Text(ScriptTitles.TEST_SECTION_NOTE, style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
+                items(testCalls, key = { it.fileName }) { s -> ScriptCard(s, onPick) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScriptCard(s: CallScript, onPick: (CallScript) -> Unit) {
+    val color = kindColor(s.kind)
+    Card(onClick = { onPick(s) }, modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.height(IntrinsicSize.Min)) {
+            Box(Modifier.width(6.dp).fillMaxHeight().background(color))
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    kindLabel(s.kind),
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.background(color, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+                Text(s.title, fontWeight = FontWeight.SemiBold)
+                Text(
+                    Tr.s(R.string.pick_lines, langLabel(s.lang), s.lines.size.toString()),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

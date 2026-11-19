@@ -101,6 +101,8 @@ struct ScriptPickerView: View {
                     }
                 }
             }
+            // H's learning-loop test calls go last, in their own section (ScriptTitles): they are meant to be missed.
+            // They are listed only while the Developer view is unlocked (testCalls).
             Section {
                 ForEach(shown) { s in
                     Button { vm.ring(s) } label: { ScriptRow(script: s) }
@@ -114,8 +116,11 @@ struct ScriptPickerView: View {
                             .buttonStyle(.plain)
                     }
                 } header: {
-                    Text("Test calls (learning loop)").font(.headline).foregroundStyle(Color.primary).textCase(nil)
-                        .accessibilityIdentifier("testCallsHeader")
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(ScriptTitles.testSection).font(.headline).foregroundStyle(Color.primary).textCase(nil)
+                        Text(ScriptTitles.testSectionNote).font(.footnote).foregroundStyle(Color.primary.opacity(0.75)).textCase(nil)
+                    }
+                    .accessibilityIdentifier("testCallsHeader")
                 }
             }
         }

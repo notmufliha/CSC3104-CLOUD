@@ -590,10 +590,10 @@ class CallViewModel(app: Application) : AndroidViewModel(app) {
 
     private var lastRandom: String? = null
 
-    /** A random script of this kind, avoiding the one picked last time when there is another to choose. */
+    /** A random script of this kind (never a learning-loop test), avoiding the one picked last time when there is another. */
     fun randomScript(kind: String): CallScript? {
-        val pool = scripts.filter { it.kind == kind && (_devUnlocked.value || !DevScripts.isTestCall(it.fileName)) }
-        val pick = pool.filter { it.fileName != lastRandom }.randomOrNull() ?: pool.randomOrNull()
+        // never a learning-loop test call (they are meant to be missed, see ScriptTitles)
+        val pick = com.example.scamdetect.logic.ScriptTitles.pickRandom(scripts, kind, lastRandom)
         lastRandom = pick?.fileName
         return pick
     }
