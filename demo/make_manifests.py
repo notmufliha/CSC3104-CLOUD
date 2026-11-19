@@ -27,7 +27,7 @@ DEMO_LITE = os.environ.get("DEMO_LITE", "").strip() in ("1", "true", "yes")
 # ====================================================================================================
 
 NAMESPACE = "scamguard"          # every demo resource lives here; `demo/down.sh` deletes this namespace
-IMAGE_TAG = "demo"               # every image is built locally as scam/<service>:<this tag>
+IMAGE_TAG = "demo"               # all 8 images are built locally as scam/<service>:<this tag>
 
 # Horizontal Pod Autoscaler bounds used by every worker + bert (laptop-friendly: a real deployment would
 # raise HPA_MAX). impersonation-en gets its own higher minimum below (it is the busiest worker: every call's
@@ -838,23 +838,22 @@ spec:
 
 
 def web_yaml() -> str:
-    # The ScamGuard web app (web/: the phone app in a browser, all three privacy levels), served by the scam/web image
-    # (web/Dockerfile: the page, the app's call scripts, its on-device models and onnxruntime-web; built by up.ps1 /
-    # up.sh) at https://<laptop IP>:8443/, through the same Ingress as /api/, so the page calls the gateway on its own
-    # address (no CORS). An image, not ConfigMaps: MobileBERT (~26 MB) and onnxruntime-web (~11 MB) are far over a
-    # ConfigMap's 1 MiB limit.
+    # The ScamGuard web app (web/: a replica of the iOS app in a browser), served by a small nginx image built from
+    # web/Dockerfile (demo/up.sh: scam/web) at https://<laptop IP>:8443/ through the same Ingress as /api/, so the
+    # page calls the gateway on its own address (no CORS). Its files (about 2.5 MB with the on-device models) are too
+    # big for ConfigMaps, so they are baked into the image. The hash of web/'s served files is an annotation: a
+    # changed page changes it, so `kubectl apply` rolls the pod (after demo/up.sh rebuilt and loaded the image).
     import hashlib
     root = Path(__file__).resolve().parent.parent
-    assets = root / "android-app" / "app" / "src" / "main" / "assets"
-    sources = [p for d in (root / "web", assets / "scripts", assets / "models") for p in sorted(d.rglob("*")) if p.is_file()]
-    digest = hashlib.sha256()
-    for p in sources:
-        digest.update(p.relative_to(root).as_posix().encode())
-        data = p.read_bytes()
-        if p.suffix != ".onnx":
-            data = data.replace(b"\r\n", b"\n")   # same hash on a Windows (CRLF) and a Linux/macOS checkout
-        digest.update(hashlib.sha256(data).digest())
-    files_hash = digest.hexdigest()[:12]
+    web_dir = root / "web"
+    h = hashlib.sha256()
+    for part in ["index.html", "manifest.webmanifest", "nginx.conf", "css", "js", "vendor", "icons", "assets"]:
+        p = web_dir / part
+        for f in sorted([p] if p.is_file() else p.rglob("*")):
+            if f.is_file():
+                h.update(str(f.relative_to(web_dir)).encode())
+                h.update(f.read_bytes())
+    files_hash = h.hexdigest()[:12]
     return "---\n".join([
         f"""apiVersion: apps/v1
 kind: Deployment
@@ -870,8 +869,7 @@ spec:
     metadata:
       labels: {{ app: web }}
       annotations:
-        # a changed page, script or model changes this hash, so `kubectl apply` rolls the pod onto the rebuilt image
-        # (up.ps1 reloads scam/web under the same tag; without a new pod the old one would keep serving the old files)
+        # a changed page changes this hash, so `kubectl apply` rolls the pod and it serves the new image
         scamguard/files-hash: "{files_hash}"
     spec:
       containers:

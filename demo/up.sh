@@ -102,13 +102,10 @@ docker build -t "scam/retrain:${IMAGE_TAG}" -f backend/retrain/Dockerfile . \
   || die "build failed for retrain -- see the error above."
 minikube image load "scam/retrain:${IMAGE_TAG}" \
   || die "minikube image load failed for retrain. Is 'minikube status' Running?"
-# The web app (web/Dockerfile: the page + the app's call scripts and on-device models + onnxruntime-web, downloaded
-# at build time -- needs internet). Repo root context; web/Dockerfile.dockerignore keeps it small.
+# The web app (static files; web/Dockerfile).
 echo "--- building scam/web:${IMAGE_TAG} ---"
-docker build -t "scam/web:${IMAGE_TAG}" -f web/Dockerfile . \
-  || die "build failed for web -- see the error above (the onnxruntime-web download needs internet)."
-minikube image load "scam/web:${IMAGE_TAG}" \
-  || die "minikube image load failed for web. Is 'minikube status' Running?"
+docker build -t "scam/web:${IMAGE_TAG}" web || die "build failed for web -- see the error above."
+minikube image load "scam/web:${IMAGE_TAG}" || die "minikube image load failed for web. Is 'minikube status' Running?"
 say "Building bert (downloads the real model from Hugging Face at build time -- needs internet)"
 if ! docker build -t "scam/bert:${IMAGE_TAG}" -f backend/workers/bert/Dockerfile backend; then
   warn "BERT build failed -- likely the model download (network blocked, or Hugging Face unreachable)."
