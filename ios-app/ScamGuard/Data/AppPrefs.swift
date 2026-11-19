@@ -1,7 +1,7 @@
 import Foundation
 
 /// Port of android-app data/AppPrefs.kt: settings in UserDefaults, same key names as Android's SharedPreferences.
-nonisolated final class AppPrefs: OnboardingStore, @unchecked Sendable {
+nonisolated final class AppPrefs: OnboardingStore, DevStore, @unchecked Sendable {
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
@@ -25,11 +25,16 @@ nonisolated final class AppPrefs: OnboardingStore, @unchecked Sendable {
     static let keyReadAloudChosen = "read_aloud_chosen"
     static let keyFamilyName = "family_name"
     static let keyFamilyPhone = "family_phone"
+    static let keyDevUnlocked = "developer_view_unlocked"
     static let textNormal = "normal"
     static let textLarge = "large"
     static let textXLarge = "xlarge"
     /// Keys an earlier version of the app could have saved: any of them means "not a new install".
     static let existingKeys = [keyURL, keySaveSentence, keyPrivacyLevel, keyHelpImprove, keyFlPhoneId]
+    /// Every key the app saves ("Reset app to first launch" removes them all).
+    static let allKeys = [keyURL, keySaveSentence, keyPrivacyLevel, keyHelpImprove, keyFlPhoneId, keyOnboardingCompleted,
+                          keyOnboardingVersion, keyTextSize, keyReadAloud, keyShowCareful, keySimple, keyStyleTip,
+                          keyTextSizeChosen, keyReadAloudChosen, keyFamilyName, keyFamilyPhone, keyDevUnlocked]
 
     var gatewayUrl: String {
         get { defaults.string(forKey: Self.keyURL) ?? Self.defaultURL }
@@ -131,6 +136,17 @@ nonisolated final class AppPrefs: OnboardingStore, @unchecked Sendable {
     var familyPhone: String {
         get { defaults.string(forKey: Self.keyFamilyPhone) ?? "" }
         set { defaults.set(newValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Self.keyFamilyPhone) }
+    }
+
+    /// Developer view unlocked (Help & about → tap the version 7 times). The only thing the Developer view saves.
+    var developerUnlocked: Bool {
+        get { defaults.bool(forKey: Self.keyDevUnlocked) }
+        set { defaults.set(newValue, forKey: Self.keyDevUnlocked) }
+    }
+
+    /// Developer view → "Reset app to first launch": every setting, as on a new install.
+    func clearAll() {
+        for k in Self.allKeys { defaults.removeObject(forKey: k) }
     }
 
     func hasAnySetting() -> Bool { Self.existingKeys.contains { defaults.object(forKey: $0) != nil } }

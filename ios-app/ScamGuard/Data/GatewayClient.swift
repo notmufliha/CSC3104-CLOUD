@@ -29,6 +29,8 @@ nonisolated enum Network {
 nonisolated struct GatewayClient: Sendable {
     let baseURL: URL
     let session: URLSession
+    /// The Developer view's log (it keeps a masked copy only while the view is unlocked).
+    let log: DevLog
 
     /// "192.168.1.23:8080" -> "http://192.168.1.23:8080/" (scheme and trailing / added).
     static func normalize(_ url: String) -> String {
@@ -39,12 +41,13 @@ nonisolated struct GatewayClient: Sendable {
     }
 
     /// Throws GatewayError.invalidURL if the address is not usable.
-    init(baseUrl: String, session: URLSession) throws {
+    init(baseUrl: String, session: URLSession, log: DevLog = .shared) throws {
         let s = Self.normalize(baseUrl)
         guard let url = URL(string: s), let host = url.host, !host.isEmpty, url.scheme == "http" || url.scheme == "https"
         else { throw GatewayError.invalidURL }
         baseURL = url
         self.session = session
+        self.log = log
     }
 
     private static let encoder = JSONEncoder()
@@ -64,6 +67,29 @@ nonisolated struct GatewayClient: Sendable {
     }
 
     private func send<R: Decodable & Sendable>(_ req: URLRequest, _: R.Type) async throws -> HTTPResult<R> {
+        guard log.recording else { return try await exchange(req, R.self) }
+        // Developer view only: a masked copy in memory (DevLog.add masks the bodies). The request isn't changed.
+        let sent = req.httpBody.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+        let start = DispatchTime.now().uptimeNanoseconds
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        let path = req.url?.path ?? ""
+        do {
+            let (data, resp) = try await session.data(for: req)
+            let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
+            log.add(timeMs: now, method: req.httpMethod ?? "GET", path: path, status: status,
+                    ms: Int((DispatchTime.now().uptimeNanoseconds - start) / 1_000_000), request: sent,
+                    response: String(data: data.prefix(64 * 1024), encoding: .utf8) ?? "")
+            let body = (200..<300).contains(status) ? try? JSONDecoder().decode(R.self, from: data) : nil
+            return HTTPResult(status: status, body: body)
+        } catch {
+            log.add(timeMs: now, method: req.httpMethod ?? "GET", path: path, status: 0,
+                    ms: Int((DispatchTime.now().uptimeNanoseconds - start) / 1_000_000), request: sent,
+                    response: CallViewModel.describe(error))
+            throw error
+        }
+    }
+
+    private func exchange<R: Decodable & Sendable>(_ req: URLRequest, _: R.Type) async throws -> HTTPResult<R> {
         let (data, resp) = try await session.data(for: req)
         let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
         let body = (200..<300).contains(status) ? try? JSONDecoder().decode(R.self, from: data) : nil

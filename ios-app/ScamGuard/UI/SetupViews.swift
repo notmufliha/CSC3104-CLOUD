@@ -93,13 +93,6 @@ struct SetupView: View {
                     BigButton(title: L.s(.btn_skip_tour), id: "setupNoTour", prominent: false) { vm.finishSetup(startTour: false) }
                 default:
                     BigButton(title: L.s(.btn_next), id: "setupNext") { go(Onboarding.next(step, choices)) }
-                    if step == .server {
-                        Button {
-                            vm.updateSetup { $0.server = .later }
-                            go(Onboarding.next(step, choices))
-                        } label: { Text(L.s(.btn_set_up_later)).font(.body).frame(minHeight: 56) }
-                            .accessibilityIdentifier("setupLater")
-                    }
                 }
             }
             .padding(.horizontal, 24)
@@ -132,7 +125,6 @@ struct SetupView: View {
         case .welcome, .handover: EmptyView()
         case .recommended: RecommendedList()
         case .privacy: PrivacyChoices()
-        case .server: ServerChoice()
         case .data: DataChoices()
         case .helper: HelperChoices()
         case .family:
@@ -241,7 +233,6 @@ private struct SetupPage<Content: View>: View {
         case .welcome: return .setup_welcome_title
         case .recommended: return .setup_rec_title
         case .privacy: return .setup_privacy_title
-        case .server: return .setup_server_title
         case .data: return .setup_data_title
         case .helper: return .setup_helper_title
         case .family: return helper ? .setup_helper_family_title : .setup_family_title
@@ -257,7 +248,6 @@ private struct SetupPage<Content: View>: View {
         case .welcome: return .setup_welcome_line
         case .recommended: return .setup_rec_line
         case .privacy: return .setup_privacy_line
-        case .server: return .setup_server_line
         case .data: return .setup_data_line
         case .helper: return .setup_helper_line
         case .family: return helper ? .setup_helper_family_line : .setup_family_line
@@ -309,7 +299,6 @@ private struct SetupIcon: View {
         switch step {
         case .recommended: return "star.fill"
         case .privacy, .pin: return "lock.fill"
-        case .server: return "server.rack"
         case .data: return "person.fill"
         case .helper: return "gearshape.fill"
         case .family: return "phone.fill"
@@ -472,78 +461,6 @@ func privacyIcon(_ level: PrivacyLevel) -> String {
     }
 }
 
-// ---------------------------------------------------------------- server
-
-private struct ServerChoice: View {
-    @Environment(CallViewModel.self) private var vm
-    @State private var testing = false
-
-    var body: some View {
-        let c = vm.setupChoices
-        VStack(alignment: .leading, spacing: 14) {
-            TextField(L.s(.field_server), text: Binding(
-                get: { vm.setupChoices.serverUrl },
-                set: { v in vm.updateSetup { $0.serverUrl = v; $0.server = .notChecked } }))
-                .font(.body)
-                .keyboardType(.URL)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .padding(14)
-                .frame(minHeight: 56)
-                .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.muted.opacity(0.5), lineWidth: 1))
-                .accessibilityLabel(L.s(.field_server))
-                .accessibilityIdentifier("setupUrl")
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(ServerPage.presets, id: \.0) { p in
-                        let on = c.serverUrl == p.1
-                        Button { vm.updateSetup { $0.serverUrl = p.1; $0.server = .notChecked } } label: {
-                            Text(p.0).font(.body)
-                                .foregroundStyle(on ? Theme.onBrand : Theme.brand)
-                                .padding(.horizontal, 16)
-                                .frame(minHeight: 56)
-                                .background(on ? Theme.brand : Theme.brandContainer, in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityAddTraits(on ? [.isSelected] : [])
-                    }
-                }
-            }
-            BigButton(title: L.s(.btn_test_connection), id: "setupTest", prominent: false) {
-                testing = true
-                let url = c.serverUrl
-                Task {
-                    // iOS asks for Local Network here, the first time the app reaches the Mac.
-                    let ok = await vm.testSetupServer(url)
-                    vm.updateSetup { $0.server = ok ? .connected : .cantReach }
-                    testing = false
-                }
-            }
-            .disabled(testing)
-            if let st = status(c) {
-                StatusChip(text: st.0, color: st.1)
-                    .frame(maxWidth: .infinity)
-                    .accessibilityAddTraits(.updatesFrequently)
-            }
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "info.circle.fill").foregroundStyle(Theme.brand).accessibilityHidden(true)
-                Text(L.s(.net_heads_up)).font(.body).foregroundStyle(Theme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
-    private func status(_ c: Onboarding.Choices) -> (String, Color)? {
-        if testing { return (L.s(.status_checking), Theme.muted) }
-        switch c.server {
-        case .connected: return (L.s(.status_connected) + " ✓", Theme.safeGreen)
-        case .cantReach: return (L.s(.status_cant_reach), Theme.scamRed)
-        default: return nil
-        }
-    }
-}
-
 // ---------------------------------------------------------------- data
 
 private struct DataChoices: View {
@@ -668,7 +585,6 @@ private struct SetupSummary: View {
             (L.s(.sum_privacy), L.s(c.privacy.tagKey)),
         ]
         if c.path == .custom || c.path == .standard {
-            r.append((L.s(.sum_server), serverLabel(c)))
             r.append((L.s(.data_save_sentence), onOff(c.saveSentence)))
             r.append((L.s(.data_help_improve), onOff(c.helpImprove)))
         }
@@ -678,13 +594,4 @@ private struct SetupSummary: View {
         return r
     }
 
-    private func serverLabel(_ c: Onboarding.Choices) -> String {
-        if c.privacy == .onDevice { return L.s(.status_not_needed) }
-        switch c.server {
-        case .connected: return L.s(.status_connected)
-        case .cantReach: return L.s(.status_cant_reach)
-        case .later: return L.s(.status_set_up_later)
-        case .notChecked: return L.s(.status_not_checked)
-        }
-    }
 }

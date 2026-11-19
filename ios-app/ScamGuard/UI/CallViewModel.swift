@@ -43,6 +43,24 @@ final class CallViewModel {
     /// The trusted family contact, nil = none set.
     private(set) var family: Family?
 
+    // ------------------------------------------------------------ Developer view (hidden; Logic/Developer.swift)
+    // Only the "unlocked" flag is saved. The overlay switch, the playback speed and the log live in memory.
+    let devLog: DevLog
+    private let dev: DevSession
+    private(set) var devUnlocked = false
+    /// "Show live scores during calls".
+    private(set) var devOverlay = false
+    /// "Call playback speed": scripted and pasted calls.
+    private(set) var playbackSpeed: PlaybackSpeed = .x1
+    /// The newest caller line's numbers (the overlay).
+    private(set) var devLatest: DevLine?
+    /// Bumped when the log changes, so the Developer view redraws.
+    private(set) var devTick = 0
+    /// When each line of this call appeared (ms since it started).
+    private var lineShownAt: [Int: Int] = [:]
+    /// Developer view: MobileBERT's status, version and size.
+    private(set) var mobileBertDev = "checking…"
+
     struct Family: Equatable { let name: String; let phone: String }
     /// App style: Simple mode (Simple Home, For family, short Settings) or Standard (the full app).
     private(set) var simpleMode = false
@@ -106,8 +124,12 @@ final class CallViewModel {
          onDevice: OnDeviceServices = OnDeviceServices(),
          alerts: WarningAlerts? = nil,
          pins: PinStore = PinStore(),
-         startUp: Bool = true) {
+         startUp: Bool = true,
+         devLog: DevLog = .shared) {
         self.prefs = prefs
+        self.devLog = devLog
+        dev = DevSession(store: prefs, log: devLog)
+        devUnlocked = prefs.developerUnlocked
         self.store = store
         self.scripts = scripts
         self.session = session
@@ -131,7 +153,7 @@ final class CallViewModel {
         helpImprove = prefs.helpImproveDetection
         modelStatus = onDevice.updater.describe()
         self.startUp = startUp
-        setupChoices = Onboarding.defaults(prefs.gatewayUrl)
+        setupChoices = Onboarding.defaults()
         if startUp { startUpTasks() }
         // First launch shows the setup; an install from before the setup (settings or history saved) never does.
         let completed = prefs.onboardingCompleted
@@ -150,10 +172,11 @@ final class CallViewModel {
         if privacyLevel.scoresOnPhone { preloadModels() }
         Task {
             mobileBertStatus = await onDevice.mobileBertStatusLine()
+            mobileBertDev = await onDevice.mobileBertDevLine()
         }
     }
 
-    private func gateway() -> GatewayClient? { try? GatewayClient(baseUrl: prefs.gatewayUrl, session: session) }
+    private func gateway() -> GatewayClient? { try? GatewayClient(baseUrl: prefs.gatewayUrl, session: session, log: devLog) }
 
     private func now() -> Int64 { Int64(Date().timeIntervalSince1970 * 1000) }
 
@@ -161,9 +184,10 @@ final class CallViewModel {
 
     // ------------------------------------------------------------ call lifecycle
 
-    /// A random script of this kind, avoiding the one picked last time when there is another to choose.
+    /// A random script of this kind, avoiding the one picked last time when there is another to choose. The
+    /// learning-loop test calls only while the Developer view is unlocked.
     func randomScript(_ kind: String) -> CallScript? {
-        let pool = scripts.filter { $0.kind == kind }
+        let pool = scripts.filter { $0.kind == kind && (devUnlocked || !DevScripts.isTestCall($0.fileName)) }
         let pick = pool.filter { $0.fileName != lastRandom }.randomElement() ?? pool.randomElement()
         lastRandom = pick?.fileName
         return pick
@@ -221,9 +245,13 @@ final class CallViewModel {
         points = []
         alertAt = nil
         callStartedAt = now()
+        lineShownAt = [:]
         let level = prefs.privacyLevel
+        devLog.startCall(callId, privacy: level.rawValue)
+        devLatest = nil
         state.phase = .inCall
         state.privacyLevel = level
+        state.speedTag = playbackSpeed.tag
         if level.scoresOnPhone {
             playOnDevice(script, level)
             return
@@ -232,25 +260,30 @@ final class CallViewModel {
         let api = gateway()
         if api == nil { state.gatewayError = "Bad server address. Check Settings." }
         let id = callId
+        let speed = playbackSpeed
         playTask = Task { [weak self] in
-            for (i, line) in script.lines.enumerated() {
-                guard await Async.sleep(ms: self?.scaled(line.delayMs ?? Self.defaultDelayMs) ?? 0), let self else { return }
+            guard let self else { return }
+            // Playback.play scales each line's wait (Developer view's playback speed; 1× normally) and always ends.
+            await Playback.play(script.lines, speed: speed, defaultDelayMs: Self.defaultDelayMs,
+                                sleep: { await Async.sleep(ms: self.scaled($0)) },
+                                onLine: { i, line in
                 let seq = i + 1                         // caller and receiver share one count, as the gateway expects
                 let text = line.text ?? ""
                 let waiting = line.isCaller && api != nil
+                self.lineShownAt[seq] = Int(self.now() - self.callStartedAt)
                 self.state.lines.append(ChatLine(seq: seq, isCaller: line.isCaller, text: text, pending: waiting,
                                                  failed: line.isCaller && api == nil))
                 if waiting, let api {
                     self.sendTasks.append(Task { [weak self] in await self?.send(api, id, seq, text, script.lang) })
                 }
+            }) {
+                await Async.waitAll(self.sendTasks, within: 5)   // let the last answers arrive
+                guard !Task.isCancelled else { return }
+                self.sendTasks.forEach { $0.cancel() }      // nothing may change the call after this point
+                self.sendTasks = []
+                guard await Async.sleep(ms: self.scaled(Playback.gap(1_500, speed))) else { return }   // a moment to read the final state
+                self.endCall(Self.endedScript)
             }
-            guard let tasks = self?.sendTasks else { return }
-            await Async.waitAll(tasks, within: 5)       // let the last answers arrive
-            guard !Task.isCancelled, let self else { return }
-            self.sendTasks.forEach { $0.cancel() }      // nothing may change the call after this point
-            self.sendTasks = []
-            guard await Async.sleep(ms: self.scaled(1_500)) else { return }   // a moment to read the final state
-            self.endCall(Self.endedScript)
         }
     }
 
@@ -287,6 +320,10 @@ final class CallViewModel {
             if let answer { resp = await Async.value(of: answer, within: Self.finalReviewWait) }
             guard let self else { return }
             let review = resp.map { FinalReview.from($0) } ?? (onPhone ? .onDeviceReview : .unavailable)
+            self.devLog.endCall(id, endedBy: endedBy, end: resp.map {
+                DevEnd(finalVerdict: $0.finalVerdict, callScore: $0.callScore, review: $0.review, topWindow: $0.topWindowSeqs ?? [])
+            })
+            self.devTick += 1
             if self.callId == id {
                 self.state.reviewing = false
                 self.state.finalReview = review
@@ -363,6 +400,7 @@ final class CallViewModel {
     // ------------------------------------------------------------ networking (level 1)
 
     private func send(_ api: GatewayClient, _ id: String, _ seq: Int, _ text: String, _ lang: String?) async {
+        let started = now()
         let resp: HTTPResult<UtteranceResponse>
         do {
             resp = try await api.utterance(UtteranceRequest(callId: id, seq: seq, speaker: "caller", text: text, lang: lang))
@@ -381,6 +419,20 @@ final class CallViewModel {
             return
         }
         applyAnswer(id, seq, body)
+        if body.ignored != true { devRecord(id, seq, body, place: "cloud", latencyMs: Int(now() - started)) }
+    }
+
+    /// One answered caller line into the Developer view's memory (numbers only; nothing while it is locked).
+    func devRecord(_ id: String, _ seq: Int, _ body: UtteranceResponse, place: String, latencyMs: Int) {
+        guard devLog.recording, id == callId else { return }
+        devLog.addLine(id, DevLine(
+            seq: seq, tMs: lineShownAt[seq] ?? 0, urgency: body.score("urgency"), money: body.score("money"),
+            impersonation: body.score("impersonation"), combined: body.combinedScore, bertScore: body.bertScore,
+            bertStatus: body.bertStatus, rule: body.rule, liveAlert: body.liveAlert, verdict: body.verdict,
+            place: place, latencyMs: latencyMs))
+        if let v = body.modelVersions { devLog.setModelVersions(v) }
+        devLatest = devLog.latestLine(id)
+        devTick += 1
     }
 
     /// One caller line's answer -> bubble flags, chart point, bar, red alert. Used for the gateway's answer (cloud)
@@ -525,15 +577,21 @@ final class CallViewModel {
             let loading = Task { await services.call() }
             let mobileBert: MobileBertModel? = hybrid ? nil : await services.mobileBertModel()
             var previous: Task<Void, Never>?
-            for (i, line) in script.lines.enumerated() {
-                guard await Async.sleep(ms: self?.scaled(line.delayMs ?? Self.defaultDelayMs) ?? 0), let self else { return }
+            guard let me = self else { return }
+            let speed = me.playbackSpeed
+            await Playback.play(script.lines, speed: speed, defaultDelayMs: Self.defaultDelayMs,
+                                sleep: { await Async.sleep(ms: me.scaled($0)) },
+                                onLine: { i, line in
                 let seq = i + 1
                 let text = line.text ?? ""
-                self.state.lines.append(ChatLine(seq: seq, isCaller: line.isCaller, text: text, pending: line.isCaller))
-                if !line.isCaller { continue }
+                me.lineShownAt[seq] = Int(me.now() - me.callStartedAt)
+                me.state.lines.append(ChatLine(seq: seq, isCaller: line.isCaller, text: text, pending: line.isCaller))
+                if !line.isCaller { return }
                 let before = previous
                 let t = Task { [weak self] in
                     await before?.value                 // one line at a time, in order (the rules need that)
+                    let started = Int64(Date().timeIntervalSince1970 * 1000)
+                    func took() -> Int { Int(Int64(Date().timeIntervalSince1970 * 1000) - started) }
                     guard !Task.isCancelled, let local = await loading.value else {
                         if !Task.isCancelled { self?.markError(id, seq, "On-device models could not be loaded") }
                         return
@@ -549,6 +607,8 @@ final class CallViewModel {
                         guard !Task.isCancelled else { return }
                         self?.applyAnswer(id, seq, a.response)
                         if let c = a.second { self?.markCloud(seq, c.bertScore != nil ? Self.cloudChecked : Self.cloudUnavailable) }
+                        self?.devRecord(id, seq, a.response, place: a.second == nil ? "phone"
+                                        : a.second?.bertScore != nil ? "phone + cloud BERT" : "phone (cloud BERT unavailable)", latencyMs: took())
                     } else if let mobileBert {
                         // G.4: same rule as Hybrid, but MobileBERT reads the lines on the phone (not masked: they
                         // never leave it).
@@ -558,22 +618,25 @@ final class CallViewModel {
                         guard !Task.isCancelled else { return }
                         self?.applyAnswer(id, seq, a.response)
                         if let c = a.second { self?.markCloud(seq, c.bertScore != nil ? Self.mobileBertChecked : Self.mobileBertFailed) }
+                        self?.devRecord(id, seq, a.response, place: a.second == nil ? "phone"
+                                        : a.second?.bertScore != nil ? "phone + MobileBERT" : "phone (MobileBERT failed)", latencyMs: took())
                     } else {
                         let r = await local.answer(callId: id, seq: seq, text: text)
                         guard !Task.isCancelled else { return }
                         self?.applyAnswer(id, seq, r)
+                        self?.devRecord(id, seq, r, place: "phone", latencyMs: took())
                     }
                 }
                 previous = t
-                self.sendTasks.append(t)
+                me.sendTasks.append(t)
+            }) {
+                await Async.waitAll(me.sendTasks, within: 5)
+                guard !Task.isCancelled else { return }
+                me.sendTasks.forEach { $0.cancel() }
+                me.sendTasks = []
+                guard await Async.sleep(ms: me.scaled(Playback.gap(1_500, speed))) else { return }
+                me.endCall(Self.endedScript)
             }
-            guard let tasks = self?.sendTasks else { return }
-            await Async.waitAll(tasks, within: 5)
-            guard !Task.isCancelled, let self else { return }
-            self.sendTasks.forEach { $0.cancel() }
-            self.sendTasks = []
-            guard await Async.sleep(ms: self.scaled(1_500)) else { return }
-            self.endCall(Self.endedScript)
         }
     }
 
@@ -582,7 +645,9 @@ final class CallViewModel {
     nonisolated static func verifyInCloud(_ api: GatewayClient?, _ maskedLines: [String]) async -> Float? {
         guard let api, !maskedLines.isEmpty else { return nil }
         let t = Task<Float?, Never> {
-            guard let r = try? await api.verify(VerifyRequest(lines: maskedLines)), r.isSuccessful,
+            let reply = try? await api.verify(VerifyRequest(lines: maskedLines))
+            if let v = reply?.body?.modelVersion { api.log.setModelVersions(["bert": v]) }
+            guard let r = reply, r.isSuccessful,
                   let s = r.body?.score, (0...1).contains(s) else { return nil }
             return s
         }
@@ -641,27 +706,38 @@ final class CallViewModel {
     func testConnection(_ url: String) async -> String {
         let msg = await checkConnection(url)
         if GatewayClient.normalize(url) == prefs.gatewayUrl { connection = msg.hasPrefix("Connected") }
+        devLog.setHealth(DevHealth(ok: msg.hasPrefix("Connected"), message: "\(msg) (\(GatewayClient.normalize(url)))", timeMs: now()))
+        devTick += 1
         return msg
     }
 
-    /// Quiet GET /healthz on the saved address, for the Settings list.
+    /// Quiet GET /healthz on the saved address, for the Settings list and "Try again" on the plain status. Not at
+    /// On-device: nothing may touch the network there, and the status says "not needed".
     func refreshConnection() async {
-        if connectionFixed { return }
+        if connectionFixed || prefs.privacyLevel == .onDevice { return }
         _ = await testConnection(prefs.gatewayUrl)
     }
 
-    #if DEBUG
-    /// Debug builds only (Help & about): sample history for demos and screenshots.
+    /// Developer view (and debug launch options): about 60 made-up calls.
     func loadSampleHistory() {
+        #if !DEBUG
+        guard devUnlocked else { return }
+        #endif
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         let todayStart = Int64(Calendar.current.startOfDay(for: Date()).timeIntervalSince1970 * 1000)
         store.insertSample(SampleHistory.generate(nowMs: now, todayStartMs: todayStart))
         historyVersion += 1
     }
-    #endif
+
+    /// Developer view: remove the made-up calls again (real calls stay).
+    func deleteSampleHistory() {
+        guard devUnlocked else { return }
+        store.deleteSample()
+        historyVersion += 1
+    }
 
     private func checkConnection(_ url: String) async -> String {
-        guard let api = try? GatewayClient(baseUrl: url, session: session) else { return "Not a valid address" }
+        guard let api = try? GatewayClient(baseUrl: url, session: session, log: devLog) else { return "Not a valid address" }
         do {
             let resp = try await api.health()
             if !resp.isSuccessful {
@@ -702,6 +778,105 @@ final class CallViewModel {
     func deleteHistory() {
         store.deleteHistory()
         historyVersion += 1
+        // The Developer view's memory goes too (it holds numbers from the last call).
+        dev.historyDeleted()
+        devLatest = nil
+        devTick += 1
+    }
+
+    // ------------------------------------------------------------ Developer view actions
+
+    /// Help & about: one tap on the version number. Returns what to tell the user.
+    func developerTap(_ count: Int) -> DevUnlock.Tap {
+        let t = dev.tap(count)
+        syncDev()
+        return t
+    }
+
+    /// The switch in Developer view; off hides it again and forgets everything it held.
+    func setDeveloperUnlocked(_ on: Bool) { dev.setUnlocked(on); syncDev() }
+    func setDevOverlay(_ on: Bool) { dev.setOverlay(on); syncDev() }
+    func setPlaybackSpeed(_ s: PlaybackSpeed) { dev.setSpeed(s); syncDev() }
+    func refreshDevView() { devTick += 1 }
+
+    private func syncDev() {
+        devUnlocked = dev.unlocked
+        devOverlay = dev.overlay
+        playbackSpeed = dev.speed
+        if !devUnlocked { devLatest = nil }
+        devTick += 1
+    }
+
+    /// Developer view → 1. Connection.
+    func devConnectionRows() -> [(String, String)] {
+        let info = Bundle.main.infoDictionary
+        let h = devLog.health()
+        return [
+            ("gateway URL", prefs.gatewayUrl),
+            ("last /healthz", h.map { "\($0.ok ? "ok" : "failed") at \(DevFormat.time($0.timeMs)): \($0.message)" } ?? "not checked since unlocking"),
+            ("privacy level", prefs.privacyLevel.rawValue),
+            ("app version", "\(info?["CFBundleShortVersionString"] as? String ?? "?") (build \(info?["CFBundleVersion"] as? String ?? "?"))"),
+            ("platform", "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion), \(UIDevice.current.model)"),
+            ("local network permission", "iOS doesn't report it; a refused permission shows as a failed /healthz (Not connected to Internet)"),
+        ]
+    }
+
+    /// Developer view → 2. Models.
+    func devModelRows() -> [(String, String)] {
+        let bundled = Bundle.main.url(forResource: "manifest", withExtension: "json").flatMap { try? Data(contentsOf: $0) }
+        let installed = try? Data(contentsOf: onDevice.updater.dir.appendingPathComponent("installed.json"))
+        let downloaded = DevModels.downloaded(installed)
+        let server = devLog.modelVersions().sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", ")
+        return DevModels.bundled(bundled) + (downloaded.isEmpty ? [("downloaded", "none")] : downloaded) + [
+            ("MobileBERT", mobileBertDev),
+            ("server model_versions", server.isEmpty ? "none yet (from the last reply)" : server),
+        ]
+    }
+
+    /// Developer view → Tools → "Copy diagnostics": sections 1-3, no caller text.
+    func devDiagnostics() -> String {
+        Diagnostics.text(connection: devConnectionRows(), models: devModelRows(), call: devLog.lastCall())
+    }
+
+    /// Developer view → "Reset app to first launch": deletes the call history (all tables), every setting (the
+    /// Developer view's flag too), the PIN, the downloaded models and the in-memory logs, then starts at "Who will use
+    /// this phone?". Bundled models and scripts stay.
+    func resetApp() {
+        guard devUnlocked else { return }
+        alerts.stop()
+        cancelPlayback()
+        callId = ""
+        state = CallUiState()
+        store.deleteHistory()
+        prefs.clearAll()
+        pins.clear()
+        try? FileManager.default.removeItem(at: onDevice.updater.dir)
+        dev.wasReset()
+        syncDev()
+        let services = onDevice
+        Task { await services.reload() }
+        connection = nil
+        connectionFixed = false
+        privacyLevel = prefs.privacyLevel
+        gatewayUrl = prefs.gatewayUrl
+        saveSentence = prefs.saveRiskiestSentence
+        helpImprove = prefs.helpImproveDetection
+        readAloud = prefs.readAloud
+        showBeCareful = prefs.showBeCareful
+        textSize = prefs.textSize
+        simpleMode = AppStyle.simpleAtLaunch(prefs.simpleMode)
+        appStyleTip = false
+        family = Self.savedFamily(prefs)
+        pinSet = pins.isSet
+        modelStatus = onDevice.updater.describe()
+        modelCheck = ""
+        historyVersion += 1
+        setupChoices = Onboarding.defaults()
+        setupStep = .who
+        setupIsReplay = false
+        setupTextSize()
+        tourStep = nil
+        gate = .setup
     }
 
     /// "Save the riskiest sentence". Turning it off also forgets the sentences already saved.
@@ -738,9 +913,6 @@ final class CallViewModel {
     func setSetupStep(_ step: Onboarding.Step) { setupStep = step }
 
     func updateSetup(_ change: (inout Onboarding.Choices) -> Void) { change(&setupChoices) }
-
-    /// Setup's Test connection: tries the typed address without saving it.
-    func testSetupServer(_ url: String) async -> Bool { await checkConnection(url).hasPrefix("Connected") }
 
     /// Skip, "Show me around" or "Skip tour": saves the choices (Skip = what is picked so far, defaults for the rest).
     func finishSetup(startTour: Bool) {
@@ -791,11 +963,14 @@ final class CallViewModel {
         gate = .setup
     }
 
-    #if DEBUG
-    /// Debug builds only: forget that the setup was done and show it as on a first launch.
+    /// Developer view → "Reset setup only" (and a debug launch option): show the setup as on a first launch. The
+    /// history and settings stay until the setup saves its choices.
     func resetOnboarding() {
+        #if !DEBUG
+        guard devUnlocked else { return }
+        #endif
         Onboarding.reset(prefs)
-        setupChoices = Onboarding.defaults(prefs.gatewayUrl)
+        setupChoices = Onboarding.defaults()
         setupStep = .who
         setupTextSize()
         setupIsReplay = false
@@ -803,6 +978,7 @@ final class CallViewModel {
         gate = .setup
     }
 
+    #if DEBUG
     /// Debug builds only (-demoTip YES): show the one-time App style tip again, for screenshots.
     func demoAppStyleTip() {
         prefs.appStyleTipShown = false
@@ -810,7 +986,7 @@ final class CallViewModel {
     }
 
     /// Debug builds only (-demoSetup): open the setup at one screen, for screenshots.
-    func demoSetup(_ step: Onboarding.Step, privacy: PrivacyLevel?, server: String?, path: String? = nil) {
+    func demoSetup(_ step: Onboarding.Step, privacy: PrivacyLevel?, path: String? = nil) {
         setupChoices = Onboarding.fromSaved(prefs)          // as "Run setup again" (Android does the same)
         setupTextSize()
         setupIsReplay = prefs.onboardingCompleted == true
@@ -819,11 +995,6 @@ final class CallViewModel {
         if let p = path.flatMap({ paths[$0] }) {
             setupChoices = Onboarding.choose(setupChoices, p)
             previewTextSize(setupChoices.textSize)
-        }
-        switch server {
-        case "connected": setupChoices.server = .connected
-        case "cantReach": setupChoices.server = .cantReach
-        default: break
         }
         setupStep = step
         gate = .setup

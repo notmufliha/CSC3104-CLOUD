@@ -5,7 +5,7 @@ import SwiftUI
 
 // ---------------------------------------------------------------- Home (Simple mode)
 
-/// Home's status: protecting (green ✓), not connected (yellow, "Fix it"), or still checking.
+/// Home's status: protecting (green ✓), can't connect (yellow, "Try again"), or still checking. No address or error code.
 enum HomeStatus { case protecting, notConnected, checking }
 
 func homeStatus(_ privacy: PrivacyLevel, _ connection: Bool?) -> HomeStatus {
@@ -21,7 +21,6 @@ struct SimpleHomeView: View {
     @Environment(CallViewModel.self) private var vm
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var fixing = false
-    @State private var fixFailed = false
 
     var body: some View {
         let _ = vm.historyVersion
@@ -51,18 +50,14 @@ struct SimpleHomeView: View {
         .background(Theme.background)
         .navigationTitle(L.s(.app_name_text))
         .task { await vm.refreshConnection() }
-        .sheet(isPresented: $fixFailed) {
-            YesNoSheet(title: L.s(.fix_title), text: L.s(.fix_text), yes: L.s(.btn_try_again), no: L.s(.btn_close),
-                       onYes: { fixFailed = false; fix() }, onNo: { fixFailed = false })
-        }
     }
 
+    /// "Try again": checks the connection again (the card then says the result).
     private func fix() {
         fixing = true
         Task {
             await vm.refreshConnection()
             fixing = false
-            fixFailed = vm.connection != true
         }
     }
 
@@ -71,7 +66,7 @@ struct SimpleHomeView: View {
         let (level, title, line): (Risk.Level, K, K?) = {
             switch status {
             case .protecting: return (.green, .home_status_ok, .home_status_ok_line)
-            case .notConnected: return (.yellow, .home_status_off, .home_status_off_line)
+            case .notConnected: return (.yellow, .conn_fail, .conn_fail_line)
             case .checking: return (.listening, .home_status_checking, nil)
             }
         }()
@@ -90,7 +85,7 @@ struct SimpleHomeView: View {
             }
             .accessibilityElement(children: .combine)
             if status == .notConnected {
-                BigButton(title: L.s(fixing ? .status_checking : .btn_fix_it), id: "fixIt") { fix() }.disabled(fixing)
+                BigButton(title: L.s(fixing ? .status_checking : .btn_try_again), id: "fixIt") { fix() }.disabled(fixing)
             }
         }
         .padding(20)
@@ -228,20 +223,65 @@ struct AdvancedSections: View {
                 SettingsRowLabel(icon: "lock.shield.fill", title: L.s(.set_how_checked), value: vm.privacyLevel.choiceTitle(simple: simple))
             }
             .tourTarget(.privacyRow)
-            NavigationLink(value: SettingsRoute.server) {
-                SettingsRowLabel(icon: "server.rack", title: L.s(.set_connection), value: connectionLabel(vm.connection),
-                                 valueColor: connectionColor(vm.connection))
-            }
-            NavigationLink(value: SettingsRoute.models) {
-                SettingsRowLabel(icon: "cpu", title: L.s(.set_updates),
-                                 value: L.s(vm.modelStatus.contains("federated") ? .models_updated : .models_built_in))
-            }
+            ConnectionStatusRow()
         } header: { SettingsHeader(text: L.s(.set_group_checking)) }
         .listRowBackground(Theme.card)
         Section {
             NavigationLink(value: SettingsRoute.data) {
                 SettingsRowLabel(icon: "person.fill", title: L.s(.set_my_data), value: callsCount(calls))
             }
+        }
+        .listRowBackground(Theme.card)
+    }
+}
+
+/// The plain connection status: "Connected ✓" or "Can't connect to ScamGuard" with one line of help and "Try again"
+/// (it checks again). No address, IP or error code: those are in the hidden Developer view.
+struct ConnectionStatusRow: View {
+    @Environment(CallViewModel.self) private var vm
+    @State private var checking = false
+
+    var body: some View {
+        let state = ConnectionStatus.of(vm.privacyLevel, vm.connection)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 14) {
+                Image(systemName: "antenna.radiowaves.left.and.right")
+                    .font(.system(size: 20, weight: .semibold)).foregroundStyle(Theme.onBrand)
+                    .frame(width: 40, height: 40)
+                    .background(Theme.brand, in: RoundedRectangle(cornerRadius: 12))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L.s(.set_connection)).font(.headline)
+                    Text(L.s(checking ? ConnectionStatus.checking.key : state.key)).font(.body)
+                        .foregroundStyle(state == .connected ? Theme.safeGreen : state == .cantConnect ? Theme.scamRed : Theme.muted)
+                    if state == .cantConnect {
+                        Text(L.s(.conn_fail_line)).font(.body).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .accessibilityElement(children: .combine)
+            if state == .cantConnect {
+                BigButton(title: L.s(checking ? .status_checking : .btn_try_again), id: "connectionRetry", prominent: false) {
+                    checking = true
+                    Task { await vm.refreshConnection(); checking = false }
+                }
+                .disabled(checking)
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityIdentifier("connectionStatus")
+    }
+}
+
+/// The hidden Developer view's row: only once unlocked (Help & about → tap the version 7 times).
+struct DeveloperRow: View {
+    var body: some View {
+        Section {
+            NavigationLink(value: SettingsRoute.developer) {
+                SettingsRowLabel(icon: "hammer.fill", title: L.s(.set_developer))
+            }
+            .accessibilityIdentifier("rowDeveloper")
         }
         .listRowBackground(Theme.card)
     }
@@ -263,7 +303,12 @@ struct AdvancedPage: View {
         if vm.pinSet && !unlock.open {
             PinGateView()
         } else {
-            List { AdvancedSections(simple: true) }
+            List {
+                AdvancedSections(simple: true)
+                // Simple mode: the Developer view sits here, behind the PIN when one is set.
+                if vm.devUnlocked { DeveloperRow() }
+            }
+            .task { await vm.refreshConnection() }
                 .settingsListStyle()
                 .navigationTitle(L.s(.set_advanced))
         }

@@ -16,6 +16,12 @@ struct ScamGuardApp: App {
             // A store that can't be opened must not stop the app: keep this session's calls in memory.
             store = try! CallStore(inMemory: true)   // swiftlint:disable:this force_try
         }
+        #if DEBUG
+        // -demoDev YES|NO: unlock / lock the Developer view before the view model reads the flag (screenshots).
+        if !testing, UserDefaults.standard.object(forKey: "demoDev") != nil {
+            AppPrefs().developerUnlocked = UserDefaults.standard.bool(forKey: "demoDev")
+        }
+        #endif
         _vm = State(initialValue: CallViewModel(store: store, startUp: !testing))
     }
 
@@ -52,7 +58,9 @@ struct AppRoot: View {
     /// Debug builds only, for screenshots and UI tests:
     ///   -demoReset YES (first-launch setup again), -demoSetup who|welcome|privacy|server|data|helper|handover|done
     ///   [-demoPath standard|simple|custom|helper] (none = nothing picked) [-demoPrivacy hybrid]
-    ///   [-demoServer connected|cantReach], -demoTour 0-6 (a tour step over the app; skips a pending setup)
+    ///   -demoTour 0-6 (a tour step over the app; skips a pending setup)
+    ///   -demoDev YES|NO (unlock / lock the Developer view), -demoSpeed 1x|2x|4x|instant, -demoOverlay YES,
+    ///   -demoLevel cloud|hybrid|on_device
     ///   -demoTip YES (show the one-time App style tip again)
     private func demoOnboarding() {
         let d = UserDefaults.standard
@@ -73,11 +81,15 @@ struct AppRoot: View {
         default: break
         }
         if d.bool(forKey: "demoReset") { vm.resetOnboarding() }
+        if let id = d.string(forKey: "demoLevel") { vm.setPrivacyLevel(PrivacyLevel.fromId(id)) }
+        if let id = d.string(forKey: "demoSpeed"), let sp = PlaybackSpeed(rawValue: id) { vm.setPlaybackSpeed(sp) }
+        if d.bool(forKey: "demoOverlay") { vm.setDevOverlay(true) }
+        // -demoResetApp YES: "Reset app to first launch" (needs the Developer view unlocked), for screenshots
+        if d.bool(forKey: "demoResetApp") { vm.resetApp() }
         if d.bool(forKey: "demoTip") { vm.demoAppStyleTip() }
         if let name = d.string(forKey: "demoSetup"),
            let step = Onboarding.Step.allCases.first(where: { "\($0)" == name }) {
-            vm.demoSetup(step, privacy: d.string(forKey: "demoPrivacy").map(PrivacyLevel.fromId),
-                         server: d.string(forKey: "demoServer"), path: d.string(forKey: "demoPath"))
+            vm.demoSetup(step, privacy: d.string(forKey: "demoPrivacy").map(PrivacyLevel.fromId), path: d.string(forKey: "demoPath"))
         }
         if d.object(forKey: "demoTour") != nil {
             if vm.gate == .setup { vm.finishSetup(startTour: false) }   // a clean install: setup skipped first
@@ -198,6 +210,20 @@ struct RootView: View {
             if phase == .idle { homePath = []; tab = .home }
         }
         #if DEBUG
+        // -demoAfterCall developer: once a demo call's summary is ready, close it and open the Developer view in the
+        // same run (its log lives in memory only), for screenshots.
+        .onChange(of: vm.state.phase == .ended && !vm.state.reviewing) { _, done in
+            guard done, UserDefaults.standard.string(forKey: "demoAfterCall") == "developer" else { return }
+            Task {
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
+                vm.reset()
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                tab = .settings
+                settingsPath = [.developer]
+            }
+        }
+        #endif
+        #if DEBUG
         .task { demo() }
         #endif
     }
@@ -206,7 +232,7 @@ struct RootView: View {
     /// Debug builds only, for screenshots from the command line:
     ///   xcrun simctl launch booted com.rhaylene.ScamGuard -demoTab dashboard
     ///   xcrun simctl launch booted com.rhaylene.ScamGuard -demoScript scam_en_11_bank_otp.json [-demoRingOnly YES]
-    ///   -demoDeleteHistory YES / -demoLoadSample YES, -demoSettings privacy|server|models|data|help,
+    ///   -demoDeleteHistory YES / -demoLoadSample YES, -demoSettings privacy|data|help|advanced|developer,
     ///   -demoDetail YES (opens the newest call), -demoDashboard insights|history, -dashboardPeriod week|month|all
     private func demo() {
         let d = UserDefaults.standard
@@ -259,6 +285,13 @@ struct CallFlowView: View {
                 SummaryView()
             case .idle:
                 Color.clear
+            }
+            // Developer view: live scores at the top; never over the red warning (it hides while that shows).
+            if DevOverlay.visible(enabled: vm.devOverlay, unlocked: vm.devUnlocked, inCall: vm.state.phase == .inCall,
+                                  warningOpen: vm.state.warningOpen) {
+                DevScoreOverlay(line: vm.devLatest)
+                    .padding(.top, 4)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
             // The red warning covers the call (and its summary, if the call ended first) until the user acts.
             if vm.state.warningOpen && (vm.state.phase == .inCall || vm.state.phase == .ended) {

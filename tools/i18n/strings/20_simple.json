@@ -1,19 +1,11 @@
 {
   "home_status_ok": "ScamGuard is protecting you",
   "home_status_ok_line": "You will be warned if a call sounds like a scam.",
-  "home_status_off": "Not connected",
-  "home_status_off_line": "ScamGuard can't check calls right now.",
   "home_status_checking": "Checking the connection…",
-  "btn_fix_it": "Fix it",
-  "fix_title": "Still not connected",
-  "fix_text": "Check that Wi-Fi or mobile data is on, then try again. If it still doesn't work, ask your family helper.",
-  "fix_ok": "Connected again",
   "btn_practice_call": "Try a practice call",
   "home_practice_line": "A pretend scam call. Nothing is real.",
   "home_recent": "Recent calls",
   "home_no_calls": "No calls yet.",
-
-
   "tab_home": "Home",
   "tab_family": "For family",
   "tab_dashboard": "Dashboard",
@@ -42,7 +34,6 @@
   "privacy_plain_on_device": "Checked only on this phone. Nothing leaves it.",
   "privacy_applies_next": "Applies from the next call.",
   "privacy_english_only": "On this phone, only calls in English can be checked.",
-
   "help_how": "How ScamGuard works",
   "help_b1": "It listens to what the caller says.",
   "help_b2": "If the call sounds like a scam, the screen turns red and the warning is read aloud.",
@@ -56,7 +47,6 @@
   "help_privacy_levels": "How calls can be checked",
   "btn_replay_tour": "Show me around again",
   "btn_run_setup": "Run setup again",
-
   "tour_progress": "{0} of {1}",
   "a11y_tour": "Tour, {0}",
   "a11y_highlighted": "Highlighted: {0}",
@@ -80,7 +70,6 @@
   "tour_dash_line": "Your safety at a glance.",
   "tour_privacy_title": "Privacy level",
   "tour_privacy_line": "Change privacy anytime.",
-
   "text_normal": "Normal",
   "text_normal_line": "The same size as your phone's other apps.",
   "set_app_style": "App style",
