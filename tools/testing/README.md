@@ -91,3 +91,15 @@ does (for example a `CONTEXT_WINDOW` environment variable): set 3, restart, `pyt
   other scripts. The highest is 0.75, a short generic receiver line ("What should I do?"). The money worker's training data is on
   Drive, not in the repo: run `python tools/testing/similarity_check.py --extra <C_train_pool.csv>` before submitting.
 - Not yet run against the real stack: `replay.py` was only tested against a mock gateway.
+
+## web_ondevice_parity.mjs
+
+Checks the web app's on-device code (`web/ondevice.js`, privacy levels 2 and 3 in the browser) against the same
+files as the phone apps: the workers' Python cleaning and scores (`parity_cases.json`), the masking cases, the
+scikit-learn Murmur3 values, the aggregator's decision-rule cases, whole demo calls, and MobileBERT (token ids,
+and scores in onnxruntime-web).
+
+```bash
+npm install --prefix tools/testing onnxruntime-web@1.20.1   # once; without it the MobileBERT score checks are skipped
+node tools/testing/web_ondevice_parity.mjs
+```
