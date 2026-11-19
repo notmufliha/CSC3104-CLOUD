@@ -9,8 +9,8 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
 /** Gateway URL and settings, in SharedPreferences. (Call history moved to the Room database, data/db/.) */
-class AppPrefs(context: Context) : Onboarding.Store {
-    private val sp = context.getSharedPreferences("scamguard", Context.MODE_PRIVATE)
+class AppPrefs(context: Context) : Onboarding.Store, com.example.scamdetect.logic.DevUnlock.Store {
+    private val sp = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
     private val gson = Gson()
     private val historyType = object : TypeToken<List<HistoryEntry>>() {}.type
 
@@ -88,6 +88,14 @@ class AppPrefs(context: Context) : Onboarding.Store {
         get() = sp.getString(KEY_FAMILY_PHONE, "") ?: ""
         set(value) = sp.edit { putString(KEY_FAMILY_PHONE, value.trim()) }
 
+    /** Developer view unlocked (Help & about → tap the version 7 times). The only thing the Developer view saves. */
+    override var developerUnlocked: Boolean
+        get() = sp.getBoolean(KEY_DEV_UNLOCKED, false)
+        set(value) = sp.edit { putBoolean(KEY_DEV_UNLOCKED, value) }
+
+    /** Developer view → "Reset app to first launch": every setting, as on a new install. */
+    fun clearAll() { sp.edit(commit = true) { clear() } }
+
     /** Any setting an earlier version saved, or its old history: then this install is not a first launch. */
     override fun hasAnySetting(): Boolean = EXISTING_KEYS.any { sp.contains(it) }
 
@@ -134,6 +142,9 @@ class AppPrefs(context: Context) : Onboarding.Store {
         private const val KEY_READ_ALOUD_CHOSEN = "read_aloud_chosen"
         private const val KEY_FAMILY_NAME = "family_name"
         private const val KEY_FAMILY_PHONE = "family_phone"
+        const val KEY_DEV_UNLOCKED = "developer_view_unlocked"
+        /** The SharedPreferences file (the instrumented tests read it directly). */
+        const val FILE = "scamguard"
         const val TEXT_NORMAL = "normal"
         const val TEXT_LARGE = "large"
         const val TEXT_XLARGE = "xlarge"

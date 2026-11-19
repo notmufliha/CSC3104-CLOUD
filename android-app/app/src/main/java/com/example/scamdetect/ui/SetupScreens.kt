@@ -57,6 +57,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -86,7 +87,6 @@ import com.example.scamdetect.R
 import com.example.scamdetect.data.AppPrefs
 import com.example.scamdetect.logic.Onboarding
 import com.example.scamdetect.logic.Onboarding.Path
-import com.example.scamdetect.logic.Onboarding.Server
 import com.example.scamdetect.logic.Onboarding.Step
 import com.example.scamdetect.logic.PrivacyLevel
 import kotlinx.coroutines.launch
@@ -99,7 +99,6 @@ import kotlinx.coroutines.launch
 data class SetupActions(
     val onStep: (Step) -> Unit,
     val onChange: ((Onboarding.Choices) -> Onboarding.Choices) -> Unit,
-    val onTest: suspend (String) -> Boolean,
     val onFinish: (startTour: Boolean) -> Unit,
     val onLeave: () -> Unit,
     /** Shows a text size while the setup runs (saved only when it finishes). */
@@ -152,7 +151,6 @@ fun SetupFlow(step: Step, choices: Onboarding.Choices, isReplay: Boolean, a: Set
                         Step.WELCOME, Step.HANDOVER -> Unit
                         Step.RECOMMENDED -> RecommendedList()
                         Step.PRIVACY -> PrivacyChoices(choices, a.onChange)
-                        Step.SERVER -> ServerChoice(choices, a.onChange, a.onTest)
                         Step.DATA -> DataChoices(choices, a.onChange)
                         Step.HELPER -> HelperChoices(choices, a)
                         Step.FAMILY -> FamilyFields(choices, a.onChange)
@@ -212,10 +210,6 @@ fun SetupFlow(step: Step, choices: Onboarding.Choices, isReplay: Boolean, a: Set
                         Button(onClick = { go(Onboarding.next(step, choices)) }, modifier = wide.testTag("setupNext")) {
                             Text(stringResource(R.string.btn_next), style = BigButtonText)
                         }
-                        if (step == Step.SERVER) TextButton(
-                            onClick = { a.onChange { it.copy(server = Server.LATER) }; go(Onboarding.next(step, choices)) },
-                            modifier = Modifier.heightIn(min = 56.dp),
-                        ) { Text(stringResource(R.string.btn_set_up_later), style = MaterialTheme.typography.bodyLarge) }
                     }
                 }
             }
@@ -241,7 +235,6 @@ private fun titleOf(s: Step, c: Onboarding.Choices) = when (s) {
     Step.WELCOME -> R.string.setup_welcome_title
     Step.RECOMMENDED -> R.string.setup_rec_title
     Step.PRIVACY -> R.string.setup_privacy_title
-    Step.SERVER -> R.string.setup_server_title
     Step.DATA -> R.string.setup_data_title
     Step.HELPER -> R.string.setup_helper_title
     Step.FAMILY -> if (c.path == Path.HELPER) R.string.setup_helper_family_title else R.string.setup_family_title
@@ -255,7 +248,6 @@ private fun lineOf(s: Step, c: Onboarding.Choices) = when (s) {
     Step.WELCOME -> R.string.setup_welcome_line
     Step.RECOMMENDED -> R.string.setup_rec_line
     Step.PRIVACY -> R.string.setup_privacy_line
-    Step.SERVER -> R.string.setup_server_line
     Step.DATA -> R.string.setup_data_line
     Step.HELPER -> R.string.setup_helper_line
     Step.FAMILY -> if (c.path == Path.HELPER) R.string.setup_helper_family_line else R.string.setup_family_line
@@ -313,7 +305,6 @@ private fun SetupIcon(step: Step) {
     val icon: ImageVector = when (step) {
         Step.RECOMMENDED -> Icons.Filled.Star
         Step.PRIVACY -> Icons.Filled.Lock
-        Step.SERVER -> ImageVector.vectorResource(R.drawable.ic_setup_server)
         Step.DATA -> Icons.Filled.Person
         Step.HELPER -> Icons.Filled.Settings
         Step.FAMILY -> Icons.Filled.Phone
@@ -464,58 +455,6 @@ fun privacyIcon(level: PrivacyLevel) = when (level) {
     PrivacyLevel.ON_DEVICE -> R.drawable.ic_setup_phone
 }
 
-// ---------------------------------------------------------------- server
-
-@Composable
-private fun ServerChoice(
-    choices: Onboarding.Choices,
-    onChange: ((Onboarding.Choices) -> Onboarding.Choices) -> Unit,
-    onTest: suspend (String) -> Boolean,
-) {
-    val scope = rememberCoroutineScope()
-    var testing by rememberSaveable { mutableStateOf(false) }
-    fun runTest() {
-        testing = true
-        scope.launch {
-            val ok = onTest(choices.serverUrl)
-            onChange { it.copy(server = if (ok) Server.CONNECTED else Server.CANT_REACH) }
-            testing = false
-        }
-    }
-    val test = withLocalNetwork(::runTest)
-
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        OutlinedTextField(
-            value = choices.serverUrl,
-            onValueChange = { v -> onChange { it.copy(serverUrl = v, server = Server.NOT_CHECKED) } },
-            label = { Text(stringResource(R.string.field_server)) },
-            singleLine = true,
-            textStyle = MaterialTheme.typography.bodyLarge,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-            modifier = Modifier.fillMaxWidth().testTag("setupUrl"),
-        )
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SERVER_PRESETS.forEach { (label, u) ->
-                PillChip(label, selected = choices.serverUrl == u) { onChange { it.copy(serverUrl = u, server = Server.NOT_CHECKED) } }
-            }
-        }
-        OutlinedButton(onClick = test, enabled = !testing, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("setupTest")) {
-            Text(stringResource(R.string.btn_test_connection), style = MaterialTheme.typography.labelLarge)
-        }
-        val (label, color) = when {
-            testing -> stringResource(R.string.status_checking) to MaterialTheme.colorScheme.onSurfaceVariant
-            choices.server == Server.CONNECTED -> stringResource(R.string.status_connected) + " ✓" to SafeGreen
-            choices.server == Server.CANT_REACH -> stringResource(R.string.status_cant_reach) to ScamRed
-            else -> null to Color.Unspecified
-        }
-        if (label != null) Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { StatusChip(label, color) }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Icon(Icons.Filled.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Text(stringResource(R.string.net_heads_up), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
 /**
  * Android 17+: asks for local network access (when not granted yet) right before [run], so the question comes
  * when the user tests the server, not when the app starts. [run] goes ahead whatever the answer.
@@ -528,6 +467,22 @@ fun withLocalNetwork(run: () -> Unit): () -> Unit {
         if (Build.VERSION.SDK_INT >= 37 &&
             ContextCompat.checkSelfPermission(context, LOCAL_NETWORK_PERMISSION) != PackageManager.PERMISSION_GRANTED
         ) ask.launch(LOCAL_NETWORK_PERMISSION) else run()
+    }
+}
+
+/**
+ * withLocalNetwork for an action chosen when it runs: the setup asks once as it finishes (it no longer has a server
+ * screen), so the first check or call doesn't fail on Android 17+. The action goes ahead whatever the answer.
+ */
+@Composable
+fun rememberLocalNetworkAsk(): (() -> Unit) -> Unit {
+    val context = LocalContext.current
+    val pending = remember { arrayOfNulls<() -> Unit>(1) }
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { pending[0]?.invoke(); pending[0] = null }
+    return { run ->
+        if (Build.VERSION.SDK_INT >= 37 &&
+            ContextCompat.checkSelfPermission(context, LOCAL_NETWORK_PERMISSION) != PackageManager.PERMISSION_GRANTED
+        ) { pending[0] = run; ask.launch(LOCAL_NETWORK_PERMISSION) } else run()
     }
 }
 
@@ -607,7 +562,6 @@ private fun SetupSummary(c: Onboarding.Choices) {
         add(stringResource(R.string.set_text_size) to stringResource(textSizeLabel(c.textSize)))
         add(stringResource(R.string.sum_privacy) to stringResource(privacyTagRes(c.privacy)))
         if (c.path == Path.CUSTOM || c.path == Path.STANDARD) {
-            add(stringResource(R.string.sum_server) to serverLabel(c))
             add(stringResource(R.string.data_save_sentence) to stringResource(if (c.saveSentence) R.string.on else R.string.off))
             add(stringResource(R.string.data_help_improve) to stringResource(if (c.helpImprove) R.string.on else R.string.off))
         }
@@ -622,15 +576,6 @@ private fun SetupSummary(c: Onboarding.Choices) {
         }
     }
 }
-
-@Composable
-private fun serverLabel(c: Onboarding.Choices): String = stringResource(when {
-    c.privacy == PrivacyLevel.ON_DEVICE -> R.string.status_not_needed
-    c.server == Server.CONNECTED -> R.string.status_connected
-    c.server == Server.CANT_REACH -> R.string.status_cant_reach
-    c.server == Server.LATER -> R.string.status_set_up_later
-    else -> R.string.status_not_checked
-})
 
 /** First launch: Back on the first screen, confirmed, closes the app (the setup shows again next time). */
 fun leaveApp(context: android.content.Context) { context.findActivity()?.finish() }

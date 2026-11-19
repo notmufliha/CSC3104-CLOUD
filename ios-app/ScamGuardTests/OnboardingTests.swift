@@ -85,7 +85,7 @@ final class OnboardingTests: XCTestCase {
 
     func testCompletedNeverShowsAgain() {
         let s = FakeStore()
-        Onboarding.apply(Onboarding.defaults(Self.defaultURL), s)
+        Onboarding.apply(Onboarding.defaults(), s)
         XCTAssertEqual(s.onboardingCompleted, true)
         XCTAssertEqual(s.onboardingVersion, Onboarding.version)
         XCTAssertEqual(s.launch(), .done)
@@ -113,12 +113,10 @@ final class OnboardingTests: XCTestCase {
     }
 
     func testReplayStartsFromSavedSettingsAndSkipKeepsThem() {
-        let s = FakeStore()
-        Onboarding.apply(Onboarding.Choices(privacy: .hybrid, serverUrl: "http://mac:8080/", server: .connected,
-                                            saveSentence: true, helpImprove: true), s)
+        let s = FakeStore(["gateway_url": "http://mac:8080/"])
+        Onboarding.apply(Onboarding.Choices(privacy: .hybrid, saveSentence: true, helpImprove: true), s)
         let replay = Onboarding.fromSaved(s)
         XCTAssertEqual(replay.privacy, .hybrid)
-        XCTAssertEqual(replay.serverUrl, "http://mac:8080/")
         XCTAssertTrue(replay.saveSentence && replay.helpImprove)
         Onboarding.apply(replay, s)   // Skip right away
         XCTAssertEqual(s.privacyLevel, .hybrid)
@@ -131,7 +129,7 @@ final class OnboardingTests: XCTestCase {
 
     func testSkipOnFirstLaunchSavesDefaults() {
         let s = FakeStore()
-        Onboarding.apply(Onboarding.defaults(s.gatewayUrl), s)
+        Onboarding.apply(Onboarding.defaults(), s)
         XCTAssertEqual(s.privacyLevel, .cloud)
         XCTAssertEqual(s.gatewayUrl, Self.defaultURL)
         XCTAssertFalse(s.saveRiskiestSentence)
@@ -141,22 +139,43 @@ final class OnboardingTests: XCTestCase {
 
     func testChoicesAreSaved() {
         let s = FakeStore()
-        Onboarding.apply(Onboarding.Choices(privacy: .hybrid, serverUrl: "https://192.168.1.23:8443/api/",
-                                            server: .connected, saveSentence: true, helpImprove: false), s)
+        Onboarding.apply(Onboarding.Choices(privacy: .hybrid, saveSentence: true, helpImprove: false), s)
         XCTAssertEqual(s.privacyLevel, .hybrid)
-        XCTAssertEqual(s.gatewayUrl, "https://192.168.1.23:8443/api/")
         XCTAssertTrue(s.saveRiskiestSentence)
         XCTAssertFalse(s.helpImproveDetection)
     }
 
-    func testSetUpLaterAndOnDeviceKeepTheOldAddress() {
-        let later = FakeStore(["gateway_url": "http://old/"])
-        Onboarding.apply(Onboarding.Choices(privacy: .cloud, serverUrl: "http://typed-but-not-used/", server: .later), later)
-        XCTAssertEqual(later.gatewayUrl, "http://old/")
-        let onDevice = FakeStore(["gateway_url": "http://old/"])
-        Onboarding.apply(Onboarding.Choices(privacy: .onDevice, serverUrl: "http://other/"), onDevice)
-        XCTAssertEqual(onDevice.gatewayUrl, "http://old/")
-        XCTAssertEqual(onDevice.privacyLevel, .onDevice)
+    /// Developer view: the setup has no server screen and never changes the saved (or default) address.
+    func testSetupKeepsTheSavedAddressSilently() {
+        for level in PrivacyLevel.allCases {
+            for path in Onboarding.Path.allCases {
+                let s = FakeStore(["gateway_url": "http://old/"])
+                Onboarding.apply(c(path, level), s)
+                XCTAssertEqual(s.gatewayUrl, "http://old/")
+                XCTAssertEqual(s.launch(), .done)
+                XCTAssertFalse(Onboarding.steps(c(path, level)).contains { "\($0)".contains("server") }, "\(path) \(level)")
+            }
+        }
+        let fresh = FakeStore()
+        Onboarding.apply(Onboarding.defaults(), fresh)
+        XCTAssertEqual(fresh.gatewayUrl, Self.defaultURL)
+    }
+
+    /// Without the server screen every way through still reaches its last screen and finishes.
+    func testSetupWithoutTheServerScreenStillCompletes() {
+        for path in Onboarding.Path.allCases {
+            for level in PrivacyLevel.allCases {
+                let choices = c(path, level)
+                var step: Onboarding.Step? = .who
+                var last = step
+                var guardCount = 0
+                while let s = step, guardCount < 20 { last = s; step = Onboarding.next(s, choices); guardCount += 1 }
+                XCTAssertEqual(last, path == .simple ? .recommended : path == .helper ? .handover : .done, "\(path)")
+                let st = FakeStore()
+                Onboarding.apply(choices, st)
+                XCTAssertEqual(st.launch(), .done)
+            }
+        }
     }
 
     /// The real settings store: a missing flag reads as nil, old keys count as settings.
@@ -179,13 +198,13 @@ final class OnboardingTests: XCTestCase {
     // ---- "Who will use this phone?" and the three ways through (the same cases as Android)
 
     private func c(_ path: Onboarding.Path, _ privacy: PrivacyLevel = .cloud) -> Onboarding.Choices {
-        var c = Onboarding.defaults(Self.defaultURL)
+        var c = Onboarding.defaults()
         c.privacy = privacy
         return Onboarding.choose(c, path)
     }
 
     func testTheFirstQuestionComesFirstWithNothingPicked() {
-        let start = Onboarding.defaults(Self.defaultURL)
+        let start = Onboarding.defaults()
         XCTAssertNil(start.path)
         XCTAssertFalse(start.simple)
         XCTAssertEqual(Onboarding.steps(start), [.who])
@@ -193,7 +212,7 @@ final class OnboardingTests: XCTestCase {
     }
 
     func testMeIsStandardWithTheFullSetup() {
-        XCTAssertEqual(Onboarding.steps(c(.standard)), [.who, .welcome, .privacy, .server, .data, .done])
+        XCTAssertEqual(Onboarding.steps(c(.standard)), [.who, .welcome, .privacy, .data, .done])
         XCTAssertEqual(Onboarding.steps(c(.standard, .onDevice)), [.who, .welcome, .privacy, .data, .done])
         let s = FakeStore()
         Onboarding.apply(c(.standard, .hybrid), s)
@@ -241,7 +260,7 @@ final class OnboardingTests: XCTestCase {
 
     func testSkipIsStandardWithRecommendedSettings() {
         let s = FakeStore()
-        Onboarding.apply(Onboarding.defaults(Self.defaultURL), s)       // Skip on "Who will use this phone?"
+        Onboarding.apply(Onboarding.defaults(), s)       // Skip on "Who will use this phone?"
         XCTAssertEqual(s.simpleMode, false)
         XCTAssertEqual(s.textSize, "normal")
         XCTAssertFalse(s.readAloud)

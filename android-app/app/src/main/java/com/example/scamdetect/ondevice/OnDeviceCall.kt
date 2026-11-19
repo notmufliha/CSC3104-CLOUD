@@ -94,7 +94,7 @@ class OnDeviceCall(
             else -> "error"
         }
         val d = rules.decide(line, now, bert = second?.bertScore, bertStatus = status)
-        return Answer(response(callId, seq, scores, d, start), d, second)
+        return Answer(response(callId, seq, scores, d, start, status), d, second)
     }
 
     private fun remember(text: String) {
@@ -104,7 +104,7 @@ class OnDeviceCall(
 
     private fun lineOf(scores: Map<String, Float>) = LocalRules.SIGNALS.map { scores[it] }
 
-    private fun response(callId: String, seq: Long, scores: Map<String, Float>, d: LocalRules.Decision, startNanos: Long) =
+    private fun response(callId: String, seq: Long, scores: Map<String, Float>, d: LocalRules.Decision, startNanos: Long, bertStatus: String = "off") =
         UtteranceResponse(
             callId = callId,
             seq = seq,
@@ -118,6 +118,12 @@ class OnDeviceCall(
             callScores = LocalRules.SIGNALS.zip(d.recent).mapNotNull { (s, v) -> v?.let { s to it } }.toMap(),
             callerLines = d.callerLines,
             latencyMs = (System.nanoTime() - startNanos) / 1_000_000,
+            // For the Developer view only
+            liveAlert = d.verdict,
+            fastScore = d.fast,
+            bertScore = d.bert,
+            bertStatus = bertStatus,
+            rule = d.rule,
         )
 
     companion object {

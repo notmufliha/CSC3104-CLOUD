@@ -130,6 +130,8 @@ private fun CallStatus(state: CallUiState, showCareful: Boolean, simple: Boolean
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
+            // Developer view's playback speed, when it isn't 1×
+            state.speedTag?.let { SpeedTag(it) }
             // Simple mode: no technical words (no Cloud / Hybrid / On-device), no score, no chips.
             if (!simple) PrivacyBadge(state.privacyLevel)
         }
@@ -206,6 +208,16 @@ fun PrivacyBadge(level: PrivacyLevel) {
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/** Developer view: "2× speed" / "4× speed" / "Instant" on the call screen. */
+@Composable
+fun SpeedTag(text: String) {
+    Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.tertiaryContainer,
+        modifier = Modifier.padding(end = 6.dp).semantics { contentDescription = "Playback $text" }) {
+        Text(text, Modifier.padding(horizontal = 10.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onTertiaryContainer, fontWeight = FontWeight.SemiBold)
     }
 }
 

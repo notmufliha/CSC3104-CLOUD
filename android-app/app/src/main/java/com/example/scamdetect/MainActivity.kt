@@ -31,6 +31,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -47,9 +49,13 @@ import com.example.scamdetect.ui.Phase
 import com.example.scamdetect.ui.ScriptPickerScreen
 import com.example.scamdetect.ui.DataPage
 import com.example.scamdetect.ui.HelpPage
-import com.example.scamdetect.ui.ModelsPage
 import com.example.scamdetect.ui.PrivacyPage
-import com.example.scamdetect.ui.ServerPage
+import com.example.scamdetect.ui.DeveloperScreen
+import com.example.scamdetect.ui.DevScoreOverlay
+import com.example.scamdetect.ui.DeveloperRow
+import com.example.scamdetect.ui.rememberLocalNetworkAsk
+import com.example.scamdetect.logic.DevOverlay
+import com.example.scamdetect.logic.DevUnlock
 import com.example.scamdetect.ui.SettingsMenuScreen
 import com.example.scamdetect.ui.SettingsPage
 import com.example.scamdetect.ui.SummaryScreen
@@ -83,19 +89,22 @@ import com.example.scamdetect.ui.textMessage
 
 enum class Screen {
     HOME, PICK, CALL, PASTE, DASHBOARD, CALL_DETAIL, SETTINGS,
-    SETTINGS_PRIVACY, SETTINGS_SERVER, SETTINGS_MODELS, SETTINGS_DATA, SETTINGS_HELP,
+    SETTINGS_PRIVACY, SETTINGS_DATA, SETTINGS_HELP,
     SETTINGS_STYLE, SETTINGS_TEXT, SETTINGS_FAMILY, SETTINGS_ADVANCED, SETTINGS_PIN,
+    /** The hidden Developer view: only once unlocked (Help & about → tap the version 7 times). */
+    SETTINGS_DEVELOPER,
     INSIGHTS, HISTORY,
 }
 
 private val SETTINGS_PAGES = setOf(
-    Screen.SETTINGS_PRIVACY, Screen.SETTINGS_SERVER, Screen.SETTINGS_MODELS, Screen.SETTINGS_DATA, Screen.SETTINGS_HELP,
+    Screen.SETTINGS_PRIVACY, Screen.SETTINGS_DATA, Screen.SETTINGS_HELP,
     Screen.SETTINGS_STYLE, Screen.SETTINGS_TEXT, Screen.SETTINGS_FAMILY, Screen.SETTINGS_ADVANCED, Screen.SETTINGS_PIN,
+    Screen.SETTINGS_DEVELOPER,
 )
 
 /** Simple mode: the pages inside Advanced settings (Back goes to it, and the PIN guards them). */
 private val ADVANCED_PAGES = setOf(
-    Screen.SETTINGS_PRIVACY, Screen.SETTINGS_SERVER, Screen.SETTINGS_MODELS, Screen.SETTINGS_DATA, Screen.SETTINGS_PIN,
+    Screen.SETTINGS_PRIVACY, Screen.SETTINGS_DATA, Screen.SETTINGS_PIN, Screen.SETTINGS_DEVELOPER,
 )
 
 /** Simple mode with a PIN: these need it ("For family" and Advanced settings). */
@@ -117,6 +126,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         applyDebugTextSize()
+        applyDebugDeveloper()
         // Code outside Compose (view model, logic) reads the app's wording through Tr.
         Tr.txt = Txt { id, a -> applicationContext.getString(id, *a) }
         super.onCreate(savedInstanceState)
@@ -130,6 +140,20 @@ class MainActivity : ComponentActivity() {
             ) { AppRoot(vm) }
         }
     }
+
+    override fun onDestroy() {
+        // The Developer view's logs live for this run only: closing the app (not a rotation) forgets them.
+        if (isFinishing) com.example.scamdetect.data.Dev.log.clear()
+        super.onDestroy()
+    }
+}
+
+/** Debug builds only: --ez demoDev true unlocks the Developer view before the view model reads the flag. */
+private fun MainActivity.applyDebugDeveloper() {
+    if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE == 0) return
+    if (intent?.hasExtra("demoDev") != true) return
+    com.example.scamdetect.data.AppPrefs(this).developerUnlocked = intent.getBooleanExtra("demoDev", false)
+    intent.removeExtra("demoDev")
 }
 
 /** Debug builds only: --es demoTextSize xlarge, saved before anything is drawn. */
@@ -151,11 +175,16 @@ fun AppRoot(vm: CallViewModel = viewModel()) {
         CallViewModel.Gate.SETUP -> {
             val step by vm.setupStep.collectAsState()
             val choices by vm.setupChoices.collectAsState()
+            // No server screen any more: Android 17+ asks for local network access as the setup finishes (not at
+            // On-device, which never uses the network).
+            val askNetwork = rememberLocalNetworkAsk()
             SetupFlow(step, choices, vm.setupIsReplay, SetupActions(
                 onStep = vm::setSetupStep,
                 onChange = vm::updateSetup,
-                onTest = vm::testSetupServer,
-                onFinish = vm::finishSetup,
+                onFinish = { tour ->
+                    if (com.example.scamdetect.logic.Onboarding.answered(vm.setupChoices.value).privacy == com.example.scamdetect.logic.PrivacyLevel.ON_DEVICE) vm.finishSetup(tour)
+                    else askNetwork { vm.finishSetup(tour) }
+                },
                 onLeave = { if (vm.setupIsReplay) vm.leaveSetup() else leaveApp(context) },
                 onTextSize = vm::previewTextSize,
             ))
@@ -182,7 +211,9 @@ fun AppRoot(vm: CallViewModel = viewModel()) {
 /**
  * Debug builds only, for screenshots and demos:
  *   adb shell am start -n com.example.scamdetect/.MainActivity --es demoSetup PRIVACY   (open the setup at a screen)
- *   --es demoPrivacy on_device   --es demoServer connected|cantReach
+ *   --es demoPrivacy on_device   --ez demoDev true|false (unlock / lock the Developer view)
+ *   --es demoSpeed 1x|2x|4x|instant   --ez demoOverlay true   (Developer view's playback speed and live scores)
+ *   --es demoLevel cloud|hybrid|on_device   --es demoScript scam_en_11_bank_otp.json (ring and answer it)
  *   --ei demoTour 3   (start the tour at step 3, 0-based)   --ez demoReset true
  *   --es demoWarning red|yellow (a pretend call with the red warning / yellow banner; nothing sent or saved)
  *   --es demoFamily "Mei Ling|91234567"   --es demoConnection ok|fail
@@ -208,10 +239,6 @@ private fun DebugLaunchOptions(vm: CallViewModel) {
         i.getStringExtra("demoSetup")?.let { name ->
             vm.runSetupAgain()
             i.getStringExtra("demoPrivacy")?.let { id -> vm.updateSetup { it.copy(privacy = com.example.scamdetect.logic.PrivacyLevel.fromId(id)) } }
-            when (i.getStringExtra("demoServer")) {
-                "connected" -> vm.updateSetup { it.copy(server = com.example.scamdetect.logic.Onboarding.Server.CONNECTED) }
-                "cantReach" -> vm.updateSetup { it.copy(server = com.example.scamdetect.logic.Onboarding.Server.CANT_REACH) }
-            }
             i.getStringExtra("demoPath")?.let { name ->
                 runCatching { com.example.scamdetect.logic.Onboarding.Path.valueOf(name.uppercase()) }.getOrNull()?.let { path ->
                     vm.updateSetup { com.example.scamdetect.logic.Onboarding.choose(it, path) }
@@ -224,12 +251,18 @@ private fun DebugLaunchOptions(vm: CallViewModel) {
         if (i.hasExtra("demoTour")) vm.startTour(i.getIntExtra("demoTour", 0))
         i.getStringExtra("demoFamily")?.let { f -> vm.setFamily(f.substringBefore("|"), f.substringAfter("|", "")) }
         when (i.getStringExtra("demoConnection")) { "ok" -> vm.demoConnection(true); "fail" -> vm.demoConnection(false) }
+        i.getStringExtra("demoLevel")?.let { vm.setPrivacyLevel(com.example.scamdetect.logic.PrivacyLevel.fromId(it)) }
+        i.getStringExtra("demoSpeed")?.let { id -> com.example.scamdetect.logic.PlaybackSpeed.entries.firstOrNull { it.id == id }?.let(vm::setPlaybackSpeed) }
+        if (i.getBooleanExtra("demoOverlay", false)) vm.setDevOverlay(true)
         when (i.getStringExtra("demoWarning")) { "red" -> vm.demoWarning(true); "yellow" -> vm.demoWarning(false) }
         // only once: a rotation re-creates the activity with the same intent
         i.removeExtra("demoReset"); i.removeExtra("demoSetup"); i.removeExtra("demoTour"); i.removeExtra("demoWarning")
         i.removeExtra("demoFamily"); i.removeExtra("demoConnection"); i.removeExtra("demoSimple"); i.removeExtra("demoSample")
-        i.removeExtra("demoPin"); i.removeExtra("demoTip")
+        i.removeExtra("demoPin"); i.removeExtra("demoTip"); i.removeExtra("demoSpeed"); i.removeExtra("demoOverlay")
         i.getStringExtra("demoScreen")?.let { vm.demoScreen.value = it; i.removeExtra("demoScreen") }
+        // --es demoScript scam_en_11_bank_otp.json: ring and answer that script (as iOS -demoScript)
+        i.getStringExtra("demoScript")?.let { n -> vm.scripts.firstOrNull { it.fileName == n }?.let { vm.ring(it); vm.answer() }; i.removeExtra("demoScript") }
+        i.removeExtra("demoLevel")
     }
 }
 
@@ -363,6 +396,9 @@ private fun ScreenContent(
     val pinSet by vm.pinSet.collectAsState()
     val textSize by vm.textSize.collectAsState()
     val readAloud by vm.readAloud.collectAsState()
+    val devUnlocked by vm.devUnlocked.collectAsState()
+    val devOverlay by vm.devOverlay.collectAsState()
+    val devLatest by vm.devLatest.collectAsState()
     var noPhoneApp by remember { mutableStateOf(false) }
     if (noPhoneApp) androidx.compose.material3.AlertDialog(
         onDismissRequest = { noPhoneApp = false },
@@ -371,13 +407,29 @@ private fun ScreenContent(
     )
     val context = androidx.compose.ui.platform.LocalContext.current
     val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "1.0" }
+    val build = remember {
+        runCatching { androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(context.packageManager.getPackageInfo(context.packageName, 0)).toString() }
+            .getOrNull() ?: "1"
+    }
+    // Locked (or reset) while on the Developer view: back to Settings.
+    LaunchedEffect(devUnlocked, screen) { if (screen == Screen.SETTINGS_DEVELOPER && !devUnlocked) go(Screen.SETTINGS) }
+    /** Help & about: 7 taps on the version unlock the Developer view. */
+    var versionTaps by remember { mutableStateOf(0) }
+    fun versionTap(): String? {
+        val t = vm.developerTap(versionTaps)
+        versionTaps = t.count
+        return when (t.outcome) {
+            DevUnlock.Outcome.NONE -> null
+            DevUnlock.Outcome.STEPS_LEFT -> context.getString(R.string.dev_taps_left, t.left.toString())
+            DevUnlock.Outcome.UNLOCKED -> context.getString(R.string.dev_unlocked)
+            DevUnlock.Outcome.ALREADY -> context.getString(R.string.dev_already)
+        }
+    }
     fun back() = go(Screen.SETTINGS)
     /** Pages inside Advanced settings go back to it in Simple mode. */
     fun backAdvanced() = go(if (simple) Screen.SETTINGS_ADVANCED else Screen.SETTINGS)
     fun open(page: SettingsPage) = go(when (page) {
         SettingsPage.PRIVACY -> Screen.SETTINGS_PRIVACY
-        SettingsPage.SERVER -> Screen.SETTINGS_SERVER
-        SettingsPage.MODELS -> Screen.SETTINGS_MODELS
         SettingsPage.DATA -> Screen.SETTINGS_DATA
         SettingsPage.HELP -> Screen.SETTINGS_HELP
         SettingsPage.APP_STYLE -> Screen.SETTINGS_STYLE
@@ -385,8 +437,8 @@ private fun ScreenContent(
         SettingsPage.FAMILY -> Screen.SETTINGS_FAMILY
         SettingsPage.ADVANCED -> Screen.SETTINGS_ADVANCED
         SettingsPage.PIN -> Screen.SETTINGS_PIN
+        SettingsPage.DEVELOPER -> if (devUnlocked) Screen.SETTINGS_DEVELOPER else Screen.SETTINGS
     })
-    val modelsUpdated = "federated" in modelStatus
 
     fun ringKind(kind: String) {
         vm.randomScript(kind)?.let { vm.ring(it); go(Screen.CALL) }
@@ -397,7 +449,7 @@ private fun ScreenContent(
             status = homeStatus(privacyLevel, connection),
             calls = calls,
             onPractice = { ringKind("scam") },
-            onFix = { vm.testConnection(gatewayUrl).let { vm.connection.value == true } },
+            onFix = { vm.recheckConnection(); vm.connection.value == true },
             onRefresh = vm::refreshConnection,
         ) else HomeScreen(
             onScamCall = { ringKind("scam") },
@@ -408,9 +460,10 @@ private fun ScreenContent(
         )
 
         Screen.PICK -> ScriptPickerScreen(
-            scripts = vm.scripts,
+            allScripts = vm.scripts,
             onPick = { vm.ring(it); go(Screen.CALL) },
             onBack = { go(Screen.HOME) },
+            showTestCalls = devUnlocked,
         )
 
         Screen.PASTE -> PasteTextScreen(
@@ -437,6 +490,10 @@ private fun ScreenContent(
                     simple = simple,
                 )
                 Phase.IDLE -> LaunchedEffect(Unit) { go(Screen.HOME) }
+            }
+            // Developer view: live scores at the top; never over the red warning (it hides while that shows).
+            if (DevOverlay.visible(devOverlay, devUnlocked, state.phase == Phase.IN_CALL, state.warningOpen)) {
+                DevScoreOverlay(devLatest, Modifier.align(androidx.compose.ui.Alignment.TopCenter).safeDrawingPadding().padding(top = 4.dp))
             }
             // The red warning covers the call (and its summary, if the call ended first) until the user acts.
             if (state.warningOpen && (state.phase == Phase.IN_CALL || state.phase == Phase.ENDED)) {
@@ -492,18 +549,22 @@ private fun ScreenContent(
         ) else SettingsMenuScreen(
             privacyLevel = privacyLevel,
             connection = connection,
-            modelsUpdated = modelsUpdated,
             callCount = calls.size,
             onRefresh = vm::refreshConnection,
+            onRetry = vm::recheckConnection,
             onOpen = ::open,
             textSize = textSize, readAloud = readAloud, onReadAloud = vm::setReadAloud,
             familyName = family?.name, showCareful = showCareful, onShowCareful = vm::setShowBeCareful,
             pinSet = pinSet,
+            developerUnlocked = devUnlocked,
         )
 
         Screen.SETTINGS_ADVANCED -> AdvancedPage({
+            LaunchedEffect(Unit) { vm.refreshConnection() }
             AdvancedRows(true, showCareful, vm::setShowBeCareful,
-                pinSet, privacyLevel, connection, modelsUpdated, calls.size, ::open)
+                pinSet, privacyLevel, connection, calls.size, ::open, vm::recheckConnection)
+            // Simple mode: the Developer view sits here, behind the PIN when one is set.
+            if (devUnlocked) DeveloperRow(::open)
         }, ::back)
         Screen.SETTINGS_STYLE -> AppStylePage(
             simple = simple, needsPin = vm::appStyleNeedsPin, onPick = vm::setAppStyle,
@@ -515,8 +576,7 @@ private fun ScreenContent(
         Screen.SETTINGS_PIN -> PinSettingsPage(pinSet, vm::setPin, vm::clearPin, ::backAdvanced)
 
         Screen.SETTINGS_PRIVACY -> PrivacyPage(privacyLevel, vm::setPrivacyLevel, ::backAdvanced, simple)
-        Screen.SETTINGS_SERVER -> ServerPage(gatewayUrl, connection, vm::saveGatewayUrl, { vm.testConnection(it) }, ::backAdvanced)
-        Screen.SETTINGS_MODELS -> ModelsPage(modelStatus, mobileBertStatus, modelCheck, { vm.checkModelUpdates() }, ::backAdvanced)
+        Screen.SETTINGS_DEVELOPER -> if (devUnlocked) DeveloperScreen(vm, version, build, ::backAdvanced)
         Screen.SETTINGS_DATA -> DataPage(
             saveSentence = saveSentence, onSaveSentence = vm::setSaveSentence,
             helpImprove = helpImprove, onHelpImprove = vm::setHelpImprove,
@@ -524,11 +584,11 @@ private fun ScreenContent(
             onDelete = vm::deleteHistory, onBack = ::backAdvanced,
         )
         Screen.SETTINGS_HELP -> HelpPage(
-            version, modelStatus, mobileBertStatus, vm.isDebugBuild, vm::loadSampleHistory, ::back,
+            version, ::back,
             onReplayTour = { vm.startTour() },
             onRunSetup = vm::runSetupAgain,
-            onResetSetup = vm::resetOnboarding,
             simple = simple,
+            onVersionTap = ::versionTap,
         )
     }
 }

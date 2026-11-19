@@ -39,7 +39,6 @@
     <string name="btn_discard_call">Leave without saving</string>
     <string name="btn_done">Done</string>
     <string name="btn_finish_no_tour">Finish without the tour</string>
-    <string name="btn_fix_it">Fix it</string>
     <string name="btn_forgot_pin">Forgot PIN</string>
     <string name="btn_get_started">Get started</string>
     <string name="btn_go_home">Go to Home</string>
@@ -106,6 +105,10 @@
     <string name="chip_impersonation">Fake official</string>
     <string name="chip_money">Money / OTP</string>
     <string name="chip_urgency">Rushing you</string>
+    <string name="conn_fail">Can\'t connect to ScamGuard</string>
+    <string name="conn_fail_line">Ask the person who set up this phone for help</string>
+    <string name="conn_not_needed">Not needed: calls are checked on this phone</string>
+    <string name="conn_ok">Connected ✓</string>
     <string name="consent_kept">Kept: deleted after 30 days, except lines chosen to teach ScamGuard. Those are kept safely with no link to you, so they can\'t be taken back later.</string>
     <string name="consent_not_sent">Not sent: your phone number, the caller\'s number, anything you said.</string>
     <string name="consent_sent">Sent: the caller\'s %1$s lines below. We try to remove numbers, amounts, links and names, but some can slip through. Read the text; if you see anything private, tap No.</string>
@@ -150,6 +153,9 @@
     <string name="det_show">Show details</string>
     <string name="det_signs">Warning signs (highest score out of 100)</string>
     <string name="det_when_at">%1$s at %2$s</string>
+    <string name="dev_already">Developer view is already unlocked</string>
+    <string name="dev_taps_left">%1$s more taps to unlock Developer view</string>
+    <string name="dev_unlocked">Developer view unlocked</string>
     <string name="ds_what_calmed">A warning came up, but the final check found the call safe.</string>
     <string name="ds_what_off">Something seemed off.</string>
     <string name="ds_what_off_r">Something seemed off: %1$s.</string>
@@ -165,9 +171,6 @@
     <string name="field_phone_hint">For example 9123 4567</string>
     <string name="field_pin">PIN</string>
     <string name="field_server">Server address</string>
-    <string name="fix_ok">Connected again</string>
-    <string name="fix_text">Check that Wi-Fi or mobile data is on, then try again. If it still doesn\'t work, ask your family helper.</string>
-    <string name="fix_title">Still not connected</string>
     <string name="handover_line">A short tour shows them what a scam warning looks like.</string>
     <string name="handover_title">Hand the phone to %1$s</string>
     <string name="handover_title_noname">Hand the phone to your family member</string>
@@ -189,8 +192,6 @@
     <string name="home_practice_line">A pretend scam call. Nothing is real.</string>
     <string name="home_recent">Recent calls</string>
     <string name="home_status_checking">Checking the connection…</string>
-    <string name="home_status_off">Not connected</string>
-    <string name="home_status_off_line">ScamGuard can\'t check calls right now.</string>
     <string name="home_status_ok">ScamGuard is protecting you</string>
     <string name="home_status_ok_line">You will be warned if a call sounds like a scam.</string>
     <string name="ins_answers">Your answers</string>
@@ -372,6 +373,7 @@
     <string name="set_advanced_line">For family helpers</string>
     <string name="set_app_style">App style</string>
     <string name="set_connection">Connection</string>
+    <string name="set_developer">Developer view</string>
     <string name="set_family">My family contact</string>
     <string name="set_group_app">App</string>
     <string name="set_group_checking">Checking calls</string>

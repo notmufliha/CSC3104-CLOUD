@@ -10,7 +10,7 @@ object Onboarding {
     /** Bump when the setup gains a screen that existing users should see. Saved with the "completed" flag. */
     const val VERSION = 2
 
-    enum class Step { WHO, WELCOME, RECOMMENDED, PRIVACY, SERVER, DATA, HELPER, FAMILY, PIN, HANDOVER, DONE }
+    enum class Step { WHO, WELCOME, RECOMMENDED, PRIVACY, DATA, HELPER, FAMILY, PIN, HANDOVER, DONE }
 
     /**
      * Which way through the setup, from the first screen ("Who will use this phone?"); null = not chosen yet.
@@ -41,29 +41,24 @@ object Onboarding {
         else -> Launch.SHOW_SETUP
     }
 
-    /** The screens, in order, for the way chosen. On-device needs no server, so that screen is left out. */
-    fun steps(c: Choices): List<Step> {
-        val server = Step.SERVER.takeIf { c.privacy != PrivacyLevel.ON_DEVICE }
-        return when (c.path) {
-            null -> listOf(Step.WHO)
-            Path.STANDARD -> listOfNotNull(Step.WHO, Step.WELCOME, Step.PRIVACY, server, Step.DATA, Step.DONE)
-            Path.SIMPLE -> listOf(Step.WHO, Step.WELCOME, Step.RECOMMENDED)
-            Path.CUSTOM -> listOfNotNull(Step.WHO, Step.WELCOME, Step.RECOMMENDED, Step.PRIVACY, server, Step.DATA, Step.DONE)
-            Path.HELPER -> listOf(Step.WHO, Step.HELPER, Step.FAMILY, Step.PIN, Step.HANDOVER)
-        }
+    /**
+     * The screens, in order, for the way chosen. There is no server screen: the setup uses the saved (or default)
+     * address without asking; the server address is set in the hidden Developer view.
+     */
+    fun steps(c: Choices): List<Step> = when (c.path) {
+        null -> listOf(Step.WHO)
+        Path.STANDARD -> listOf(Step.WHO, Step.WELCOME, Step.PRIVACY, Step.DATA, Step.DONE)
+        Path.SIMPLE -> listOf(Step.WHO, Step.WELCOME, Step.RECOMMENDED)
+        Path.CUSTOM -> listOf(Step.WHO, Step.WELCOME, Step.RECOMMENDED, Step.PRIVACY, Step.DATA, Step.DONE)
+        Path.HELPER -> listOf(Step.WHO, Step.HELPER, Step.FAMILY, Step.PIN, Step.HANDOVER)
     }
 
     fun next(step: Step, c: Choices): Step? = steps(c).let { s -> s.getOrNull(s.indexOf(step) + 1) }
 
     fun previous(step: Step, c: Choices): Step? = steps(c).let { s -> s.getOrNull(s.indexOf(step) - 1) }
 
-    /** Where the server screen left things. */
-    enum class Server { NOT_CHECKED, CONNECTED, CANT_REACH, LATER }
-
     data class Choices(
         val privacy: PrivacyLevel = PrivacyLevel.DEFAULT,
-        val serverUrl: String,
-        val server: Server = Server.NOT_CHECKED,
         val saveSentence: Boolean = false,
         val helpImprove: Boolean = false,
         /** null until "Who will use this phone?" is answered (nothing is pre-selected). */
@@ -83,7 +78,7 @@ object Onboarding {
     }
 
     /** What Skip saves on a first launch: Standard mode, recommended settings (Cloud, both data switches off). */
-    fun defaults(currentUrl: String) = Choices(serverUrl = currentUrl)
+    fun defaults() = Choices()
 
     /** An answer to "Who will use this phone?": the way through, and that mode's text size and read-aloud. */
     fun choose(c: Choices, path: Path): Choices {
@@ -101,7 +96,6 @@ object Onboarding {
     /** "Run setup again" starts from what is saved now (Skip keeps it), at the first question, nothing picked. */
     fun fromSaved(store: Store) = Choices(
         privacy = store.privacyLevel,
-        serverUrl = store.gatewayUrl,
         saveSentence = store.saveRiskiestSentence,
         helpImprove = store.helpImproveDetection,
         textSize = store.textSize,
@@ -140,13 +134,12 @@ object Onboarding {
     }
 
     /**
-     * Saves the choices and marks the setup done. The server address is kept as it was for On-device (no server
-     * screen) and for "Set up later". The PIN is saved separately (secure storage), by the caller.
+     * Saves the choices and marks the setup done. The server address is never changed here (the saved or default one
+     * is used). The PIN is saved separately (secure storage), by the caller.
      */
     fun apply(choices: Choices, store: Store) {
         val c = answered(choices)
         store.privacyLevel = c.privacy
-        if (c.privacy != PrivacyLevel.ON_DEVICE && c.server != Server.LATER) store.gatewayUrl = c.serverUrl
         store.saveRiskiestSentence = c.saveSentence
         store.helpImproveDetection = c.helpImprove
         store.simpleMode = c.simple

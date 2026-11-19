@@ -151,7 +151,15 @@ private fun ChipRow(label: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-fun ScriptPickerScreen(scripts: List<CallScript>, onPick: (CallScript) -> Unit, onBack: () -> Unit) {
+fun ScriptPickerScreen(
+    allScripts: List<CallScript>,
+    onPick: (CallScript) -> Unit,
+    onBack: () -> Unit,
+    /** Developer view unlocked: the learning-loop test calls get their own section at the end. */
+    showTestCalls: Boolean = false,
+) {
+    val scripts = allScripts.filterNot { com.example.scamdetect.logic.DevScripts.isTestCall(it.fileName) }
+    val testCalls = if (showTestCalls) allScripts.filter { com.example.scamdetect.logic.DevScripts.isTestCall(it.fileName) } else emptyList()
     var kind by remember { mutableStateOf<String?>(null) }   // null = all
     var lang by remember { mutableStateOf<String?>(null) }
     var sort by remember { mutableStateOf(ScriptSort.TYPE) }
@@ -212,7 +220,9 @@ fun ScriptPickerScreen(scripts: List<CallScript>, onPick: (CallScript) -> Unit, 
             }
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(shown, key = { it.fileName }) { s ->
+            items(shown + testCalls, key = { it.fileName }) { s ->
+                if (s == testCalls.firstOrNull()) Text("Test calls (learning loop)", style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp).testTag("testCallsHeader"))
                 val color = kindColor(s.kind)
                 Card(onClick = { onPick(s) }, modifier = Modifier.fillMaxWidth()) {
                     Row(Modifier.height(IntrinsicSize.Min)) {
