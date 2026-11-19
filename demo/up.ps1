@@ -108,11 +108,10 @@ docker build -t "scam/retrain:${ImageTag}" -f backend/retrain/Dockerfile .
 if ($LASTEXITCODE -ne 0) { Die "build failed for retrain -- see the error above." }
 minikube image load "scam/retrain:${ImageTag}"
 if ($LASTEXITCODE -ne 0) { Die "minikube image load failed for retrain. Is 'minikube status' Running?" }
-# The web app (web/Dockerfile: the page + the app's call scripts and on-device models + onnxruntime-web, downloaded
-# at build time -- needs internet). Repo root context; web/Dockerfile.dockerignore keeps it small.
+# The web app (static files; web/Dockerfile).
 Write-Host "--- building scam/web:${ImageTag} ---"
-docker build -t "scam/web:${ImageTag}" -f web/Dockerfile .
-if ($LASTEXITCODE -ne 0) { Die "build failed for web -- see the error above (the onnxruntime-web download needs internet)." }
+docker build -t "scam/web:${ImageTag}" web
+if ($LASTEXITCODE -ne 0) { Die "build failed for web -- see the error above." }
 minikube image load "scam/web:${ImageTag}"
 if ($LASTEXITCODE -ne 0) { Die "minikube image load failed for web. Is 'minikube status' Running?" }
 

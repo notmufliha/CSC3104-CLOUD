@@ -2,26 +2,30 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#6650a4">
+  <!-- maximum-scale=1: no browser zoom when a field gets focus (fields are 16 px or larger anyway) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#fffbfe">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="ScamGuard: warns you during a call that sounds like a scam. Web version of the ScamGuard app.">
+  <!-- add to home screen: opens full screen like an app -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="ScamGuard">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <title>ScamGuard</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-  <!-- ScamGuard web app: the phone apps in a browser, all three privacy levels (ondevice.js runs levels 2 and 3 in the
-       page), so the system can be tried without Android Studio or Xcode. Built into the scam/web image (web/Dockerfile:
-       this folder + the apps' call scripts and on-device models + onnxruntime-web) and served by the compose "edge"
-       (http://127.0.0.1:8088/) and by the Kubernetes Ingress (https://<laptop IP>:8443/). It calls the same gateway as the phone, at api/ on the same address.
-       strings.json and learn.json are generated (tools/i18n/gen_strings.py, tools/learn/build_learn.py). -->
-  <div id="phone">
-    <main id="screen" aria-live="polite"></main>
-    <nav id="tabs" aria-label="Main">
-      <button data-tab="home"><span class="ico" aria-hidden="true">⌂</span><span class="lbl">Home</span></button>
-      <button data-tab="dashboard"><span class="ico" aria-hidden="true">☰</span><span class="lbl">Dashboard</span></button>
-      <button data-tab="settings"><span class="ico" aria-hidden="true">⚙</span><span class="lbl">Settings</span></button>
-    </nav>
-  </div>
-  <script src="ondevice.js"></script>
-  <script src="app.js"></script>
+  <!-- ScamGuard web app: a replica of the iOS app (ios-app/) in a browser. Static files, no build step: Preact + htm
+       (vendor/), the apps' wording (assets/strings.json), scripts, Learn content and on-device models (assets/).
+       Served by the compose edge (http://<laptop IP>:8088/) and the Kubernetes Ingress (https://<laptop IP>:8443/);
+       it calls the gateway at api/ on the same address. -->
+  <div id="root"></div>
+  <div id="boot" style="position:fixed;inset:0;display:grid;place-items:center;font:17px -apple-system,system-ui,sans-serif;color:#49454f">Loading…</div>
+  <noscript>ScamGuard needs JavaScript.</noscript>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>

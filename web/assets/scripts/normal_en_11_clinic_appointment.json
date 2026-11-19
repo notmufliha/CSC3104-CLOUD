@@ -1,0 +1,57 @@
+[
+  {
+    "speaker": "caller",
+    "text": "Hello, this is the clinic calling to confirm your appointment tomorrow at ten thirty.",
+    "delay_ms": 1500
+  },
+  {
+    "speaker": "receiver",
+    "text": "Yes, I'll be there.",
+    "delay_ms": 5300
+  },
+  {
+    "speaker": "caller",
+    "text": "Great. Please bring your NRIC and any medication you are currently taking.",
+    "delay_ms": 2400
+  },
+  {
+    "speaker": "receiver",
+    "text": "Okay. Should I fast beforehand?",
+    "delay_ms": 4650
+  },
+  {
+    "speaker": "caller",
+    "text": "Yes, no food for eight hours before the blood test, but you can drink plain water.",
+    "delay_ms": 2750
+  },
+  {
+    "speaker": "receiver",
+    "text": "Alright. How long will it take?",
+    "delay_ms": 6000
+  },
+  {
+    "speaker": "caller",
+    "text": "About thirty minutes. Please arrive ten minutes early to register at the counter.",
+    "delay_ms": 3100
+  },
+  {
+    "speaker": "receiver",
+    "text": "Noted. Is parking available?",
+    "delay_ms": 5000
+  },
+  {
+    "speaker": "caller",
+    "text": "Yes, there is a carpark behind the building. The consultation fee can be paid at the counter after your visit.",
+    "delay_ms": 2400
+  },
+  {
+    "speaker": "receiver",
+    "text": "Okay, thanks.",
+    "delay_ms": 7300
+  },
+  {
+    "speaker": "caller",
+    "text": "See you tomorrow. Take care.",
+    "delay_ms": 1750
+  }
+]

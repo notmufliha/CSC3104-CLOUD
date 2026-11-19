@@ -121,7 +121,7 @@ def write_ios(table):
 
 def write_web(table):
     # The web app (web/app.js) reads the same English text, with {0} {1} placeholders as in the table.
-    with open(os.path.join(ROOT, "web", "strings.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(ROOT, "web", "assets", "strings.json"), "w", encoding="utf-8") as f:
         json.dump({k: table[k] for k in sorted(table)}, f, ensure_ascii=False, indent=0)
         f.write("\n")
 

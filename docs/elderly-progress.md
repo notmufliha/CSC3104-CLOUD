@@ -28,6 +28,23 @@ iOS `WarningsTests` (+ call-flow warning tests), `PinTests`, rewritten `Onboardi
 (`TranslationTest` / `TranslationTests`) were removed with part 5; their English checks (a label for every reason code,
 plain warning wording) moved into `WarningsTest(s)`.
 
+## Standard and Simple modes (2026-11-19)
+
+The setup now starts with "Who will use this phone?" (both apps, same flow and wording):
+
+| Answer | Mode | Setup screens | Tour |
+|---|---|---|---|
+| Me | Standard: full app, phone's own text size, read aloud off | Who, Welcome, Privacy, Server (not for On-device), Data, Done | 7 steps |
+| Me, but simpler | Simple: large text, read aloud on | Who, Welcome, Recommended ("Choose myself": Privacy, Server, Data, Done) | 3 steps |
+| An older family member | Simple | Who, Their settings, Contact, PIN, "Hand the phone to [name]" | 3 steps |
+| Skip | Standard, recommended settings | none | none |
+
+Both modes keep the red warning, "Be careful" banner, accessibility fixes and plain privacy wording. Settings → App style
+switches later (PIN asked when leaving Simple mode with a PIN set); history, contact, PIN and settings are kept, and the
+text size / read aloud follow the new style only if the user never set them. Installs set up before this keep their
+mode and see a one-time Home tip ("Setting this up for a parent? Try Simple mode in Settings → App style.").
+Screenshots: `android-app/build/mode-shots/`, `ios-app/build/mode-shots/`.
+
 ## Status
 
 Parts 1-4, 6 and 7 done; part 5 (languages) removed. Parts 1-6 committed as c179eb4; the part 7 fixes are not
