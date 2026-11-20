@@ -1,5 +1,0 @@
-[
-  {"speaker": "caller", "text": "Hi, this is the clinic calling to confirm your appointment on Tuesday.", "delay_ms": 1800},
-  {"speaker": "receiver", "text": "Yes, Tuesday works for me.", "delay_ms": 1800},
-  {"speaker": "caller", "text": "Please remember to bring your health booklet. See you then.", "delay_ms": 1800}
-]

@@ -1,6 +1,6 @@
 # Android Studio / Gradle
 android-app/.gradle/
-# Gradle's local cache, wherever a build runs (e.g. docs/android-ref/app/.gradle/)
+# Gradle's local cache, wherever a build runs.
 **/.gradle/
 android-app/**/build/
 android-app/local.properties
