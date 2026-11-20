@@ -2,8 +2,9 @@
 
 This describes the Kubernetes demo in `demo/`, built on top of the existing `docker-compose.yml` stack
 (13 containers: redis, bert, aggregator, gateway, 6 workers, review, model-service, edge, plus 3 more with the
-`federated` profile — unchanged, still the known-good baseline for local dev and for Phase-1 Android-emulator testing). Everything below is new. **Kafka is not used anywhere
-in this repo** — if a diagram or slide shows Kafka, it is wrong; remove it.
+`federated` profile — unchanged, still the known-good baseline for local dev and for Phase-1 Android-emulator testing).
+Everything below is new. Kafka is not part of this architecture; diagrams should show the Envoy-based request path
+described here.
 
 ## Components, ports, who calls whom
 

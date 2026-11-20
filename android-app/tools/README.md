@@ -4,7 +4,8 @@
 
 The phone runs the same English urgency, money and impersonation models as the server workers. They are bundled
 in `app/src/main/assets/models/` (`*_en.json` + `manifest.json` with versions and the sha256 of the source model).
-There is no model download service (G.10) yet, so the bundled versions are what the app uses.
+These bundled models are the built-in fallback; when the model-download service is available, the app can download
+newer federated versions (G.10). See [backend/federated/README.md](../../backend/federated/README.md).
 
 ### Format: JSON, not ONNX
 

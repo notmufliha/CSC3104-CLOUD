@@ -448,8 +448,8 @@ probability; "threshold" is the model's own cut-off.
 The address is a setting in the app (**Settings** -> server address), not in the code: see
 [C. The app](#c-the-android-app). Addresses: compose `http://<laptop IP>:8088/api/` (edge) or the gateway directly
 `http://<laptop IP>:8080/`; Kubernetes `https://<laptop IP>:8443/api/` from `demo/expose.ps1`; the emulator reaches
-the laptop as `10.0.2.2`. More: [docs/android-app-guide.md](docs/android-app-guide.md),
-[demo/STABLE_ADDRESS.md](demo/STABLE_ADDRESS.md).
+the laptop as `10.0.2.2`. More: [android-app/README.md](android-app/README.md) for app build and device details,
+[demo/STABLE_ADDRESS.md](demo/STABLE_ADDRESS.md) for the Kubernetes HTTPS address.
 
 ## Kubernetes
 

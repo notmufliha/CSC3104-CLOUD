@@ -1,4 +1,4 @@
-# ScamGuard demo — Shreya's guide
+# ScamGuard Kubernetes demo guide
 
 This runs the whole backend (gateway + aggregator + 6 workers + BERT + Redis + Envoy) on Kubernetes, on
 your own laptop, for free, using [minikube](https://minikube.sigs.k8s.io/) (a tiny one-node Kubernetes
